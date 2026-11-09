@@ -9,7 +9,7 @@
      RELAY_TOKEN  any long random password; paste the same one into Restaurant Lookup's settings
 
    Endpoints (all need ?t=RELAY_TOKEN):
-     /ping                 -> {ok:true, google:true|false}
+     /ping                 -> {ok:true, google:true|false, version}
      /place?q=NAME PLACE   -> Google Places Text Search (New): up to 5 places with hours, services and 5 reviews
      /page?url=https://... -> the venue's web page (HTML, with styles and inline scripts removed)
      /search?q=...         -> DuckDuckGo web results [{url,title}]
@@ -22,7 +22,9 @@ const FIELDS = [
   'servesDinner', 'servesCoffee', 'servesBeer', 'servesWine', 'servesCocktails', 'servesDessert',
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
-const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
+// bump on every change, so /ping shows which version Cloudflare is running
+const VERSION = '2026-11-10.1';
+const UA ='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const out = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: HEAD });
 
@@ -31,7 +33,7 @@ export default {
     const u = new URL(req.url), p = u.searchParams;
     if (!env.RELAY_TOKEN || p.get('t') !== env.RELAY_TOKEN) return out({ error: 'Wrong or missing relay token.' }, 403);
     try {
-      if (u.pathname === '/ping') return out({ ok: true, google: !!env.GOOGLE_KEY });
+      if (u.pathname === '/ping') return out({ ok: true, google: !!env.GOOGLE_KEY, version: VERSION });
 
       if (u.pathname === '/place') {
         const q = (p.get('q') || '').slice(0, 200);
