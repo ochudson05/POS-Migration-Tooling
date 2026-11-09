@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Menu Photo Finder</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+/* Layout: one column of steps (load menu -> find photos -> save), photos in a wrapping grid of square tiles like a POS screen */
+:root{box-sizing:border-box;--bg:#f7f6f3;--card:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#e2e0da;--accent:#c4410c;--accent-text:#fff;--ok:#1a7f4b;--warn:#a15c00;--bad:#b42318;--tile:#efede8;
+  --f-body:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;--f-mono:ui-monospace,"Cascadia Mono",Consolas,monospace}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161614;--card:#222220;--text:#f1f0ec;--muted:#9c9b94;--line:#37362f;--accent:#ff7a3d;--accent-text:#1a1a18;--ok:#4cc38a;--warn:#f0b45a;--bad:#ff8a80;--tile:#2b2b28;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161614;--card:#222220;--text:#f1f0ec;--muted:#9c9b94;--line:#37362f;--accent:#ff7a3d;--accent-text:#1a1a18;--ok:#4cc38a;--warn:#f0b45a;--bad:#ff8a80;--tile:#2b2b28;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 var(--f-body)}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
+h1{font-size:26px;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:16px;margin:0}
+.lede{margin:4px 0 0;color:var(--muted);max-width:68ch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:18px;display:grid;gap:14px;min-width:0}
+.row{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
+label{display:grid;gap:4px;font-size:13px;color:var(--muted)}
+input[type=text],input[type=password]{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 10px;min-width:0;width:260px;max-width:100%}
+.chk{display:flex;gap:8px;align-items:center;color:var(--text);font-size:14px}
+button,.btn{font:inherit;font-weight:600;border:1px solid var(--accent);background:var(--accent);color:var(--accent-text);border-radius:6px;padding:8px 14px;cursor:pointer}
+button.sec,.btn.sec{background:transparent;color:var(--accent)}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible,.tile:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.drop{border:2px dashed var(--line);border-radius:10px;padding:18px;text-align:center;color:var(--muted)}
+.drop.on{border-color:var(--accent);color:var(--text)}
+.note{font-size:13px;color:var(--muted);margin:0}
+.msg{font-size:14px;margin:0}
+.msg.bad{color:var(--bad)}
+details summary{cursor:pointer;font-weight:600;font-size:14px}
+details[open] summary{margin-bottom:10px}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+.stats{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;font-variant-numeric:tabular-nums}
+.stats b{font-weight:700}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.item{display:grid;gap:6px;align-content:start;min-width:0}
+.tile{position:relative;aspect-ratio:1;max-width:100%;border-radius:8px;background:var(--tile);overflow:hidden;cursor:pointer;border:2px solid transparent}
+.item.open .tile{border-color:var(--accent)}
+.tile img{width:100%;height:100%;object-fit:cover;display:block}
+.tile .ph{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:10px;color:var(--muted);font-size:13px}
+.item.off .tile{opacity:.35}
+.nm{font-weight:600;font-size:14px;line-height:1.3;overflow-wrap:anywhere}
+.meta{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+.meta a{color:inherit}
+.pill{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:1px 7px;border-radius:9px;border:1px solid currentColor}
+.p-found{color:var(--ok)}.p-none{color:var(--warn)}.p-wait{color:var(--muted)}.p-search{color:var(--accent)}.p-own{color:var(--ok)}.p-err{color:var(--bad)}
+.alt{grid-column:1/-1;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:12px;display:grid;gap:10px}
+.alts{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.alts button{padding:0;border:2px solid transparent;background:var(--tile);aspect-ratio:1;border-radius:6px;overflow:hidden}
+.alts button.sel{border-color:var(--accent)}
+.alts img{width:100%;height:100%;object-fit:cover;display:block}
+.mono{font-family:var(--f-mono);font-size:12px}
+select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 10px;max-width:100%}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.seg button{background:transparent;color:var(--muted);border:0;border-radius:0;padding:6px 12px;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--accent-text)}
+/* Choose photos: product details on the left, its photo choices in a row on the right */
+.plist{display:grid}
+.prow{display:grid;grid-template-columns:minmax(150px,210px) minmax(0,1fr);gap:16px;padding-block:14px;border-top:1px solid var(--line);border-radius:6px;transition:background .6s}
+.prow.flash{background:var(--tile)}
+.prow.off .popts{opacity:.35}
+.pinfo{display:grid;gap:5px;align-content:start;min-width:0}
+.pact{display:flex;flex-wrap:wrap;gap:6px 8px;align-items:center;margin-top:4px}
+button.sm,.btn.sm{padding:4px 10px;font-size:13px;font-weight:600}
+.btn.sm{color:var(--accent);display:inline-block;cursor:pointer}
+.chk.sm{font-size:13px;gap:5px}
+.popts{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;align-content:start}
+.opt{position:relative;padding:0;border:3px solid transparent;border-radius:8px;background:var(--tile);aspect-ratio:1;max-width:100%;overflow:hidden;cursor:pointer;color:var(--muted)}
+.opt img{width:100%;height:100%;object-fit:cover;display:block}
+.opt:hover{border-color:var(--line)}
+.opt.sel{border-color:var(--accent)}
+.opt.sel::after{content:"\2713";position:absolute;top:5px;right:5px;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-text);display:grid;place-items:center;font-size:13px;font-weight:700}
+.opt.more{font-size:13px;font-weight:600;color:var(--accent)}
+.opt.ph{display:grid;place-items:center;text-align:center;padding:8px;font-size:12px;cursor:default;border-style:dashed;border-color:var(--line);border-width:1px}
+.opt .cap{position:absolute;left:0;right:0;bottom:0;background:var(--card);color:var(--text);font-size:11px;font-weight:600;padding:2px 4px}
+@media (max-width:640px){.prow{grid-template-columns:1fr;gap:10px}.popts{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (prefers-reduced-motion:reduce){.bar i{transition:none}}
+@media (max-width:480px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}input[type=text],input[type=password]{width:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Menu Photo Finder</h1>
+    <p class="lede">Load a product export from Oolio One. The app finds a free photo for each product, then saves them into a folder named after the venue, one image per product, each named exactly like the product.</p>
+  </header>
+
+  <section class="card" aria-labelledby="s1">
+    <h2 id="s1">1. Load the menu</h2>
+    <div class="drop" id="drop">Drop the Oolio One product export here (.csv or .xlsx), or <label style="display:inline;color:var(--accent);cursor:pointer;font-size:inherit"><u>choose a file</u><input type="file" id="file" accept=".csv,.xlsx,.xls" hidden></label></div>
+    <div class="row">
+      <label for="venue">Venue name (the folder name)<input type="text" id="venue" placeholder="e.g. Billy's Kitchen"></label>
+      <label class="chk"><input type="checkbox" id="skipmod" checked> Skip modifiers</label>
+      <label class="chk"><input type="checkbox" id="skipimg" checked> Skip products that already have a photo</label>
+      <label for="style">Photo style<select id="style">
+        <option value="any">Any style</option>
+        <option value="white">Plain white background</option>
+        <option value="dark">Dark background</option>
+        <option value="bright">Bright and natural</option>
+        <option value="above">From above</option>
+      </select></label>
+      <label class="chk"><input type="checkbox" id="square" checked> Crop to square</label>
+      <label class="chk"><input type="checkbox" id="strict"> Only photos that need no credit</label>
+    </div>
+    <p class="msg" id="lmsg"></p>
+    <div class="row">
+      <label for="ourl">Venue’s online ordering page (optional)<input type="text" id="ourl" placeholder="e.g. order.hungryhungry.com/thequartercafe/menu" style="width:380px"></label>
+      <button type="button" class="sec" id="oread">Get the venue’s photos</button>
+    </div>
+    <p class="note" id="omsg">If the venue already sells online, its own item photos are used first, matched to your products by name. Works with Hungry Hungry ordering pages, at no cost. These photos belong to the venue, so use them only for that venue.</p>
+    <details id="keys">
+      <summary>Better photos with Pexels or Pixabay (optional, free key)</summary>
+      <div class="row">
+        <label for="kpx">Pexels API key<input type="password" id="kpx" autocomplete="off" placeholder="from pexels.com/api"></label>
+        <label for="kpb">Pixabay API key<input type="password" id="kpb" autocomplete="off" placeholder="from pixabay.com/api/docs"></label>
+      </div>
+      <p class="msg" id="keymsg"></p>
+      <p class="note">Sources are searched in order: Pexels, Pixabay, Openverse (Flickr, Rawpixel and others, filtered to licences that allow business use), then Wikimedia Commons. When one runs out of free searches (Pexels: 200 an hour, Pixabay: 100 a minute, Openverse: 200 a day), it’s paused until its limit resets and the next one takes over automatically. Keys stay in this browser only.</p>
+    </details>
+  </section>
+
+  <section class="card" aria-labelledby="s2">
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <h2 id="s2">2. Find photos</h2>
+      <div class="row">
+        <button id="go">Find photos</button>
+        <button class="sec" id="stop" hidden>Stop</button>
+      </div>
+    </div>
+    <div class="bar" aria-hidden="true"><i id="barfill"></i></div>
+    <div class="stats" id="stats"></div>
+    <p class="note" id="srcs"></p>
+    <p class="note" id="smsg"></p>
+    <div class="row" style="justify-content:space-between;align-items:center">
+      <p class="note" style="max-width:62ch">Each product shows up to 6 photos from different libraries, best match first. Click the one that suits the menu. The first is used if you don’t choose.</p>
+      <div class="seg" role="group" aria-label="View">
+        <button type="button" id="vpick" aria-pressed="true">Choose photos</button>
+        <button type="button" id="vall" aria-pressed="false">See all chosen</button>
+      </div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </section>
+
+  <section class="card" aria-labelledby="s3">
+    <h2 id="s3">3. Save</h2>
+    <div class="row">
+      <button id="savedir">Save to a folder</button>
+      <button class="sec" id="savezip">Download as ZIP</button>
+    </div>
+    <p class="note" id="savehint">“Save to a folder” asks where to put it, then creates the venue folder there. Each image is a JPEG named after its product, plus <span class="mono">photo credits.csv</span> listing where each photo came from and its licence.</p>
+    <p class="msg" id="vmsg"></p>
+  </section>
+</div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clean=s=>String(s??'').replace(/\s+/g,' ').trim();
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const ls={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+
+/* ---------- state ---------- */
+// item: {name, cat, status: wait|search|found|none|own|err, cands:[], pick, own:Blob|null, ownUrl, on, tried:Set, example}
+let items=[],venue='',running=false,stopFlag=false,openIdx=-1;
+const EXAMPLE=[['Flat White','Hot Coffee'],['Iced Latte','Cold Drinks'],['Eggs Benedict','Breakfast'],['Smashed Avocado','Breakfast'],['Margherita','Pizza'],['Beef Burger','Burgers'],['Caesar Salad','Salads'],['Chips','Sides']];
+
+/* ---------- reading the Oolio One export ---------- */
+/* Two layouts are read: the Oolio One product export ("ProductName*", "Variation Name", "CategoryNames",
+   "ReportingGroup", "ImageUrl", "Store") and the import sheet ("Product Name*", "Product Type*", "Category*").
+   Headings are compared with spaces, case and asterisks ignored. Variations share the product name, so each
+   product is searched once. */
+const hkey=c=>clean(c).toLowerCase().replace(/[^a-z]/g,'');
+const COLS={name:['productname','name','itemname','product','item'],type:['producttype','type'],cat:['category','categories','categorynames','categoryname'],
+  grp:['productgroup','reportinggroup','group'],img:['imageurl','image','imagelink'],store:['store','storename','venue','location','site']};
+function findCol(hdr,keys){for(const k of keys){const i=hdr.indexOf(k);if(i>=0)return i}return -1}
+function parseRows(aoa){
+  const hasHead=keys=>aoa.findIndex(r=>r&&r.some(c=>keys.includes(hkey(c))));
+  let hi=hasHead(COLS.name.slice(0,3));if(hi<0)hi=hasHead(COLS.name);
+  if(hi<0)throw new Error('No product name column was found. Use the product export from Oolio One.');
+  const hdr=aoa[hi].map(hkey),col={};Object.keys(COLS).forEach(k=>col[k]=findCol(hdr,COLS[k]));
+  const get=(r,k)=>col[k]>=0?clean(r[col[k]]):'';
+  const out=[],seen=new Map(),stores=new Map();let mods=0;
+  for(const r of aoa.slice(hi+1)){if(!r)continue;const name=get(r,'name');if(!name)continue;
+    if(/modifier/i.test(get(r,'type'))&&$('skipmod').checked){mods++;continue}
+    const st=get(r,'store');if(st)stores.set(st,(stores.get(st)||0)+1);
+    const k=name.toLowerCase(),img=/^https?:\/\//i.test(get(r,'img'));
+    if(seen.has(k)){const o=seen.get(k);if(img)o.hasImg=true;if(!o.cat)o.cat=get(r,'cat');if(!o.grp)o.grp=get(r,'grp');continue}
+    const o={name,cat:get(r,'cat').split(/[;,|]/)[0].trim(),grp:get(r,'grp'),hasImg:img};seen.set(k,o);out.push(o)}
+  const store=[...stores].sort((a,b)=>b[1]-a[1])[0];
+  return{list:out,mods,store:store?clean(store[0].replace(/\s+store\s*$/i,'')):''};}
+function venueFromFile(f){let v=f.replace(/\.[^.]+$/,'').split(' - ')[0].replace(/[_]+/g,' ');v=v.replace(/\b(products?|export|oolio( one)?|import|menu)\b/gi,'').replace(/\b\d{2,4}([-.]\d{1,2}){1,2}\b/g,'').replace(/^[\s-]+|[\s-]+$/g,'').replace(/\s+/g,' ').trim();return v}
+async function loadFile(f){
+  $('lmsg').className='msg';$('lmsg').textContent='Reading '+f.name+'…';
+  try{const wb=XLSX.read(await f.arrayBuffer(),{type:'array'});let best=null;
+    for(const sn of wb.SheetNames){try{const p=parseRows(XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:false}));if(!best||p.list.length>best.list.length)best=p}catch(e){}}
+    if(!best)throw new Error('No product name column was found in '+f.name+'. Use the product export from Oolio One.');
+    if(!best.list.length)throw new Error('The file has no products in it.');
+    const skipImg=$('skipimg').checked;
+    items=best.list.map(x=>Object.assign(mkItem(x.name,x.cat),{grp:x.grp,hasImg:x.hasImg,on:!(skipImg&&x.hasImg)}));openIdx=-1;
+    const v=best.store||venueFromFile(f.name);if(v&&!$('venue').dataset.typed)$('venue').value=v;
+    if(venuePhotos.length)applyVenue();
+    const withImg=items.filter(i=>i.hasImg).length;
+    $('lmsg').textContent='Loaded '+items.length+' product'+(items.length===1?'':'s')+' from '+f.name+(best.mods?' (skipped '+best.mods+' modifier row'+(best.mods===1?'':'s')+')':'')+'.'+
+      (withImg?' '+withImg+(withImg===1?' already has a photo':' already have photos')+' in Oolio'+(skipImg?' and '+(withImg===1?'is':'are')+' left out.':'.'):'');
+    render();
+  }catch(e){$('lmsg').className='msg bad';$('lmsg').textContent=e.message}}
+const mkItem=(name,cat,example)=>({name,cat,status:'wait',cands:[],pick:0,own:null,ownUrl:'',on:true,tried:new Set(),example:!!example});
+
+/* ---------- search words ---------- */
+const GENERIC=/^(food|foods|drinks?|beverages?|bev|other|misc\.?|general|menu|items?|specials?|mains?|extras?|add ?ons?|sides?|snacks?|starters?|entrees?|share ?plates?|small plates?|large plates?|lunch|dinner|all day|kids( menu)?|kitchen|bar|retail|merch(andise)?|default|uncategori[sz]ed)$/i;
+const SIZE=/\b(small|sml|sm|regular|reg|large|lge|lg|medium|med|xl|single|double|triple|half|full|mini|jumbo|kids?|\d+(\.\d+)?\s*(ml|l|lt|g|gm|kg|oz|cm|in|inch|pc|pcs|pce|piece|pieces|pk|pack)|\d+")\b/gi;
+const DIET=/\b(gf|df|vg|v|ve|nf|gfo|vgo|dfo|veg)\b/gi;
+function words(name){return clean(String(name).replace(/\([^)]*\)|\[[^\]]*\]/g,' ').replace(/&/g,' and ').replace(SIZE,' ').replace(DIET,' ').replace(/[^\p{L}\p{N}' -]/gu,' ').replace(/\s-\s/g,' '))||clean(name)}
+function catWord(cat){cat=clean(cat);if(!cat||GENERIC.test(cat))return'';return cat.split(' ').map(w=>w.length>4?w.replace(/ies$/i,'y').replace(/(?<!s)s$/i,''):w.replace(/(?<!s)s$/i,'')).join(' ')}
+/* Photo style: added to the first search for each product, and photos found with it are ranked first,
+   so a menu's photos look alike (all on white, all dark and moody...). */
+const STYLES={any:'',white:'white background',dark:'dark background',bright:'bright natural light',above:'top view'};
+const styleWord=()=>STYLES[$('style').value]||'';
+const styleQuery=it=>{const s=styleWord();return s?baseQueries(it)[0]+' '+s:''};
+function queries(it){const b=baseQueries(it),s=styleQuery(it);return s?[s,...b]:b}
+function baseQueries(it){const w=words(it.name),c=catWord(it.cat),lw=w.toLowerCase();
+  // the category is added only when none of its words are already in the name ("Lebanese Coffee" + "Hot coffee" stays as is)
+  const q=[],cws=c.toLowerCase().split(' ').filter(Boolean),cw=cws.some(x=>lw.includes(x))?'':cws.join(' ');
+  if(cw)q.push(w+' '+cw);
+  // a one-word name with no useful category ("Chips", "Coke") gets "food" or "drink" from the product group
+  else if(!/\s/.test(w)){const g=/bev|drink|bar|coffee|wine|beer|spirit/i.test(it.grp||'')?'drink':/food|kitchen/i.test(it.grp||'')?'food':'';if(g)q.push(w+' '+g)}
+  q.push(w);return[...new Set(q)]}
+
+/* ---------- photo sources (all free; direct requests, no browser needed) ---------- */
+async function getJSON(url,opt={}){const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),15000);
+  try{const r=await fetch(url,Object.assign({credentials:'omit',signal:ctl.signal},opt));
+    if(r.status===429){const e=new Error('rate');e.rate=true;e.h=r.headers;throw e}
+    if(!r.ok){const e=new Error('HTTP '+r.status);e.status=r.status;try{e.body=(await r.text()).slice(0,200)}catch(x){}throw e}
+    const j=await r.json();Object.defineProperty(j,'_h',{value:r.headers});return j}finally{clearTimeout(t)}}
+
+/* ---------- automatic roll-over ----------
+   Sources are searched in ORDER. When one says it has had too many searches, it's paused until its limit
+   resets and the next source takes over straight away; it comes back on its own when the pause ends.
+   Pauses are remembered in this browser, so reloading the page doesn't hit a used-up source again.
+     Pexels: 200 searches an hour (20,000 a month). Pixabay: 100 a minute. Openverse without a key: 20 a minute, 200 a day. */
+const PKEY='mpf-pause';let pause={};try{pause=JSON.parse(ls.get(PKEY)||'{}')||{}}catch(e){}
+const paused=k=>(pause[k]&&pause[k].until>Date.now())?pause[k]:null;
+const when=t=>{const d=new Date(t),same=d.toDateString()===new Date().toDateString();return(same?'':d.toLocaleDateString([],{weekday:'short'})+' ')+d.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'})};
+function pauseSrc(k,ms,why){const until=Date.now()+ms;pause[k]={until,why,at:Date.now()};ls.set(PKEY,JSON.stringify(pause));
+  const nx=ORDER.slice(ORDER.indexOf(k)+1).find(x=>SOURCES[x].ready());
+  note(SOURCES[k].label+' '+why+', so '+(nx?SOURCES[nx].label+' is being used':'the remaining sources are used')+' until '+when(until)+'.');srcStatus()}
+function clearPauses(){pause={};ls.set(PKEY,'{}');items.forEach(it=>{if(it.status==='none'){it.tried=new Set();it.status='wait'}});render();srcStatus();note('Paused sources will be tried again. Click Find photos.')}
+const hnum=(h,n)=>{const v=h&&h.get(n);return v==null||v===''?null:+v};
+// space out searches so a source's per-minute limit is never hit
+// (a search that was waiting its turn when the source got paused goes to the next source instead)
+const gapNext={};async function spaced(k,ms){const w=(gapNext[k]||0)-Date.now();gapNext[k]=Math.max(Date.now(),gapNext[k]||0)+ms;if(w>0)await sleep(w);notPaused(k)}
+function notPaused(k){if(paused(k)){const e=new Error('paused');e.paused=true;throw e}}
+const keyOf=id=>clean($(id).value);
+const SOURCES={
+  pexels:{label:'Pexels',needsKey:'kpx',ready:()=>!!keyOf('kpx')&&!paused('pexels'),async find(q){
+    await spaced('pexels',250);let j;try{j=await getJSON('https://api.pexels.com/v1/search?per_page=10&query='+encodeURIComponent(q),{headers:{Authorization:keyOf('kpx')}})}
+    catch(e){if(e.rate){const r=hnum(e.h,'x-ratelimit-reset');pauseSrc('pexels',r?Math.max(60e3,r*1000-Date.now()):3600e3,'has used its hourly searches')}throw e}
+    // the last search of the hour: pause now rather than waste the next search on a refusal
+    const left=hnum(j._h,'x-ratelimit-remaining'),r=hnum(j._h,'x-ratelimit-reset');if(left===0)pauseSrc('pexels',r?Math.max(60e3,r*1000-Date.now()):3600e3,'has used its hourly searches');
+    return(j.photos||[]).map(p=>({thumb:p.src.medium,full:p.src.large2x||p.src.large,page:p.url,creator:p.photographer,license:'Pexels Licence (no credit needed)',free:true,source:'Pexels',title:p.alt||''}))}},
+  pixabay:{label:'Pixabay',needsKey:'kpb',ready:()=>!!keyOf('kpb')&&!paused('pixabay'),async find(q){
+    await spaced('pixabay',650);
+    let j;try{j=await getJSON('https://pixabay.com/api/?image_type=photo&safesearch=true&per_page=10&key='+encodeURIComponent(keyOf('kpb'))+'&q='+encodeURIComponent(q.slice(0,100)))}
+    catch(e){if(e.rate){const r=hnum(e.h,'x-ratelimit-reset');pauseSrc('pixabay',(r||60)*1000+1000,'has used its searches for this minute')}throw e}
+    const left=hnum(j._h,'x-ratelimit-remaining'),rs=hnum(j._h,'x-ratelimit-reset');if(left===0)pauseSrc('pixabay',(rs||60)*1000+1000,'has used its searches for this minute');
+    return(j.hits||[]).map(h=>({thumb:h.webformatURL,full:h.largeImageURL||h.webformatURL,page:h.pageURL,creator:h.user,license:'Pixabay Content Licence (no credit needed)',free:true,source:'Pixabay',title:h.tags||''}))}},
+  openverse:{label:'Openverse',ready:()=>!paused('openverse'),async find(q){
+    await spaced('openverse',3100);
+    const lic=$('strict').checked?'&license=cc0,pdm':'&license_type=commercial';let j;
+    try{j=await getJSON('https://api.openverse.org/v1/images/?page_size=12&category=photograph&mature=false'+lic+'&q='+encodeURIComponent(q))}
+    catch(e){if(e.rate){
+      // a second refusal soon after a one-minute pause means the 200-a-day limit is used up
+      const p=pause.openverse,again=p&&Date.now()-p.until<5*60e3;
+      if(again)pauseSrc('openverse',24*3600e3,'has used its 200 free searches for the day');else pauseSrc('openverse',61e3,'asked the app to slow down')}throw e}
+    return(j.results||[]).map(r=>{const big=r.source==='wikimedia'||!r.url;/* Wikimedia originals can be huge; others (Flickr, Rawpixel) link a ~1000px copy */const pd=/^(cc0|pdm)$/i.test(r.license);
+      return{thumb:r.thumbnail,full:big?r.thumbnail:r.url,fallback:r.thumbnail,page:r.foreign_landing_url,creator:r.creator||'',license:(pd?'':'CC ')+String(r.license).toUpperCase()+(r.license_version&&!pd?' '+r.license_version:''),free:pd,source:'Openverse / '+(r.source||r.provider||''),title:r.title||''}})}},
+  wikimedia:{label:'Wikimedia Commons',ready:()=>!paused('wikimedia'),async find(q){
+    await spaced('wikimedia',300);let j;
+    try{j=await getJSON('https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=12&prop=imageinfo&iiprop=url|extmetadata|mime&iiurlwidth=1200&gsrsearch='+encodeURIComponent(q+' filetype:bitmap'))}
+    catch(e){if(e.rate)pauseSrc('wikimedia',60e3,'asked the app to slow down');throw e}
+    const pages=Object.values((j.query&&j.query.pages)||{}).sort((a,b)=>(a.index||0)-(b.index||0));
+    return pages.map(p=>{const ii=(p.imageinfo||[])[0];if(!ii||!/jpe?g|png|webp/i.test(ii.mime||''))return null;const m=ii.extmetadata||{},lic=clean((m.LicenseShortName||{}).value)||'see page';
+      const art=clean(String((m.Artist||{}).value||'').replace(/<[^>]+>/g,''));
+      return{thumb:ii.thumburl,full:ii.thumburl,page:ii.descriptionurl,creator:art,license:lic,free:/public domain|cc0|^pd/i.test(lic),source:'Wikimedia Commons',title:String(p.title||'').replace(/^File:|\.[a-z]+$/gi,'')}}).filter(Boolean)
+      .filter(c=>!$('strict').checked||c.free)}}};
+const ORDER=['pexels','pixabay','openverse','wikimedia'];
+// Pexels answers a wrong key with 401/403, Pixabay with 400 "Invalid or missing API key"
+const badKey=e=>e&&(e.status===401||e.status===403||(e.status===400&&/key/i.test(e.body||'')));
+function keyRefused(k){if(paused(k))return;pauseSrc(k,365*864e5,'refused the API key');$('keymsg').textContent=SOURCES[k].label+' refused the key. Check it was copied in full, then paste it again.'}
+// a quick search of "coffee" to check a key as soon as it's pasted (uses 1 search)
+async function checkKey(k){const S=SOURCES[k],m=$('keymsg');if(!keyOf(S.needsKey)){srcStatus();return}
+  if(pause[k]){delete pause[k];ls.set(PKEY,JSON.stringify(pause))}
+  m.textContent='Checking the '+S.label+' key…';
+  try{const r=await S.find('coffee');m.textContent=S.label+' key works'+(r.length?'':', but the test search found nothing')+'.';}
+  catch(e){m.textContent=badKey(e)?S.label+' refused the key. Check it was copied in full, then paste it again.':e.rate?S.label+' key works, but its limit is used up for now.':'Couldn’t reach '+S.label+' to check the key ('+(e.message||e.name)+').';if(badKey(e))keyRefused(k)}
+  srcStatus()}
+function srcStatus(){const el=$('srcs');if(!el)return;let any=false;
+  el.innerHTML='Searching in this order: '+ORDER.map(k=>{const S=SOURCES[k],p=paused(k);
+    if(S.needsKey&&!keyOf(S.needsKey))return'<span class="meta">'+S.label+' (no key)</span>';
+    if(p){any=true;return'<span class="p-none">'+S.label+(/refused/.test(p.why)?' (key refused)':' (paused until '+when(p.until)+')')+'</span>'}
+    return'<b>'+S.label+'</b>'}).join(' → ')+(any?' <button type="button" class="sec" id="unpause" style="padding:2px 10px;font-size:13px">Try paused sources now</button>':'');
+  const b=$('unpause');if(b)b.addEventListener('click',clearPauses)}
+// a source whose pause has ended shows as ready again
+setInterval(()=>{if(Object.values(pause).some(p=>p.until<=Date.now()&&!p.shown)){Object.values(pause).forEach(p=>{if(p.until<=Date.now())p.shown=1});srcStatus()}},30000);
+
+/* ---------- the venue's own photos, from its online ordering site ----------
+   Hungry Hungry: the same two requests its ordering page makes (store config, then the whole menu),
+   which list a photo for every item. Photos are matched to products by name: an exact match (sizes and
+   dietary tags ignored) is used as the product's photo and the libraries aren't searched for it; a close
+   match is offered first among the choices. */
+let venuePhotos=[],venueSrc='';
+const nkey=s=>words(s).toLowerCase().replace(/\band\b|\bwith\b|\bw\b/g,' ').replace(/[^\p{L}\p{N} ]/gu,' ').split(' ').filter(Boolean).map(w=>w.length>3?w.replace(/(es|s)$/,''):w);
+const absUrl=s=>{s=Array.isArray(s)?s[0]:s;return s?String(s).trim().replace(/^\/\//,'https://'):''};
+async function hhPhotos(u){
+  // the feed is read from storefront.hungryhungry.com: other Hungry Hungry addresses redirect there, and a
+  // redirect stops the browser from reading the answer
+  const x=new URL(u),seg=x.pathname.split('/').filter(Boolean)[0]||'',slug=/^(menu|order)$/i.test(seg)?'':seg,API='https://storefront.hungryhungry.com';
+  const cfg=async host=>{try{const j=await getJSON(API+'/api/v1/storefront/config?host='+encodeURIComponent(host)+'&path='+encodeURIComponent(slug));return(j.data||j).themeObj||null}catch(e){return null}};
+  const th=await cfg(x.hostname)||(x.hostname!=='storefront.hungryhungry.com'&&slug?await cfg('storefront.hungryhungry.com'):null);
+  const locs=(th&&th.locations&&th.locations.location)||[],ful=locs.map(l=>(l.fulfillments||[]).find(f=>f&&f.price_level_id)).find(Boolean);
+  if(!th||!th.UI_ID||!ful)throw new Error('That Hungry Hungry page has no menu to read. Open the venue’s menu page and copy its address.');
+  const mj=await getJSON(API+'/api/v1/drupal/api/online/menu/'+ful.price_level_id+'/'+th.UI_ID+'/en/1'),m=mj.data||mj;
+  const photos=[],seen=new Set();
+  Object.values((m&&m.item)||{}).forEach(it=>{const full=absUrl(it&&it.images);if(!it||!it.title||!full||seen.has(full))return;seen.add(full);
+    photos.push({name:clean(it.title),key:nkey(it.title),full,thumb:absUrl(it.images_medium)||full})});
+  return{venue:clean(th.account_title||th.pageTitle),photos,items:Object.keys((m&&m.item)||{}).length}}
+function matchVenue(it){const a=nkey(it.name);if(!a.length)return null;let best=null,bs=0;
+  for(const v of venuePhotos){const b=v.key,inter=a.filter(w=>b.includes(w)).length;if(!inter)continue;
+    let s=inter/Math.max(a.length,b.length);if(inter===a.length&&inter===b.length)s=1;
+    else if(inter===Math.min(a.length,b.length)&&Math.abs(a.length-b.length)===1)s=Math.max(s,.7);// "Pepperoni" / "Pepperoni Pizza"
+    if(s>bs){bs=s;best=v}}
+  return bs>=.67?{v:best,exact:bs===1}:null}
+function applyVenue(){let exact=0,close=0;
+  items.forEach(it=>{const old=it.cands.length;it.cands=it.cands.filter(c=>!c.venue);if(it.cands.length<old&&!it.picked)it.pick=0;
+    const m=venuePhotos.length&&matchVenue(it);if(!m)return;
+    it.cands.unshift({thumb:m.v.thumb,full:m.v.full,page:$('ourl').value.trim(),creator:venueSrc,license:'Venue’s own photo',free:true,source:'Venue’s ordering page',title:m.v.name,venue:true,exact:m.exact});
+    if(it.picked)it.pick++;else it.pick=0;
+    if(m.exact){exact++;if(!it.own&&(it.status==='wait'||it.status==='none'||it.status==='err'))it.status='found'}else{close++;if(!it.own&&it.status==='none')it.status='found'}});
+  render();return{exact,close}}
+$('oread').addEventListener('click',async()=>{const m=$('omsg'),raw=$('ourl').value.trim();let u;
+  try{u=new URL(/^https?:\/\//i.test(raw)?raw:'https://'+raw)}catch(e){m.textContent='Paste the address of the venue’s online ordering page.';return}
+  const h=u.hostname;
+  if(/(^|\.)(meandu\.app|mryum\.com)$/.test(h)){m.textContent='me&u and Mr Yum pages aren’t supported yet. For now, save photos from the venue’s me&u menu and add them with “Use my own”.';return}
+  if(!/(^|\.)hungryhungry\.com$/.test(h)){m.textContent='Only Hungry Hungry ordering pages are supported so far (addresses ending in hungryhungry.com).';return}
+  $('oread').disabled=true;m.textContent='Reading the venue’s menu…';
+  try{const r=await hhPhotos(u.href);venuePhotos=r.photos;venueSrc=r.venue||'the venue';
+    if(!clean($('venue').value)||$('venue').value==='Example Cafe')$('venue').value=r.venue||$('venue').value;
+    const a=applyVenue();
+    m.textContent='Found '+r.photos.length+' photo'+(r.photos.length===1?'':'s')+' on '+venueSrc+'’s menu ('+r.items+' items). '+
+      a.exact+' product'+(a.exact===1?' matches':'s match')+' by name and use'+(a.exact===1?'s':'')+' the venue’s photo'+(a.close?'; '+a.close+' more '+(a.close===1?'has':'have')+' a close match shown first':'')+'.'+
+      (a.exact?' Those products won’t be searched in the photo libraries, which saves searches.':'')}
+  catch(e){m.textContent=e.message&&!/^HTTP|Failed to fetch|abort/i.test(e.message)?e.message:'Couldn’t read that page’s menu ('+(e.message||e.name)+'). Check the address and try again.'}
+  finally{$('oread').disabled=false}});
+
+/* ---------- picking the best photo ---------- */
+const reEsc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+function score(c,it){const t=' '+String(c.title).toLowerCase()+' ',nm=words(it.name).toLowerCase(),ws=nm.split(' ').filter(w=>w.length>2);
+  let s=0;ws.forEach(w=>{if(new RegExp('(^|[^\\p{L}])'+reEsc(w.replace(/(es|s)$/,''))+'(s|es)?($|[^\\p{L}])','u').test(t))s+=2});if(ws.length>1&&t.includes(nm))s+=1;if(c.free)s+=.5;
+  if(/\b(logo|menu|sign|poster|label|bottle cap|map|diagram|drawing|illustration|clipart|vector|icon|magazine|page|article|book|scan|newspaper|advert|advertisement|portrait)\b/.test(t))s-=3;return s}
+const CK='mpf1:';
+// Pixabay's image links stop working after 24 hours, so its results are kept for 20 hours; others for 14 days
+function cached(src,q){try{const c=JSON.parse(ls.get(CK+src+':'+($('strict').checked?'s:':'')+q.toLowerCase())||'null');if(c&&Date.now()-c.at<(src==='pixabay'?20*36e5:14*864e5))return c.r}catch(e){}return null}
+function cache(src,q,r){ls.set(CK+src+':'+($('strict').checked?'s:':'')+q.toLowerCase(),JSON.stringify({at:Date.now(),r}))}
+/* Each product gets about WANT photos to choose from. The first search keeps going down the source list
+   until it has that many (Wikimedia only when fewer than 3 were found, as its photos are the least
+   reliable), so the choices come from more than one library. "More photos" adds the next source. */
+const WANT=6;
+async function searchItem(it,{more}={}){
+  it.status='search';draw(it);const had=it.cands.length;let added=0;
+  for(const key of ORDER){const S=SOURCES[key];if(!S.ready()||it.tried.has(key))continue;
+    if(key==='wikimedia'&&!more&&it.cands.length>=3)continue;
+    it.tried.add(key);let got=[];const sq=styleQuery(it);
+    for(const q of queries(it)){let r=cached(key,q);
+      if(!r){try{r=await S.find(q);cache(key,q,r)}catch(e){r=null;if(badKey(e))keyRefused(key);break}}// on any failure, this product moves on to the next source
+      // Wikimedia's search matches page text, so its photos must name the product in the title
+      const ok=r.map(c=>Object.assign({},c,{q,score:score(c,it)+(q===sq?1.5:0)})).filter(c=>c.score>(key==='wikimedia'?1:-1));
+      got=got.concat(ok.filter(c=>!got.some(g=>g.thumb===c.thumb)));if(got.length>=WANT)break;if(stopFlag)break}
+    got.sort((a,b)=>b.score-a.score);
+    const fresh=got.filter(c=>!it.cands.some(x=>x.thumb===c.thumb)).slice(0,WANT);it.cands=it.cands.concat(fresh);added+=fresh.length;draw(it);
+    if(stopFlag||(more?added>0:it.cands.length>=WANT))break}
+  if(!had&&it.cands.length)it.pick=0;
+  it.status=it.own?'own':it.cands.length?'found':(stopFlag?'wait':'none');draw(it);return added>0}
+
+/* ---------- run ---------- */
+function note(t){$('smsg').textContent=t}
+async function runAll(){
+  if(running)return;running=true;stopFlag=false;$('go').disabled=true;$('stop').hidden=false;
+  const queue=items.filter(it=>it.on&&(it.status==='wait'||it.status==='err'));
+  if(!queue.length){note('Every product has been searched. Use “More photos” on a product to look further.')}
+  else note('Searching '+queue.length+' product'+(queue.length===1?'':'s')+'…'+(SOURCES.pexels.ready()||SOURCES.pixabay.ready()?'':' Openverse allows about 20 searches a minute without a key, so a long menu takes a few minutes.')+' You can start choosing while it searches.');
+  const worker=async()=>{while(queue.length&&!stopFlag){const it=queue.shift();try{await searchItem(it)}catch(e){it.status='err';draw(it)}stats()}};
+  await Promise.all([worker(),worker(),worker()]);
+  running=false;$('go').disabled=false;$('stop').hidden=true;stats();
+  const none=items.filter(i=>i.on&&i.status==='none').length;
+  if(stopFlag)note('Stopped. Click Find photos to carry on.');
+  else if(queue.length===0)note(none?none+' product'+(none===1?' has':'s have')+' no photo yet. Use “More photos” or your own image for '+(none===1?'it':'them')+'.':'Done. Pick a photo for each product, then save. “See all chosen” shows the whole set together.');}
+
+/* ---------- drawing ---------- */
+const PILL={wait:'Not searched',search:'Searching…',found:'Found',none:'No photo',own:'Your image',err:'Error'};
+function chosen(it){return it.own?{thumb:it.ownUrl,source:'Your image',license:'',creator:''}:it.cands[it.pick]||null}
+const pillHTML=it=>'<span class="pill p-'+(it.on?it.status:'wait')+'">'+(it.on?PILL[it.status]:it.hasImg?'Has photo in Oolio':'Left out')+'</span>';
+const srcHTML=it=>{const c=chosen(it);return c&&!it.own?'<a href="'+esc(c.page)+'" target="_blank" rel="noopener">'+esc(c.source)+'</a> · '+esc(c.license):c?'Your image':''};
+const optImg=u=>'<img src="'+esc(u)+'" alt="" loading="lazy" referrerpolicy="no-referrer">';
+// "Choose photos" view: one row per product with its photo choices side by side
+function rowHTML(it,i){
+  const shown=it.showAll?it.cands:it.cands.slice(0,WANT),more=it.cands.length-shown.length;
+  let opts=(it.own?'<button type="button" class="opt sel" data-own-sel="'+i+'" aria-pressed="true" aria-label="Your image for '+esc(it.name)+'">'+optImg(it.ownUrl)+'<span class="cap">Your image</span></button>':'')+
+    shown.map((c,k)=>'<button type="button" class="opt'+(!it.own&&k===it.pick?' sel':'')+'" data-pick="'+k+'" data-i="'+i+'" aria-pressed="'+(!it.own&&k===it.pick)+'" aria-label="Photo '+(k+1)+' for '+esc(it.name)+'" title="'+esc((c.title?c.title+' · ':'')+c.source+' · '+c.license)+'">'+optImg(c.thumb)+(c.venue?'<span class="cap">Venue photo</span>':'')+'</button>').join('');
+  if(more>0)opts+='<button type="button" class="opt more" data-showall="'+i+'">+'+more+' more</button>';
+  if(it.status==='search')opts+='<div class="opt ph">Searching…</div>';
+  else if(!it.cands.length&&!it.own)opts+='<div class="opt ph">'+(it.status==='none'?'No free photo found':it.status==='err'?'Search failed':'Not searched yet')+'</div>';
+  const left=ORDER.filter(k=>SOURCES[k].ready()&&!it.tried.has(k));
+  return '<div class="pinfo"><div class="nm">'+esc(it.name)+(it.example?' <span class="meta">(example)</span>':'')+'</div>'+
+    '<div class="meta">'+(it.cat?esc(it.cat)+' · ':'')+pillHTML(it)+'</div>'+(srcHTML(it)?'<div class="meta">'+srcHTML(it)+'</div>':'')+
+    '<div class="pact">'+(it.status==='search'?'':left.length?'<button type="button" class="sec sm" data-more="'+i+'">'+(it.cands.length?'More photos':it.status==='wait'?'Search':'Try again')+'</button>':it.cands.length||it.status==='none'?'<span class="meta">All sources searched</span>':'')+
+    '<label class="btn sec sm">Use my own<input type="file" accept="image/*" data-own="'+i+'" hidden></label>'+
+    (it.own?'<button type="button" class="sec sm" data-unown="'+i+'">Remove mine</button>':'')+
+    '<label class="chk sm"><input type="checkbox" data-on="'+i+'"'+(it.on?' checked':'')+'> Include</label></div></div>'+
+    '<div class="popts">'+opts+'</div>'}
+// "See all chosen" view: just the chosen photo for every product, to check the set looks consistent
+function tileHTML(it,i){const c=chosen(it);
+  return '<div class="tile" tabindex="0" role="button" aria-label="Change the photo for '+esc(it.name)+'" data-i="'+i+'">'+(c?optImg(c.thumb):'<div class="ph">'+(it.status==='search'?'Searching…':'No photo chosen')+'</div>')+'</div>'+
+    '<div class="nm">'+esc(it.name)+'</div><div class="meta">'+(it.cat?esc(it.cat)+' · ':'')+pillHTML(it)+'</div>'}
+let view='pick';
+function render(){const g=$('grid');g.className=view==='pick'?'plist':'grid';g.innerHTML='';
+  items.forEach((it,i)=>{const d=document.createElement('div');d.id='it'+i;g.appendChild(d);paint(it,i)});
+  $('vpick').setAttribute('aria-pressed',view==='pick');$('vall').setAttribute('aria-pressed',view==='all');stats()}
+function paint(it,i){const d=$('it'+i);if(!d)return;
+  if(view==='pick'){d.className='prow'+(it.on?'':' off');d.innerHTML=rowHTML(it,i)}else{d.className='item'+(it.on?'':' off');d.innerHTML=tileHTML(it,i)}}
+function draw(it){const i=items.indexOf(it);if(i>=0)paint(it,i)}
+function stats(){const on=items.filter(i=>i.on),f=on.filter(i=>i.status==='found'||i.status==='own').length,n=on.filter(i=>i.status==='none').length,w=on.filter(i=>i.status==='wait'||i.status==='search'||i.status==='err').length;
+  $('stats').innerHTML='<span><b>'+items.length+'</b> products</span><span><b>'+f+'</b> with a photo</span><span><b>'+n+'</b> with no photo</span><span><b>'+w+'</b> still to search</span>'+(items.length-on.length?'<span><b>'+(items.length-on.length)+'</b> left out</span>':'');
+  $('barfill').style.width=(on.length?Math.round((on.length-w)/on.length*100):0)+'%';
+  $('savedir').disabled=$('savezip').disabled=!f}
+
+/* ---------- interactions ---------- */
+$('grid').addEventListener('click',async e=>{const t=e.target;
+  // in "See all chosen", a tile opens that product's row in "Choose photos"
+  const tile=t.closest('.tile');if(tile){view='pick';render();const r=$('it'+tile.dataset.i);if(r){r.scrollIntoView({block:'center'});r.classList.add('flash');setTimeout(()=>r.classList.remove('flash'),1200)}return}
+  const pk=t.closest('[data-pick]');if(pk){const it=items[+pk.dataset.i];it.pick=+pk.dataset.pick;it.picked=true;if(it.own){URL.revokeObjectURL(it.ownUrl);it.own=null;it.ownUrl=''}it.status='found';draw(it);stats();return}
+  const sa=t.closest('[data-showall]');if(sa){const it=items[+sa.dataset.showall];it.showAll=true;draw(it);return}
+  const mo=t.closest('[data-more]');if(mo){mo.disabled=true;const it=items[+mo.dataset.more];it.showAll=true;await searchItem(it,{more:true});stats();return}
+  const un=t.closest('[data-unown]');if(un){const it=items[+un.dataset.unown];URL.revokeObjectURL(it.ownUrl);it.own=null;it.ownUrl='';it.status=it.cands.length?'found':'none';draw(it);stats()}});
+$('grid').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('tile')){e.preventDefault();e.target.click()}});
+$('grid').addEventListener('change',e=>{const t=e.target;
+  if(t.dataset.own!==undefined&&t.files[0]){const it=items[+t.dataset.own];if(it.ownUrl)URL.revokeObjectURL(it.ownUrl);it.own=t.files[0];it.ownUrl=URL.createObjectURL(it.own);it.status='own';draw(it);stats()}
+  if(t.dataset.on!==undefined){const i=+t.dataset.on;items[i].on=t.checked;paint(items[i],i);stats()}});
+$('vpick').addEventListener('click',()=>{view='pick';render()});
+$('vall').addEventListener('click',()=>{view='all';render()});
+{const v=ls.get('mpf-style');if(v&&STYLES[v]!==undefined)$('style').value=v}
+$('style').addEventListener('change',()=>{ls.set('mpf-style',$('style').value);items.forEach(it=>{if(!it.own){it.cands=[];it.pick=0;it.tried=new Set();it.status='wait';it.showAll=false}});render();
+  note('Photo style changed, so the photos will be searched again. Click Find photos.')});
+$('go').addEventListener('click',runAll);
+$('stop').addEventListener('click',()=>{stopFlag=true;note('Stopping after the current searches…')});
+$('file').addEventListener('change',e=>{if(e.target.files[0])loadFile(e.target.files[0]);e.target.value=''});
+const dz=$('drop');['dragenter','dragover'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.add('on')}));
+['dragleave','drop'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.remove('on')}));
+dz.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)loadFile(f)});
+$('venue').addEventListener('input',()=>{$('venue').dataset.typed=$('venue').value?'1':''});
+$('strict').addEventListener('change',()=>{items.forEach(it=>{if(!it.own){it.cands=[];it.pick=0;it.tried=new Set();it.status='wait'}});render();note('Licence filter changed, so the photos will be searched again. Click Find photos.')});
+['kpx','kpb'].forEach(id=>{const v=ls.get('mpf-'+id);if(v)$(id).value=v;$(id).addEventListener('change',()=>{ls.set('mpf-'+id,clean($(id).value));items.forEach(it=>{if(it.status==='none')it.tried=new Set(),it.status='wait'});render();checkKey(id==='kpx'?'pexels':'pixabay')})});
+if(clean($('kpx').value)||clean($('kpb').value))$('keys').open=true;
+
+/* ---------- saving ---------- */
+const safe=s=>clean(String(s).replace(/[\\/:*?"<>|\x00-\x1f]/g,' ')).replace(/[. ]+$/,'').slice(0,120)||'Untitled';
+async function fetchBlob(u){const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),25000);try{const r=await fetch(u,{credentials:'omit',signal:ctl.signal,referrerPolicy:'no-referrer'});if(!r.ok)throw new Error('HTTP '+r.status);return await r.blob()}finally{clearTimeout(t)}}
+async function toJpeg(blob,square){const bmp=await createImageBitmap(blob);let sx=0,sy=0,sw=bmp.width,sh=bmp.height;
+  if(square){const m=Math.min(sw,sh);sx=(sw-m)/2;sy=(sh-m)/2;sw=sh=m}
+  const k=Math.min(1,1200/Math.max(sw,sh)),cw=Math.round(sw*k),ch=Math.round(sh*k);const cv=document.createElement('canvas');cv.width=cw;cv.height=ch;
+  const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,cw,ch);g.drawImage(bmp,sx,sy,sw,sh,0,0,cw,ch);bmp.close&&bmp.close();
+  return await new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('encode')),'image/jpeg',.9))}
+async function imageFor(it){if(it.own)return toJpeg(it.own,$('square').checked);const c=it.cands[it.pick];
+  // some photo hosts (the venue's ordering site among them) don't let other pages download their images,
+  // so a failed download is retried through wsrv.nl, a free image proxy that does
+  const urls=[c.full,c.fallback,c.thumb].filter((u,i,a)=>u&&a.indexOf(u)===i),tries=[];
+  urls.forEach(u=>{if(!c.venue)tries.push(u);tries.push('https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=1600&we&output=jpg')});
+  for(const u of tries){try{return await toJpeg(await fetchBlob(u),$('square').checked)}catch(e){}}throw new Error('download')}
+const csvq=v=>{v=String(v??'');return/[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+async function build(onFile){
+  const list=items.filter(it=>it.on&&(it.own||it.cands[it.pick])),used=new Set(),credits=[['Product','File','Source','Creator','Licence','Credit needed','Page']],failed=[];
+  for(let k=0;k<list.length;k++){const it=list[k];$('vmsg').className='msg';$('vmsg').textContent='Saving '+(k+1)+' of '+list.length+': '+it.name+'…';
+    let base=safe(it.name),n=base,j=2;while(used.has(n.toLowerCase()))n=base+' '+j++;used.add(n.toLowerCase());const fn=n+'.jpg';
+    try{const b=await imageFor(it);await onFile(fn,b);const c=it.own?null:it.cands[it.pick];
+      credits.push([it.name,fn,c?c.source:'Your image',c?c.creator:'',c?c.license:'',c?(c.free?'No':'Yes'):'',c?c.page:''])}
+    catch(e){used.delete(n.toLowerCase());failed.push(it.name)}}
+  await onFile('photo credits.csv',new Blob(['﻿'+credits.map(r=>r.map(csvq).join(',')).join('\r\n')],{type:'text/csv'}));
+  return{saved:credits.length-1,failed}}
+function done(r,where){$('vmsg').className='msg'+(r.failed.length?' bad':'');
+  $('vmsg').textContent='Saved '+r.saved+' photo'+(r.saved===1?'':'s')+' '+where+'.'+(r.failed.length?' These couldn’t be downloaded, so pick another photo for them and save again: '+r.failed.join(', ')+'.':'')}
+function venueName(){const v=safe($('venue').value||'');if(!clean($('venue').value)){$('vmsg').className='msg bad';$('vmsg').textContent='Type the venue name first. It’s used as the folder name.';$('venue').focus();return''}return v}
+$('savedir').addEventListener('click',async()=>{const v=venueName();if(!v)return;
+  if(!window.showDirectoryPicker){$('vmsg').className='msg bad';$('vmsg').textContent='This browser can’t save straight into a folder. Use Download as ZIP, or open this page in Edge or Chrome.';return}
+  let root;try{root=await showDirectoryPicker({id:'mpf',mode:'readwrite',startIn:'pictures'})}catch(e){return}
+  try{const dir=await root.getDirectoryHandle(v,{create:true});$('savedir').disabled=$('savezip').disabled=true;
+    const r=await build(async(fn,b)=>{const fh=await dir.getFileHandle(fn,{create:true}),w=await fh.createWritable();await w.write(b);await w.close()});
+    done(r,'to the “'+v+'” folder inside “'+root.name+'”')}
+  catch(e){$('vmsg').className='msg bad';$('vmsg').textContent='Couldn’t write to that folder ('+(e.message||e.name)+'). Pick a folder you can edit, or use Download as ZIP.'}
+  finally{stats()}});
+$('savezip').addEventListener('click',async()=>{const v=venueName();if(!v)return;$('savedir').disabled=$('savezip').disabled=true;
+  try{const zip=new JSZip(),f=zip.folder(v);const r=await build(async(fn,b)=>{f.file(fn,b)});
+    $('vmsg').textContent='Building the ZIP…';const blob=await zip.generateAsync({type:'blob'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=v+' photos.zip';document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+    done(r,'into “'+v+' photos.zip” (unzip it to get the “'+v+'” folder)')}
+  catch(e){$('vmsg').className='msg bad';$('vmsg').textContent='The ZIP couldn’t be made ('+(e.message||e.name)+').'}
+  finally{stats()}});
+
+/* ---------- start with an example menu ---------- */
+items=EXAMPLE.map(([n,c])=>mkItem(n,c,true));$('venue').value='Example Cafe';
+$('lmsg').textContent='Showing an example menu. Load your Oolio One export to replace it, or click Find photos to try it.';
+render();srcStatus();
+</script>
+</body>
+</html>

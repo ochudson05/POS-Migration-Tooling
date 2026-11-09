@@ -1,0 +1,21 @@
+# secrets and local settings: never commit these
+.env
+*.env
+!.env.example
+.dev.vars
+.claude/settings.local.json
+
+# generated or local-only
+exports/
+_test-*
+.wrangler/
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Windows / Office clutter
+Thumbs.db
+desktop.ini
+~$*

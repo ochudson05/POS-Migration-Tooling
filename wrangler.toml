@@ -1,0 +1,9 @@
+# Cloudflare deploy settings for the relay Worker (relay-worker.js).
+# Cloudflare deploys this automatically when changes are pushed to GitHub (Workers Builds).
+# GOOGLE_KEY and RELAY_TOKEN live in Cloudflare as secrets: never put them in this file.
+name = "menurunner"
+main = "relay-worker.js"
+compatibility_date = "2026-11-01"
+
+# keep variables set in the Cloudflare dashboard when deploying
+keep_vars = true

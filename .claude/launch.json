@@ -1,0 +1,31 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "converter-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--directory", ".."],
+      "port": 8765
+    },
+    {
+      "name": "converter-static-alt",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8767", "--directory", ".."],
+      "port": 8767,
+      "autoPort": false
+    },
+    {
+      "name": "tools-static",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8768", "--directory", "."],
+      "port": 8768,
+      "autoPort": true
+    },
+    {
+      "name": "menu-scraper",
+      "runtimeExecutable": "C:\\Users\\OscarHudson\\.menu-scraper\\venv\\Scripts\\python.exe",
+      "runtimeArgs": ["menu-scraper/app.py"],
+      "port": 8787
+    }
+  ]
+}

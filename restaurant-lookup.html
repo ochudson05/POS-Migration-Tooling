@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Restaurant Lookup</title>
+<style>
+/*BASE: only used when this file is opened on its own; the launcher has the same tokens*/
+:root{box-sizing:border-box;--bg:#f7f6f3;--card:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#e2e0da;--accent:#c4410c;--accent-text:#fff;--ok:#1a7f4b;--warn:#a15c00}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161614;--card:#222220;--text:#f1f0ec;--muted:#9c9b94;--line:#37362f;--accent:#ff7a3d;--accent-text:#1a1a18;--ok:#4cc38a;--warn:#f0b45a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161614;--card:#222220;--text:#f1f0ec;--muted:#9c9b94;--line:#37362f;--accent:#ff7a3d;--accent-text:#1a1a18;--ok:#4cc38a;--warn:#f0b45a;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+/*END BASE*/
+.rf{max-width:1100px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.rf h1{font-size:1.4rem;margin:0 0 4px}
+.rf .rf-sub{color:var(--muted);margin:0 0 18px;max-width:75ch}
+.rf .rf-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.rf .rf-card h3{font-size:.8rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 10px;font-weight:700}
+.rf label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:6px}
+.rf input{width:100%;font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px}
+.rf button{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-text);border:0;border-radius:8px;padding:10px 16px;cursor:pointer;margin:0}
+.rf button.rf-sec{background:transparent;color:var(--text);border:1px solid var(--line)}
+.rf button.rf-sm{padding:4px 10px;font-size:.85rem}
+.rf button:disabled{opacity:.45;cursor:not-allowed}
+.rf button:focus-visible,.rf a:focus-visible,.rf input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.rf a{color:var(--accent);overflow-wrap:anywhere}
+.rf-form{display:grid;gap:12px;align-items:end}
+@media(min-width:700px){.rf-form{grid-template-columns:1.3fr 1fr auto}}
+.rf-msg{color:var(--muted);font-size:.9rem;margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.rf-msg.err{color:var(--warn)}
+.rf details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
+.rf-set{margin-top:12px}
+.rf-set .rf-two{display:grid;gap:8px;grid-template-columns:1fr auto;margin-top:8px}
+.rf-note{color:var(--muted);font-size:.85rem;margin:6px 0 0}
+#rf-out{margin-top:18px;display:grid;gap:16px}
+.rf-head{display:grid;gap:6px}
+.rf-head h2{font-size:1.6rem;margin:0;line-height:1.2;text-wrap:balance}
+.rf-chips{display:flex;flex-wrap:wrap;gap:6px}
+.rf-chip{font-size:.8rem;padding:2px 10px;border-radius:99px;border:1px solid var(--line);background:var(--bg);white-space:nowrap}
+.rf-chip.ok{color:var(--ok)}.rf-chip.w{color:var(--warn)}
+.rf-meta{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:.92rem}
+.rf-meta span{color:var(--muted)}
+.rf-kpis{display:grid;gap:12px;grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(min-width:640px){.rf-kpis{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.rf-kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.rf-kpi b{display:block;font-size:1.5rem;font-variant-numeric:tabular-nums;line-height:1.2}
+.rf-kpi span{color:var(--muted);font-size:.82rem}
+.rf-grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.rf-dl{display:grid;grid-template-columns:minmax(90px,auto) 1fr;gap:6px 14px;margin:0;font-size:.92rem}
+.rf-dl dt{color:var(--muted)}.rf-dl dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.rf-list{list-style:none;margin:0;padding:0;display:grid;gap:6px;font-size:.92rem}
+.rf-list li{display:flex;gap:8px;justify-content:space-between;align-items:baseline;border-bottom:1px solid var(--line);padding-bottom:6px}
+.rf-list li:last-child{border-bottom:0;padding-bottom:0}
+.rf-list .rf-k{color:var(--muted);flex:none}
+.rf-list .rf-v{text-align:right;min-width:0;overflow-wrap:anywhere}
+.rf-miss{color:var(--muted)}
+.rf-tbl{width:100%;border-collapse:collapse;font-size:.88rem}
+.rf-tbl th,.rf-tbl td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top;white-space:normal}
+.rf-tbl th{color:var(--muted);font-weight:600;font-size:.8rem;position:static;background:none}
+.rf-tbl td.n{font-variant-numeric:tabular-nums;text-align:right}
+.rf-tbl q{color:var(--muted)}
+.rf-wide{grid-column:1/-1}
+.rf-hist{display:grid;gap:4px;font-size:.82rem}
+.rf-hist div{display:grid;grid-template-columns:2.2em 1fr 2.4em;gap:8px;align-items:center}
+.rf-bar{height:10px;border-radius:5px;background:var(--line);overflow:hidden}
+.rf-bar i{display:block;height:100%;background:var(--accent);border-radius:5px}
+.rf-hist .n{text-align:right;color:var(--muted);font-variant-numeric:tabular-nums}
+.rf-rev{border-top:1px solid var(--line);padding-top:8px;margin-top:8px;font-size:.9rem}
+.rf-rev small{color:var(--muted)}
+.rf-cols{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-top:12px}
+.rf-cols ul{margin:4px 0 0;padding-left:18px;font-size:.9rem}
+.rf-cands{display:grid;gap:6px;margin-top:8px}
+.rf-cand{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between;border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-size:.9rem}
+.rf-foot{color:var(--muted);font-size:.85rem;display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center}
+.rf-sum{white-space:pre-wrap}
+</style>
+</head>
+<body>
+<main class="rf" id="rf-root">
+<h1>Restaurant Lookup</h1>
+<p class="rf-sub">Type a venue’s name and where it is. You get one page with its address, legal name and ABN, services, reviews and the dishes people mention most, plus links to its delivery, booking and ordering sites. Free sources are always tried first, and Firecrawl is only used when they fail. In the Claude desktop app, with the Google relay set up (in Settings below), a lookup usually uses no Firecrawl credits at all. In a web browser it uses about 10–13. Each result is saved in this browser for 14 days, so opening the same venue again is free.</p>
+
+<div class="rf-card">
+<form class="rf-form" id="rf-form" autocomplete="off">
+  <div><label for="rf-name">Restaurant name</label><input id="rf-name" required placeholder="e.g. Chin Chin"></div>
+  <div><label for="rf-loc">Location (suburb, city or street)</label><input id="rf-loc" placeholder="e.g. Flinders Lane, Melbourne"></div>
+  <button type="submit" id="rf-go">Look up</button>
+</form>
+<div id="rf-msg" class="rf-msg" role="status" aria-live="polite"></div>
+<details class="rf-set" id="rf-setbox"><summary>Settings: Google relay and ABN lookup key</summary>
+  <h3 style="font-size:.95rem;margin:12px 0 0">Google relay</h3>
+  <p class="rf-note">The relay is a small free Cloudflare Worker that holds your Google key (the code is in relay-worker.js). It gives the venue, rating, opening hours, services and 5 Google reviews for free, up to 1,000 lookups a month, and reads websites and web searches for free too. claude.ai blocks pages from reaching it directly, so it works when this page is open in the Claude desktop app (through the app’s own browser) or saved to your computer.</p>
+  <div class="rf-two" style="grid-template-columns:1fr 1fr auto"><input id="rf-relay" type="url" placeholder="https://oolio-relay.yourname.workers.dev" autocomplete="off"><input id="rf-relaytok" type="password" placeholder="Relay token" autocomplete="off"><button type="button" class="rf-sec" id="rf-relaysave">Save and test</button></div>
+  <p class="rf-note" id="rf-relaymsg"></p>
+  <h3 style="font-size:.95rem;margin:14px 0 0">ABN lookup key (ABR GUID)</h3>
+  <p class="rf-note">The legal name and ABN come from the Australian Business Register’s free ABN Lookup service. It needs a GUID, which you get by <a href="https://abr.business.gov.au/Tools/WebServicesAgreement" target="_blank" rel="noopener">registering on abr.business.gov.au</a>. Paste it here once. It’s saved only in this browser. Without it, an ABN printed on the venue’s website is still shown.</p>
+  <div class="rf-two"><input id="rf-guid" type="password" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" autocomplete="off"><button type="button" class="rf-sec" id="rf-guidsave">Save</button></div>
+  <p class="rf-note" id="rf-guidmsg"></p>
+</details>
+</div>
+
+<div id="rf-out"></div>
+</main>
+<script>
+(()=>{
+const g=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clean=s=>String(s==null?'':s).replace(/\s+/g,' ').trim();
+const OBJ='Profile an Australian restaurant or cafe (location, legal entity, services, reviews, delivery and booking links) for a hospitality POS team.';
+const CACHE_DAYS=14,CKEY='rf1:';
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}};
+
+/* ---------- claude.ai capabilities ---------- */
+let MCP,SNS;
+async function use(n){try{return window.claude&&window.claude.use?await window.claude.use(n):null}catch(e){return null}}
+const getMcp=async()=>MCP!==undefined?MCP:(MCP=await use('mcp'));
+const getSample=async()=>SNS!==undefined?SNS:(SNS=await use('sample'));
+function fcErr(e){const c=e&&e.code;return({
+  server_not_connected:'Firecrawl isn’t connected to your claude.ai account. Add it in claude.ai Settings → Connectors, then try again.',
+  selection_required:'You have more than one Firecrawl connector. Choose one when claude.ai asks, then try again.',
+  needs_reauth:'Your Firecrawl connection has expired. Reconnect it in claude.ai Settings → Connectors.',
+  not_in_manifest:'Firecrawl is turned off for this page. Turn it on in this page’s permissions.',
+  approval_required:'This page needs your OK to use Firecrawl. Click Look up again and choose Allow.',
+  consent_required:'This page needs your OK to use Firecrawl. Click Look up again and choose Allow.',
+  blocked_by_policy:'Your organisation doesn’t allow Firecrawl here.',
+  server_unavailable:'Firecrawl didn’t answer. Wait a moment and try again.',
+  rate_limited:'Firecrawl is rate-limiting requests. Wait a minute and try again.',
+  cancelled:'Stopped.'})[c]||('Firecrawl error: '+((e&&(e.message||e.code))||'unknown')).slice(0,240);}
+function payloadOf(res){let p=res&&res.payload!==undefined?res.payload:res;
+  if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){}}
+  if(p&&Array.isArray(p.content)){const t=p.content.map(x=>x&&x.text||'').join('');try{p=JSON.parse(t)}catch(e){p=t}}
+  return p;}
+function findKey(o,k,d=0){if(!o||typeof o!=='object'||d>5)return undefined;if(k in o)return o[k];
+  for(const v of Object.values(o)){const r=findKey(v,k,d+1);if(r!==undefined)return r}return undefined;}
+let RUN=null; // current lookup: {credits, signal, notes}
+async function fc(tool,input){
+  const mcp=await getMcp();if(!mcp)throw Object.assign(new Error('NOFC'),{nofc:true});
+  let res;try{res=await mcp.callTool('Firecrawl',tool,Object.assign({objective:OBJ},input),{signal:RUN.signal,cache:false})}
+  catch(e){throw new Error(fcErr(e))}
+  return payloadOf(res);}
+async function alex(provider,capability,options){
+  const p=await fc('firecrawl_scrape',{alexandria:{provider,capability,options}});
+  const a=findKey(p,'alexandria'),r=Array.isArray(a)?a[0]:null;
+  const cost=+(findKey(p,'creditsCost')||0);RUN.credits+=cost;
+  if(!r)throw new Error('Firecrawl gave an answer this page couldn’t read.');
+  if(r.error)throw new Error('Firecrawl '+capability+': '+(r.error.message||r.error.code||r.error));
+  return r.data||{};}
+
+/* ---------- reading a web page: free direct download first, Firecrawl last ---------- */
+async function directGet(u){
+  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000),off=()=>ctl.abort();RUN.signal.addEventListener('abort',off);
+  try{const r=await fetch(u,{signal:ctl.signal,credentials:'omit'});if(!r.ok)return null;return{text:await r.text(),url:r.url||u,type:r.headers.get('content-type')||''}}
+  catch(e){return null}finally{clearTimeout(tm);RUN.signal.removeEventListener('abort',off)}}
+async function readSite(u){
+  const d=await directGet(u);
+  if(d&&/html/i.test(d.type)&&d.text.length>500)return{html:d.text,md:'',url:d.url,via:'read directly (free)'};
+  const r=await relay('/page',{url:u});
+  if(r&&r.html&&r.html.length>500)return{html:r.html,md:'',url:r.url||u,via:'the relay (free)'};
+  const t=await brText(u);if(t&&t.length>300)return{html:'',md:t,url:u,via:'the Claude app’s browser (free, text only)'};
+  const p=await fc('firecrawl_scrape',{url:u,formats:['rawHtml','markdown'],onlyMainContent:false,waitFor:2500,maxAge:604800000});
+  const x=p&&p.data&&!p.rawHtml&&!p.markdown?p.data:p||{},meta=x.metadata||{};
+  RUN.credits+=+(meta.creditsUsed||1);
+  return{html:x.rawHtml||x.html||'',md:x.markdown||'',url:meta.url||meta.sourceURL||u,via:'Firecrawl'};}
+// the Claude app's own browser (free; answers only when this page is open in the Claude desktop app)
+const BR='host:claude_browser';let BRTAB=null;
+const mtext=r=>{const p=r&&r.payload!==undefined?r.payload:r;if(typeof p==='string')return p;
+  const c=(p&&p.content)||(r&&r.result&&r.result.content);if(Array.isArray(c))return c.map(x=>x&&x.text||'').join('\n');try{return JSON.stringify(p)}catch(e){return''}};
+let BROFF=false; // set once the app's browser has failed, so a web-browser view doesn't keep trying
+async function brText(u,max){if(BROFF)return null;const mcp=await getMcp();if(!mcp)return null;
+  const call=async(t,i)=>mtext(await mcp.callTool(BR,t,i,{signal:RUN.signal,cache:false}));
+  try{if(BRTAB){try{await call('navigate',{url:u,tabId:BRTAB})}catch(e){BRTAB=null}}
+    if(!BRTAB){const t=await call('preview_start',{url:u}),m=t.match(/"tabId"\s*:\s*"([^"]+)"/);BRTAB=m?m[1]:null}
+    let t=await call('get_page_text',Object.assign({max_chars:max||200000},BRTAB?{tabId:BRTAB}:{}));
+    const i=t.indexOf('\n---\n');if(i>=0&&i<2000)t=t.slice(i+5);return t.replace(/\n+Tab Context:[\s\S]*$/,'').trim()}
+  catch(e){if(RUN&&RUN.signal.aborted)throw e;if(e&&/server_not_connected|not_in_manifest|blocked_by_policy|unavailable/.test(e.code||''))BROFF=true;return null}}
+
+/* ---------- the Google relay (relay-worker.js on Cloudflare): free Google Places, page reads and web search ---------- */
+const relayBase=()=>clean(store.get('rf-relay')||'').replace(/\/+$/,''),relayOn=()=>!!relayBase();
+let RELAYVIA='';
+async function relay(path,params){if(!relayOn())return null;
+  const u=relayBase()+path+'?'+new URLSearchParams(Object.assign({},params,{t:store.get('rf-relaytok')||''})).toString();
+  const d=await directGet(u);let j=d&&jsonIn(d.text);if(j){RELAYVIA='directly';return j}
+  j=jsonIn(await brText(u,400000));if(j){RELAYVIA='the Claude app’s browser';return j}
+  return null;}
+const GSVC=[['dineIn','Dine-in'],['takeout','Takeaway'],['delivery','Delivery'],['curbsidePickup','Kerbside pickup'],['reservable','Table bookings'],['servesBreakfast','Breakfast'],['servesBrunch','Brunch'],['servesLunch','Lunch'],['servesDinner','Dinner'],['servesCoffee','Coffee'],['servesBeer','Beer'],['servesWine','Wine'],['servesCocktails','Cocktails'],['servesDessert','Desserts'],['servesVegetarianFood','Vegetarian options'],['outdoorSeating','Outdoor seating'],['liveMusic','Live music'],['goodForGroups','Good for groups'],['menuForChildren','Kids menu'],['allowsDogs','Dog friendly']];
+const GPRICE={PRICE_LEVEL_FREE:'Free',PRICE_LEVEL_INEXPENSIVE:'$',PRICE_LEVEL_MODERATE:'$$',PRICE_LEVEL_EXPENSIVE:'$$$',PRICE_LEVEL_VERY_EXPENSIVE:'$$$$'};
+const GSTATUS={OPERATIONAL:'Trading',CLOSED_TEMPORARILY:'Closed for now',CLOSED_PERMANENTLY:'Closed permanently'};
+function gslim(p){const t=x=>x&&typeof x==='object'?x.text||'':x||'',flags={};GSVC.forEach(([k])=>{if(typeof p[k]==='boolean')flags[k]=p[k]});
+  return{src:'google',name:t(p.displayName),address:p.formattedAddress||'',categories:[t(p.primaryTypeDisplayName)].filter(Boolean),editorial_summary:t(p.editorialSummary),
+    place_id:p.id||'',feature_id:'',lat:p.location&&p.location.latitude,lng:p.location&&p.location.longitude,phone:p.nationalPhoneNumber||'',price_level:GPRICE[p.priceLevel]||'',
+    rating:p.rating,review_count:p.userRatingCount,website:p.websiteUri||'',maps:p.googleMapsUri||'',status:GSTATUS[p.businessStatus]||'',
+    hours:(p.regularOpeningHours&&p.regularOpeningHours.weekdayDescriptions)||[],gflags:flags,gservices:GSVC.filter(([k])=>flags[k]).map(x=>x[1]),
+    greviews:(p.reviews||[]).map(r=>({rating:r.rating,text:t(r.text)||t(r.originalText),when:r.relativePublishTimeDescription||'',reply:false}))};}
+// free web search: the relay first, then DuckDuckGo in the Claude app's browser
+let SEARCHVIA='';
+async function freeSearch(q){
+  const r=await relay('/search',{q});if(r&&Array.isArray(r.results)&&r.results.length){SEARCHVIA='the relay (free)';return r.results}
+  const t=await brText('https://html.duckduckgo.com/html/?kl=au-en&q='+encodeURIComponent(q),100000);if(!t)return null;
+  const seen=new Set(),res=[];(t.match(/(?:https?:\/\/)?(?:www\.)?(?:[a-z0-9-]+\.)+(?:com\.au|com|net\.au|net|app|io|au|co\.nz)\/[^\s…"'<>)]*/gi)||[]).forEach(s=>{const u=tidyUrl(/^https?:/i.test(s)?s:'https://'+s);if(!seen.has(u)&&!/duckduckgo/.test(u)){seen.add(u);res.push({url:u,title:''})}});
+  if(res.length){SEARCHVIA='DuckDuckGo in the Claude app’s browser (free)';return res}return null;}
+
+/* ---------- ABN Lookup (abr.business.gov.au JSON service, free with a GUID) ---------- */
+const guid=()=>clean(store.get('rf-guid')||'');
+const jsonIn=t=>{if(!t)return null;const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a<0||b<a)return null;try{return JSON.parse(t.slice(a,b+1))}catch(e){return null}};
+let ABRVIA='';
+async function abr(path,params,noFc){
+  const q=new URLSearchParams(Object.assign({},params,{callback:'c',guid:guid()}));
+  const u='https://abr.business.gov.au/json/'+path+'?'+q.toString();
+  let d=await directGet(u),j=d&&jsonIn(d.text);if(j){ABRVIA='direct (free)';return j}
+  j=jsonIn(await brText(u));if(j){ABRVIA='the Claude app’s browser (free)';return j}
+  if(noFc)throw new Error('The ABN Lookup service couldn’t be reached for free from here; lookups will use Firecrawl (about 1 credit) for it.');
+  const p=await fc('firecrawl_scrape',{url:u,formats:['markdown','rawHtml'],maxAge:0});
+  const x=p&&p.data&&!p.rawHtml&&!p.markdown?p.data:p||{};RUN.credits+=+((x.metadata||{}).creditsUsed||1);
+  j=jsonIn(x.rawHtml||'')||jsonIn(x.markdown||'');if(j){ABRVIA='Firecrawl';return j}
+  throw new Error('The ABN Lookup service couldn’t be reached.');}
+function abnOk(s){const d=String(s).replace(/\D/g,'');if(d.length!==11)return false;const w=[10,1,3,5,7,9,11,13,15,17,19];let t=0;for(let i=0;i<11;i++)t+=(+d[i]-(i?0:1))*w[i];return t%89===0;}
+const fmtAbn=s=>{const d=String(s).replace(/\D/g,'');return d.length===11?d.slice(0,2)+' '+d.slice(2,5)+' '+d.slice(5,8)+' '+d.slice(8):s};
+const STOP=new Set(['the','and','cafe','café','restaurant','bar','kitchen','eatery','pty','ltd','co','of','on','at','by','&','espresso','coffee','bistro','dining','house','room','club','hotel']);
+const toks=s=>clean(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9 ]/g,' ').split(' ').filter(w=>w.length>1&&!STOP.has(w));
+const flat=s=>clean(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]/g,'');
+async function abnFor(place,siteAbns){
+  const out={source:'',confidence:'',abn:'',details:null,candidates:[]};ABRVIA='';
+  const pc=(place.address||'').match(/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\s+(\d{4})\b/);
+  if(siteAbns.length){out.abn=siteAbns[0];out.source='printed on the venue’s website';out.confidence='high'}
+  if(!guid()){out.noKey=true;return out}
+  if(!out.abn){
+    const r=await abr('MatchingNames.aspx',{name:place.name,maxResults:20});
+    const nt=toks(place.name),names=(r.Names||[]).filter(n=>n.IsCurrent!==false&&/active/i.test(n.AbnStatus||'Active'));
+    names.forEach(n=>{let s=+n.Score||0;const mt=toks(n.Name),hit=nt.filter(t=>mt.includes(t)).length;
+      if(pc&&n.State===pc[1])s+=15;if(pc&&n.Postcode===pc[2])s+=25;if(nt.length&&hit===nt.length)s+=10;n._s=s});
+    names.sort((a,b)=>b._s-a._s);out.candidates=names.slice(0,6);
+    const b=names[0];
+    if(b){out.abn=b.Abn;out.source='ABN Lookup name search ('+b.Name+', '+(b.Postcode||'')+' '+(b.State||'')+')';
+      out.confidence=pc&&b.Postcode===pc[2]?'medium':'low'}}
+  if(out.abn){const d=await abr('AbnDetails.aspx',{abn:out.abn.replace(/\D/g,'')});if(d&&d.Abn)out.details=d;else if(d&&d.Message)out.msg=d.Message}
+  return out;}
+
+/* ---------- what a web page links to ---------- */
+const TRACK=/^(utm_|gclid|gclsrc|gad_|fbclid|srsltid|mc_|_ga|ref$|igsh)/i;
+const tidyUrl=u=>{try{const x=new URL(u);x.hash='';[...x.searchParams.keys()].forEach(k=>{if(TRACK.test(k))x.searchParams.delete(k)});return x.href}catch(e){return u}};
+const DELIVERY=[['Uber Eats',/(^|\.)ubereats\.com$/],['DoorDash',/(^|\.)doordash\.com$/],['Menulog',/(^|\.)menulog\.com\.au$/],['Deliveroo',/(^|\.)deliveroo\./]];
+const BOOKING=[['OpenTable',/opentable\./],['SevenRooms',/sevenrooms\.com/],['Quandoo',/quandoo\./],['ResDiary',/resdiary\.com/],['NowBookIt',/nowbookit\.com/],['Tablein',/tablein\.com/],['Resy',/resy\.com/],['Tock',/exploretock\.com/],['Obee',/obee\.com\.au|obeeapp/],['Eveve',/eveve\.com/],['TheFork',/thefork\./],['TableCheck',/tablecheck\.com/],['Tableo',/tableo\.com/],['Hostme',/hostmeapp\.com/],['Bookings by me&u',/meandu\.app\/.*book/]];
+const TECH=[['me&u / Mr Yum',/meandu\.(app|com)|mryum\.com/],['Hungry Hungry',/hungryhungry\.com/],['Square',/square\.site|squareup\.com|squarecdn\.com/],['DoorDash Storefront',/order\.online/],['Toast',/toasttab\.com/],['Lightspeed',/lightspeedhq|ikentoo|kounta/],['Bopple',/bopple\.(com|app)/],['Abacus',/abacus\.co\b|abacus\.co\//],['OrderUp',/orderup\.com\.au/],['HeyYou',/heyyou\.(io|com\.au)/],['Liven',/liven\.(com\.au|love)/],['Mobi2Go',/mobi2go/],['OrderMate',/ordermate/],['TabSquare',/tabsquare/],['Deliverit',/deliverit\.com\.au/],['Bepoz',/bepoz/],['Idealpos',/idealpos/],['SwiftPOS',/swiftpos/],['H&L',/hlpos\.com|h-l\.com\.au/],['Impos',/impos\.com\.au/],['GloriaFood',/gloriafood|fbgcdn\.com/],['Clover',/clover\.com\/online-ordering/],['Doshii',/doshii/],['Oolio',/oolio\./],['Zeller',/zeller\.app|myzeller/],['Uber Eats ordering widget',/ubereats\.com\/.*storefront/]];
+const SITEPLAT=[['WordPress',/wp-content\//],['Wix',/static\.wixstatic\.com|wix\.com/],['Squarespace',/squarespace(-cdn)?\.com/],['Shopify',/cdn\.shopify\.com/],['Webflow',/webflow\.(com|io)|assets\.website-files\.com/],['BentoBox',/getbento\.com/],['Popmenu',/popmenu\.com/],['Framer',/framerusercontent\.com/]];
+const SOCIAL=[['Instagram',/(^|\.)instagram\.com$/,p=>/^\/[A-Za-z0-9_.]+\/?$/.test(p)&&!/^\/(p|reel|explore|accounts)\b/.test(p)],['Facebook',/(^|\.)facebook\.com$/,p=>p.length>1&&!/^\/(sharer|share|dialog|plugins|tr)\b/.test(p)],['TikTok',/(^|\.)tiktok\.com$/,p=>/^\/@/.test(p)]];
+const LISTING=[['Tripadvisor',/tripadvisor\./],['Broadsheet',/broadsheet\.com\.au/],['Good Food',/goodfood\.com\.au/],['Time Out',/timeout\.com/],['Concrete Playground',/concreteplayground\.com/],['Zomato',/zomato\.com/],['Yelp',/yelp\.com/]];
+const MENUWORD=/\b(menus?|food|drinks?|wine ?list|cocktails?|lunch|dinner|breakfast|brunch|eat)\b/i;
+function detect(html,md,base){
+  const R={delivery:{},booking:{},tech:{},plat:[],social:{},menu:[],abns:[],emails:[],ld:null};
+  let doc=null;try{doc=new DOMParser().parseFromString(html||'','text/html')}catch(e){}
+  const links=[];
+  if(doc){doc.querySelectorAll('a[href]').forEach(a=>links.push({u:a.getAttribute('href'),t:clean(a.textContent+' '+(a.getAttribute('aria-label')||''))}));
+    doc.querySelectorAll('iframe[src],script[src],form[action]').forEach(e=>links.push({u:e.getAttribute('src')||e.getAttribute('action'),t:'',embed:true}))}
+  (md||'').replace(/\[([^\]]*)\]\((https?:[^)\s]+)\)/g,(m,t,u)=>{links.push({u,t});return m});
+  let bhost='';try{bhost=new URL(base).hostname.replace(/^www\./,'')}catch(e){}
+  for(const l of links){let u;try{u=new URL(l.u,base)}catch(e){continue}if(!/^https?:$/.test(u.protocol))continue;
+    const h=u.hostname.replace(/^www\./,''),href=tidyUrl(u.href),full=h+u.pathname;
+    if(!l.embed){
+      DELIVERY.forEach(([n,re])=>{if(re.test(h)&&!R.delivery[n])R.delivery[n]=href});
+      SOCIAL.forEach(([n,re,ok])=>{if(re.test(h)&&ok(u.pathname)&&!R.social[n])R.social[n]=href});
+      const same=h===bhost||h.endsWith('.'+bhost);
+      if((same||/\.pdf$/i.test(u.pathname))&&(MENUWORD.test(l.t)||/menu/i.test(u.pathname))&&!R.menu.includes(href)&&href.replace(/\/$/,'')!==String(base).replace(/\/$/,''))R.menu.push(href);
+      if(/^mailto:/i.test(l.u||''))R.emails.push(l.u.slice(7).split('?')[0]);}
+    BOOKING.forEach(([n,re])=>{if(re.test(full)&&!R.booking[n])R.booking[n]=href});
+    TECH.forEach(([n,re])=>{if(re.test(full)&&!R.tech[n])R.tech[n]=l.embed?'embedded on the site':'linked from the site'})}
+  // things that only show up in the page's code (scripts, widgets)
+  const raw=(html||'');
+  TECH.forEach(([n,re])=>{if(!R.tech[n]&&re.test(raw))R.tech[n]='in the site’s code'});
+  BOOKING.forEach(([n,re])=>{if(!R.booking[n]&&re.test(raw))R.booking[n]=''});
+  SITEPLAT.forEach(([n,re])=>{if(re.test(raw))R.plat.push(n)});
+  const text=(doc&&doc.body?doc.body.textContent:'')+' '+(md||'');
+  (raw.match(/mailto:([^"'?\s>]+)/gi)||[]).forEach(m=>R.emails.push(m.slice(7)));
+  R.emails=[...new Set(R.emails.map(e=>decodeURIComponent(e).toLowerCase()).filter(e=>/@/.test(e)))].slice(0,3);
+  const re=/A\.?\s?B\.?\s?N\.?\s*(?:no\.?|number)?\s*[:#\-–]?\s*((?:\d[\s.]?){11})/gi;let m;
+  while((m=re.exec(text))){const d=m[1].replace(/\D/g,'');if(abnOk(d)&&!R.abns.includes(d))R.abns.push(d)}
+  if(doc)doc.querySelectorAll('script[type="application/ld+json"]').forEach(s=>{if(R.ld)return;try{const walk=o=>{if(!o||typeof o!=='object'||R.ld)return;if(Array.isArray(o))return o.forEach(walk);
+    const t=[].concat(o['@type']||[]).join(' ');if(/Restaurant|FoodEstablishment|CafeOrCoffeeShop|BarOrPub|LocalBusiness|Bakery/.test(t)){R.ld=o;return}if(o['@graph'])walk(o['@graph'])};walk(JSON.parse(s.textContent))}catch(e){}});
+  R.menu=R.menu.slice(0,4);return R;}
+function ldHours(ld){if(!ld)return[];const out=[];
+  [].concat(ld.openingHours||[]).forEach(s=>{if(typeof s==='string')out.push({days:s,times:''})});
+  [].concat(ld.openingHoursSpecification||[]).forEach(o=>{if(!o)return;const d=[].concat(o.dayOfWeek||[]).map(x=>String(x).replace(/.*\//,'').slice(0,3)).join(', ');if(d)out.push({days:d,times:(o.opens||'')+(o.closes?'–'+o.closes:'')})});
+  return out;}
+
+/* ---------- reading the reviews with Claude ---------- */
+function aiPrompt(P){
+  const pl=P.place,rv=(P.reviews&&P.reviews.list||[]).filter(r=>r.text);
+  const site=clean((P.site&&P.site.md)||'').slice(0,14000);
+  return 'You are profiling a hospitality venue for a point-of-sale sales and onboarding team. Use ONLY the data below; never guess. Reply with only this JSON:\n'+
+  '{"summary":"","cuisine":"","price_level":"","services":[],"popular_items":[{"name":"","mentions":0,"sentiment":"positive","quote":""}],"praise":[],"complaints":[],"hours":[{"days":"","times":""}],"group":""}\n\n'+
+  'Rules:\n- summary: 2 or 3 plain sentences: what kind of venue it is, its style, and who it suits.\n'+
+  '- services: only ones the data supports, chosen from: Dine-in, Takeaway, Delivery, Table bookings, Walk-ins, Breakfast, Brunch, Lunch, Dinner, Late night, Bar / cocktails, Coffee, Banquet / set menu, Catering, Functions / private dining, Events / live music, Outdoor seating, Gift vouchers, Kids menu, Vegan / vegetarian options, Gluten free options, Online ordering, QR ordering at the table.\n'+
+  '- popular_items: specific dishes or drinks named in the reviews (not generic words like "food" or "drinks"), merged when they are the same dish, up to 10, most mentioned first. mentions = number of reviews naming it. sentiment = positive, mixed or negative. quote = a few words (under 12) from one review about it.\n'+
+  '- praise / complaints: up to 4 short recurring themes each (service, wait times, noise, value…).\n'+
+  '- hours: only if the website text states opening hours, else [].\n- price_level: $, $$, $$$ or $$$$ judged from menu prices or reviews, or "".\n'+
+  '- group: the hospitality group that runs the venue if the website says so, else "".\n\n'+
+  '<venue name="'+clean(pl.name)+'" address="'+clean(pl.address)+'" categories="'+(pl.categories||[]).join(', ')+'"'+((pl.gservices||[]).length?' google_services="'+pl.gservices.join(', ')+'"':'')+'>'+clean(pl.editorial_summary||'')+'</venue>\n'+
+  '<reviews count="'+rv.length+'">\n'+rv.map(r=>'['+r.rating+'★] '+clean(r.text).slice(0,700)).join('\n')+'\n</reviews>\n'+
+  (site?'<website url="'+esc(P.site.url)+'">\n'+site+'\n</website>':'<website>none</website>');}
+
+/* ---------- a lookup ---------- */
+const say=(t,err)=>{const m=g('rf-msg');m.className='rf-msg'+(err?' err':'');m.innerHTML=t};
+const keyOf=(n,l)=>CACHE_KEY_PREFIX(n,l);
+function CACHE_KEY_PREFIX(n,l){return CKEY+(flat(n)+'|'+flat(l))}
+function cacheGet(k){try{const c=JSON.parse(store.get(k)||'null');if(c&&Date.now()-c.at<CACHE_DAYS*864e5)return c}catch(e){}return null}
+function cachePut(k,P){const c=Object.assign({},P);if(c.site)c.site=Object.assign({},c.site,{html:''});
+  if(!store.set(k,JSON.stringify(c))&&c.site){c.site.md='';store.set(k,JSON.stringify(c))}}
+let CUR=null;
+function stopBtn(){return' <button type="button" class="rf-sec rf-sm" id="rf-stop">Stop</button>'}
+document.addEventListener('click',e=>{if(e.target&&e.target.id==='rf-stop'&&RUN)RUN.ctl.abort()});
+
+async function lookup(fresh,forceFc){
+  const name=clean(g('rf-name').value),loc=clean(g('rf-loc').value);if(!name)return;
+  const k=keyOf(name,loc);
+  if(!fresh){const c=cacheGet(k);if(c){CUR=c;CUR.key=k;render();say('Showing the result saved on '+new Date(c.at).toLocaleDateString('en-AU')+'. No credits used. <button type="button" class="rf-sec rf-sm" id="rf-again">Look it up again</button>');return}}
+  const mcp=await getMcp();
+  if(!mcp&&!relayOn()){say('Lookups need the Google relay (set it up in Settings below) or Firecrawl, which this page can only use on claude.ai.',true);return}
+  const ctl=new AbortController();RUN={ctl,signal:ctl.signal,credits:0,notes:[]};g('rf-go').disabled=true;
+  try{
+    const q=name+(loc?' '+loc:'');let places=null,src='';
+    // 1. Google through the relay (free up to 1,000 lookups a month)
+    if(relayOn()&&!forceFc){say('Finding '+esc(name)+' on Google…'+stopBtn());
+      const j=await relay('/place',{q});
+      if(j&&Array.isArray(j.places)){places=j.places.map(gslim).filter(p=>p.name);src='google'}
+      else RUN.notes.push(j&&j.error?'Google relay: '+j.error:'The Google relay couldn’t be reached'+(mcp?' (on claude.ai it only works in the Claude desktop app)':'')+', so Firecrawl was used to find the venue.');}
+    if(places&&!places.length){say('Google found nothing for “'+esc(q)+'”. Check the spelling or add the suburb.'+(mcp?' <button type="button" class="rf-sec rf-sm" id="rf-fcsearch">Search with Firecrawl instead (10 credits)</button>':''),true);return}
+    // 2. Firecrawl's Maps search, only when Google wasn't available
+    if(!places){if(!mcp)throw new Error(RUN.notes.join(' '));
+      say('Finding '+esc(name)+' on Maps with Firecrawl…'+stopBtn());
+      const s=await alex('firecrawl-maps','businesses/search',{query:q,country:'au',language:'en'});
+      places=(s.results||[]).filter(p=>p&&p.name).map(slim);src='firecrawl';
+      if(!places.length){say('Nothing on Maps matched “'+esc(q)+'”. Check the spelling or add the suburb. Used '+RUN.credits+' credits.',true);return}}
+    CUR={key:k,at:Date.now(),query:{name,loc},places:places.slice(0,8),src,credits:RUN.credits,notes:[]};RUN.credits=0;
+    await profile(0);
+  }catch(e){if(e.nofc)say('Firecrawl isn’t available in this view.',true);else say(esc(e.message)+(RUN&&RUN.credits?' Used '+RUN.credits+' credits.':''),true)}
+  finally{RUN=null;g('rf-go').disabled=false;render()}}
+const slim=p=>({src:'firecrawl',hours:[],gflags:null,gservices:[],greviews:null,maps:'',status:'',name:p.name,address:p.address,categories:p.categories||[],editorial_summary:p.editorial_summary||'',feature_id:p.feature_id,place_id:p.place_id,lat:p.latitude,lng:p.longitude,phone:p.phone||'',price_level:p.price_level||'',rating:p.rating,review_count:p.review_count,website:p.website||'',timezone:p.timezone||''});
+
+// everything about one Maps place: reviews, website, delivery/booking search, ABN, Claude's reading
+async function profile(i){
+  const P=CUR,pl=P.place=P.places[i];P.idx=i;P.reviews=P.site=P.det=P.web=P.abn=P.ai=null;P.notes=(RUN.notes||[]).slice();P.at=Date.now();P.via={place:pl.src==='google'?'Google via the relay (free)':'Firecrawl Maps'};
+  // Google's 5 reviews come with the place for free; the latest 60 are a button (Firecrawl)
+  if(pl.greviews&&pl.greviews.length)P.reviews={summary:null,list:pl.greviews,src:'Google'};
+  render();
+  const step=t=>say(esc(t)+stopBtn());
+  if(pl.website){step('Reading '+pl.name+'’s website…');
+    try{P.site=await readSite(pl.website);P.via.site=P.site.via}catch(e){if(RUN.signal.aborted)throw e;P.notes.push('Website: '+e.message)}}
+  P.det=P.site?detect(P.site.html,P.site.md,P.site.url):detect('','',pl.website||'');
+  mergeWeb(P);render();
+  // a web search for delivery and booking pages, only when they're still missing (and Google doesn't say there are none)
+  const gf=pl.gflags||{};
+  const need=()=>(!Object.values(P.found.delivery).some(Boolean)&&gf.delivery!==false)||(!Object.keys(P.found.booking).length&&gf.reservable!==false);
+  if(need()){step('Searching for delivery and booking pages…');
+    const nm='"'+pl.name.replace(/"/g,'')+'"',sub=((pl.address||'').split(',').find(s=>/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b/.test(s))||'').replace(/\b(NSW|VIC|QLD|WA|SA|TAS|ACT|NT)\b.*$/,'').trim()||P.query.loc;
+    const web=await freeSearch(nm+' '+sub+' uber eats doordash menulog booking');
+    if(web){P.web=web;P.via.search=SEARCHVIA;mergeWeb(P)}
+    if(need()&&(await getMcp())){
+      try{const p=await fc('firecrawl_search',{query:nm+' '+sub+' ubereats OR doordash OR menulog OR opentable OR sevenrooms OR quandoo OR resdiary OR nowbookit',limit:10,sources:['web'],domainTools:false,highlights:false,location:'Australia'});
+        RUN.credits+=+(findKey(p,'creditsUsed')||2);const w=findKey(p,'web');
+        P.web=(P.web||[]).concat(Array.isArray(w)?w.map(x=>({url:tidyUrl(x.url),title:x.title||'',desc:x.description||''})):[]);P.via.search=(P.via.search?P.via.search+', then ':'')+'Firecrawl';}
+      catch(e){if(RUN.signal.aborted)throw e;P.notes.push('Web search: '+e.message)}
+      mergeWeb(P)}
+    render();}
+  step('Looking up the ABN…');
+  try{P.abn=await abnFor(pl,P.det.abns);P.abn.via=ABRVIA}catch(e){if(RUN.signal.aborted)throw e;P.notes.push('ABN: '+e.message);P.abn={err:e.message}}
+  render();
+  const sm=await getSample();
+  if(sm&&((P.reviews&&P.reviews.list.length)||P.site)){
+    step('Claude is reading the reviews and website…');
+    try{const ctl2=RUN.signal;P.ai=await sm.json(aiPrompt(P),{signal:ctl2});}
+    catch(e){if(RUN.signal.aborted)throw new Error('Stopped.');P.notes.push('Claude couldn’t read the reviews ('+(e.code||e.message)+'), so popular items and services are missing.')}}
+  else if(!sm)P.notes.push('Claude isn’t available in this view, so popular items and services were not worked out.');
+  P.credits=(P.credits||0)+RUN.credits;RUN.credits=0;
+  cachePut(P.key,P);render();
+  say('Done. '+(P.credits?'This lookup used '+P.credits+' Firecrawl credit'+(P.credits===1?'':'s')+'.':'No Firecrawl credits used.'));}
+// the latest 60 reviews, on request: Firecrawl's Maps reviews (10 credits, plus 10 to find the venue when Google found it)
+async function moreReviews(){const P=CUR,pl=P.place;if(RUN||!P)return;
+  const ctl=new AbortController();RUN={ctl,signal:ctl.signal,credits:0};render();
+  try{let fid=pl.feature_id;
+    if(!fid){say('Finding the venue on Maps with Firecrawl…'+stopBtn());
+      const s=await alex('firecrawl-maps','businesses/search',{query:pl.name+' '+(pl.address||''),country:'au',language:'en'}),rs=(s.results||[]).filter(r=>r.feature_id);
+      const m=rs.find(r=>pl.place_id&&r.place_id===pl.place_id)||rs[0];if(!m)throw new Error('Firecrawl’s Maps search didn’t find this venue.');fid=pl.feature_id=m.feature_id}
+    say('Reading the latest 60 reviews…'+stopBtn());
+    const rv=await alex('firecrawl-maps','businesses/reviews',{feature_id:fid,count:60,sort:'newest',language:'en'});
+    P.reviews={summary:rv.summary||null,list:(rv.reviews||[]).map(r=>({rating:r.rating,text:r.text||'',when:r.relative_time||'',reply:!!r.owner_response})),src:'Google via Firecrawl'};
+    const sm=await getSample();if(sm){say('Claude is reading the reviews…'+stopBtn());try{P.ai=await sm.json(aiPrompt(P),{signal:RUN.signal})}catch(e){if(RUN.signal.aborted)throw new Error('Stopped.')}}
+    P.credits=(P.credits||0)+RUN.credits;cachePut(P.key,P);say('Done. Reading the reviews used '+RUN.credits+' Firecrawl credits.')}
+  catch(e){if(RUN.credits){P.credits=(P.credits||0)+RUN.credits;cachePut(P.key,P)}say(esc(e.nofc?'Firecrawl is only available on claude.ai.':e.message),true)}
+  finally{RUN=null;render()}}
+function mergeWeb(P){
+  const nt=toks(P.place.name);P.found={delivery:Object.assign({},P.det.delivery),booking:Object.assign({},P.det.booking),listing:{},tech:Object.assign({},P.det.tech),fromSearch:{}};
+  const rel=w=>{const s=flat(w.url+' '+w.title);return nt.length?nt.every(t=>s.includes(t)):true};
+  (P.web||[]).forEach(w=>{if(!rel(w))return;let h='',full='';try{const u=new URL(w.url);h=u.hostname.replace(/^www\./,'');full=h+u.pathname}catch(e){return}
+    DELIVERY.forEach(([n,re])=>{if(re.test(h)&&!P.found.delivery[n]){P.found.delivery[n]=w.url;P.found.fromSearch[n]=1}});
+    BOOKING.forEach(([n,re])=>{if(re.test(full)&&!P.found.booking[n]){P.found.booking[n]=w.url;P.found.fromSearch[n]=1}});
+    LISTING.forEach(([n,re])=>{if(re.test(h)&&!P.found.listing[n])P.found.listing[n]=w.url});
+    TECH.forEach(([n,re])=>{if(re.test(full)&&!P.found.tech[n])P.found.tech[n]='found in a web search'});});}
+
+/* ---------- the dashboard ---------- */
+const link=(u,t)=>u?'<a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(t||u.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,''))+'</a>':'';
+const miss=t=>'<span class="rf-miss">'+esc(t||'Not found')+'</span>';
+const pend=()=>RUN?'<span class="rf-miss">Working…</span>':miss();
+const gmaps=pl=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(pl.name+' '+(pl.address||''))+(pl.place_id?'&query_place_id='+encodeURIComponent(pl.place_id):'');
+const n0=n=>n==null?'–':Number(n).toLocaleString('en-AU');
+function render(){
+  const P=CUR,o=g('rf-out');if(!P||!P.place){o.innerHTML='';return}
+  const pl=P.place,d=P.det||{},f=P.found||{delivery:d.delivery||{},booking:d.booking||{},listing:{},tech:d.tech||{},fromSearch:{}},ai=P.ai||{},ab=P.abn,ad=ab&&ab.details,rs=P.reviews&&P.reviews.summary;
+  const price=pl.price_level||(d.ld&&d.ld.priceRange)||ai.price_level||'';
+  let h='';
+  // header
+  h+='<section class="rf-card rf-head"><h2>'+esc(pl.name)+'</h2><div class="rf-chips">'+(pl.categories||[]).slice(0,4).map(c=>'<span class="rf-chip">'+esc(c)+'</span>').join('')+(price?'<span class="rf-chip">'+esc(price)+'</span>':'')+(ai.cuisine?'<span class="rf-chip">'+esc(ai.cuisine)+'</span>':'')+'</div>'+
+    '<div class="rf-meta"><div><span>Address</span> '+esc(pl.address||'–')+' · '+link(pl.maps||gmaps(pl),'Google Maps')+'</div>'+(pl.phone?'<div><span>Phone</span> <a href="tel:'+esc(pl.phone.replace(/\s/g,''))+'">'+esc(pl.phone)+'</a></div>':'')+(pl.website?'<div><span>Website</span> '+link(pl.website)+'</div>':'')+((d.emails||[]).length?'<div><span>Email</span> '+d.emails.map(e=>'<a href="mailto:'+esc(e)+'">'+esc(e)+'</a>').join(', ')+'</div>':'')+'</div>'+
+    (ai.summary||pl.editorial_summary?'<p style="margin:4px 0 0">'+esc(ai.summary||pl.editorial_summary)+'</p>':'')+
+    (P.places.length>1?'<details><summary>Not the right venue? '+(P.places.length-1)+' other Maps match'+(P.places.length>2?'es':'')+'</summary><div class="rf-cands">'+P.places.map((c,i)=>i===P.idx?'':'<div class="rf-cand"><span><b>'+esc(c.name)+'</b> · '+esc(c.address||'')+(c.rating?' · '+c.rating+'★ ('+n0(c.review_count)+')':'')+'</span><button type="button" class="rf-sec rf-sm" data-pick="'+i+'"'+(RUN?' disabled':'')+'>Use this one</button></div>').join('')+'</div></details>':'')+'</section>';
+  // KPIs
+  h+='<section class="rf-kpis">'+
+    kpi(pl.rating!=null?pl.rating.toFixed(1)+' ★':'–','Google rating')+kpi(n0(pl.review_count),'Google reviews')+
+    (rs?kpi(rs.sample_average_rating?rs.sample_average_rating.toFixed(1)+' ★':'–','Average of the latest '+rs.sample_size)+
+      kpi(rs.owner_response_rate!=null?Math.round(rs.owner_response_rate*100)+'%':'–','Reviews the owner replied to')
+     :kpi(pl.status||'–','Trading status')+kpi(P.reviews?P.reviews.list.length:0,'Reviews read'))+'</section>';
+  h+='<div class="rf-grid">';
+  // business
+  let biz='';
+  if(!ab)biz='<p>'+pend()+'</p>';
+  else if(ab.err)biz='<p class="rf-miss">'+esc(ab.err)+'</p>';
+  else{const dl=[];
+    if(ad){dl.push(['Legal name',esc(ad.EntityName||'–')],['ABN',link('https://abr.business.gov.au/ABN/View?abn='+ad.Abn,fmtAbn(ad.Abn))+' '+(/active/i.test(ad.AbnStatus)?'<span class="rf-chip ok">Active</span>':'<span class="rf-chip w">'+esc(ad.AbnStatus||'')+'</span>')],
+      ['Entity type',esc(ad.EntityTypeName||'–')],['GST',ad.Gst?'Registered since '+esc(ad.Gst):'Not registered'],['ACN',esc(ad.Acn||'–')],['ABN state',esc(((ad.AddressState||'')+' '+(ad.AddressPostcode||'')).trim()||'–')]);}
+    else if(ab.abn)dl.push(['ABN',link('https://abr.business.gov.au/ABN/View?abn='+ab.abn.replace(/\D/g,''),fmtAbn(ab.abn))]);
+    if(ab.abn)dl.push(['Found by',esc(ab.source)+(ab.confidence?' <span class="rf-chip '+(ab.confidence==='high'?'ok':'w')+'">'+esc(ab.confidence)+' confidence</span>':'')]);
+    if(ai.group)dl.push(['Group',esc(ai.group)]);
+    biz=dl.length?'<dl class="rf-dl">'+dl.map(([a,b])=>'<dt>'+a+'</dt><dd>'+b+'</dd>').join('')+'</dl>':'<p class="rf-miss">No ABN found.</p>';
+    if(ab.msg)biz+='<p class="rf-note">ABN Lookup said: '+esc(ab.msg)+'</p>';
+    if(ab.noKey)biz+='<p class="rf-note">'+(ab.abn?'Add your ABR GUID (above) to see the legal name and GST status.':'No ABN on the website. Add your ABR GUID (above) to search the register by name.')+' <a href="https://abr.business.gov.au/Search/ResultsActive?SearchText='+encodeURIComponent(pl.name)+'" target="_blank" rel="noopener">Search ABN Lookup</a></p>';
+    if(ab.confidence==='low')biz+='<p class="rf-note">The register has no name at this venue’s postcode, so this is the closest name match. Check it before using it.</p>';
+    if(ab.candidates&&ab.candidates.length>1)biz+='<details><summary>Other register matches</summary><ul class="rf-list" style="margin-top:6px">'+ab.candidates.slice(1).map(c=>'<li><span class="rf-k">'+esc(c.Name)+' · '+esc((c.Postcode||'')+' '+(c.State||''))+'</span><span class="rf-v">'+link('https://abr.business.gov.au/ABN/View?abn='+c.Abn,fmtAbn(c.Abn))+'</span></li>').join('')+'</ul></details>';}
+  h+=card('Business',biz);
+  // online presence
+  const rows=(obj,names,from)=>names.map(n=>'<li><span class="rf-k">'+esc(n)+'</span><span class="rf-v">'+(obj[n]?link(obj[n],'Open')+(from&&from[n]?' <small class="rf-miss">(web search)</small>':''):(obj[n]===''?'<span>On the site</span>':pend()))+'</span></li>').join('');
+  const bk=Object.keys(f.booking||{});
+  h+=card('Delivery &amp; booking','<ul class="rf-list">'+rows(f.delivery||{},DELIVERY.map(x=>x[0]),f.fromSearch)+'</ul>'+
+    '<h3 style="margin-top:14px">Booking system</h3>'+(bk.length?'<ul class="rf-list">'+rows(f.booking,bk,f.fromSearch)+'</ul>':'<p style="margin:0">'+(P.web||!RUN?miss('No booking system found'+(pl.website?' on the website or in search':'')):pend())+'</p>'));
+  // tech
+  const tk=Object.keys(f.tech||{});
+  h+=card('Ordering &amp; POS tech',(tk.length?'<ul class="rf-list">'+tk.map(n=>'<li><span class="rf-k">'+esc(n)+'</span><span class="rf-v rf-miss">'+esc(f.tech[n])+'</span></li>').join('')+'</ul>':'<p style="margin:0">'+(P.site||!RUN?miss('No ordering or POS system showed on the website'):pend())+'</p>')+
+    ((d.plat||[]).length?'<p class="rf-note">Website built with '+esc(d.plat.join(', '))+'.</p>':'')+'<p class="rf-note">Only what the website links to or loads is listed, so a POS with no online link won’t show up here.</p>');
+  // services + hours
+  const gh=(pl.hours||[]).map(s=>{const i=s.indexOf(': ');return i>0?{days:s.slice(0,i),times:s.slice(i+2)}:{days:s,times:''}});
+  const hours=gh.length?gh:(ai.hours&&ai.hours.length?ai.hours:ldHours(d.ld)),svc=services(P);
+  h+=card('Services &amp; hours',(svc.length?'<div class="rf-chips">'+svc.map(s=>'<span class="rf-chip">'+esc(s)+'</span>').join('')+'</div>':'<p style="margin:0">'+(P.ai||!RUN?miss('Not worked out'):pend())+'</p>')+
+    '<h3 style="margin-top:14px">Opening hours</h3>'+(hours.length?'<ul class="rf-list">'+hours.map(x=>'<li><span class="rf-k">'+esc(x.days)+'</span><span class="rf-v">'+esc(x.times)+'</span></li>').join('')+'</ul>':'<p style="margin:0">'+miss('Not found')+' · '+link(pl.maps||gmaps(pl),'See Google Maps')+'</p>'));
+  // web, menu, socials
+  const so=Object.keys(d.social||{}),li=Object.keys(f.listing||{}),inConv=!!(document.getElementById('url')&&document.getElementById('lx-conv'));
+  h+=card('Menu, socials &amp; listings',
+    '<ul class="rf-list">'+((d.menu||[]).length?d.menu.map((u,i)=>'<li><span class="rf-k">Menu'+(d.menu.length>1?' '+(i+1):'')+'</span><span class="rf-v">'+link(u,/\.pdf/i.test(u)?'PDF':'Page')+(inConv?' <button type="button" class="rf-sec rf-sm" data-conv="'+esc(u)+'">Open in Menu Converter</button>':'')+'</span></li>').join(''):'<li><span class="rf-k">Menu</span><span class="rf-v">'+(pl.website&&inConv?'<button type="button" class="rf-sec rf-sm" data-conv="'+esc(pl.website)+'">Read the website in Menu Converter</button>':(P.site||!RUN?miss('No menu link found'):pend()))+'</span></li>')+
+    so.map(n=>'<li><span class="rf-k">'+n+'</span><span class="rf-v">'+link(d.social[n])+'</span></li>').join('')+
+    li.map(n=>'<li><span class="rf-k">'+n+'</span><span class="rf-v">'+link(f.listing[n],'Open')+'</span></li>').join('')+'</ul>');
+  // other names under the ABN
+  if(ad&&(ad.BusinessName||[]).length)h+=card('Other names under this ABN','<ul class="rf-list">'+ad.BusinessName.map(n=>'<li><span>'+esc(n)+'</span><span class="rf-v">'+link('https://www.google.com/maps/search/'+encodeURIComponent(n+' '+(ad.AddressState||'')),'Find on Maps')+'</span></li>').join('')+'</ul><p class="rf-note">Business and trading names registered by the same entity. A group with several venues usually shows them here.</p>');
+  // popular items
+  const pi=ai.popular_items||[];
+  h+='<section class="rf-card rf-wide"><h3>Popular items from reviews</h3>'+(pi.length?'<div style="overflow-x:auto"><table class="rf-tbl"><thead><tr><th>Item</th><th class="n">Reviews</th><th>Feeling</th><th>What people say</th></tr></thead><tbody>'+
+    pi.map(x=>'<tr><td><b>'+esc(x.name)+'</b></td><td class="n">'+esc(x.mentions)+'</td><td><span class="rf-chip '+(x.sentiment==='positive'?'ok':'w')+'">'+esc(x.sentiment||'')+'</span></td><td>'+(x.quote?'<q>'+esc(x.quote)+'</q>':'')+'</td></tr>').join('')+'</tbody></table></div>':'<p style="margin:0">'+(P.ai||!RUN?miss('No dishes are named in the latest reviews, or Claude wasn’t available.'):pend())+'</p>')+
+    ((ai.praise||[]).length||(ai.complaints||[]).length?'<div class="rf-cols"><div><b>Praised for</b><ul>'+(ai.praise||[]).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div><div><b>Complaints</b><ul>'+((ai.complaints||[]).length?ai.complaints.map(x=>'<li>'+esc(x)+'</li>').join(''):'<li class="rf-miss">None that recur</li>')+'</ul></div></div>':'')+'</section>';
+  // reviews
+  {const list=P.reviews?P.reviews.list.filter(r=>r.text):[],can60=!rs&&!!window.claude;
+    let side='';
+    if(rs){const hist=rs.sample_histogram||{},tot=Object.values(hist).reduce((a,b)=>a+(+b||0),0)||1;
+      side='<div><div class="rf-hist" role="img" aria-label="Star ratings of the latest '+tot+' reviews">'+[5,4,3,2,1].map(s=>{const c=+hist[s]||0;return'<div><span>'+s+'★</span><span class="rf-bar"><i style="width:'+(c/tot*100).toFixed(1)+'%"></i></span><span class="n">'+c+'</span></div>'}).join('')+'</div><p class="rf-note">Latest '+tot+' Google reviews. '+(rs.with_text!=null?rs.with_text+' have text.':'')+'</p></div>'}
+    else side='<div><p class="rf-note" style="margin-top:0">'+(P.reviews?'These are the '+P.reviews.list.length+' reviews Google shares for free (its “most relevant”, not the newest), so popular items are a rough guide.':'No reviews were read yet.')+'</p>'+
+      (can60?'<button type="button" class="rf-sec rf-sm" id="rf-60"'+(RUN?' disabled':'')+' style="margin-top:8px">Read the latest 60 reviews ('+(pl.feature_id?'10':'about 20')+' Firecrawl credits)</button>':'')+'</div>';
+    h+='<section class="rf-card rf-wide"><h3>Reviews</h3><div class="rf-grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">'+side+
+      '<div id="rf-revs">'+(list.length?list.slice(0,4).map(revHtml).join(''):miss('No review text'))+(list.length>4?'<button type="button" class="rf-sec rf-sm" id="rf-morerev" style="margin-top:8px">Show all '+list.length+'</button>':'')+'</div></div></section>';}
+  // footer
+  h+='</div><section class="rf-foot rf-card"><span>Checked '+new Date(P.at).toLocaleString('en-AU',{dateStyle:'medium',timeStyle:'short'})+' · '+(P.credits||0)+' Firecrawl credits'+(P.via&&P.via.place?' · venue from '+esc(P.via.place):'')+(P.site?' · website '+esc(P.site.via):'')+(P.via&&P.via.search?' · search via '+esc(P.via.search):'')+(ab&&ab.via?' · ABN Lookup via '+esc(ab.via):'')+'</span>'+
+    (RUN?'':'<button type="button" class="rf-sec rf-sm" id="rf-copy">Copy as text</button><button type="button" class="rf-sec rf-sm" id="rf-again">Look it up again</button>')+
+    (P.notes&&P.notes.length?'<span style="flex-basis:100%">'+P.notes.map(esc).join('<br>')+'</span>':'')+'</section>';
+  o.innerHTML=h;}
+function services(P){const seen=new Set(),out=[];[...(P.place.gservices||[]),...((P.ai&&P.ai.services)||[])].forEach(s=>{const k=flat(s).replace(/options?$/,'');if(s&&!seen.has(k)){seen.add(k);out.push(s)}});return out}
+const kpi=(v,l)=>'<div class="rf-kpi"><b>'+esc(v)+'</b><span>'+esc(l)+'</span></div>';
+const card=(t,b)=>'<section class="rf-card"><h3>'+t+'</h3>'+b+'</section>';
+const revHtml=r=>'<div class="rf-rev"><small>'+'★'.repeat(Math.round(r.rating||0))+' · '+esc(r.when)+(r.reply?' · owner replied':'')+'</small><div>'+esc(r.text.length>420?r.text.slice(0,420)+'…':r.text)+'</div></div>';
+function asText(){const P=CUR,pl=P.place,ai=P.ai||{},ad=P.abn&&P.abn.details,f=P.found||{},L=[];
+  L.push(pl.name,pl.address||'',pl.phone?'Phone: '+pl.phone:'',pl.website?'Website: '+pl.website:'');
+  if(ad)L.push('Legal name: '+ad.EntityName,'ABN: '+fmtAbn(ad.Abn)+' ('+ad.AbnStatus+')'+(ad.Gst?', GST since '+ad.Gst:''));else if(P.abn&&P.abn.abn)L.push('ABN: '+fmtAbn(P.abn.abn));
+  if(pl.rating)L.push('Google: '+pl.rating+'★ from '+n0(pl.review_count)+' reviews');
+  if(ai.summary)L.push('',ai.summary);
+  if(services(P).length)L.push('Services: '+services(P).join(', '));
+  if((pl.hours||[]).length)L.push('Hours: '+pl.hours.join('; '));
+  const ln=o=>Object.entries(o||{}).filter(([,u])=>u).map(([n,u])=>n+': '+u);
+  const dl=ln(f.delivery),bk=ln(f.booking),tk=Object.keys(f.tech||{});
+  if(dl.length)L.push('','Delivery',...dl);if(bk.length)L.push('','Booking',...bk);if(tk.length)L.push('','Ordering / POS tech: '+tk.join(', '));
+  if((ai.popular_items||[]).length)L.push('','Popular items: '+ai.popular_items.map(x=>x.name+' ('+x.mentions+')').join(', '));
+  if(ad&&(ad.BusinessName||[]).length)L.push('','Other names under this ABN: '+ad.BusinessName.join(', '));
+  return L.filter((x,i)=>x!==''||L[i-1]!=='').join('\n').trim();}
+
+g('rf-out').addEventListener('click',async e=>{const b=e.target.closest('button');if(!b)return;
+  if(b.dataset.pick!=null&&!RUN){const ctl=new AbortController();RUN={ctl,signal:ctl.signal,credits:0};
+    try{await profile(+b.dataset.pick)}catch(x){say(esc(x.message),true)}finally{RUN=null;render()}}
+  else if(b.dataset.conv){const u=g('url');if(u){u.value=b.dataset.conv;location.hash='converter';setTimeout(()=>{u.focus();u.scrollIntoView({block:'center'})},50)}}
+  else if(b.id==='rf-60')moreReviews();
+  else if(b.id==='rf-morerev'){const list=CUR.reviews.list.filter(r=>r.text);g('rf-revs').innerHTML=list.map(revHtml).join('')}
+  else if(b.id==='rf-copy'){try{await navigator.clipboard.writeText(asText());b.textContent='Copied'}catch(x){b.textContent='Copy blocked here'}setTimeout(()=>{b.textContent='Copy as text'},1800)}});
+g('rf-msg').addEventListener('click',e=>{if(RUN)return;if(e.target.id==='rf-again')lookup(true);else if(e.target.id==='rf-fcsearch')lookup(true,true)});
+document.addEventListener('click',e=>{if(e.target.id==='rf-again'&&e.target.closest('#rf-out'))lookup(true)});
+g('rf-form').addEventListener('submit',e=>{e.preventDefault();if(!RUN)lookup(false)});
+// Google relay
+g('rf-relay').value=store.get('rf-relay')||'';g('rf-relaytok').value=store.get('rf-relaytok')||'';
+g('rf-relaysave').addEventListener('click',async()=>{const m=g('rf-relaymsg'),v=clean(g('rf-relay').value).replace(/\/+$/,''),t=clean(g('rf-relaytok').value);
+  if(v&&!/^https:\/\/[^/]+\.[^/]+$/i.test(v)){m.textContent='Use the Worker’s address only, e.g. https://oolio-relay.yourname.workers.dev';return}
+  store.set('rf-relay',v);store.set('rf-relaytok',t);if(!v){m.textContent='Removed. Lookups will use Firecrawl.';return}
+  m.textContent='Testing… (in the Claude app you may be asked to allow its browser to open the relay)';
+  const ctl=new AbortController(),was=RUN;RUN=RUN||{ctl,signal:ctl.signal,credits:0};
+  try{const r=await relay('/ping',{});
+    m.textContent=!r?'Saved, but the relay couldn’t be reached from here. On claude.ai it only works when this page is open in the Claude desktop app.':r.error?'Saved, but the relay said: '+r.error:r.google?'Saved. The relay works (reached '+RELAYVIA+') and has a Google key.':'Saved. The relay works, but GOOGLE_KEY isn’t set on it yet.'}
+  catch(x){m.textContent='Saved. It couldn’t be tested: '+x.message}finally{if(!was)RUN=null}});
+// ABR GUID
+const gi=g('rf-guid');gi.value=guid();if(!guid()||!relayOn())g('rf-setbox').open=true;
+g('rf-guidsave').addEventListener('click',async()=>{const v=clean(gi.value),m=g('rf-guidmsg');
+  if(v&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)){m.textContent='That doesn’t look like a GUID (8-4-4-4-12 letters and digits).';return}
+  store.set('rf-guid',v);if(!v){m.textContent='Removed.';return}
+  m.textContent='Checking…';const ctl=new AbortController();const was=RUN;RUN=RUN||{ctl,signal:ctl.signal,credits:0};
+  try{const r=await abr('AbnDetails.aspx',{abn:'51824753556'},true);m.textContent=r&&r.Abn?'Saved. The ABN Lookup service accepted it (reached '+ABRVIA+').':'Saved, but ABN Lookup said: '+((r&&r.Message)||'no answer')}
+  catch(x){m.textContent='Saved. It couldn’t be checked right now: '+x.message}finally{if(!was)RUN=null}});
+})();
+</script>
+</body>
+</html>

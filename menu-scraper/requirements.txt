@@ -1,0 +1,12 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+curl_cffi>=0.7
+beautifulsoup4>=4.12
+lxml>=5.0
+markdownify>=0.13
+pypdf>=4.0
+anthropic>=0.70
+python-dotenv>=1.0
+# Headless browser tier. patchright is a drop-in Playwright build with automation fingerprints removed;
+# plain playwright is used if patchright is not installed.
+patchright>=1.48
