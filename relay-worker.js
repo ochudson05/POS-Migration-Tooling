@@ -2,8 +2,9 @@
    claude.ai pages can't call Google directly, but the Claude desktop app's browser (and a copy of the page
    saved on your computer) can open this relay, which holds the Google key so the page never sees it.
 
-   Setup: Cloudflare dashboard → Workers & Pages → Create → Worker → Deploy → Edit code → paste this file → Deploy.
-   Then Settings → Variables and Secrets → add two Secrets:
+   Deploying: this file is the Worker "menurunner". Cloudflare deploys it automatically when it's pushed to the
+   main branch on GitHub (Workers Builds, settings in wrangler.toml), so don't edit it in the dashboard.
+   Secrets live only in Cloudflare (menurunner → Settings → Variables and Secrets, type Secret):
      GOOGLE_KEY   your Google Maps Platform key (restricted to "Places API (New)")
      RELAY_TOKEN  any long random password; paste the same one into Restaurant Lookup's settings
 
