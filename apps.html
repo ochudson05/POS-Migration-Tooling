@@ -1538,14 +1538,14 @@ async function ddRead(store,mcp,B,signal){
     (g.items||[]).forEach(it=>{if(!it||!it.name||seen.has(it.item_id))return;seen.add(it.item_id);const pr=it.price&&it.price.amount;
       rows.push([tidy(g.name||''),tidy(it.name),'',pr==null?'':num(pr),clean(it.description||''),''])})});
   return rows}
-const FA={run:false,stop:false,log:[]};
+const FA={run:false,stop:false,log:[],okUrls:[]};
 function faDraw(head){const b=$('findbox');b.style.display='block';
   b.innerHTML='<div class="chk i"><b>'+esc(head)+'</b>'+(FA.run?' <button type="button" class="sec" id="fastop" style="padding:4px 10px;margin:0 0 0 6px">Stop</button>':'')+
     '<ul style="max-height:none;color:var(--text)">'+FA.log.map(l=>'<li>'+(l.st==='ok'?'✓ ':l.st==='err'?'✗ ':l.st==='run'?'… ':'· ')+esc(l.label)+(l.msg?' <span style="color:var(--muted)">'+esc(l.msg)+'</span>':'')+'</li>').join('')+'</ul></div>';
   const s=$('fastop');if(s)s.addEventListener('click',()=>{FA.stop=true;if(readCtl)readCtl.abort()})}
 async function findAllMenus(ctx){if(FA.run)return;const mcp=await getMcp(),plan=findPlan(ctx);
   const B={credits:ctx.budget!=null?ctx.budget:Math.max(3,plan.max),used:0},opened=new Set(),images=new Set(),found=[];
-  FA.run=true;FA.stop=false;FA.log=plan.sources.map(s=>({label:s.label+': '+s.url.replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:'wait',s}));
+  FA.run=true;FA.stop=false;FA.okUrls=[];FA.log=plan.sources.map(s=>({label:s.label+': '+s.url.replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:'wait',s}));
   const name=ctx.venue||'Venue';faDraw('Finding every menu for '+name+'…');
   const take=(t,s,label,rank,delivery)=>{const same=found.filter(x=>x.srcLabel&&x.srcLabel.replace(/ \d+$/,'')===label).length;if(same)label+=' '+(same+1);t.file=label;t.rank=rank;t.srcLabel=label;t.delivery=!!delivery;found.push(t);(t.extra||[]).forEach(x=>{x.file=label+' modifiers';found.push(x)});
     return t.doc?t.doc.count:(t.rows||[]).length};
@@ -1555,12 +1555,13 @@ async function findAllMenus(ctx){if(FA.run)return;const mcp=await getMcp(),plan=
       L.st='run';faDraw('Finding every menu for '+name+'…');
       try{
         if(s.dd&&mcp){try{const rows=await ddRead(s.dd,mcp,B,new AbortController().signal);
-            if(rows.length){const n=take(mkDocTable(name+' (DoorDash)',rows,[],'DoorDash menu'),s,s.label,5,true);L.st='ok';L.msg=n+' items';continue}}
+            if(rows.length){const n=take(mkDocTable(name+' (DoorDash)',rows,[],'DoorDash menu'),s,s.label,5,true);L.st='ok';L.msg=n+' items';FA.okUrls.push(s.url);continue}}
           catch(e){L.msg='DoorDash reader: '+e.message+'. Reading the page instead…';faDraw('Finding every menu for '+name+'…')}}
         if(!mcp&&s.kind!=='site'&&s.kind!=='link'){L.st='err';L.msg='needs claude.ai (Firecrawl or the Claude app)';continue}
         const t=await readSite(s.url,mcp||{callTool:()=>Promise.reject({code:'server_not_connected'})},false,{all:true,budget:B,opened,images,linkMax:s.kind==='site'?8:2});
         const isPlat=t.doc&&/ordering site/.test(t.doc.how||''),rank=s.kind==='delivery'?5:isPlat?1:(t.doc&&/menu data/.test(t.doc.how||''))?2:3;
-        const n=take(t,s,s.label+(isPlat&&s.kind==='site'?' (ordering site)':''),rank,s.kind==='delivery');L.st='ok';L.msg=n+' items'+(t.cachedAt?' (saved result, free)':'')}
+        const n=take(t,s,s.label+(isPlat&&s.kind==='site'?' (ordering site)':''),rank,s.kind==='delivery');L.st='ok';L.msg=n+' items'+(t.cachedAt?' (saved result, free)':'');
+        if(n)[s.url,...(t.urls||[])].forEach(x=>{if(x&&!FA.okUrls.includes(x))FA.okUrls.push(x)})}
       catch(e){L.st='err';L.msg=e.message==='Stopped.'?'stopped':String(e.message||e).slice(0,160);if(FA.stop)break}}
     // menu pictures found on the site, read by Claude (uses a little Claude usage, no Firecrawl credits)
     const imgs=[...images].slice(0,6);
@@ -1801,11 +1802,15 @@ async function save(blob,name){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove()}
 const csv=rows=>rows.map(r=>r.map(v=>{v=String(v);return/[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')).join('\r\n');
 // a summary of the downloaded import, for the Setup Tracker and Photo Finder
-function announce(file){if(!res)return;const ix=h=>OUT.indexOf(h),iN=ix('Product Name*'),iT=ix('Product Type*'),iC=ix('Category*'),iP=ix('Printer Profiles');
+function announce(file){if(!res)return;const ix=h=>OUT.indexOf(h),iN=ix('Product Name*'),iT=ix('Product Type*'),iC=ix('Category*'),iP=ix('Printer Profiles'),iV=ix('Variant Name'),iS=ix('Sell Price*');
   const names=new Map(),cats=new Map();
   res.rows.forEach(r=>{if(r[iT]!=='Product')return;if(!names.has(r[iN]))names.set(r[iN],r[iC]);const c=cats.get(r[iC])||{n:new Set(),p:new Set()};c.n.add(r[iN]);if(r[iP])c.p.add(r[iP]);cats.set(r[iC],c)});
   window.dispatchEvent(new CustomEvent('oolio:menu',{detail:{at:Date.now(),file,products:names.size,variants:res.nV||0,modifiers:res.nM||0,groups:res.nG||0,
-    cats:[...cats].map(([c,v])=>[c,v.n.size,[...v.p].join(', ')]),names:[...names].slice(0,800)}}));}
+    cats:[...cats].map(([c,v])=>[c,v.n.size,[...v.p].join(', ')]),names:[...names].slice(0,800),
+    // every sellable line (product, category, size, price) for the venue's menu history
+    items:res.rows.filter(r=>r[iT]==='Product').map(r=>[r[iN],r[iC],r[iV]||'',r[iS]===''?'':+r[iS]]).slice(0,1500),
+    sources:tables.filter(t=>t.on&&t.a&&t.a.kind!=='modifiers').map(t=>t.srcLabel||t.file),
+    urls:FA.okUrls&&FA.okUrls.length&&tables.some(t=>t.on&&t.srcLabel)?FA.okUrls.slice():[]}}));}
 $('dlc').addEventListener('click',()=>{const n=outName('csv','Oolio One import');save(new Blob(['﻿'+csv([OUT].concat(res.rows))],{type:'text/csv;charset=utf-8'}),n);announce(n)});
 $('dlx').addEventListener('click',()=>{const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([OUT].concat(res.rows)),'in');
   const n=outName('xlsx','Oolio One import');save(new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),n);announce(n)});
@@ -2321,7 +2326,7 @@ const SECTIONS=[
   {id:'mpos-device',when:'mpos',t:'Dedicated MPOS device',info:['Usually linked to the host terminal or a pay-at-table device.','Serial numbers can be assigned later by the techs.'],guides:['configure-mpos','process-a-payment-on-mpos','place-an-order-on-mpos']},
 ]},
 {id:'menu',phase:'pre',t:'Menu & products',d:'Not on the recap checklist, but needed before training.',steps:[
-  {id:'menu-import',t:'Import products',info:['Use the Menu Converter tab to turn the customer’s menu into an Oolio One import. Downloading the import ticks this step.'],extra:o=>menuPanel(o),guides:['create-standard-products','create-modifiers-and-option-groups','create-variant-groups','upload-and-manage-product-images']},
+  {id:'menu-import',t:'Import products',info:['Use the Menu Converter tab to turn the customer’s menu into an Oolio One import. Downloading the import ticks this step.'],extra:o=>menuPanel(o)+historyPanel(o),guides:['create-standard-products','create-modifiers-and-option-groups','create-variant-groups','upload-and-manage-product-images']},
   {id:'menu-photos',t:'Add product photos',info:['Photo Finder takes the products straight from the Menu Converter. Saving the photos ticks this step.','Upload them in Back Office afterwards.'],extra:o=>photoPanel(o),guides:['upload-and-manage-product-images']},
   {id:'menu-pos',t:'Build the POS menu and tables',guides:['create-a-pos-menu','configure-sections-tables','create-courses','create-price-lists']},
   {id:'menu-users',t:'Create users and roles',guides:['create-a-user','managing-user-roles']},
@@ -2411,6 +2416,45 @@ async function deleteOrg(id){delete ORGS[id];if(ACTIVE===id){ACTIVE='';ls.set('o
 let savingT=null;function setSaving(b){const el=g('st-saving');if(!el)return;clearTimeout(savingT);if(b)el.textContent='Saving…';else savingT=setTimeout(()=>{el.textContent=MODE==='db'?'Saved for the team':'Saved on this browser'},300)}
 function flash(t,err){const el=g('st-flash');if(el){el.className='st-msg'+(err?' err':'');el.textContent=t}}
 
+/* ---------- menu versions ----------
+   Every menu downloaded from the Menu Converter (kind "export") and every change found by the monthly scan (kind "scan")
+   is kept as a version under its venue: orgs/<id>/menus/<versionId> = {at, by, kind, file, sources, urls, items:[[name,category,size,price]], diff, stats}.
+   The venue itself keeps a short log (menuLog) of every version's counts, for history and metrics without reading the versions. */
+const MCOL=id=>COL+'/'+id+'/menus';
+const mNorm=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' and ').replace(/\([^)]*\)/g,' ').replace(/[^a-z0-9 ]+/g,' ').replace(/\s+/g,' ').trim();
+const mKey=r=>mNorm(r[0])+'|'+mNorm(r[2]);
+function mLev(a,b){const m=a.length,n=b.length;if(!m||!n)return m||n;let p=Array.from({length:n+1},(_,j)=>j);
+  for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(p[j]+1,c[j-1]+1,p[j-1]+(a[i-1]===b[j-1]?0:1));p=c}return p[n]}
+function menuStats(items){const ps=items.map(r=>+r[3]).filter(x=>x>0).sort((a,b)=>a-b);
+  return{items:items.length,products:new Set(items.map(r=>mNorm(r[0]))).size,categories:new Set(items.map(r=>mNorm(r[1]))).size,
+    avg:ps.length?Math.round(ps.reduce((a,b)=>a+b,0)/ps.length*100)/100:0,median:ps.length?ps[Math.floor(ps.length/2)]:0,min:ps[0]||0,max:ps[ps.length-1]||0}}
+// added, removed, renamed (same size and price, nearly the same name) and price changes between two item lists
+function menuDiff(a,b){const A=new Map(a.map(r=>[mKey(r),r])),Bm=new Map(b.map(r=>[mKey(r),r]));
+  let added=b.filter(r=>!A.has(mKey(r))),removed=a.filter(r=>!Bm.has(mKey(r)));const renamed=[],price=[];
+  removed=removed.filter(o=>{const i=added.findIndex(n=>mNorm(n[2])===mNorm(o[2])&&(+n[3]===+o[3])&&(()=>{const x=mNorm(o[0]),y=mNorm(n[0]),s=x.length<y.length?x:y,l=x.length<y.length?y:x;return(s.length>=5&&l.startsWith(s))||1-mLev(x,y)/Math.max(x.length,y.length)>=0.75})());
+    if(i<0)return true;renamed.push([o[0],added[i][0],o[2]||'']);added.splice(i,1);return false});
+  b.forEach(r=>{const o=A.get(mKey(r));if(o&&+o[3]&&+r[3]&&+o[3]!==+r[3])price.push([r[0],r[2]||'',+o[3],+r[3]])});
+  const pct=price.length?Math.round(price.reduce((s,x)=>s+(x[3]-x[2])/x[2],0)/price.length*1000)/10:0;
+  return{added,removed,renamed,price,up:price.filter(x=>x[3]>x[2]).length,down:price.filter(x=>x[3]<x[2]).length,avgPct:pct,
+    none:!added.length&&!removed.length&&!renamed.length&&!price.length}}
+const mlocal={key:'st-menus',all(){try{return JSON.parse(ls.get(this.key)||'{}')}catch(e){return{}}},put(id,vid,d){const a=this.all();(a[id]=a[id]||{})[vid]=d;ls.set(this.key,JSON.stringify(a))}};
+async function menuVersions(id){if(MODE==='db'){const s=await DB.collection(MCOL(id)).orderBy('at','desc').limit(100).get();return s.docs.map(d=>Object.assign({id:d.id},d.data()))}
+  return Object.entries(mlocal.all()[id]||{}).map(([k,v])=>Object.assign({id:k},v)).sort((a,b)=>b.at-a.at)}
+async function addMenuVersion(id,snap){const o=ORGS[id];if(!o||READONLY)return null;
+  const items=(snap.items||[]).filter(r=>r&&r[0]).map(r=>[String(r[0]),String(r[1]||''),String(r[2]||''),r[3]===''||r[3]==null?'':+r[3]]);
+  const last=(o.menuLog||[]).slice(-1)[0];let prev=null;
+  if(last){try{prev=MODE==='db'?(await DB.collection(MCOL(id)).doc(last.v).get()).data():(mlocal.all()[id]||{})[last.v]}catch(e){}}
+  const diff=prev?menuDiff(prev.items||[],items):null;
+  if(diff&&diff.none&&snap.kind==='export')return{same:true,v:last.v,ver:(o.menuLog||[]).length};
+  const vid='v'+Date.now().toString(36),stats=menuStats(items);
+  const doc={at:Date.now(),by:ME||'',kind:snap.kind||'export',file:snap.file||'',sources:snap.sources||[],urls:snap.urls||[],items,stats,prev:last?last.v:'',
+    diff:diff?{added:diff.added,removed:diff.removed,renamed:diff.renamed,price:diff.price,avgPct:diff.avgPct}:null};
+  if(MODE==='db')await DB.collection(MCOL(id)).doc(vid).set(doc);else mlocal.put(id,vid,doc);
+  const sum={v:vid,at:doc.at,kind:doc.kind,by:doc.by,n:stats.items,avg:stats.avg,added:diff?diff.added.length:stats.items,removed:diff?diff.removed.length:0,renamed:diff?diff.renamed.length:0,up:diff?diff.up:0,down:diff?diff.down:0,pct:diff?diff.avgPct:0};
+  const patch={menuLog:(o.menuLog||[]).concat([sum]).slice(-60)};
+  if(snap.urls&&snap.urls.length)patch.menuWatch={urls:snap.urls.slice(0,15),set:doc.at};
+  save(id,patch);return Object.assign({},sum,{ver:patch.menuLog.length})}
+
 /* ---------- the shared venue: the one organisation every tab works on ---------- */
 const LISTEN=new Set();let ACTIVE=ls.get('ov-active')||'',notifyT=null;
 function notify(){if(notifyT)return;notifyT=setTimeout(()=>{notifyT=null;LISTEN.forEach(f=>{try{f()}catch(e){console.error(e)}})},0)}
@@ -2438,6 +2482,8 @@ window.OolioVenues={
   address(id){return ORGS[id]?val(ORGS[id],'biz-address','address'):''},
   website(id){return ORGS[id]?val(ORGS[id],'prep-gmb','website'):''},
   me(){return ME},
+  addMenuVersion(id,snap){return addMenuVersion(id,snap)},
+  menuVersions(id){return menuVersions(id)},
   on(f){LISTEN.add(f);return()=>LISTEN.delete(f)}};
 
 /* ---------- people ---------- */
@@ -2462,6 +2508,23 @@ const goBtn=(tab,t)=>'<button type="button" class="st-sec st-sm" data-goto="'+ta
 function menuPanel(o){const m=o.menu;if(!m)return '<div class="st-check">No menu converted yet. '+goBtn('converter','Open Menu Converter')+'</div>';
   return '<div class="st-check ok">Menu Converter: '+m.products+' products in '+(m.cats||[]).length+' categories'+(m.variants?', '+m.variants+' with sizes':'')+(m.modifiers?', '+m.modifiers+' modifiers':'')+
     '. Downloaded '+esc(when(m.at))+(m.by?' by '+esc(who(m.by)):'')+(m.file?' as '+esc(m.file):'')+'. '+goBtn('converter','Open Menu Converter')+'</div>'}
+function historyPanel(o){const L=(o.menuLog||[]).slice().reverse();if(!L.length)return'';
+  const al=o.menuAlert&&!o.menuAlert.seen?'<div class="st-check w"><b>Menu scan '+esc(when(o.menuAlert.at))+':</b> '+esc(o.menuAlert.summary||'changes found')+(READONLY?'':' <button type="button" class="st-sec st-sm" data-mseen="1">Mark as seen</button>')+'</div>':'';
+  const rows=L.map((s,i)=>'<tr><td>'+(L.length-i)+'</td><td>'+esc(new Date(s.at).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'2-digit'}))+'</td><td>'+(s.kind==='scan'?'Scan':'Export')+'</td><td>'+s.n+'</td><td>'+
+    (i===L.length-1?'<span class="st-muted">first</span>':'+'+s.added+' −'+s.removed+(s.renamed?' ~'+s.renamed:'')+(s.up||s.down?' · $↑'+s.up+' ↓'+s.down+(s.pct?' ('+(s.pct>0?'+':'')+s.pct+'%)':''):''))+'</td><td>$'+(s.avg||0)+'</td>'+
+    '<td><button type="button" class="st-link" data-mver="'+esc(s.v)+'">Details</button></td></tr>').join('');
+  return al+'<details class="st-mhist"'+(VIEW.mhist?' open':'')+'><summary class="st-small st-muted">Menu history: '+L.length+' version'+(L.length>1?'s':'')+'</summary>'+
+    '<div class="st-tblw" style="margin-top:6px"><table class="st-tbl" style="min-width:520px"><thead><tr><th>#</th><th>Date</th><th>From</th><th>Items</th><th>Changes</th><th>Avg price</th><th></th></tr></thead><tbody>'+rows+'</tbody></table></div>'+
+    '<div id="st-mdet" class="st-small" style="margin-top:8px"></div><div class="st-tools" style="margin-top:6px"><button type="button" class="st-sec st-sm" data-mcsv="1">Download history (CSV)</button></div></details>'}
+async function showVersion(id,vid){const el=g('st-mdet');if(!el)return;el.textContent='Loading…';
+  let v=null;try{v=(await menuVersions(id)).find(x=>x.id===vid)}catch(e){}
+  if(!v){el.textContent='That version couldn’t be loaded.';return}const d=v.diff,li=(t,L)=>L.length?'<p style="margin:6px 0 2px"><b>'+t+' ('+L.length+')</b></p><ul style="margin:0;padding-left:18px">'+L.slice(0,80).map(x=>'<li>'+x+'</li>').join('')+'</ul>':'';
+  const f=r=>esc(r[0])+(r[2]?' ('+esc(r[2])+')':'')+(r[3]!==''?' $'+r[3]:'');
+  el.innerHTML='<b>'+(v.kind==='scan'?'Scan':'Export')+' of '+esc(new Date(v.at).toLocaleString('en-AU'))+'</b>'+(v.by?' by '+esc(who(v.by)):'')+(v.file?' · '+esc(v.file):'')+
+    ' · '+v.stats.items+' items, '+v.stats.categories+' categories, prices $'+v.stats.min+'–$'+v.stats.max+' (median $'+v.stats.median+')'+
+    (v.sources&&v.sources.length?'<br><span class="st-muted">Sources: '+esc(v.sources.join(', '))+'</span>':'')+
+    (d?li('Added',d.added.map(f))+li('Removed',d.removed.map(f))+li('Renamed',d.renamed.map(r=>esc(r[0])+' → '+esc(r[1])+(r[2]?' ('+esc(r[2])+')':'')))+
+      li('Price changes',d.price.map(r=>esc(r[0])+(r[1]?' ('+esc(r[1])+')':'')+': $'+r[2]+' → $'+r[3]))+(d.added.length+d.removed.length+d.renamed.length+d.price.length?'':'<p>No changes from the version before.</p>'):'<p>The first version on record.</p>')}
 function photoPanel(o){const f=o.photos;if(!f)return '<div class="st-check">No photos saved yet. '+goBtn('photos','Open Photo Finder')+'</div>';
   return '<div class="st-check '+(f.failed?'w':'ok')+'">Photo Finder: '+f.saved+' photos saved'+(f.failed?', '+f.failed+' couldn’t be downloaded':'')+', '+esc(when(f.at))+(f.by?' by '+esc(who(f.by)):'')+'. '+goBtn('photos','Open Photo Finder')+'</div>'}
 function printerPanel(o){const m=o.menu;if(!m||!(m.cats||[]).length)return '';const names=(o.printers||[]).map(p=>p.name);
@@ -2668,6 +2731,12 @@ root.addEventListener('click',e=>{const t=e.target;
     if(k==='printers'&&gone&&gone.name)rows.forEach(r=>{if(r.fb===gone.name)r.fb=''});save(VIEW.org,{[k]:rows});render();return}
   const sg=t.closest('[data-sugflag]');if(sg){save(VIEW.org,{flags:{[sg.dataset.sugflag]:true}});render();return}
   const go=t.closest('[data-goto]');if(go){location.hash=go.dataset.goto;return}
+  const mv=t.closest('[data-mver]');if(mv){showVersion(VIEW.org,mv.dataset.mver);return}
+  if(t.closest('[data-mseen]')){save(VIEW.org,{menuAlert:{seen:true}});render();return}
+  if(t.closest('[data-mcsv]')){const o=ORGS[VIEW.org],L=o.menuLog||[],q=v=>{v=String(v==null?'':v);return/[",\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+    const rows=[['Version','Date','From','Items','Added','Removed','Renamed','Price up','Price down','Avg price change %','Avg price']].concat(L.map((s,i)=>[i+1,new Date(s.at).toISOString().slice(0,10),s.kind,s.n,s.added,s.removed,s.renamed||0,s.up,s.down,s.pct,s.avg]));
+    const blob=new Blob([rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv'}),fn=(o.name||'venue').replace(/[^\w\- ]+/g,'')+' menu history.csv';
+    (async()=>{const dl=await use('downloads');if(dl){try{await dl.save({filename:fn,data:blob})}catch(e){}}else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove()}})();return}
   const jump=t.closest('[data-jump]');if(jump){e.preventDefault();const el=g('st-'+jump.dataset.jump);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});return}
   const a=t.closest('[data-a]');if(!a)return;const act=a.dataset.a,o=VIEW.org&&ORGS[VIEW.org];
   if(act==='new')newOrg();
@@ -2683,7 +2752,7 @@ root.addEventListener('click',e=>{const t=e.target;
   else if(act==='pairfb'){const rows=(o.printers||[]).map(r=>Object.assign({},r)),byName={};rows.forEach(r=>{byName[(r.name||'').toLowerCase()]=r});
     rows.forEach(r=>{if(r.fb)return;const m=(r.name||'').match(/^(.*?)(\d+)\s*$/);if(!m)return;const other=byName[(m[1]+(m[2]==='1'?'2':m[2]==='2'?'1':'')).toLowerCase()];if(other&&other!==r)r.fb=other.name});
     save(VIEW.org,{printers:rows});render()}});
-root.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.sid){if(d.open)VIEW.open.add(d.dataset.sid);else VIEW.open.delete(d.dataset.sid)}},true);
+root.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('st-mhist'))VIEW.mhist=d.open;if(d.dataset&&d.dataset.sid){if(d.open)VIEW.open.add(d.dataset.sid);else VIEW.open.delete(d.dataset.sid)}},true);
 function onField(t,final){const id=VIEW.org;if(!id)return;
   if(t.id==='st-q'){VIEW.q=t.value;held=false;const pos=t.selectionStart;render();const n=g('st-q');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}return}
   if(t.id==='st-stagef')return;
@@ -2802,7 +2871,7 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
   const est=!m&&a.lookup?estimate(a):null;
   const steps=[
     {k:'lookup',t:'Look up the venue',done:!!a.lookup,s:a.lookup?'Done '+day(a.lookup.at)+'. Business details, contacts and links are filled in.':'Finds the address, ABN, contacts, services, delivery and booking sites, and menu links.',b:a.lookup?'View lookup':'Look it up'},
-    {k:'menu',t:'Find and convert the menus',done:!!m,s:m?m.products+' products in '+(m.cats||[]).length+' categories, '+day(m.at)+'.':(est?'Reads all '+est.sources.length+' menu source'+(est.sources.length>1?'s':'')+' the lookup found (website, PDFs, ordering and delivery sites, menu pictures). Free reads first; at most '+est.max+' Firecrawl credits.':'From a menu PDF, photo, web page or POS export.'),b:m?'Open converter':est?'Find all menus':'Convert menu'},
+    {k:'menu',t:'Find and convert the menus',done:!!m,s:m?m.products+' products in '+(m.cats||[]).length+' categories, '+day(m.at)+'.'+((a.menuLog||[]).length>1?' '+a.menuLog.length+' menu versions.':'')+(a.menuAlert&&!a.menuAlert.seen?' Menu scan '+day(a.menuAlert.at)+': '+a.menuAlert.summary:''):(est?'Reads all '+est.sources.length+' menu source'+(est.sources.length>1?'s':'')+' the lookup found (website, PDFs, ordering and delivery sites, menu pictures). Free reads first; at most '+est.max+' Firecrawl credits.':'From a menu PDF, photo, web page or POS export.'),b:m?'Open converter':est?'Find all menus':'Convert menu'},
     {k:'photos',t:'Find product photos',done:!!f,s:f?f.saved+' photos saved, '+day(f.at)+'.':(m?'Uses the '+m.products+' converted products.':'Uses the converted menu, so do that first.'),b:'Find photos'},
     {k:'setup',t:'Setup checklist',done:all.total>0&&all.done===all.total,s:'Pre-config '+pre.done+'/'+pre.total+' · Training '+trn.done+'/'+trn.total+(a.training?' · Training '+new Date(a.training+'T00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}):''),b:'Open checklist'}];
   const next=steps.findIndex(s=>!s.done);
@@ -2849,24 +2918,34 @@ rfbar.addEventListener('click',async e=>{const b=e.target.closest('[data-rf]');i
 /* ---------- Menu Converter ---------- */
 const cvbar=document.createElement('div');cvbar.className='lx-strip';cvbar.id='lx-cvbar';
 {const m=g('lx-conv')&&g('lx-conv').querySelector('main');if(m){const h=m.querySelector('p.sub');m.insertBefore(cvbar,h?h.nextSibling:m.firstChild)}}
-let cvSig=null,lastMenu=null;
+let cvSig=null,lastMenu=null,cvNote='';
 function syncConv(){const a=OV.active(),pr=a?OV.printers(a.id):[];
   window.OOLIO_VENUE_NAME=a?a.name:'';const sig=pr.join('|');window.OOLIO_PRINTERS=pr;
   if(sig!==cvSig){cvSig=sig;if(window.convRefresh)window.convRefresh()}
-  if(!a){cvbar.innerHTML='No venue selected. Pick one at the top and downloads are named after it and saved to its checklist.';return}
+  if(!a){cvNote='';cvbar.innerHTML='No venue selected. Pick one at the top and downloads are named after it and saved to its checklist.';return}
   const P=OV.lookup(a.id),links=P&&P.det?(P.det.menu||[]).slice(0,4):[],site=P&&P.place&&P.place.website,m=a.menu,est=estimate(a);
   cvbar.innerHTML='<div>Converting the menu for <b>'+esc(a.name)+'</b>. Files are named after it, and downloading the import saves a summary to its checklist'+(m?' (last: '+m.products+' products, '+day(m.at)+')':'')+'.</div>'+
     '<div>'+(pr.length?'Printers from its checklist: <b>'+esc(pr.join(', '))+'</b>. “Auto” picks from these.':'No printers in its checklist yet, so generic printer names are used. <button type="button" class="lx-link" data-cv="printers">Add the printers</button>')+'</div>'+
     (est?'<div class="lx-row"><button type="button" data-cv="all">Find all menus</button><span class="lx-muted lx-small">'+est.sources.length+' source'+(est.sources.length>1?'s':'')+' from the lookup, plus menu pictures on the site. Free reads first; at most '+est.max+' Firecrawl credits.</span></div>':
       '<div class="lx-muted lx-small">Look the venue up first and every menu it has can be found in one click.</div>')+
     (links.length||site?'<details><summary class="lx-small">Or read one source</summary><div class="lx-row" style="margin-top:6px">'+links.map((u,i)=>'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(u)+'">Read menu '+(links.length>1?i+1+' ':'')+(/\.pdf(\?|$)/i.test(u)?'(PDF)':'(page)')+'</button>').join('')+
-      (site?'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(site)+'">Website</button>':'')+'</div></details>':'')}
+      (site?'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(site)+'">Website</button>':'')+'</div></details>':'')+
+    (cvNote?'<div><b>'+esc(cvNote)+'</b></div>':'')}
 cvbar.addEventListener('click',e=>{const b=e.target.closest('[data-cv]');if(!b)return;
   if(b.dataset.cv==='all'){const a=OV.active();if(a&&window.convFindAll)window.convFindAll(menuCtx(a));return}
   if(b.dataset.cv==='printers'){const a=OV.active();if(a){OV.open(a.id);go('setup');setTimeout(()=>{const s=document.getElementById('st-prn');if(s)s.scrollIntoView()},60)}}
   else{const u=g('url'),r=g('urlb');if(u&&r){u.value=b.dataset.u;r.click()}}});
-window.addEventListener('oolio:menu',e=>{const d=e.detail;if(!d)return;lastMenu=d;const a=OV.active();
-  if(a){OV.save(a.id,{menu:Object.assign({},d,{by:OV.me()})});OV.tick(a.id,'menu-import')}sendPF(true)});
+window.addEventListener('oolio:menu',async e=>{const d=e.detail;if(!d)return;lastMenu=d;const a=OV.active();
+  if(a){const{items,sources,urls}=d,m=Object.assign({},d,{by:OV.me()});delete m.items;delete m.sources;delete m.urls;
+    OV.save(a.id,{menu:m});OV.tick(a.id,'menu-import');
+    // each download is kept as a menu version of the venue, with what changed since the last one
+    try{const r=await OV.addMenuVersion(a.id,{kind:'export',file:d.file,items,sources,urls});
+      cvNote=!r?'':r.same?'Same menu as version '+r.ver+', so no new version was saved.':
+        'Saved as menu version '+r.ver+' of '+a.name+': +'+r.added+' new, −'+r.removed+' removed'+(r.renamed?', '+r.renamed+' renamed':'')+', '+(r.up+r.down)+' price change'+(r.up+r.down===1?'':'s')+'. See the history in its checklist.';
+      if(cvNote&&!r.same&&r.ver===1)cvNote='Saved as the first menu version of '+a.name+'. Later downloads and monthly scans are compared with it.'}
+    catch(x){cvNote='The menu version couldn’t be saved ('+((x&&(x.message||x.code))||'error')+').'}
+    syncConv()}
+  sendPF(true)});
 
 /* ---------- Photo Finder (in its own frame) ---------- */
 const frame=g('lx-pfframe');let pfSig='';

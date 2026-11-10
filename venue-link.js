@@ -57,7 +57,7 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
   const est=!m&&a.lookup?estimate(a):null;
   const steps=[
     {k:'lookup',t:'Look up the venue',done:!!a.lookup,s:a.lookup?'Done '+day(a.lookup.at)+'. Business details, contacts and links are filled in.':'Finds the address, ABN, contacts, services, delivery and booking sites, and menu links.',b:a.lookup?'View lookup':'Look it up'},
-    {k:'menu',t:'Find and convert the menus',done:!!m,s:m?m.products+' products in '+(m.cats||[]).length+' categories, '+day(m.at)+'.':(est?'Reads all '+est.sources.length+' menu source'+(est.sources.length>1?'s':'')+' the lookup found (website, PDFs, ordering and delivery sites, menu pictures). Free reads first; at most '+est.max+' Firecrawl credits.':'From a menu PDF, photo, web page or POS export.'),b:m?'Open converter':est?'Find all menus':'Convert menu'},
+    {k:'menu',t:'Find and convert the menus',done:!!m,s:m?m.products+' products in '+(m.cats||[]).length+' categories, '+day(m.at)+'.'+((a.menuLog||[]).length>1?' '+a.menuLog.length+' menu versions.':'')+(a.menuAlert&&!a.menuAlert.seen?' Menu scan '+day(a.menuAlert.at)+': '+a.menuAlert.summary:''):(est?'Reads all '+est.sources.length+' menu source'+(est.sources.length>1?'s':'')+' the lookup found (website, PDFs, ordering and delivery sites, menu pictures). Free reads first; at most '+est.max+' Firecrawl credits.':'From a menu PDF, photo, web page or POS export.'),b:m?'Open converter':est?'Find all menus':'Convert menu'},
     {k:'photos',t:'Find product photos',done:!!f,s:f?f.saved+' photos saved, '+day(f.at)+'.':(m?'Uses the '+m.products+' converted products.':'Uses the converted menu, so do that first.'),b:'Find photos'},
     {k:'setup',t:'Setup checklist',done:all.total>0&&all.done===all.total,s:'Pre-config '+pre.done+'/'+pre.total+' · Training '+trn.done+'/'+trn.total+(a.training?' · Training '+new Date(a.training+'T00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}):''),b:'Open checklist'}];
   const next=steps.findIndex(s=>!s.done);
@@ -104,24 +104,34 @@ rfbar.addEventListener('click',async e=>{const b=e.target.closest('[data-rf]');i
 /* ---------- Menu Converter ---------- */
 const cvbar=document.createElement('div');cvbar.className='lx-strip';cvbar.id='lx-cvbar';
 {const m=g('lx-conv')&&g('lx-conv').querySelector('main');if(m){const h=m.querySelector('p.sub');m.insertBefore(cvbar,h?h.nextSibling:m.firstChild)}}
-let cvSig=null,lastMenu=null;
+let cvSig=null,lastMenu=null,cvNote='';
 function syncConv(){const a=OV.active(),pr=a?OV.printers(a.id):[];
   window.OOLIO_VENUE_NAME=a?a.name:'';const sig=pr.join('|');window.OOLIO_PRINTERS=pr;
   if(sig!==cvSig){cvSig=sig;if(window.convRefresh)window.convRefresh()}
-  if(!a){cvbar.innerHTML='No venue selected. Pick one at the top and downloads are named after it and saved to its checklist.';return}
+  if(!a){cvNote='';cvbar.innerHTML='No venue selected. Pick one at the top and downloads are named after it and saved to its checklist.';return}
   const P=OV.lookup(a.id),links=P&&P.det?(P.det.menu||[]).slice(0,4):[],site=P&&P.place&&P.place.website,m=a.menu,est=estimate(a);
   cvbar.innerHTML='<div>Converting the menu for <b>'+esc(a.name)+'</b>. Files are named after it, and downloading the import saves a summary to its checklist'+(m?' (last: '+m.products+' products, '+day(m.at)+')':'')+'.</div>'+
     '<div>'+(pr.length?'Printers from its checklist: <b>'+esc(pr.join(', '))+'</b>. “Auto” picks from these.':'No printers in its checklist yet, so generic printer names are used. <button type="button" class="lx-link" data-cv="printers">Add the printers</button>')+'</div>'+
     (est?'<div class="lx-row"><button type="button" data-cv="all">Find all menus</button><span class="lx-muted lx-small">'+est.sources.length+' source'+(est.sources.length>1?'s':'')+' from the lookup, plus menu pictures on the site. Free reads first; at most '+est.max+' Firecrawl credits.</span></div>':
       '<div class="lx-muted lx-small">Look the venue up first and every menu it has can be found in one click.</div>')+
     (links.length||site?'<details><summary class="lx-small">Or read one source</summary><div class="lx-row" style="margin-top:6px">'+links.map((u,i)=>'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(u)+'">Read menu '+(links.length>1?i+1+' ':'')+(/\.pdf(\?|$)/i.test(u)?'(PDF)':'(page)')+'</button>').join('')+
-      (site?'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(site)+'">Website</button>':'')+'</div></details>':'')}
+      (site?'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(site)+'">Website</button>':'')+'</div></details>':'')+
+    (cvNote?'<div><b>'+esc(cvNote)+'</b></div>':'')}
 cvbar.addEventListener('click',e=>{const b=e.target.closest('[data-cv]');if(!b)return;
   if(b.dataset.cv==='all'){const a=OV.active();if(a&&window.convFindAll)window.convFindAll(menuCtx(a));return}
   if(b.dataset.cv==='printers'){const a=OV.active();if(a){OV.open(a.id);go('setup');setTimeout(()=>{const s=document.getElementById('st-prn');if(s)s.scrollIntoView()},60)}}
   else{const u=g('url'),r=g('urlb');if(u&&r){u.value=b.dataset.u;r.click()}}});
-window.addEventListener('oolio:menu',e=>{const d=e.detail;if(!d)return;lastMenu=d;const a=OV.active();
-  if(a){OV.save(a.id,{menu:Object.assign({},d,{by:OV.me()})});OV.tick(a.id,'menu-import')}sendPF(true)});
+window.addEventListener('oolio:menu',async e=>{const d=e.detail;if(!d)return;lastMenu=d;const a=OV.active();
+  if(a){const{items,sources,urls}=d,m=Object.assign({},d,{by:OV.me()});delete m.items;delete m.sources;delete m.urls;
+    OV.save(a.id,{menu:m});OV.tick(a.id,'menu-import');
+    // each download is kept as a menu version of the venue, with what changed since the last one
+    try{const r=await OV.addMenuVersion(a.id,{kind:'export',file:d.file,items,sources,urls});
+      cvNote=!r?'':r.same?'Same menu as version '+r.ver+', so no new version was saved.':
+        'Saved as menu version '+r.ver+' of '+a.name+': +'+r.added+' new, −'+r.removed+' removed'+(r.renamed?', '+r.renamed+' renamed':'')+', '+(r.up+r.down)+' price change'+(r.up+r.down===1?'':'s')+'. See the history in its checklist.';
+      if(cvNote&&!r.same&&r.ver===1)cvNote='Saved as the first menu version of '+a.name+'. Later downloads and monthly scans are compared with it.'}
+    catch(x){cvNote='The menu version couldn’t be saved ('+((x&&(x.message||x.code))||'error')+').'}
+    syncConv()}
+  sendPF(true)});
 
 /* ---------- Photo Finder (in its own frame) ---------- */
 const frame=g('lx-pfframe');let pfSig='';

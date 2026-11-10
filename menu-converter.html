@@ -1222,14 +1222,14 @@ async function ddRead(store,mcp,B,signal){
     (g.items||[]).forEach(it=>{if(!it||!it.name||seen.has(it.item_id))return;seen.add(it.item_id);const pr=it.price&&it.price.amount;
       rows.push([tidy(g.name||''),tidy(it.name),'',pr==null?'':num(pr),clean(it.description||''),''])})});
   return rows}
-const FA={run:false,stop:false,log:[]};
+const FA={run:false,stop:false,log:[],okUrls:[]};
 function faDraw(head){const b=$('findbox');b.style.display='block';
   b.innerHTML='<div class="chk i"><b>'+esc(head)+'</b>'+(FA.run?' <button type="button" class="sec" id="fastop" style="padding:4px 10px;margin:0 0 0 6px">Stop</button>':'')+
     '<ul style="max-height:none;color:var(--text)">'+FA.log.map(l=>'<li>'+(l.st==='ok'?'✓ ':l.st==='err'?'✗ ':l.st==='run'?'… ':'· ')+esc(l.label)+(l.msg?' <span style="color:var(--muted)">'+esc(l.msg)+'</span>':'')+'</li>').join('')+'</ul></div>';
   const s=$('fastop');if(s)s.addEventListener('click',()=>{FA.stop=true;if(readCtl)readCtl.abort()})}
 async function findAllMenus(ctx){if(FA.run)return;const mcp=await getMcp(),plan=findPlan(ctx);
   const B={credits:ctx.budget!=null?ctx.budget:Math.max(3,plan.max),used:0},opened=new Set(),images=new Set(),found=[];
-  FA.run=true;FA.stop=false;FA.log=plan.sources.map(s=>({label:s.label+': '+s.url.replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:'wait',s}));
+  FA.run=true;FA.stop=false;FA.okUrls=[];FA.log=plan.sources.map(s=>({label:s.label+': '+s.url.replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:'wait',s}));
   const name=ctx.venue||'Venue';faDraw('Finding every menu for '+name+'…');
   const take=(t,s,label,rank,delivery)=>{const same=found.filter(x=>x.srcLabel&&x.srcLabel.replace(/ \d+$/,'')===label).length;if(same)label+=' '+(same+1);t.file=label;t.rank=rank;t.srcLabel=label;t.delivery=!!delivery;found.push(t);(t.extra||[]).forEach(x=>{x.file=label+' modifiers';found.push(x)});
     return t.doc?t.doc.count:(t.rows||[]).length};
@@ -1239,12 +1239,13 @@ async function findAllMenus(ctx){if(FA.run)return;const mcp=await getMcp(),plan=
       L.st='run';faDraw('Finding every menu for '+name+'…');
       try{
         if(s.dd&&mcp){try{const rows=await ddRead(s.dd,mcp,B,new AbortController().signal);
-            if(rows.length){const n=take(mkDocTable(name+' (DoorDash)',rows,[],'DoorDash menu'),s,s.label,5,true);L.st='ok';L.msg=n+' items';continue}}
+            if(rows.length){const n=take(mkDocTable(name+' (DoorDash)',rows,[],'DoorDash menu'),s,s.label,5,true);L.st='ok';L.msg=n+' items';FA.okUrls.push(s.url);continue}}
           catch(e){L.msg='DoorDash reader: '+e.message+'. Reading the page instead…';faDraw('Finding every menu for '+name+'…')}}
         if(!mcp&&s.kind!=='site'&&s.kind!=='link'){L.st='err';L.msg='needs claude.ai (Firecrawl or the Claude app)';continue}
         const t=await readSite(s.url,mcp||{callTool:()=>Promise.reject({code:'server_not_connected'})},false,{all:true,budget:B,opened,images,linkMax:s.kind==='site'?8:2});
         const isPlat=t.doc&&/ordering site/.test(t.doc.how||''),rank=s.kind==='delivery'?5:isPlat?1:(t.doc&&/menu data/.test(t.doc.how||''))?2:3;
-        const n=take(t,s,s.label+(isPlat&&s.kind==='site'?' (ordering site)':''),rank,s.kind==='delivery');L.st='ok';L.msg=n+' items'+(t.cachedAt?' (saved result, free)':'')}
+        const n=take(t,s,s.label+(isPlat&&s.kind==='site'?' (ordering site)':''),rank,s.kind==='delivery');L.st='ok';L.msg=n+' items'+(t.cachedAt?' (saved result, free)':'');
+        if(n)[s.url,...(t.urls||[])].forEach(x=>{if(x&&!FA.okUrls.includes(x))FA.okUrls.push(x)})}
       catch(e){L.st='err';L.msg=e.message==='Stopped.'?'stopped':String(e.message||e).slice(0,160);if(FA.stop)break}}
     // menu pictures found on the site, read by Claude (uses a little Claude usage, no Firecrawl credits)
     const imgs=[...images].slice(0,6);
@@ -1485,11 +1486,15 @@ async function save(blob,name){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove()}
 const csv=rows=>rows.map(r=>r.map(v=>{v=String(v);return/[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')).join('\r\n');
 // a summary of the downloaded import, for the Setup Tracker and Photo Finder
-function announce(file){if(!res)return;const ix=h=>OUT.indexOf(h),iN=ix('Product Name*'),iT=ix('Product Type*'),iC=ix('Category*'),iP=ix('Printer Profiles');
+function announce(file){if(!res)return;const ix=h=>OUT.indexOf(h),iN=ix('Product Name*'),iT=ix('Product Type*'),iC=ix('Category*'),iP=ix('Printer Profiles'),iV=ix('Variant Name'),iS=ix('Sell Price*');
   const names=new Map(),cats=new Map();
   res.rows.forEach(r=>{if(r[iT]!=='Product')return;if(!names.has(r[iN]))names.set(r[iN],r[iC]);const c=cats.get(r[iC])||{n:new Set(),p:new Set()};c.n.add(r[iN]);if(r[iP])c.p.add(r[iP]);cats.set(r[iC],c)});
   window.dispatchEvent(new CustomEvent('oolio:menu',{detail:{at:Date.now(),file,products:names.size,variants:res.nV||0,modifiers:res.nM||0,groups:res.nG||0,
-    cats:[...cats].map(([c,v])=>[c,v.n.size,[...v.p].join(', ')]),names:[...names].slice(0,800)}}));}
+    cats:[...cats].map(([c,v])=>[c,v.n.size,[...v.p].join(', ')]),names:[...names].slice(0,800),
+    // every sellable line (product, category, size, price) for the venue's menu history
+    items:res.rows.filter(r=>r[iT]==='Product').map(r=>[r[iN],r[iC],r[iV]||'',r[iS]===''?'':+r[iS]]).slice(0,1500),
+    sources:tables.filter(t=>t.on&&t.a&&t.a.kind!=='modifiers').map(t=>t.srcLabel||t.file),
+    urls:FA.okUrls&&FA.okUrls.length&&tables.some(t=>t.on&&t.srcLabel)?FA.okUrls.slice():[]}}));}
 $('dlc').addEventListener('click',()=>{const n=outName('csv','Oolio One import');save(new Blob(['﻿'+csv([OUT].concat(res.rows))],{type:'text/csv;charset=utf-8'}),n);announce(n)});
 $('dlx').addEventListener('click',()=>{const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([OUT].concat(res.rows)),'in');
   const n=outName('xlsx','Oolio One import');save(new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),n);announce(n)});
