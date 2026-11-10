@@ -78,6 +78,43 @@ LAUNCHER_CSS = r"""
 .lx-note button{justify-self:start;margin:0}
 .lx-pfwrap{padding-left:max(0px,env(safe-area-inset-left,0px));padding-right:max(0px,env(safe-area-inset-right,0px))}
 .lx-pfwrap .lx-note{margin-left:max(16px,env(safe-area-inset-left,0px));margin-right:max(16px,env(safe-area-inset-right,0px))}
+/* the venue: header picker, home hub, and the strip each tool shows */
+.lx-venue{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:.85rem;color:var(--muted);min-width:0}
+.lx-venue select{font:inherit;font-size:.9rem;font-weight:600;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 8px;max-width:min(260px,60vw);width:auto;margin:0}
+.lx-toolsh{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 -6px}
+#lx-hub{display:grid;gap:14px}
+#lx-hub h1{font-size:1.5rem;margin:0;text-wrap:balance}
+#lx-hub>p{color:var(--muted);margin:0;max-width:70ch}
+.lx-muted{color:var(--muted)}.lx-small{font-size:.85rem}
+.lx-pick{display:grid;gap:12px}.lx-pick>button{justify-self:start;margin:0}
+.lx-recent{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.lx-recent button{display:grid;gap:2px;text-align:left;margin:0;font-weight:400}
+.lx-recent button span{color:var(--muted);font-size:.82rem}
+.lx-vhead{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:end;justify-content:space-between}
+.lx-vhead p{margin:2px 0 0;color:var(--muted)}
+.lx-prog{display:flex;gap:8px;align-items:center;font-size:.88rem;font-variant-numeric:tabular-nums}
+.lx-bar2{display:block;width:160px;height:8px;border-radius:4px;background:var(--line);overflow:hidden}.lx-bar2 i{display:block;height:100%;background:var(--ok)}
+.lx-steps{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.lx-step{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:6px 14px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.lx-step.next{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.lx-step h2{font-size:1rem;margin:0}.lx-step p{margin:2px 0 0;color:var(--muted);font-size:.88rem}
+.lx-step button{margin:0}
+.lx-num{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;border:2px solid var(--line);color:var(--muted);font-size:.9rem}
+.lx-step.next .lx-num{border-color:var(--accent);color:var(--accent)}
+.lx-step.done .lx-num{background:var(--ok);border-color:var(--ok);color:#fff}
+@media (max-width:560px){.lx-step{grid-template-columns:auto minmax(0,1fr)}.lx-step button{grid-column:2;justify-self:start}}
+.lx-strip{border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:8px;background:var(--card);padding:10px 12px;font-size:.9rem;display:grid;gap:6px;margin:0 0 16px}
+.lx-strip button,.lx-row button{font:inherit;font-size:.85rem;font-weight:600;padding:5px 10px;margin:0 6px 0 0;border-radius:8px;cursor:pointer;background:var(--accent);color:var(--accent-text);border:0}
+.lx-sec,.lx-strip .lx-sec,.lx-row .lx-sec{background:transparent!important;color:var(--text)!important;border:1px solid var(--line)!important}
+.lx-link,.lx-strip .lx-link{background:none!important;border:0!important;color:var(--accent)!important;padding:0!important;font:inherit;font-weight:600;cursor:pointer;margin:0!important}
+.lx-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+#lx-rf .lx-strip{max-width:1100px;margin:16px auto 0}
+.lx-dlg{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);padding:18px;width:min(460px,calc(100vw - 32px))}
+.lx-dlg::backdrop{background:rgb(0 0 0 / .4)}
+.lx-form{display:grid;gap:12px}.lx-form h2{margin:0;font-size:1.15rem}
+.lx-form label{display:grid;gap:4px;font-size:.85rem;color:var(--muted)}
+.lx-form input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+.lx-form .lx-ck{display:flex;gap:8px;align-items:flex-start}.lx-form .lx-ck input{width:auto;margin-top:3px}
 #lx-pfframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
 """
 
@@ -90,10 +127,12 @@ LAUNCHER_HTML = """
     <button type="button" class="lx-tab" data-go="venue">Restaurant Lookup</button>
     <button type="button" class="lx-tab" data-go="setup">Setup Tracker</button>
   </nav>
+  <label class="lx-venue"><span>Venue</span><select id="lx-venue" aria-label="Venue you are working on"><option value="">Loading venues…</option></select></label>
 </header>
+<dialog class="lx-dlg" id="lx-dlg"></dialog>
 <section class="lx-home" id="lx-home">
-  <h1>Oolio Menu Tools</h1>
-  <p>Tools for researching and setting up a venue in Oolio One. Open any one on its own; each keeps its own work while you switch between them.</p>
+  <div id="lx-hub"></div>
+  <h2 class="lx-toolsh">All tools</h2>
   <div class="lx-cards">
     <article class="lx-card">
       <h2>Menu Converter</h2>
@@ -179,6 +218,7 @@ page = (
     + "<script>" + rl_js + "</script>\n"
     + "<script>" + st_js + "</script>\n"
     + "<script>\nconst PF_HTML=" + pf_js + ";\n" + LAUNCHER_JS + "</script>\n"
+    + "<script>" + (HERE / "venue-link.js").read_text(encoding="utf-8") + "</script>\n"
 )
 
 full = (

@@ -465,6 +465,18 @@ const dz=$('drop');['dragenter','dragover'].forEach(n=>dz.addEventListener(n,e=>
 ['dragleave','drop'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.remove('on')}));
 dz.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)loadFile(f)});
 $('venue').addEventListener('input',()=>{$('venue').dataset.typed=$('venue').value?'1':''});
+// Oolio Menu Tools sends the current venue and the products from its Menu Converter, so no export has to be loaded
+let fromTools=false,toolsSig='';
+window.addEventListener('message',e=>{if(e.source!==window.parent||window.parent===window)return;const d=e.data;if(!d||d.type!=='oolio:ctx')return;
+  if(d.venue&&!$('venue').dataset.typed)$('venue').value=d.venue;
+  const ps=Array.isArray(d.products)?d.products.filter(x=>x&&x[0]):[],sig=ps.map(x=>x[0]).join('|');
+  if(ps.length&&(!items.length||fromTools||items.every(it=>it.example))&&sig!==toolsSig){toolsSig=sig;fromTools=true;openIdx=-1;
+    const keep=new Map(items.map(it=>[it.name,it]));
+    items=ps.map(([n,c])=>keep.get(n)||Object.assign(mkItem(n,c||''),{grp:'',hasImg:false,on:true}));
+    if(venuePhotos.length)applyVenue();
+    $('lmsg').className='msg';$('lmsg').textContent='Loaded '+items.length+' product'+(items.length===1?'':'s')+' from the Menu Converter'+(d.venue?' for '+d.venue:'')+(d.when?' ('+d.when+')':'')+'. Load an Oolio One export instead if the products have changed since.';
+    render()}});
+$('file').addEventListener('change',()=>{fromTools=false});
 $('strict').addEventListener('change',()=>{items.forEach(it=>{if(!it.own){it.cands=[];it.pick=0;it.tried=new Set();it.status='wait'}});render();note('Licence filter changed, so the photos will be searched again. Click Find photos.')});
 ['kpx','kpb'].forEach(id=>{const v=ls.get('mpf-'+id);if(v)$(id).value=v;$(id).addEventListener('change',()=>{ls.set('mpf-'+id,clean($(id).value));items.forEach(it=>{if(it.status==='none')it.tried=new Set(),it.status='wait'});render();checkKey(id==='kpx'?'pexels':'pixabay')})});
 if(clean($('kpx').value)||clean($('kpb').value))$('keys').open=true;
@@ -493,7 +505,8 @@ async function build(onFile){
     catch(e){used.delete(n.toLowerCase());failed.push(it.name)}}
   await onFile('photo credits.csv',new Blob(['﻿'+credits.map(r=>r.map(csvq).join(',')).join('\r\n')],{type:'text/csv'}));
   return{saved:credits.length-1,failed}}
-function done(r,where){$('vmsg').className='msg'+(r.failed.length?' bad':'');
+function done(r,where){if(window.parent!==window)try{window.parent.postMessage({type:'oolio:photos',saved:r.saved,failed:r.failed.length,venue:clean($('venue').value)},'*')}catch(e){}
+  $('vmsg').className='msg'+(r.failed.length?' bad':'');
   $('vmsg').textContent='Saved '+r.saved+' photo'+(r.saved===1?'':'s')+' '+where+'.'+(r.failed.length?' These couldn’t be downloaded, so pick another photo for them and save again: '+r.failed.join(', ')+'.':'')}
 function venueName(){const v=safe($('venue').value||'');if(!clean($('venue').value)){$('vmsg').className='msg bad';$('vmsg').textContent='Type the venue name first. It’s used as the folder name.';$('venue').focus();return''}return v}
 $('savedir').addEventListener('click',async()=>{const v=venueName();if(!v)return;

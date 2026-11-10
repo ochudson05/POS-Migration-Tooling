@@ -509,6 +509,13 @@ function extract(t){
 const BEV=/\b(beers?|wines?|spirits?|cocktails?|mocktails?|coffees?|teas?|lattes?|chai|drinks?|beverages?|juices?|soft|softs|sodas?|ciders?|liqueurs?|waters?|shakes?|milkshakes?|thickshakes?|smoothies?|whisk(e)?y|bourbon|scotch|brandy|cognac|gin|vodka|rum|tequila|mezcal|bubbl\w*|champagne|prosecco|sparkling|ale|lager|stout|ipa|seltzer|pints?|schooners?|middy|mixers?|espresso|cappuccino|macchiato|mocha|piccolo|matcha|hot choc\w*|lemonade|cola|coke|sprite|tonic|kombucha|red|white|ros[eé]|shiraz|merlot|pinot|chardonnay|riesling|sauv\w*|moscato|negroni|martini|spritz|drip|cold brew|gatorade|energy)\b/i;
 const FOOD=/\b(pizzas?|pastas?|burgers?|salads?|desserts?|cakes?|cheesecakes?|cookies?|muffins?|breads?|toast|breakfast|breaky|brekky|entr[eé]es?|mains?|kids|gelato|ice cream|sandwich(es)?|wraps?|soups?|steaks?|seafood|chicken|beef|lamb|pork|fish|chips|fries|sides?|starters?|appetizers?|snacks?|slices?|tarts?|brownies?|frittatas?|croissants?|pancakes?|eggs?|focc?acc?ias?|pies?|nachos|wings|tacos?|lunch|dinner|balls?|puddings?|cotta|pavlova|sorbet|food|platters?|boards?|bowls?|risotto|curry|noodles?|rice|dumplings?|bao|fritters?|arancini|squid|calamari|prawns?|oysters?|tiramisu|bruschetta|sushi)\b/i;
 const PR=['Mains','Pans','Larder','Bar','Coffee'];
+// "Auto" printers (Bar, Coffee, Mains…) become the venue's own printer names when the launcher knows them
+function venuePrinter(p){const V=window.OOLIO_PRINTERS||[];if(!V.length||!p||V.includes(p))return p;
+  const f=re=>V.find(n=>re.test(n)),food=()=>f(/kitchen|pass|main|hot|grill|pizza|larder/i)||V.find(n=>!/bar|drink|bev|coffee|barista|cocktail|receipt|docket/i.test(n));
+  if(/^coffee$/i.test(p))return f(/coffee|barista/i)||f(/bar|drink|bev/i)||p;
+  if(/^bar$/i.test(p))return f(/bar|drink|bev/i)||p;
+  return food()||p;}
+window.convRefresh=()=>{if(tables.length){renderCats();run()}};
 function guessPrinter(c,m){const t=c+' '+m;
   if(/\b(coffees?|teas?|lattes?|chai|espresso|matcha|hot (drinks?|choc\w*)|barista)\b/i.test(t))return'Coffee';
   if(BEV.test(t)&&!FOOD.test(c))return'Bar';
@@ -1153,7 +1160,7 @@ function rebuild(){
   renderCats();buildVG();run();}
 function renderCats(){
   const srcP=[...new Set(base.map(i=>i.printer).filter(Boolean).map(normPrinter).filter(Boolean))];
-  const P=[...new Set([...PR,...srcP])];
+  const VP=window.OOLIO_PRINTERS||[],P=[...new Set([...(VP.length?VP:PR),...srcP])];
   const sel=(i,k,opts,cur)=>'<select data-c="'+i+'" data-k="'+k+'">'+opts.map(([v,l])=>'<option value="'+esc(v)+'"'+(cur===v?' selected':'')+'>'+esc(l)+'</option>').join('')+'</select>';
   $('cats').innerHTML='<thead><tr><th>Category</th><th>Items</th><th>Rename to</th><th>Printer profile</th><th>Reporting group</th><th>Measured By</th></tr></thead><tbody>'+
     catList.map((c,i)=>{const g=catCfg[c],n=base.filter(x=>x.cat===c).length,hasSrc=base.some(x=>x.cat===c&&x.printer!=null&&x.printer!=='');
@@ -1251,7 +1258,7 @@ function convert(){
   const items=base.map(o=>({...o}));applyGroups(items,vg);
   const rows=[],checks=[],chk=(msg,list,info)=>{if(list.length)checks.push({msg,list,info})};
   const catName=c=>(catCfg[c]&&catCfg[c].rename)||c;
-  const printerOf=o=>{const g=catCfg[o.cat];if(g&&g.printer!=='*')return g.printer;return o.printer!=null&&o.printer!==''?normPrinter(o.printer):itemPrinter(o);};
+  const printerOf=o=>{const g=catCfg[o.cat];if(g&&g.printer!=='*')return g.printer;return o.printer!=null&&o.printer!==''?normPrinter(o.printer):venuePrinter(itemPrinter(o));};
   const rgOf=o=>{const g=catCfg[o.cat];if(g&&g.rg!=='*')return g.rg;const s=clean(o.reporting);if(s&&N(s)!==N(o.printer)&&!/^(kitchen|bar|barista|pizza|coffee)$/i.test(s))return normRG(s);return guessRG(o);};
   const badCodes=[],vol=[];const code=(v,o)=>{const d=String(v||'').replace(/\s/g,'');if(!d)return'';if(/^\d{6,14}$/.test(d))return d;badCodes.push(o.name+' ('+v+')');return'';};
   const mk=(o,type,x={})=>{const r=Object.fromEntries(OUT.map(h=>[h,'']));
@@ -1332,7 +1339,8 @@ function renderPrev(){
   p.innerHTML='<table><thead><tr>'+OUT.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rs.slice(0,300).map(r=>'<tr>'+r.map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('')+'</tbody></table>'+(rs.length>300?'<div class="warn" style="padding:6px 10px">Showing 300 of '+rs.length+' rows. All rows are in the download.</div>':'');}
 
 /* ---------------- downloads ---------------- */
-function outName(ext,suffix){const f=(tables.find(t=>t.on&&t.a)||{}).file||'menu';let v=f.replace(/\.[^.]+$/,'').split(' - ')[0].replace(/[\\/:*?"<>|]/g,'').trim();
+function outName(ext,suffix){if(window.OOLIO_VENUE_NAME)return String(window.OOLIO_VENUE_NAME).replace(/[\\/:*?"<>|]/g,'').trim()+' - '+suffix+'.'+ext;
+  const f=(tables.find(t=>t.on&&t.a)||{}).file||'menu';let v=f.replace(/\.[^.]+$/,'').split(' - ')[0].replace(/[\\/:*?"<>|]/g,'').trim();
   if(/^(venue name|square_menu.*|restaurant_menu.*|lightspeed.*)$/i.test(v))v='menu';return v+' - '+suffix+'.'+ext;}
 // On the shared claude.ai page, downloads go through the page's save capability (the viewer confirms);
 // opened as a local file, a normal browser download is used.
@@ -1341,9 +1349,15 @@ async function save(blob,name){
   if(dl){try{await dl.save({filename:name,data:blob});say('')}catch(e){if(e&&e.code!=='declined')say('The file could not be saved here ('+(e.message||e.code||'unavailable')+').')}return}
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove()}
 const csv=rows=>rows.map(r=>r.map(v=>{v=String(v);return/[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v}).join(',')).join('\r\n');
-$('dlc').addEventListener('click',()=>save(new Blob(['﻿'+csv([OUT].concat(res.rows))],{type:'text/csv;charset=utf-8'}),outName('csv','Oolio One import')));
+// a summary of the downloaded import, for the Setup Tracker and Photo Finder
+function announce(file){if(!res)return;const ix=h=>OUT.indexOf(h),iN=ix('Product Name*'),iT=ix('Product Type*'),iC=ix('Category*'),iP=ix('Printer Profiles');
+  const names=new Map(),cats=new Map();
+  res.rows.forEach(r=>{if(r[iT]!=='Product')return;if(!names.has(r[iN]))names.set(r[iN],r[iC]);const c=cats.get(r[iC])||{n:new Set(),p:new Set()};c.n.add(r[iN]);if(r[iP])c.p.add(r[iP]);cats.set(r[iC],c)});
+  window.dispatchEvent(new CustomEvent('oolio:menu',{detail:{at:Date.now(),file,products:names.size,variants:res.nV||0,modifiers:res.nM||0,groups:res.nG||0,
+    cats:[...cats].map(([c,v])=>[c,v.n.size,[...v.p].join(', ')]),names:[...names].slice(0,800)}}));}
+$('dlc').addEventListener('click',()=>{const n=outName('csv','Oolio One import');save(new Blob(['﻿'+csv([OUT].concat(res.rows))],{type:'text/csv;charset=utf-8'}),n);announce(n)});
 $('dlx').addEventListener('click',()=>{const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([OUT].concat(res.rows)),'in');
-  save(new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),outName('xlsx','Oolio One import'))});
+  const n=outName('xlsx','Oolio One import');save(new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),n);announce(n)});
 $('dlm').addEventListener('click',()=>{const r=[['Modifier Group','Modifier','Price','Required?','Maximum','Linked Product(s)']];
   mods.forEach(o=>r.push([o.group,o.name,o.price||'0',o.g?o.g.required:'',o.g?o.g.max:'',o.g?o.g.linked:'']));
   const lk=new Map();res.genMods.forEach(o=>{const k=o.group+'|'+o.name;if(!lk.has(k))lk.set(k,{...o,links:new Set()});lk.get(k).links.add(o.linked)});

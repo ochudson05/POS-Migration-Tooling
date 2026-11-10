@@ -182,7 +182,7 @@ const SECTIONS=[
   {id:'prn-list',t:'Create all printers',table:'printers',info:['Printer type LAN, brand Other.','Model: thermal → TM82, impact → TM-U220B.','IP address: the placeholder 1.1.1.1 is fine if unknown.','Identical kitchen printers: Kitchen 1 / Kitchen 2. If staff call them something else (“Pizza”, “Pass”), use their names.'],why:'Support staff need names that match the venue’s own language.',check:prnCheck,guides:['troubleshoot-printing-issues-in-pos']},
   {id:'prn-fallback',t:'Set fallback printers',info:['Always configure fallback printing, in pairs: Bar 1 ↔ Bar 2, Kitchen 1 ↔ Kitchen 2.'],check:o=>{const p=o.printers||[];if(!p.length)return null;const miss=p.filter(x=>x.name&&!x.fb).map(x=>x.name);return miss.length?{m:'No fallback: '+miss.join(', ')+'.'}:{ok:1,m:'Every printer has a fallback.'}}},
   {id:'prn-workflow',t:'Agree the printing workflow',info:['Cocktails: separate docket, possibly a separate printer.','Beer, wine and spirits: separate docket, possibly the same printer.','If unsure, route both to the same printer to start and confirm during training.'],fields:[['cocktails','Cocktails print to','text','Bar 2 (separate docket)'],['drinks','Beer / wine / spirits print to','text','Bar 1'],['food','Food prints to','text','Kitchen 1, Pizza'],['confirm','Still to confirm at training','text']]},
-  {id:'prn-profiles',t:'Create printer profiles and assign products',info:['Create separate printer profiles where required.','Assign products to the right one: Kitchen 1, Kitchen 2, Bar prep, Cocktails, Drinks.','The Menu Converter fills a printer per product; check the import landed as expected.'],guides:['configure-printer-profiles','create-product-groups-categories-and-reporting-groups','bulk-edit-products']},
+  {id:'prn-profiles',t:'Create printer profiles and assign products',info:['Create separate printer profiles where required.','Assign products to the right one: Kitchen 1, Kitchen 2, Bar prep, Cocktails, Drinks.','The Menu Converter offers the printers listed above, and fills a printer per product.'],extra:o=>printerPanel(o),guides:['configure-printer-profiles','create-product-groups-categories-and-reporting-groups','bulk-edit-products']},
   {id:'prn-highlight',t:'Kitchen docket highlighting',info:['Ask whether removes, allergies and notes should be highlighted.','Especially important on impact printers, which can print in red.'],subs:['Removes highlighted','Allergies highlighted','Notes highlighted'],guides:['configure-printer-profiles','configure-allergens']},
 ]},
 {id:'prof',phase:'pre',t:'Device profiles & MPOS',steps:[
@@ -191,7 +191,8 @@ const SECTIONS=[
   {id:'mpos-device',when:'mpos',t:'Dedicated MPOS device',info:['Usually linked to the host terminal or a pay-at-table device.','Serial numbers can be assigned later by the techs.'],guides:['configure-mpos','process-a-payment-on-mpos','place-an-order-on-mpos']},
 ]},
 {id:'menu',phase:'pre',t:'Menu & products',d:'Not on the recap checklist, but needed before training.',steps:[
-  {id:'menu-import',t:'Import products',info:['Use the Menu Converter tab to turn the customer’s menu into an Oolio One import.'],guides:['create-standard-products','create-modifiers-and-option-groups','create-variant-groups','upload-and-manage-product-images']},
+  {id:'menu-import',t:'Import products',info:['Use the Menu Converter tab to turn the customer’s menu into an Oolio One import. Downloading the import ticks this step.'],extra:o=>menuPanel(o),guides:['create-standard-products','create-modifiers-and-option-groups','create-variant-groups','upload-and-manage-product-images']},
+  {id:'menu-photos',t:'Add product photos',info:['Photo Finder takes the products straight from the Menu Converter. Saving the photos ticks this step.','Upload them in Back Office afterwards.'],extra:o=>photoPanel(o),guides:['upload-and-manage-product-images']},
   {id:'menu-pos',t:'Build the POS menu and tables',guides:['create-a-pos-menu','configure-sections-tables','create-courses','create-price-lists']},
   {id:'menu-users',t:'Create users and roles',guides:['create-a-user','managing-user-roles']},
 ]},
@@ -257,15 +258,15 @@ async function start(){
       snap.docChanges().forEach(ch=>{if(ch.type==='removed')delete ORGS[ch.doc.id];else ORGS[ch.doc.id]=ch.doc.data()});
       // the patch this page is still sending stays on top of what the store has
       Object.entries(Q).forEach(([id,q])=>{if(q.p&&ORGS[id])ORGS[id]=deepMerge(ORGS[id],q.p)});
-      LOADED=true;soonRender()},
+      LOADED=true;soonRender();notify()},
       e=>{clearTimeout(timer);LOADED=true;LOADMSG='The shared tracker stopped answering ('+(e&&e.code||'error')+'). Reload the page to reconnect.';render()})}
-  else{MODE='local';Object.assign(ORGS,local.all());LOADED=true;render()}
+  else{MODE='local';Object.assign(ORGS,local.all());LOADED=true;render();notify()}
   if(ME)names([ME]);}
 // one write at a time per organisation; edits made meanwhile are merged into the next write
 const Q={};
 function save(id,patch){const o=ORGS[id];if(!o||READONLY)return;
   patch=Object.assign({},patch,{updatedAt:Date.now(),updatedBy:ME||''});ORGS[id]=deepMerge(o,patch);
-  const q=Q[id]||(Q[id]={p:null,busy:false});q.p=deepMerge(q.p||{},patch);if(!q.busy)flush(id);}
+  const q=Q[id]||(Q[id]={p:null,busy:false});q.p=deepMerge(q.p||{},patch);if(!q.busy)flush(id);notify();soonRender()}
 async function flush(id){const q=Q[id];q.busy=true;setSaving(true);
   while(q.p){const p=q.p;q.p=null;
     try{if(MODE==='db')await DB.collection(COL).doc(id).update(p);else local.put(id,ORGS[id])}
@@ -275,10 +276,38 @@ async function flush(id){const q=Q[id];q.busy=true;setSaving(true);
   q.busy=false;setSaving(false)}
 async function createOrg(o){const id='o'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   o=Object.assign({name:'',stage:'pre',flags:{},links:{},steps:{},devices:[],printers:[],createdAt:Date.now(),createdBy:ME||'',updatedAt:Date.now(),updatedBy:ME||''},o);
-  ORGS[id]=o;if(MODE==='db')await DB.collection(COL).doc(id).set(o);else local.put(id,o);return id}
-async function deleteOrg(id){delete ORGS[id];if(MODE==='db')await DB.collection(COL).doc(id).delete();else local.del(id)}
+  ORGS[id]=o;if(MODE==='db')await DB.collection(COL).doc(id).set(o);else local.put(id,o);notify();return id}
+async function deleteOrg(id){delete ORGS[id];if(ACTIVE===id){ACTIVE='';ls.set('ov-active','')}notify();if(MODE==='db')await DB.collection(COL).doc(id).delete();else local.del(id)}
 let savingT=null;function setSaving(b){const el=g('st-saving');if(!el)return;clearTimeout(savingT);if(b)el.textContent='Saving…';else savingT=setTimeout(()=>{el.textContent=MODE==='db'?'Saved for the team':'Saved on this browser'},300)}
 function flash(t,err){const el=g('st-flash');if(el){el.className='st-msg'+(err?' err':'');el.textContent=t}}
+
+/* ---------- the shared venue: the one organisation every tab works on ---------- */
+const LISTEN=new Set();let ACTIVE=ls.get('ov-active')||'',notifyT=null;
+function notify(){if(notifyT)return;notifyT=setTimeout(()=>{notifyT=null;LISTEN.forEach(f=>{try{f()}catch(e){console.error(e)}})},0)}
+// a lookup is kept as one JSON string, so a new lookup replaces the old one whole (the store merges objects field by field)
+function slimLookup(P){const c=JSON.parse(JSON.stringify(P));c.site=c.site?{url:c.site.url,via:c.site.via}:null;c.web=null;
+  let s=JSON.stringify(c);if(s.length>150000&&c.reviews&&c.reviews.list){c.reviews.list=c.reviews.list.slice(0,20);s=JSON.stringify(c)}
+  return{at:c.at||Date.now(),name:(c.place||{}).name||'',pid:(c.place||{}).place_id||'',json:s.length>200000?'':s}}
+let LKC={};function lookupOf(o){const L=o&&o.lookup;if(!L||!L.json)return null;if(LKC.k===L.json)return LKC.v;let v=null;try{v=JSON.parse(L.json)}catch(e){}LKC={k:L.json,v};return v}
+window.OolioVenues={
+  get ready(){return LOADED},get mode(){return MODE},get readOnly(){return READONLY},
+  list(){return Object.entries(ORGS).map(([id,o])=>Object.assign({id},o)).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))},
+  get(id){return id&&ORGS[id]?Object.assign({id},ORGS[id]):null},
+  get activeId(){return ORGS[ACTIVE]?ACTIVE:''},
+  active(){return this.get(this.activeId)},
+  setActive(id){ACTIVE=id&&ORGS[id]?id:'';ls.set('ov-active',ACTIVE);if(VIEW.org&&ACTIVE&&VIEW.org!==ACTIVE){VIEW.org=ACTIVE;VIEW.open=new Set();render()}notify()},
+  open(id){if(id&&ORGS[id]){VIEW.org=id;VIEW.tab='list';VIEW.open=new Set(outstanding(ORGS[id]).slice(0,1).map(x=>x.id))}else VIEW.org=null;render()},
+  save(id,patch){save(id,patch)},
+  tick(id,step){const o=ORGS[id];if(o&&st(o,step).s!=='done')save(id,{steps:{[step]:{s:'done',by:ME,at:Date.now()}}})},
+  async create(o){const id=await createOrg(o);this.setActive(id);return id},
+  attachLookup(id,P){const o=ORGS[id];if(!o||!P||!P.place)return;const pt=fillPatch(o,venueOf(P));pt.lookup=slimLookup(P);save(id,pt)},
+  lookup(id){return lookupOf(ORGS[id])},
+  progress(id,ph){const o=ORGS[id];return o?progress(o,ph):null},
+  stage(id){const o=ORGS[id];return o?(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1]:''},
+  printers(id){const o=ORGS[id];return o?(o.printers||[]).map(x=>clean(x.name)).filter(Boolean):[]},
+  address(id){return ORGS[id]?val(ORGS[id],'biz-address','address'):''},
+  me(){return ME},
+  on(f){LISTEN.add(f);return()=>LISTEN.delete(f)}};
 
 /* ---------- people ---------- */
 const NAMES={};
@@ -296,6 +325,26 @@ function progress(o,phase){const L=stepsFor(o).filter(x=>!phase||x.sec.phase===p
   const done=live.filter(x=>st(o,x.id).s==='done').length;return{done,total:live.length,pct:live.length?Math.round(done/live.length*100):0}}
 function outstanding(o){return stepsFor(o).filter(x=>!st(o,x.id).s)}
 function warnings(o){const w=[];stepsFor(o).forEach(x=>{if(x.check){const c=x.check(o);if(c&&!c.ok)w.push([x,[].concat(c.m)])}});return w}
+
+/* ---------- data from the other tabs ---------- */
+const goBtn=(tab,t)=>'<button type="button" class="st-sec st-sm" data-goto="'+tab+'">'+esc(t)+'</button>';
+function menuPanel(o){const m=o.menu;if(!m)return '<div class="st-check">No menu converted yet. '+goBtn('converter','Open Menu Converter')+'</div>';
+  return '<div class="st-check ok">Menu Converter: '+m.products+' products in '+(m.cats||[]).length+' categories'+(m.variants?', '+m.variants+' with sizes':'')+(m.modifiers?', '+m.modifiers+' modifiers':'')+
+    '. Downloaded '+esc(when(m.at))+(m.by?' by '+esc(who(m.by)):'')+(m.file?' as '+esc(m.file):'')+'. '+goBtn('converter','Open Menu Converter')+'</div>'}
+function photoPanel(o){const f=o.photos;if(!f)return '<div class="st-check">No photos saved yet. '+goBtn('photos','Open Photo Finder')+'</div>';
+  return '<div class="st-check '+(f.failed?'w':'ok')+'">Photo Finder: '+f.saved+' photos saved'+(f.failed?', '+f.failed+' couldn’t be downloaded':'')+', '+esc(when(f.at))+(f.by?' by '+esc(who(f.by)):'')+'. '+goBtn('photos','Open Photo Finder')+'</div>'}
+function printerPanel(o){const m=o.menu;if(!m||!(m.cats||[]).length)return '';const names=(o.printers||[]).map(p=>p.name);
+  const rows=m.cats.map(c=>'<tr><td>'+esc(c[0])+'</td><td>'+c[1]+'</td><td>'+(c[2]?esc(c[2]):'<span class="st-muted">none</span>')+(c[2]&&names.length&&c[2].split(/\s*,\s*/).some(x=>x&&!names.includes(x))?' <span class="st-chip w">not a printer above</span>':'')+'</td></tr>').join('');
+  return '<details><summary class="st-small st-muted">Printers in the converted menu, by category</summary><div class="st-tblw" style="margin-top:6px"><table class="st-tbl" style="min-width:0"><thead><tr><th>Category</th><th>Products</th><th>Printer</th></tr></thead><tbody>'+rows+'</tbody></table></div></details>'}
+function lookupPanel(o){const P=lookupOf(o);if(!P||!P.place)return'';const f=P.found||{},pl=P.place,fl=o.flags||{},ai=P.ai||{};
+  const names=x=>Object.keys(x||{}).filter(k=>x[k]);const dl=names(f.delivery),bk=names(f.booking),tk=names(f.tech);
+  const sug=[];if(bk.some(b=>/sevenrooms|nowbookit/i.test(b))&&!fl.booking)sug.push(['booking','7Rooms / NowBookIt']);
+  if(dl.length&&!fl.integ)sug.push(['integ','Other integrations']);if(tk.length&&!fl.ecom)sug.push(['ecom','Online ordering / e-com']);
+  const bits=[];if(pl.rating)bits.push(pl.rating+'★ ('+pl.review_count+')');if(dl.length)bits.push('Delivery: '+dl.join(', '));if(bk.length)bits.push('Bookings: '+bk.join(', '));if(tk.length)bits.push('Ordering / POS: '+tk.join(', '));
+  return '<div class="st-check"><b>From Restaurant Lookup</b> ('+esc(when(P.at))+'): '+esc(pl.name)+(pl.address?', '+esc(pl.address):'')+(bits.length?'<br>'+esc(bits.join(' · ')):'')+
+    (ai.summary?'<br><span class="st-muted">'+esc(ai.summary)+'</span>':'')+
+    (sug.length&&!READONLY?'<div class="st-tools" style="margin-top:6px"><span class="st-small st-muted">The lookup suggests checking:</span>'+sug.map(([k,t])=>'<button type="button" class="st-sec st-sm" data-sugflag="'+k+'">Tick “'+esc(t)+'”</button>').join('')+'</div>':'')+
+    '<div class="st-tools" style="margin-top:6px">'+goBtn('venue','Open the lookup')+'</div></div>'}
 
 /* ---------- rendering ---------- */
 let VIEW={org:null,tab:'list',q:'',stage:'',open:new Set()};
@@ -377,6 +426,7 @@ function stepHtml(o,step){const s=st(o,step.id),open=VIEW.open.has(step.id),cls=
   if(step.info)h+='<ul class="st-info">'+step.info.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>';
   if(step.why)h+='<div class="st-why"><b>Why:</b> '+esc(step.why)+'</div>';
   if(subs.length)h+='<div class="st-subs">'+subs.map(x=>'<label><input type="checkbox" data-sub="'+step.id+'" data-k="'+esc(x)+'"'+(sv[x]?' checked':'')+(READONLY?' disabled':'')+'> '+esc(x)+'</label>').join('')+'</div>';
+  if(step.extra)h+=step.extra(o);
   if(step.table)h+=tableHtml(o,step.table);
   if(step.fields)h+='<div class="st-fields">'+step.fields.map(f=>fieldHtml(o,step,f)).join('')+'</div>';
   if(c)h+='<div class="st-check '+(c.ok?'ok':'w')+'">'+([].concat(c.m).length>1?'<ul>'+[].concat(c.m).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':esc([].concat(c.m)[0]))+'</div>';
@@ -394,7 +444,7 @@ function orgHtml(o,id){const p=progress(o),pp=progress(o,'pre'),tp=progress(o,'t
     '<div><div class="st-small st-muted" style="margin-bottom:6px">What was sold</div><div class="st-flags">'+FLAGS.map(([k,t])=>'<label class="st-flag"><input type="checkbox" data-flag="'+k+'"'+(fl[k]?' checked':'')+dis+'> '+esc(t)+'</label>').join('')+'</div></div>'+
     '<div class="st-tools">'+(READONLY?'':'<button type="button" class="st-sec st-sm" data-a="fill">Fill from a lookup</button>')+'<button type="button" class="st-sm" data-a="recap">Recap</button>'+
     '<button type="button" class="st-sec st-sm" data-a="expand">Open next steps</button><button type="button" class="st-sec st-sm" data-a="collapse">Close all</button>'+
-    (READONLY?'':'<button type="button" class="st-sec st-sm" data-a="delete">Delete</button>')+'</div><div id="st-flash" class="st-msg" style="margin:0"></div></div>';
+    (READONLY?'':'<button type="button" class="st-sec st-sm" data-a="delete">Delete</button>')+'</div><div id="st-flash" class="st-msg" style="margin:0"></div>'+lookupPanel(o)+'</div>';
   h+='<div class="st-layout"><nav class="st-nav" aria-label="Sections">';let ph='';
   SECTIONS.forEach(s=>{if(!applies(o,s))return;if(s.phase!==ph){ph=s.phase;h+='<div class="st-phase">'+(ph==='pre'?'Before training':'At training')+'</div>'}
     const L=s.steps.filter(x=>applies(o,x)&&st(o,x.id).s!=='na'),d=L.filter(x=>st(o,x.id).s==='done').length;
@@ -421,6 +471,7 @@ function recapText(o){const L=[],v=(id,k)=>val(o,id,k),fl=o.flags||{},p=progress
   const hl=Object.entries((st(o,'prn-highlight').v||{}).subs||{}).filter(x=>x[1]).map(x=>x[0]);
   if(wf.length||hl.length)L.push('PRINTING WORKFLOW',...wf.map(x=>'  '+x[0]+': '+x[1]),...(hl.length?['  Highlighting: '+hl.join(', ')]:[]),'');
   if(v('prof-split','list'))L.push('DEVICE PROFILES: '+v('prof-split','list'),'');
+  if(o.menu)L.push('MENU: '+o.menu.products+' products, '+(o.menu.cats||[]).length+' categories'+(o.menu.modifiers?', '+o.menu.modifiers+' modifiers':'')+' (Menu Converter, '+when(o.menu.at)+')'+(o.photos?' · '+o.photos.saved+' photos':''),'');
   const w=warnings(o);if(w.length)L.push('TO FIX',...w.flatMap(([x,m])=>m.map(t=>'  - '+x.t+': '+t)),'');
   const out=outstanding(o);if(out.length)L.push('OUTSTANDING ('+out.length+')',...out.map(x=>'  [ ] '+x.sec.t+' – '+x.t),'');
   const notes=stepsFor(o).filter(x=>st(o,x.id).note).map(x=>'  '+x.t+': '+clean(st(o,x.id).note));if(notes.length)L.push('NOTES',...notes,'');
@@ -451,7 +502,7 @@ function fillPatch(o,v){const steps={},put=(id,k,x)=>{x=clean(x);if(x&&!val(o,id
   put('biz-abn','abn',v.abn);put('biz-abn','legal',v.legal);put('biz-contact','email',v.email);put('biz-contact','phone',v.phone);put('biz-address','address',v.address);put('prep-gmb','website',v.website);
   const s=(v.address.match(/\b(NSW|ACT|VIC|QLD|SA|WA|TAS|NT)\b/)||[])[1];if(s)put('biz-tz','tz',TZ_BY_STATE[s]);
   const p={steps};if(!o.name&&v.name)p.name=v.name;return p}
-function fillDialog(id){const L=lookups(),d=g('st-dlg');
+function fillDialog(id){const own=lookupOf(ORGS[id]),L=(own?[venueOf(own)]:[]).concat(lookups()),d=g('st-dlg');
   d.innerHTML='<form method="dialog" class="st" style="padding:0;max-width:none"><h2>Fill from a lookup</h2><p class="st-small st-muted" style="margin:0">Uses venues looked up in the Restaurant Lookup tab on this browser in the last 14 days. Only empty fields are filled.</p>'+
     (L.length?'<div class="st-pick">'+L.map((v,i)=>'<button type="button" class="st-sec" data-pick="'+i+'"><b>'+esc(v.name)+'</b><br><span class="st-small st-muted">'+esc(v.address)+'</span></button>').join('')+'</div>':
       '<p class="st-msg">No recent lookups on this browser. Look the venue up in the Restaurant Lookup tab, then press “Start setup tracker” there.</p>')+
@@ -465,10 +516,9 @@ async function newOrg(v){if(READONLY)return;let name=v&&v.name;
     const res=await new Promise(r=>{d.onclick=e=>{const b=e.target.closest('[data-pick]');if(b){r({pick:lookups()[+b.dataset.pick]});d.close()}};d.onclose=()=>r({val:d.returnValue})});
     if(res.pick){v=res.pick;name=v.name}else if(res.val==='ok')name=clean(g('st-newname').value);else return}
   if(!name)return;
-  try{const id=await createOrg({name});if(v)save(id,fillPatch(ORGS[id],v));VIEW.org=id;VIEW.open=new Set();location.hash='setup';render();window.scrollTo(0,0);
+  try{const id=await createOrg({name});window.OolioVenues.setActive(id);if(v)save(id,fillPatch(ORGS[id],v));VIEW.org=id;VIEW.open=new Set();location.hash='setup';render();window.scrollTo(0,0);
     if(v)flash('Business details filled from Restaurant Lookup. Check them before ticking.')}
   catch(e){alert('Couldn’t create it: '+(e&&(e.message||e.code)))}}
-window.addEventListener('oolio:venue',e=>{if(e.detail)newOrg(e.detail)});
 
 /* ---------- events ---------- */
 const root=g('st-root');
@@ -477,7 +527,7 @@ function stepSet(id,patch){const o=ORGS[VIEW.org];if(!o)return;save(VIEW.org,{st
 root.addEventListener('click',e=>{const t=e.target;
   const tick=t.closest('[data-tick]');if(tick){e.preventDefault();e.stopPropagation();const id=tick.dataset.tick,o=ORGS[VIEW.org],cur=st(o,id).s;
     stepSet(id,{s:cur==='done'?'':'done',by:ME,at:Date.now()});render();return}
-  const og=t.closest('[data-org]');if(og){VIEW.org=og.dataset.org;VIEW.open=new Set();render();window.scrollTo(0,0);return}
+  const og=t.closest('[data-org]');if(og){window.OolioVenues.setActive(og.dataset.org);VIEW.org=og.dataset.org;VIEW.open=new Set();render();window.scrollTo(0,0);return}
   const na=t.closest('[data-na]');if(na){const id=na.dataset.na,cur=st(ORGS[VIEW.org],id).s;stepSet(id,{s:cur==='na'?'':'na',by:ME,at:Date.now()});render();return}
   const add=t.closest('[data-add]');if(add){const k=add.dataset.add,o=ORGS[VIEW.org],rows=(o[k]||[]).slice();
     if(k==='devices'){const n=rows.filter(r=>r.role==='POS').reduce((m,r)=>Math.max(m,+r.num||0),0)+1;rows.push({num:String(n),name:'POS '+n,loc:'',hw:'',role:'POS',prefix:String(n),serial:''})}
@@ -485,6 +535,8 @@ root.addEventListener('click',e=>{const t=e.target;
     save(VIEW.org,{[k]:rows});render();return}
   const del=t.closest('[data-del]');if(del){const k=del.dataset.del,o=ORGS[VIEW.org],rows=(o[k]||[]).slice(),gone=rows.splice(+del.dataset.i,1)[0];
     if(k==='printers'&&gone&&gone.name)rows.forEach(r=>{if(r.fb===gone.name)r.fb=''});save(VIEW.org,{[k]:rows});render();return}
+  const sg=t.closest('[data-sugflag]');if(sg){save(VIEW.org,{flags:{[sg.dataset.sugflag]:true}});render();return}
+  const go=t.closest('[data-goto]');if(go){location.hash=go.dataset.goto;return}
   const jump=t.closest('[data-jump]');if(jump){e.preventDefault();const el=g('st-'+jump.dataset.jump);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});return}
   const a=t.closest('[data-a]');if(!a)return;const act=a.dataset.a,o=VIEW.org&&ORGS[VIEW.org];
   if(act==='new')newOrg();

@@ -303,7 +303,8 @@ const say=(t,err)=>{const m=g('rf-msg');m.className='rf-msg'+(err?' err':'');m.i
 const keyOf=(n,l)=>CACHE_KEY_PREFIX(n,l);
 function CACHE_KEY_PREFIX(n,l){return CKEY+(flat(n)+'|'+flat(l))}
 function cacheGet(k){try{const c=JSON.parse(store.get(k)||'null');if(c&&Date.now()-c.at<CACHE_DAYS*864e5)return c}catch(e){}return null}
-function cachePut(k,P){const c=Object.assign({},P);if(c.site)c.site=Object.assign({},c.site,{html:''});
+function announce(P){try{window.dispatchEvent(new CustomEvent('oolio:lookup',{detail:{P}}))}catch(e){}}
+function cachePut(k,P){announce(P);const c=Object.assign({},P);if(c.site)c.site=Object.assign({},c.site,{html:''});
   if(!store.set(k,JSON.stringify(c))&&c.site){c.site.md='';store.set(k,JSON.stringify(c))}}
 let CUR=null;
 function stopBtn(){return' <button type="button" class="rf-sec rf-sm" id="rf-stop">Stop</button>'}
@@ -312,7 +313,7 @@ document.addEventListener('click',e=>{if(e.target&&e.target.id==='rf-stop'&&RUN)
 async function lookup(fresh,forceFc){
   const name=clean(g('rf-name').value),loc=clean(g('rf-loc').value);if(!name)return;
   const k=keyOf(name,loc);
-  if(!fresh){const c=cacheGet(k);if(c){CUR=c;CUR.key=k;render();say('Showing the result saved on '+new Date(c.at).toLocaleDateString('en-AU')+'. No credits used. <button type="button" class="rf-sec rf-sm" id="rf-again">Look it up again</button>');return}}
+  if(!fresh){const c=cacheGet(k);if(c){CUR=c;CUR.key=k;render();announce(CUR);say('Showing the result saved on '+new Date(c.at).toLocaleDateString('en-AU')+'. No credits used. <button type="button" class="rf-sec rf-sm" id="rf-again">Look it up again</button>');return}}
   const mcp=await getMcp();
   if(!mcp&&!relayOn()){say('Lookups need the Google relay (set it up in Settings below) or Firecrawl, which this page can only use on claude.ai.',true);return}
   const ctl=new AbortController();RUN={ctl,signal:ctl.signal,credits:0,notes:[]};g('rf-go').disabled=true;
@@ -473,7 +474,7 @@ function render(){
       '<div id="rf-revs">'+(list.length?list.slice(0,4).map(revHtml).join(''):miss('No review text'))+(list.length>4?'<button type="button" class="rf-sec rf-sm" id="rf-morerev" style="margin-top:8px">Show all '+list.length+'</button>':'')+'</div></div></section>';}
   // footer
   h+='</div><section class="rf-foot rf-card"><span>Checked '+new Date(P.at).toLocaleString('en-AU',{dateStyle:'medium',timeStyle:'short'})+' · '+(P.credits||0)+' Firecrawl credits'+(P.via&&P.via.place?' · venue from '+esc(P.via.place):'')+(P.site?' · website '+esc(P.site.via):'')+(P.via&&P.via.search?' · search via '+esc(P.via.search):'')+(ab&&ab.via?' · ABN Lookup via '+esc(ab.via):'')+'</span>'+
-    (RUN?'':'<button type="button" class="rf-sm" id="rf-setup">Start setup tracker</button><button type="button" class="rf-sec rf-sm" id="rf-copy">Copy as text</button><button type="button" class="rf-sec rf-sm" id="rf-again">Look it up again</button>')+
+    (RUN?'':'<button type="button" class="rf-sec rf-sm" id="rf-copy">Copy as text</button><button type="button" class="rf-sec rf-sm" id="rf-again">Look it up again</button>')+
     (P.notes&&P.notes.length?'<span style="flex-basis:100%">'+P.notes.map(esc).join('<br>')+'</span>':'')+'</section>';
   o.innerHTML=h;}
 function services(P){const seen=new Set(),out=[];[...(P.place.gservices||[]),...((P.ai&&P.ai.services)||[])].forEach(s=>{const k=flat(s).replace(/options?$/,'');if(s&&!seen.has(k)){seen.add(k);out.push(s)}});return out}
@@ -500,14 +501,14 @@ g('rf-out').addEventListener('click',async e=>{const b=e.target.closest('button'
   else if(b.dataset.conv){const u=g('url');if(u){u.value=b.dataset.conv;location.hash='converter';setTimeout(()=>{u.focus();u.scrollIntoView({block:'center'})},50)}}
   else if(b.id==='rf-60')moreReviews();
   else if(b.id==='rf-morerev'){const list=CUR.reviews.list.filter(r=>r.text);g('rf-revs').innerHTML=list.map(revHtml).join('')}
-  else if(b.id==='rf-setup'){/* hands this venue to the Setup Tracker tab, which fills the business details from it */
-    window.dispatchEvent(new CustomEvent('oolio:venue',{detail:{at:CUR.at,name:CUR.place.name||'',address:CUR.place.address||'',phone:CUR.place.phone||'',website:CUR.place.website||'',
-      abn:(CUR.abn&&((CUR.abn.details&&CUR.abn.details.Abn)||CUR.abn.abn))||'',legal:(CUR.abn&&CUR.abn.details&&CUR.abn.details.EntityName)||'',email:((CUR.det&&CUR.det.emails)||[])[0]||''}}));
-    if(!document.getElementById('st-root'))b.textContent='Open this in Oolio Menu Tools to track setup'}
   else if(b.id==='rf-copy'){try{await navigator.clipboard.writeText(asText());b.textContent='Copied'}catch(x){b.textContent='Copy blocked here'}setTimeout(()=>{b.textContent='Copy as text'},1800)}});
 g('rf-msg').addEventListener('click',e=>{if(RUN)return;if(e.target.id==='rf-again')lookup(true);else if(e.target.id==='rf-fcsearch')lookup(true,true)});
 document.addEventListener('click',e=>{if(e.target.id==='rf-again'&&e.target.closest('#rf-out'))lookup(true)});
 g('rf-form').addEventListener('submit',e=>{e.preventDefault();if(!RUN)lookup(false)});
+window.addEventListener('oolio:lookup-show',e=>{const d=e.detail||{};if(RUN||!d.P||!d.P.place)return;CUR=d.P;
+  if(d.P.query){g('rf-name').value=d.P.query.name||'';g('rf-loc').value=d.P.query.loc||''}render();say(esc(d.note||''))});
+window.addEventListener('oolio:lookup-fill',e=>{const d=e.detail||{};if(RUN)return;if(d.force||!clean(g('rf-name').value)){g('rf-name').value=d.name||'';g('rf-loc').value=d.loc||''}
+  if(d.clear&&CUR){CUR=null;render();say('')}if(d.run)lookup(false)});
 // Google relay
 g('rf-relay').value=store.get('rf-relay')||'';g('rf-relaytok').value=store.get('rf-relaytok')||'';
 g('rf-relaysave').addEventListener('click',async()=>{const m=g('rf-relaymsg'),v=clean(g('rf-relay').value).replace(/\/+$/,''),t=clean(g('rf-relaytok').value);
