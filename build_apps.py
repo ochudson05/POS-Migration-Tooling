@@ -1,4 +1,4 @@
-"""Builds apps.html: one page that launches the Menu Converter and the Photo Finder.
+"""Builds apps.html: one page that launches the Menu Converter, Photo Finder, Restaurant Lookup and Setup Tracker.
 
     python build_apps.py [publish_copy.html]
 
@@ -43,6 +43,15 @@ rl_script = rl.index("<script>", rl_body_start)
 rl_body = rl[rl_body_start:rl_script].strip()
 rl_js = rl[rl_script + len("<script>"):rl.rindex("</script>")]
 
+# Setup Tracker also runs in the top page (its shared database and the downloads capability only reach it); ids and classes start st-
+stp = (HERE / "setup-tracker.html").read_text(encoding="utf-8")
+st_css, _ = between(stp, "<style>", "</style>")
+st_css = re.sub(r"/\*BASE.*?/\*END BASE\*/", "", st_css, flags=re.S)
+st_body_start = stp.index("<body>") + len("<body>")
+st_script = stp.index("<script>", st_body_start)
+st_body = stp[st_body_start:st_script].strip()
+st_js = stp[st_script + len("<script>"):stp.rindex("</script>")]
+
 # the Photo Finder's page as a JS string; "</" is written "<\/" so it can't close this page's <script>
 pf_js = json.dumps(pf, ensure_ascii=False).replace("</", "<\\/")
 
@@ -79,6 +88,7 @@ LAUNCHER_HTML = """
     <button type="button" class="lx-tab" data-go="converter">Menu Converter</button>
     <button type="button" class="lx-tab" data-go="photos">Photo Finder</button>
     <button type="button" class="lx-tab" data-go="venue">Restaurant Lookup</button>
+    <button type="button" class="lx-tab" data-go="setup">Setup Tracker</button>
   </nav>
 </header>
 <section class="lx-home" id="lx-home">
@@ -103,6 +113,12 @@ LAUNCHER_HTML = """
       <dl class="lx-flow"><dt>Takes</dt><dd>The venue’s name and suburb</dd><dt>Gives</dt><dd>A venue profile, usually free in the Claude app with the Google relay, saved for 14 days</dd></dl>
       <button type="button" class="lx-open" data-go="venue">Open Restaurant Lookup</button>
     </article>
+    <article class="lx-card">
+      <h2>Setup Tracker</h2>
+      <p>Tracks each organisation’s setup against the Config Recap Checklist, shared with the team, with the matching help.oolio.com guide on every step.</p>
+      <dl class="lx-flow"><dt>Takes</dt><dd>The venue, or a Restaurant Lookup result</dd><dt>Gives</dt><dd>Progress for each step, devices and printers checked against the rules, and a recap to paste into HubSpot</dd></dl>
+      <button type="button" class="lx-open" data-go="setup">Open Setup Tracker</button>
+    </article>
   </div>
 </section>
 <div id="lx-conv" hidden>
@@ -110,6 +126,9 @@ LAUNCHER_HTML = """
 </div>
 <div id="lx-rf" hidden>
 """ + rl_body + """
+</div>
+<div id="lx-st" hidden>
+""" + st_body + """
 </div>
 <div id="lx-pf" class="lx-pfwrap" hidden>
   <div class="lx-note" id="lx-pfnote" hidden>
@@ -123,7 +142,7 @@ LAUNCHER_HTML = """
 
 LAUNCHER_JS = r"""
 (()=>{
-  const g=id=>document.getElementById(id),views={'':g('lx-home'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf')};
+  const g=id=>document.getElementById(id),views={'':g('lx-home'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st')};
   const onClaude=!!(window.claude&&window.claude.use)||/(^|\.)claude(usercontent)?\.(ai|com)$/.test(location.hostname);
   let pfReady=false,checked=false;
   // the Photo Finder is only built the first time it's opened, so its libraries don't load until needed
@@ -154,10 +173,11 @@ page = (
     "<title>Oolio Menu Tools</title>\n"
     '<meta name="claude:viewport-fit-sides" content="cover">\n'
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>\n'
-    "<style>" + conv_css + LAUNCHER_CSS + rl_css + "</style>\n"
+    "<style>" + conv_css + LAUNCHER_CSS + rl_css + st_css + "</style>\n"
     + LAUNCHER_HTML
     + "<script>" + conv_js + "</script>\n"
     + "<script>" + rl_js + "</script>\n"
+    + "<script>" + st_js + "</script>\n"
     + "<script>\nconst PF_HTML=" + pf_js + ";\n" + LAUNCHER_JS + "</script>\n"
 )
 
