@@ -40,7 +40,7 @@ function newVenue(prefill){const d=g('lx-dlg');
     '<label class="lx-ck"><input type="checkbox" id="lx-nrun" checked> Look it up now (free with the Google relay in the Claude app; otherwise about 10–13 Firecrawl credits)</label>'+
     '<div class="lx-row"><button value="ok">Create venue</button><button value="cancel" class="lx-sec" formnovalidate>Cancel</button></div></form>';
   d.showModal();g('lx-nn').focus();
-  d.onclose=async()=>{if(d.returnValue!=='ok')return;const name=clean(g('lx-nn').value),loc=clean(g('lx-nl').value),run=g('lx-nrun').checked;if(!name)return;
+  d.querySelector('form').onsubmit=async e=>{if(e.submitter&&e.submitter.value!=='ok')return;const name=clean(g('lx-nn').value),loc=clean(g('lx-nl').value),run=g('lx-nrun').checked;if(!name)return;
     try{const id=await OV.create({name,lookupQ:{name,loc}});
       if(run){LK.for=id;go('venue');window.dispatchEvent(new CustomEvent('oolio:lookup-fill',{detail:{name,loc,force:true,clear:true,run:true}}))}else go('')}
     catch(e){alert('Couldn’t create the venue: '+((e&&(e.message||e.code))||'error'))}}}

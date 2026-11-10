@@ -2277,7 +2277,8 @@ const FLAGS=[
 const STAGES=[['pre','Pre-config'],['ready','Ready for training'],['trained','Training done'],['follow','Follow-ups'],['done','Complete']];
 const TZ=['Australia/Sydney','Australia/Melbourne','Australia/Brisbane','Australia/Adelaide','Australia/Perth','Australia/Hobart','Australia/Darwin','Pacific/Auckland'];
 const TZ_BY_STATE={NSW:'Australia/Sydney',ACT:'Australia/Sydney',VIC:'Australia/Melbourne',QLD:'Australia/Brisbane',SA:'Australia/Adelaide',WA:'Australia/Perth',TAS:'Australia/Hobart',NT:'Australia/Darwin'};
-const HW=['Sunmi 15.6"','Sunmi 8.7" NFC (roaming)','iPad','Windows','Payment terminal','Other'];
+const HW=['Oolio 15.6" Touch PC','Sunmi 15.6"','Sunmi 8.7" NFC (roaming)','L3 handheld','11" Android tablet','iPad','21.5" KDS screen','NUC PC + monitor','Windows','Other'];
+const USES=['','Dockets','Receipts'];// '' = dockets and receipts
 const ROLES=['POS','MPOS','Kiosk','KDS','Customer display'];
 
 /* ---------- the checklist (from the Config Recap Checklist), in order ---------- */
@@ -2285,7 +2286,7 @@ const SECTIONS=[
 {id:'prep',phase:'pre',t:'Before you start',d:'Do as much configuration as possible before training. Training is for confirming, not first-time setup.',steps:[
   {id:'prep-csp',t:'Read the CSP / implementation ticket',info:['Note what was sold: e-com, MPOS, MOTO, integrations, loyalty, hardware counts.','Tick the matching options in “What was sold” above, so the steps that don’t apply drop out.'],fields:[['csp','CSP / ticket link','url']]},
   {id:'prep-hubspot',t:'Cross-check HubSpot',info:['Confirm the deal matches the ticket: especially whether e-commerce was sold.','Record anything that disagrees in the notes and raise it before training.'],fields:[['hubspot','HubSpot link','url']]},
-  {id:'prep-hw',t:'Get the hardware diagram',info:['Use it constantly: device names, printer locations and routing all come from it.','Open it with the customer during training to confirm every printer and device.'],fields:[['diagram','Hardware diagram link','url']]},
+  {id:'prep-hw',t:'Get the hardware diagram',extra:o=>diagramPanel(o),info:['Use it constantly: device names, printer locations and routing all come from it.','Open it with the customer during training to confirm every printer and device.'],fields:[['diagram','Hardware diagram link','url']]},
   {id:'prep-gmb',t:'Check Google My Business and the venue website',info:['Contact details (email, phone, address) are pulled from here, not typed from memory.','Restaurant Lookup gathers these for you: use “Fill from a lookup” at the top.'],fields:[['website','Venue website','url']]},
 ]},
 {id:'biz',phase:'pre',t:'Business details',d:'Store / organisation setup in Back Office.',steps:[
@@ -2321,7 +2322,7 @@ const SECTIONS=[
   {id:'prn-highlight',t:'Kitchen docket highlighting',info:['Ask whether removes, allergies and notes should be highlighted.','Especially important on impact printers, which can print in red.'],subs:['Removes highlighted','Allergies highlighted','Notes highlighted'],guides:['configure-printer-profiles','configure-allergens']},
 ]},
 {id:'prof',phase:'pre',t:'Device profiles & MPOS',steps:[
-  {id:'prof-split',t:'Create the device profiles needed',info:['Separate profiles where needed for online ordering, MPOS and POS defaults.'],fields:[['list','Profiles created','text','POS default, MPOS, Online']],guides:['configure-device-profiles','create-and-customise-function-maps']},
+  {id:'prof-split',t:'Create the device profiles needed',info:['Separate profiles where needed for online ordering, MPOS and POS defaults.'],fields:[['list','Profiles created','text','POS default, MPOS, Online']],extra:o=>{const L=profileList(o);return L.length?'<div class="st-check">Profiles named on the devices: <b>'+esc(L.join(', '))+'</b>. Create one device profile for each.</div>':''},guides:['configure-device-profiles','create-and-customise-function-maps']},
   {id:'mpos-profile',when:'mpos',t:'Dedicated MPOS / pay-at-table profile',info:['Create a profile just for MPOS with these settings:'],subs:['Dine-in only','PIN login','No floor view','No ordering workflows','Pay-at-table focused','Prompt for print / email receipt','Don’t print notes on receipts'],guides:['configure-mpos','configure-device-profiles']},
   {id:'mpos-device',when:'mpos',t:'Dedicated MPOS device',info:['Usually linked to the host terminal or a pay-at-table device.','Serial numbers can be assigned later by the techs.'],guides:['configure-mpos','process-a-payment-on-mpos','place-an-order-on-mpos']},
 ]},
@@ -2478,7 +2479,7 @@ window.OolioVenues={
   lookup(id){return lookupOf(ORGS[id])},
   progress(id,ph){const o=ORGS[id];return o?progress(o,ph):null},
   stage(id){const o=ORGS[id];return o?(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1]:''},
-  printers(id){const o=ORGS[id];return o?(o.printers||[]).map(x=>clean(x.name)).filter(Boolean):[]},
+  printers(id){const o=ORGS[id];return o?(o.printers||[]).filter(x=>x.use!=='Receipts').map(x=>clean(x.name)).filter(Boolean):[]},
   address(id){return ORGS[id]?val(ORGS[id],'biz-address','address'):''},
   website(id){return ORGS[id]?val(ORGS[id],'prep-gmb','website'):''},
   me(){return ME},
@@ -2502,6 +2503,101 @@ function progress(o,phase){const L=stepsFor(o).filter(x=>!phase||x.sec.phase===p
   const done=live.filter(x=>st(o,x.id).s==='done').length;return{done,total:live.length,pct:live.length?Math.round(done/live.length*100):0}}
 function outstanding(o){return stepsFor(o).filter(x=>!st(o,x.id).s)}
 function warnings(o){const w=[];stepsFor(o).forEach(x=>{if(x.check){const c=x.check(o);if(c&&!c.ok)w.push([x,[].concat(c.m)])}});return w}
+
+/* ---------- reading a site map / hardware diagram ----------
+   An image or PDF of the install diagram is read by Claude (the viewer's own Claude usage, no Firecrawl) into locations and hardware.
+   From that, names are proposed the way the checklist asks for them:
+   - devices: "POS <n> <Location> – <hardware>", numbered on from the POS devices already listed, sales prefix = POS number;
+     handhelds are POS devices (not MPOS); payment terminals running mPOS are MPOS; screens are KDS "<Location>" or "<purpose>"
+   - one device profile per location and type: "Bar POS", "Host Stand POS", "Roaming POS", "Kitchen KDS", "MPOS", "Kiosk"
+   - printers named after what staff call them ("Pizza", "Coffee", "Smoothie") or their location, numbered when there are
+     several ("Kitchen 1", "Kitchen 2"), impact or thermal, paired as fallbacks; their names go to the Menu Converter */
+const DIAG_PROMPT='These images are a site map / hardware diagram for a hospitality venue being set up on Oolio POS. Read every device on it and reply with only this JSON:\n'+
+  '{"venue":"","locations":[{"name":"","items":[{"kind":"","count":1,"hardware":"","printer_type":"","purpose":"","spare":false}]}],"notes":[]}\n\nRules:\n'+
+  '- locations: each labelled area, e.g. "location | bar", "Host stand", "Coffee area", "Kitchen", "Roaming", "Spare", or labels under devices such as "Bar 1" / "Kitchen". Use the label wording without "location |". Keep floors, e.g. "Bar (upstairs)". Devices with no area label go in the area written next to them, else "Main".\n'+
+  '- kind, one of: pos (fixed POS terminal: touch PC, all-in-one, tablet on a stand used as a POS), handheld (phone-sized ordering device: L3, Sunmi handheld, roaming order device), mpos (payment terminal running the mPOS app or used for pay at table on its own), eftpos (payment terminal paired with a POS), kds (kitchen/bar/pass display screen, including a NUC PC + monitor + bump bar station or a "bump screen"), kiosk, customer_display, printer, cash_drawer, scanner, network (router, switch, access point), other.\n'+
+  '- count: the number in "2 x", else the number of pictures of it in that area, else 1.\n'+
+  '- hardware: the model or size as written, e.g. "15.6\" Touch PC", "11\" Android Tablet", "21.5\" KDS screen", "NUC PC", "L3".\n'+
+  '- printer_type: printers only: "impact" when it says impact or TM-U220, else "thermal".\n'+
+  '- purpose: what it is for when written, e.g. "smoothie printer", "coffee bump printer", "pass", "bump printer from pizza KDS", "receipt", else "".\n'+
+  '- spare: true for spare or backup devices.\n'+
+  '- One entry per kind per location using count, but list printers or screens with different purposes separately.\n'+
+  '- notes: install or routing details worth knowing (cable runs, devices still to be confirmed, customer-owned items).\n'+
+  '- Copy names as written. Do not invent devices.';
+const TC=s=>clean(s).replace(/^location\s*[|:-]\s*/i,'').toLowerCase().replace(/(^|[\s(\/-])[a-z]/g,m=>m.toUpperCase()).replace(/\bKds\b/g,'KDS').replace(/\bPos\b/g,'POS').replace(/\bFoh\b/g,'FOH').replace(/\bBoh\b/g,'BOH');
+const shortHw=h=>clean(h).replace(/\b(tablet|printer|screen|terminal|device|pc)s\b/gi,'$1').replace(/\b(oolio|android|terminal|pos terminal|- ?pos terminal)\b/gi,'').replace(/\s+/g,' ').replace(/[-–\s]+$/,'').trim();
+const PURP=/smoothie|coffee|pizza|pass|cocktail|dessert|grill|fryer|sushi|bar ?prep|drinks?|juice|bakery|expo/i;
+function planFromDiagram(j,o){const locs=(j&&Array.isArray(j.locations))?j.locations:[],D=[],P=[],notes=(j&&Array.isArray(j.notes))?j.notes.map(clean).filter(Boolean):[];
+  let posN=(o.devices||[]).filter(d=>d.role==='POS').reduce((m,d)=>Math.max(m,+d.num||0),0),mposN=(o.devices||[]).filter(d=>d.role==='MPOS').length,kioskN=0,eft=0;
+  const plist=[];
+  locs.forEach(l=>{const L=TC(l.name)||'Main',spareLoc=/spare|backup/i.test(L);
+    (l.items||[]).forEach(it=>{const n=Math.max(1,Math.min(20,parseInt(it.count,10)||1)),k=String(it.kind||'').toLowerCase(),hw=shortHw(it.hardware||''),sp=!!it.spare||spareLoc,pu=clean(it.purpose||'');
+      for(let i=0;i<n;i++){
+        if(k==='pos'||k==='handheld'){posN++;D.push({num:String(posN),name:'POS '+posN+' '+(sp?'Spare':L)+(hw?' – '+hw:''),loc:sp?'Spare':L,hw,role:'POS',profile:sp?'':L+' POS',prefix:String(posN),serial:''})}
+        else if(k==='mpos'){mposN++;D.push({num:'',name:'MPOS '+mposN+(L&&!/^main$/i.test(L)?' '+L:''),loc:L,hw:hw||'EFTPOS terminal',role:'MPOS',profile:'MPOS',prefix:'',serial:''})}
+        else if(k==='kds'){const tag=TC(pu.replace(/\b(kds|screens?|used|one|the|on|in|at|for|display)\b/gi,' '));D.push({num:'',name:'KDS '+(tag||L)+(n>1&&!tag?' '+(i+1):''),loc:L,hw:hw||'KDS screen',role:'KDS',profile:L+' KDS',prefix:'',serial:''})}
+        else if(k==='kiosk'){kioskN++;D.push({num:'',name:'Kiosk '+kioskN,loc:L,hw,role:'Kiosk',profile:'Kiosk',prefix:'',serial:''})}
+        else if(k==='customer_display'){D.push({num:'',name:'Customer Display '+L,loc:L,hw,role:'Customer display',profile:'Customer Display',prefix:'',serial:''})}
+        else if(k==='printer'){const m=pu.match(PURP),kitchen=/kitchen|pass|pizza|grill|fryer|expo/i.test(L+' '+pu);
+          const base=m?TC(m[0].replace(/drinks?/i,'Drinks')):/kitchen/i.test(L)?'Kitchen':L;
+          plist.push({base,boh:kitchen||/pizza|grill|fryer|sushi|pass|expo|bakery/i.test(base),loc:L,kind:/impact/i.test(it.printer_type)||/impact|u220/i.test(it.hardware||'')?'Impact':'Thermal',use:/receipt/i.test(pu)?'Receipts':(kitchen||m)?'Dockets':'',note:pu})}
+        else if(k==='eftpos')eft++;}})});
+  // printers: "Kitchen 1/2" when a name is used more than once, then fallbacks in pairs, else another printer in the same place
+  const cnt={};plist.forEach(x=>{cnt[x.base]=(cnt[x.base]||0)+1});const seen={};
+  plist.forEach(x=>{seen[x.base]=(seen[x.base]||0)+1;P.push({name:cnt[x.base]>1?x.base+' '+seen[x.base]:x.base,kind:x.kind,use:x.use,ip:'1.1.1.1',fb:'',loc:x.loc+(x.note?' · '+x.note:''),_b:x.base,_l:x.loc,_k:x.boh})});
+  P.forEach((x,i)=>{if(x.fb)return;const mate=P.find((y,j)=>j!==i&&!y.fb&&y._b===x._b)||P.find((y,j)=>j!==i&&y._l===x._l&&y.use===x.use)||P.find((y,j)=>j!==i&&y._k===x._k&&y.use!=='Receipts');// kitchen-side to kitchen-side, front of house to front of house
+    if(mate){x.fb=mate.name;if(!mate.fb&&mate._b===x._b)mate.fb=x.name}});
+  P.forEach(x=>{delete x._b;delete x._l;delete x._k});
+  const profiles=[...new Set(D.map(d=>d.profile).filter(Boolean))];
+  if(eft)notes.unshift(eft+' payment terminal'+(eft>1?'s':'')+' paired with POS devices: connect them in Devices → Connect payment terminals.');
+  return{devices:D,printers:P,profiles,notes,venue:clean(j&&j.venue)}}
+window.__stPlanFromDiagram=planFromDiagram;
+function profileList(o){const fromDev=(o.devices||[]).map(d=>clean(d.profile)).filter(Boolean),typed=val(o,'prof-split','list').split(/\s*,\s*/).filter(Boolean);return[...new Set(typed.concat(fromDev))]}
+function diagramPanel(o){const d=o.diagram;
+  return '<div class="st-check"><b>Read the diagram</b>: upload the site map (image or PDF) and Claude proposes device names, device profiles and printer names from it, for you to check before they’re added.'+
+    (READONLY?'':'<div class="st-tools" style="margin-top:6px"><label class="st-sec st-sm" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer;font-weight:600;color:var(--text)">Upload diagram<input type="file" id="st-dfile" accept="image/*,.pdf" style="display:none"></label><span id="st-dmsg" class="st-small st-muted"></span></div>')+
+    (d?'<div class="st-small st-muted" style="margin-top:6px">Last read: '+esc(d.file||'diagram')+', '+esc(when(d.at))+(d.by?' by '+esc(who(d.by)):'')+'. '+esc(d.summary||'')+'</div>':'')+'</div>'}
+let PDFLIB=null;function loadPdf(){return PDFLIB||(PDFLIB=new Promise((res,rej)=>{if(window.pdfjsLib)return res(window.pdfjsLib);const W='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=()=>{const w=document.createElement('script');w.src=W;w.onload=()=>{window.pdfjsLib.GlobalWorkerOptions.workerSrc=W;res(window.pdfjsLib)};w.onerror=()=>res(window.pdfjsLib);document.head.appendChild(w)};
+  s.onerror=()=>{PDFLIB=null;rej(new Error('The PDF reader couldn’t load.'))};document.head.appendChild(s)}))}
+const toJpeg=c=>new Promise(r=>c.toBlob(r,'image/jpeg',0.9));
+async function diagramImages(f,max){if(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name)){const lib=await loadPdf(),doc=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise,out=[];
+    for(let i=1;i<=Math.min(doc.numPages,max);i++){const pg=await doc.getPage(i),v0=pg.getViewport({scale:1}),vp=pg.getViewport({scale:Math.min(3,2400/v0.width)}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
+      await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;out.push(await toJpeg(c))}return out}
+  const bm=await createImageBitmap(f),sc=Math.min(1,2600/Math.max(bm.width,bm.height));if(sc===1&&f.size<4e6)return[f];
+  const c=document.createElement('canvas');c.width=Math.round(bm.width*sc);c.height=Math.round(bm.height*sc);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return[await toJpeg(c)]}
+async function readDiagram(f){const m=g('st-dmsg'),say=x=>{if(g('st-dmsg'))g('st-dmsg').textContent=x},id=VIEW.org;
+  const s=await use('sample');if(!s){say('Reading diagrams needs Claude, which is only available when this page is open on claude.ai.');return}
+  let max=1;try{const l=await s.limits();if(!l||!l.images){say('Claude can’t read images in this view.');return}max=Math.max(1,l.images.maxCount||1)}catch(e){}
+  try{say('Preparing '+f.name+'…');const imgs=(await diagramImages(f,Math.min(max,4)));
+    say('Claude is reading the diagram. This can take up to a minute…');
+    const j=await s.json(DIAG_PROMPT,{images:imgs.length===1?imgs[0]:imgs});
+    const plan=planFromDiagram(j,ORGS[id]);if(!plan.devices.length&&!plan.printers.length){say('No devices or printers were found on it. Try a clearer image.');return}
+    say('');reviewPlan(id,plan,f.name)}
+  catch(e){say(e&&e.code==='not_granted'?'Claude needs your OK to read the diagram. Upload it again and choose Allow.':'The diagram couldn’t be read ('+((e&&(e.message||e.code))||'error')+').')}}
+// check and edit the proposed names before anything is added
+function reviewPlan(id,plan,file){const o=ORGS[id],d=g('st-dlg'),haveD=new Set((o.devices||[]).map(x=>clean(x.name).toLowerCase())),haveP=new Set((o.printers||[]).map(x=>clean(x.name).toLowerCase()));
+  const row=(kind,i,x,extra,have)=>'<tr><td><input type="checkbox" data-pk="'+kind+'" data-pi="'+i+'"'+(have?'':' checked')+'></td><td><input data-pn="'+kind+'" data-pi="'+i+'" value="'+esc(x.name||x)+'"></td>'+extra+(have?'<td class="st-small st-muted">already listed</td>':'<td></td>')+'</tr>';
+  d.innerHTML='<form method="dialog" class="st" style="padding:0;max-width:none;display:grid;gap:12px"><h2>From the diagram'+(plan.venue?': '+esc(plan.venue):'')+'</h2>'+
+    '<p class="st-small st-muted" style="margin:0">Check the names, untick anything that shouldn’t be added, then add them. Renaming a profile or printer here updates the devices and fallbacks that use it.</p>'+
+    '<h3 style="margin:0;font-size:1rem">Devices ('+plan.devices.length+')</h3><div class="st-tblw"><table class="st-tbl" style="min-width:560px"><thead><tr><th></th><th>Name</th><th>Type</th><th>Location</th><th>Profile</th><th>Prefix</th><th></th></tr></thead><tbody>'+
+      plan.devices.map((x,i)=>row('d',i,x,'<td>'+esc(x.role)+'</td><td>'+esc(x.loc)+'</td><td>'+esc(x.profile||'–')+'</td><td>'+esc(x.prefix||'')+'</td>',haveD.has(x.name.toLowerCase()))).join('')+'</tbody></table></div>'+
+    '<h3 style="margin:0;font-size:1rem">Device profiles ('+plan.profiles.length+')</h3><div class="st-tblw"><table class="st-tbl" style="min-width:0"><tbody>'+plan.profiles.map((x,i)=>row('p',i,{name:x},'',profileList(o).map(s=>s.toLowerCase()).includes(x.toLowerCase()))).join('')+'</tbody></table></div>'+
+    '<h3 style="margin:0;font-size:1rem">Printers ('+plan.printers.length+')</h3><div class="st-tblw"><table class="st-tbl" style="min-width:560px"><thead><tr><th></th><th>Name</th><th>Type</th><th>Prints</th><th>Fallback</th><th>Location</th><th></th></tr></thead><tbody>'+
+      plan.printers.map((x,i)=>row('r',i,x,'<td>'+x.kind+' ('+MODEL[x.kind]+')</td><td>'+(x.use||'Dockets & receipts')+'</td><td>'+esc(x.fb||'–')+'</td><td>'+esc(x.loc)+'</td>',haveP.has(x.name.toLowerCase()))).join('')+'</tbody></table></div>'+
+    (plan.notes.length?'<div class="st-check"><b>Notes from the diagram</b><ul>'+plan.notes.map(n=>'<li>'+esc(n)+'</li>').join('')+'</ul></div>':'')+
+    '<div class="st-tools"><button value="ok">Add to the checklist</button><button class="st-sec" value="cancel" formnovalidate>Cancel</button></div></form>';
+  d.showModal();d.onclick=null;
+  d.onclose=null;d.querySelector('form').onsubmit=e=>{if(!e.submitter||e.submitter.value!=='ok')return;const on=(k,i)=>{const c=d.querySelector('[data-pk="'+k+'"][data-pi="'+i+'"]');return c&&c.checked},nm=(k,i)=>clean((d.querySelector('[data-pn="'+k+'"][data-pi="'+i+'"]')||{}).value||'');
+    const pRen={},rRen={};plan.profiles.forEach((x,i)=>{pRen[x]=nm('p',i)||x});plan.printers.forEach((x,i)=>{rRen[x.name]=nm('r',i)||x.name});
+    const o2=ORGS[id],devs=(o2.devices||[]).slice(),prns=(o2.printers||[]).slice();
+    plan.devices.forEach((x,i)=>{if(!on('d',i))return;const n=nm('d',i)||x.name;if(devs.some(y=>clean(y.name).toLowerCase()===n.toLowerCase()))return;devs.push(Object.assign({},x,{name:n,profile:x.profile?pRen[x.profile]||x.profile:''}))});
+    plan.printers.forEach((x,i)=>{if(!on('r',i))return;const n=rRen[x.name];if(prns.some(y=>clean(y.name).toLowerCase()===n.toLowerCase()))return;prns.push(Object.assign({},x,{name:n,fb:x.fb?rRen[x.fb]||x.fb:''}))});
+    const profs=plan.profiles.filter((x,i)=>on('p',i)).map(x=>pRen[x]),typed=val(o2,'prof-split','list').split(/\s*,\s*/).filter(Boolean),all=[...new Set(typed.concat(profs))];
+    const addD=devs.length-(o2.devices||[]).length,addP=prns.length-(o2.printers||[]).length,summary=addD+' devices, '+profs.length+' profiles, '+addP+' printers added.';
+    const patch={devices:devs,printers:prns,diagram:{at:Date.now(),by:ME||'',file:file||'',summary,notes:plan.notes},steps:{'prof-split':{v:{list:all.join(', ')}},'prep-hw':{s:'done',by:ME,at:Date.now()}}};
+    const oldNote=st(o2,'prep-hw').note||'';if(plan.notes.length)patch.steps['prep-hw'].note=(oldNote?oldNote+'\n':'')+'From the diagram: '+plan.notes.join(' ');
+    save(id,patch);VIEW.open.add('dev-list');VIEW.open.add('prn-list');render();flash(summary+' Printer names are now offered in the Menu Converter.')}}
 
 /* ---------- data from the other tabs ---------- */
 const goBtn=(tab,t)=>'<button type="button" class="st-sec st-sm" data-goto="'+tab+'">'+esc(t)+'</button>';
@@ -2595,11 +2691,12 @@ function tableHtml(o,kind){const rows=o[kind]||[],dis=READONLY?' disabled':'';
   const inp=(i,k,v,ph,w)=>'<input data-tbl="'+kind+'" data-i="'+i+'" data-k="'+k+'" value="'+esc(v||'')+'"'+(ph?' placeholder="'+esc(ph)+'"':'')+dis+(w?' style="width:'+w+'"':'')+'>';
   const sel=(i,k,v,opts)=>'<select data-tbl="'+kind+'" data-i="'+i+'" data-k="'+k+'"'+dis+'>'+opts.map(x=>'<option'+(x===(v||'')?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select>';
   let h='<div class="st-tblw"><table class="st-tbl"><thead><tr>';
-  if(kind==='devices'){h+='<th>POS #</th><th>Name</th><th>Location</th><th>Hardware</th><th>Type</th><th>Sales prefix</th><th>Serial</th><th></th></tr></thead><tbody>';
-    rows.forEach((d,i)=>{h+='<tr><td class="n">'+inp(i,'num',d.num,'1')+'</td><td>'+inp(i,'name',d.name,'POS 1 Bar')+'</td><td>'+inp(i,'loc',d.loc,'Bar')+'</td><td>'+sel(i,'hw',d.hw,['',...HW])+'</td><td>'+sel(i,'role',d.role||'POS',ROLES)+'</td><td class="n">'+inp(i,'prefix',d.prefix,d.num||'')+'</td><td>'+inp(i,'serial',d.serial,'later')+'</td><td class="x">'+(READONLY?'':'<button type="button" class="st-x" data-del="devices" data-i="'+i+'" aria-label="Remove row">×</button>')+'</td></tr>'})}
+  const dl=(id,L)=>'<datalist id="'+id+'">'+L.map(x=>'<option value="'+esc(x)+'">').join('')+'</datalist>';
+  if(kind==='devices'){h=dl('st-hwl',HW)+dl('st-profl',profileList(o))+h+'<th>POS #</th><th>Name</th><th>Location</th><th>Hardware</th><th>Type</th><th>Profile</th><th>Sales prefix</th><th>Serial</th><th></th></tr></thead><tbody>';
+    rows.forEach((d,i)=>{h+='<tr><td class="n">'+inp(i,'num',d.num,'1')+'</td><td>'+inp(i,'name',d.name,'POS 1 Bar')+'</td><td>'+inp(i,'loc',d.loc,'Bar')+'</td><td>'+inp(i,'hw',d.hw,'Hardware').replace('<input','<input list="st-hwl"')+'</td><td>'+sel(i,'role',d.role||'POS',ROLES)+'</td><td>'+inp(i,'profile',d.profile,'Bar POS').replace('<input','<input list="st-profl"')+'</td><td class="n">'+inp(i,'prefix',d.prefix,d.num||'')+'</td><td>'+inp(i,'serial',d.serial,'later')+'</td><td class="x">'+(READONLY?'':'<button type="button" class="st-x" data-del="devices" data-i="'+i+'" aria-label="Remove row">×</button>')+'</td></tr>'})}
   else{const names=rows.map(r=>r.name).filter(Boolean);
-    h+='<th>Name</th><th>Type</th><th>Model</th><th>IP address</th><th>Fallback</th><th>Location / notes</th><th></th></tr></thead><tbody>';
-    rows.forEach((p,i)=>{h+='<tr><td>'+inp(i,'name',p.name,'Kitchen 1')+'</td><td>'+sel(i,'kind',p.kind||'Thermal',['Thermal','Impact'])+'</td><td class="st-muted">'+MODEL[p.kind||'Thermal']+'</td><td>'+inp(i,'ip',p.ip,'1.1.1.1')+'</td><td>'+
+    h+='<th>Name</th><th>Type</th><th>Model</th><th>Prints</th><th>IP address</th><th>Fallback</th><th>Location / notes</th><th></th></tr></thead><tbody>';
+    rows.forEach((p,i)=>{h+='<tr><td>'+inp(i,'name',p.name,'Kitchen 1')+'</td><td>'+sel(i,'kind',p.kind||'Thermal',['Thermal','Impact'])+'</td><td class="st-muted">'+MODEL[p.kind||'Thermal']+'</td><td>'+sel(i,'use',p.use||'',USES).replace('<option></option>','<option value="">Dockets &amp; receipts</option>')+'</td><td>'+inp(i,'ip',p.ip,'1.1.1.1')+'</td><td>'+
       sel(i,'fb',p.fb,['',...names.filter(n=>n!==p.name)])+'</td><td>'+inp(i,'loc',p.loc,'Pass')+'</td><td class="x">'+(READONLY?'':'<button type="button" class="st-x" data-del="printers" data-i="'+i+'" aria-label="Remove row">×</button>')+'</td></tr>'})}
   h+='</tbody></table></div>';
   if(!rows.length)h+='<p class="st-small st-muted" style="margin:0">No '+(kind==='devices'?'devices':'printers')+' yet.</p>';
@@ -2659,8 +2756,8 @@ function recapText(o){const L=[],v=(id,k)=>val(o,id,k),fl=o.flags||{},p=progress
   const pay=[];if(v('pay-merchant','code'))pay.push('Merchant code: '+v('pay-merchant','code'));if(fl.moto&&v('pay-moto','rate'))pay.push('MOTO surcharge: '+v('pay-moto','rate')+'%');
   if(v('pay-group','pax'))pay.push('Group surcharge: '+v('pay-group','pax')+'+ pax');if(fl.ecom){if(v('ecom-kyc','kyc'))pay.push('KYC: '+v('ecom-kyc','kyc'));if(v('ecom-store','rate'))pay.push('E-com surcharge: '+v('ecom-store','rate')+'%');if(v('ecom-store','string'))pay.push('E-com string: '+v('ecom-store','string'))}
   if(pay.length)L.push('PAYMENTS',...pay.map(x=>'  '+x),'');
-  if((o.devices||[]).length)L.push('DEVICES',...o.devices.map(d=>'  '+[d.name||'(no name)',d.role&&d.role!=='POS'?d.role:'',d.hw,d.prefix?'prefix '+d.prefix:'',d.serial?'SN '+d.serial:''].filter(Boolean).join(' · ')),'');
-  if((o.printers||[]).length)L.push('PRINTERS',...o.printers.map(x=>'  '+[x.name||'(no name)',(x.kind||'Thermal')+' '+MODEL[x.kind||'Thermal'],x.ip?'IP '+x.ip:'',x.fb?'fallback → '+x.fb:'NO FALLBACK',x.loc].filter(Boolean).join(' · ')),'');
+  if((o.devices||[]).length)L.push('DEVICES',...o.devices.map(d=>'  '+[d.name||'(no name)',d.role&&d.role!=='POS'?d.role:'',d.hw,d.profile?'profile '+d.profile:'',d.prefix?'prefix '+d.prefix:'',d.serial?'SN '+d.serial:''].filter(Boolean).join(' · ')),'');
+  if((o.printers||[]).length)L.push('PRINTERS',...o.printers.map(x=>'  '+[x.name||'(no name)',(x.kind||'Thermal')+' '+MODEL[x.kind||'Thermal'],x.use?x.use+' only':'',x.ip?'IP '+x.ip:'',x.fb?'fallback → '+x.fb:'NO FALLBACK',x.loc].filter(Boolean).join(' · ')),'');
   const wf=[['Cocktails',v('prn-workflow','cocktails')],['Beer/wine/spirits',v('prn-workflow','drinks')],['Food',v('prn-workflow','food')],['To confirm',v('prn-workflow','confirm')]].filter(x=>x[1]);
   const hl=Object.entries((st(o,'prn-highlight').v||{}).subs||{}).filter(x=>x[1]).map(x=>x[0]);
   if(wf.length||hl.length)L.push('PRINTING WORKFLOW',...wf.map(x=>'  '+x[0]+': '+x[1]),...(hl.length?['  Highlighting: '+hl.join(', ')]:[]),'');
@@ -2707,7 +2804,8 @@ async function newOrg(v){if(READONLY)return;let name=v&&v.name;
       (lookups().length?'<p class="st-small st-muted" style="margin:0">Or pick a recent lookup to fill the business details:</p><div class="st-pick">'+lookups().slice(0,8).map((x,i)=>'<button type="button" class="st-sec" data-pick="'+i+'"><b>'+esc(x.name)+'</b> <span class="st-small st-muted">'+esc(x.address)+'</span></button>').join('')+'</div>':'')+
       '<div class="st-tools"><button value="ok">Create</button><button class="st-sec" value="cancel" formnovalidate>Cancel</button></div></form>';
     d.showModal();g('st-newname').focus();
-    const res=await new Promise(r=>{d.onclick=e=>{const b=e.target.closest('[data-pick]');if(b){r({pick:lookups()[+b.dataset.pick]});d.close()}};d.onclose=()=>r({val:d.returnValue})});
+    const res=await new Promise(r=>{d.onclick=e=>{const b=e.target.closest('[data-pick]');if(b){r({pick:lookups()[+b.dataset.pick]});d.close()}};
+      d.querySelector('form').onsubmit=e=>r({val:e.submitter?e.submitter.value:'ok'});d.onclose=()=>r({val:d.returnValue})});
     if(res.pick){v=res.pick;name=v.name}else if(res.val==='ok')name=clean(g('st-newname').value);else return}
   if(!name)return;
   try{const id=await createOrg({name});window.OolioVenues.setActive(id);if(v)save(id,fillPatch(ORGS[id],v));VIEW.org=id;VIEW.open=new Set();location.hash='setup';render();window.scrollTo(0,0);
@@ -2775,7 +2873,7 @@ function onField(t,final){const id=VIEW.org;if(!id)return;
   clearTimeout(textT[key]);
   if(final)save(id,patch);else{const o=ORGS[id];ORGS[id]=deepMerge(o,patch);textT[key]=setTimeout(()=>save(id,patch),700)}}
 root.addEventListener('input',e=>{const t=e.target;if(t.type==='checkbox'||t.tagName==='SELECT')return;onField(t,false)});
-root.addEventListener('change',e=>{const t=e.target;if(t.id==='st-stagef'){VIEW.stage=t.value;render();return}if(t.id==='st-q')return;onField(t,true);if(t.type==='checkbox'||t.tagName==='SELECT'){held=false;render()}});
+root.addEventListener('change',e=>{const t=e.target;if(t.id==='st-dfile'){const f=t.files&&t.files[0];t.value='';if(f)readDiagram(f);return}if(t.id==='st-stagef'){VIEW.stage=t.value;render();return}if(t.id==='st-q')return;onField(t,true);if(t.type==='checkbox'||t.tagName==='SELECT'){held=false;render()}});
 // leaving a field redraws, so checks and badges catch up
 root.addEventListener('focusout',e=>{const t=e.target;if(t.dataset&&(t.dataset.step||t.dataset.tbl||t.dataset.note)||t.id==='st-name')setTimeout(()=>{if(!root.contains(document.activeElement)||!/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))render()},0)});
 
@@ -2854,7 +2952,7 @@ function newVenue(prefill){const d=g('lx-dlg');
     '<label class="lx-ck"><input type="checkbox" id="lx-nrun" checked> Look it up now (free with the Google relay in the Claude app; otherwise about 10–13 Firecrawl credits)</label>'+
     '<div class="lx-row"><button value="ok">Create venue</button><button value="cancel" class="lx-sec" formnovalidate>Cancel</button></div></form>';
   d.showModal();g('lx-nn').focus();
-  d.onclose=async()=>{if(d.returnValue!=='ok')return;const name=clean(g('lx-nn').value),loc=clean(g('lx-nl').value),run=g('lx-nrun').checked;if(!name)return;
+  d.querySelector('form').onsubmit=async e=>{if(e.submitter&&e.submitter.value!=='ok')return;const name=clean(g('lx-nn').value),loc=clean(g('lx-nl').value),run=g('lx-nrun').checked;if(!name)return;
     try{const id=await OV.create({name,lookupQ:{name,loc}});
       if(run){LK.for=id;go('venue');window.dispatchEvent(new CustomEvent('oolio:lookup-fill',{detail:{name,loc,force:true,clear:true,run:true}}))}else go('')}
     catch(e){alert('Couldn’t create the venue: '+((e&&(e.message||e.code))||'error'))}}}
