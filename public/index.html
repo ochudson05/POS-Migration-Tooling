@@ -2178,6 +2178,9 @@ const relayBase=()=>window.OOLIO_HOSTED?location.origin:clean(store.get('rf-rela
 let RELAYVIA='';
 async function relay(path,params){if(!relayOn())return null;
   const u=relayBase()+path+'?'+new URLSearchParams(Object.assign({},params,{t:store.get('rf-relaytok')||''})).toString();
+  // on the website the relay is the site itself: call it straight from the browser, which carries the sign-in
+  // (going through /api/fetch would make the site fetch itself without one, and Cloudflare Access blocks that)
+  if(window.OOLIO_HOSTED){try{const r=await fetch(u,{credentials:'same-origin'}),j=jsonIn(await r.text());if(j){RELAYVIA='the website';return j}}catch(e){}return null}
   const d=await directGet(u);let j=d&&jsonIn(d.text);if(j){RELAYVIA='directly';return j}
   j=jsonIn(await brText(u,400000));if(j){RELAYVIA='the Claude app’s browser';return j}
   return null;}
@@ -2325,6 +2328,7 @@ async function lookup(fresh,forceFc){
     if(places&&!places.length){say('Google found nothing for “'+esc(q)+'”. Check the spelling or add the suburb.'+(mcp?' <button type="button" class="rf-sec rf-sm" id="rf-fcsearch">Search with Firecrawl instead (10 credits)</button>':''),true);return}
     // 2. Firecrawl's Maps search, only when Google wasn't available
     if(!places){if(!mcp)throw new Error(RUN.notes.join(' '));
+      if(window.OOLIO_HOSTED)throw new Error((RUN.notes.join(' ')||'Google couldn’t be reached.')+' Reload the page and try again.');// Firecrawl Maps isn't available on the website
       say('Finding '+esc(name)+' on Maps with Firecrawl…'+stopBtn());
       const s=await alex('firecrawl-maps','businesses/search',{query:q,country:'au',language:'en'});
       places=(s.results||[]).filter(p=>p&&p.name).map(slim);src='firecrawl';
