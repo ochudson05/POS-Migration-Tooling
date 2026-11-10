@@ -1,4 +1,5 @@
-"""Builds apps.html: one page that launches the Menu Converter, Photo Finder, Restaurant Lookup and Setup Tracker.
+"""Builds apps.html: one page that launches the Menu Converter, Photo Finder, Restaurant Lookup and Setup Tracker,
+with the legal pages from legal.html (business details in BUSINESS below) and a footer on every view.
 
     python build_apps.py [publish_copy.html]
 
@@ -58,6 +59,68 @@ THEME = (HERE / "oolio-theme.css").read_text(encoding="utf-8")
 FONT = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">'
 pf = pf.replace("</head>", FONT + "\n<style>" + THEME + "</style>\n</head>", 1)
 pf_js = json.dumps(pf, ensure_ascii=False).replace("</", "<\\/")
+
+# ---------- legal and compliance pages (legal.html; see COMPLIANCE.md) ----------
+# The business details shown in the footer and on every legal page. Blank values are left out and the build warns.
+BUSINESS = {
+    "operator": "Oscar Hudson",        # registered name, confirmed by the owner 11 Nov 2026 (ABN Lookup had no record yet)
+    "trading_name": "",                # registered business name, if the tools are run under one
+    "abn": "60 219 896 086",
+    "acn": "",                         # only if the operator is a company
+    "email": "ochudson05@gmail.com",                       # contact email for privacy, accessibility, content and security requests
+    "phone": "0408 941 151",
+    "address": "",                     # business or postal address
+    "state": "Queensland",             # governing law in the Terms of Use
+    "site": "https://menurunner.ochudson05.workers.dev",
+    "updated": "11 November 2026",
+    "year": "2026",
+}
+for k in ("email", "phone"):
+    if not BUSINESS[k]:
+        print("warning: BUSINESS['" + k + "'] is blank; the legal pages need it before going live")
+B = BUSINESS
+esc = lambda t: t.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+who = esc(B["operator"]) + (" trading as " + esc(B["trading_name"]) if B["trading_name"] else "")
+email_link = ('<a href="mailto:' + esc(B["email"]) + '">' + esc(B["email"]) + "</a>") if B["email"] else "us using the details on the Contact page"
+rows = [("Business", who), ("ABN", esc(B["abn"]))] + ([("ACN", esc(B["acn"]))] if B["acn"] else []) + \
+       ([("Email", email_link)] if B["email"] else []) + \
+       ([("Phone", '<a href="tel:' + B["phone"].replace(" ", "") + '">' + esc(B["phone"]) + "</a>")] if B["phone"] else []) + \
+       ([("Address", esc(B["address"]))] if B["address"] else [])
+contact = '<dl class="lg-dl">' + "".join("<dt>" + a + "</dt><dd>" + b + "</dd>" for a, b in rows) + "</dl>"
+legal = (HERE / "legal.html").read_text(encoding="utf-8")
+legal = re.sub(r"<!--.*?-->", "", legal, count=1, flags=re.S).strip()
+for k, v in {"OPERATOR": who, "ABN": esc(B["abn"]), "EMAIL_LINK": email_link, "STATE": esc(B["state"]), "SITE": esc(B["site"]),
+             "UPDATED": esc(B["updated"]), "YEAR": B["year"], "CONTACT": contact}.items():
+    legal = legal.replace("{{" + k + "}}", v)
+assert "{{" not in legal, "unknown {{...}} in legal.html"
+LEGAL_PAGES = re.findall(r'<article class="lg-doc" id="lg-([a-z]+)" data-title="([^"]+)"', legal)
+LEGAL_NAV = "".join('<a href="#' + k + '">' + t + "</a>" for k, t in LEGAL_PAGES)
+FOOTER = ('<footer class="lx-foot"><p>© ' + B["year"] + " " + who + " · ABN " + esc(B["abn"]) +
+          (" · ACN " + esc(B["acn"]) if B["acn"] else "") + '</p><nav aria-label="Legal and policies">' + LEGAL_NAV + "</nav></footer>")
+
+LEGAL_CSS = r"""
+/* legal pages (legal.html) and the footer on every view */
+.lx-legal{max-width:1000px;margin:0 auto;padding-block:24px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start}
+.lx-lnav{display:grid;gap:2px;position:sticky;top:12px;font-size:.9rem}
+.lx-lnav a,.lx-foot a{color:var(--accent);text-decoration:none}.lx-lnav a{padding:5px 8px;border-radius:6px}
+.lx-lnav a[aria-current="page"]{background:var(--accent-soft);font-weight:600}
+.lx-lnav a:hover,.lx-foot a:hover{text-decoration:underline}
+.lx-lnav a:focus-visible,.lx-foot a:focus-visible,.lg-doc a:focus-visible,.lx-cn a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lg-doc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 24px;min-width:0;line-height:1.55;max-width:78ch}
+.lg-doc h1{font-size:1.5rem;margin:0 0 4px;text-wrap:balance}.lg-doc h2{font-size:1.08rem;margin:22px 0 6px}
+.lg-doc p,.lg-doc li{font-size:.95rem}.lg-doc ul{padding-left:1.2em}.lg-doc li{margin:4px 0}
+.lg-doc a{color:var(--accent)}
+.lg-upd{color:var(--muted);font-size:.85rem!important;margin:0 0 14px}
+.lg-tw{overflow-x:auto;margin:8px 0}
+.lg-t{border-collapse:collapse;width:100%;font-size:.86rem}
+.lg-t th,.lg-t td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.lg-t th{background:var(--bg);font-weight:600}
+.lg-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:8px 0 14px}.lg-dl dt{color:var(--muted)}.lg-dl dd{margin:0}
+.lx-foot{border-top:1px solid var(--line);background:var(--card);color:var(--muted);font-size:.82rem;padding-block:14px 18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:6px;justify-items:center;text-align:center}
+.lx-foot p{margin:0}.lx-foot nav{display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:center}
+.lx-cn{font-size:.82rem;color:var(--muted);margin:6px 0 0;line-height:1.4}.lx-cn a{color:var(--accent)}
+@media (max-width:720px){.lx-legal{grid-template-columns:1fr}.lx-lnav{position:static;display:flex;flex-wrap:wrap;gap:4px}.lg-doc{padding:16px}}
+"""
 
 LAUNCHER_CSS = r"""
 /* Launcher: a slim bar with the two tools as tabs; the start view shows each tool as a card */
@@ -194,11 +257,16 @@ LAUNCHER_HTML = """
   </div>
   <iframe id="lx-pfframe" title="Photo Finder"></iframe>
 </div>
-"""
+<div id="lx-legal" class="lx-legal" hidden>
+<nav class="lx-lnav" aria-label="Policies">""" + LEGAL_NAV + """</nav>
+<div>""" + legal + """</div>
+</div>
+""" + FOOTER + "\n"
 
 LAUNCHER_JS = r"""
 (()=>{
   const g=id=>document.getElementById(id),views={'':g('lx-home'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st')};
+  const LEGAL=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>a.id.slice(3));LEGAL.forEach(k=>{views[k]=g('lx-legal')});
   const onClaude=!!(window.claude&&window.claude.use)||/(^|\.)claude(usercontent)?\.(ai|com)$/.test(location.hostname);
   let pfReady=false,checked=false;
   // the Photo Finder is only built the first time it's opened, so its libraries don't load until needed
@@ -210,7 +278,8 @@ LAUNCHER_JS = r"""
     fetch('https://commons.wikimedia.org/w/api.php?action=query&meta=siteinfo&format=json&origin=*',{credentials:'omit'}).then(r=>r.json())
       .then(()=>{const i=new Image();i.onload=()=>end(true);i.onerror=()=>end(false);i.src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Example.jpg/40px-Example.jpg'}).catch(()=>end(false))})}
   function show(){let v=location.hash.slice(1);if(!(v in views))v='';
-    Object.entries(views).forEach(([k,el])=>{el.hidden=k!==v});
+    const cur=views[v];new Set(Object.values(views)).forEach(el=>{el.hidden=el!==cur});
+    if(LEGAL.includes(v)){document.querySelectorAll('#lx-legal .lg-doc').forEach(a=>{a.hidden=a.id!=='lg-'+v});document.querySelectorAll('.lx-lnav a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});document.title=g('lg-'+v).dataset.title+' · Oolio Menu Tools'}else document.title='Oolio Menu Tools';
     document.querySelectorAll('.lx-tab').forEach(b=>{if(b.dataset.go===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
     if(v==='photos')openPF();window.scrollTo(0,0)}
   document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;const v=b.dataset.go;
@@ -230,7 +299,7 @@ page = (
     '<meta name="claude:viewport-fit-sides" content="cover">\n'
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>\n'
     + FONT + "\n"
-    "<style>" + conv_css + LAUNCHER_CSS + rl_css + st_css + THEME + "</style>\n"
+    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + THEME + "</style>\n"
     + LAUNCHER_HTML
     + "<script>" + conv_js + "</script>\n"
     + "<script>" + rl_js + "</script>\n"
@@ -253,6 +322,23 @@ hosted = full.replace("<title>Oolio Menu Tools</title>",
 (HERE / "public").mkdir(exist_ok=True)
 (HERE / "public" / "index.html").write_bytes(hosted.replace("\r\n", "\n").encode("utf-8"))
 print("wrote", HERE / "public" / "index.html", len(hosted), "bytes")
+# public/legal/: the same pages, readable without signing in (needs a Cloudflare Access "Bypass" rule for /legal/* and /.well-known/*)
+standalone = ('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    "<title>Policies · Oolio Menu Tools</title>\n" + FONT + "\n<style>" + THEME + "[hidden]{display:none!important}" + LEGAL_CSS +
+    ".lx-top{padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card);font-weight:700}.lx-top a{color:var(--text);text-decoration:none}</style>\n</head>\n<body>\n"
+    '<header class="lx-top"><a href="/">Oolio Menu Tools</a></header>\n<main class="lx-legal">\n<nav class="lx-lnav" aria-label="Policies">' + LEGAL_NAV + "</nav>\n<div>" + legal + "</div>\n</main>\n" + FOOTER +
+    "\n<script>(()=>{const ks=[...document.querySelectorAll('.lg-doc')].map(a=>a.id.slice(3));function show(){let v=location.hash.slice(1);if(!ks.includes(v))v=ks[0];"
+    "document.querySelectorAll('.lg-doc').forEach(a=>{a.hidden=a.id!=='lg-'+v});document.querySelectorAll('.lx-lnav a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});"
+    "document.title=document.getElementById('lg-'+v).dataset.title+' · Oolio Menu Tools';window.scrollTo(0,0)}window.addEventListener('hashchange',show);show()})();</script>\n</body>\n</html>\n")
+(HERE / "public" / "legal").mkdir(exist_ok=True)
+(HERE / "public" / "legal" / "index.html").write_bytes(standalone.replace("\r\n", "\n").encode("utf-8"))
+(HERE / "public" / ".well-known").mkdir(exist_ok=True)
+sec = ("# Security contact for Oolio Menu Tools (RFC 9116)\n" + ("Contact: mailto:" + B["email"] + "\n" if B["email"] else "") +
+       "Contact: " + B["site"] + "/legal/#security\nPolicy: " + B["site"] + "/legal/#security\nPreferred-Languages: en\n"
+       "Canonical: " + B["site"] + "/.well-known/security.txt\nExpires: 2027-11-11T00:00:00.000Z\n")
+(HERE / "public" / ".well-known" / "security.txt").write_bytes(sec.encode("utf-8"))
+print("wrote", HERE / "public" / "legal" / "index.html", "and public/.well-known/security.txt")
+
 print("wrote", HERE / "apps.html", len(full), "bytes")
 if len(sys.argv) > 1:
     Path(sys.argv[1]).write_text(page, encoding="utf-8")

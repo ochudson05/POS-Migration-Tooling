@@ -42,6 +42,7 @@ function newVenue(prefill){const d=g('lx-dlg');
     '<label>Suburb or street<input id="lx-nl" autocomplete="off" placeholder="e.g. Surry Hills" value="'+esc(prefill&&prefill.loc||'')+'"></label>'+
     '<label>Organisation<select id="lx-ng"><option value="">A new organisation with the same name</option>'+(OV.groups?OV.groups():[]).map(gr=>'<option value="'+esc(gr.id)+'"'+(prefill&&prefill.group===gr.id?' selected':'')+'>'+esc(gr.name||'Untitled')+' ('+gr.venues.length+' venue'+(gr.venues.length===1?'':'s')+')</option>').join('')+'</select></label>'+
     '<label class="lx-ck"><input type="checkbox" id="lx-nrun" checked> Look it up now ('+(window.OOLIO_HOSTED?'free: Google, the venue’s website and the ABN register':'free with the Google relay in the Claude app; otherwise about 10–13 Firecrawl credits')+')</label>'+
+    '<p class="lx-cn">The venue is saved to the team’s shared records with your name. Lookups send its name and suburb to Google, its website and the ABN register. <a href="#privacy" onclick="this.closest(&quot;dialog&quot;).close()">Privacy Policy</a></p>'+
     '<div class="lx-row"><button value="ok">Create venue</button><button value="cancel" class="lx-sec" formnovalidate>Cancel</button></div></form>';
   d.showModal();g('lx-nn').focus();
   d.querySelector('form').onsubmit=async e=>{if(e.submitter&&e.submitter.value!=='ok')return;const name=clean(g('lx-nn').value),loc=clean(g('lx-nl').value),run=g('lx-nrun').checked;if(!name)return;

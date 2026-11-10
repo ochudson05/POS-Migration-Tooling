@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Policies · Oolio Menu Tools</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>/* Oolio One look for Oolio Menu Tools.
+   build_apps.py adds this after every tool's own CSS (and inside the Photo Finder frame), so it only has to restate
+   the shared colour tokens and a few shapes. Colours follow oolio.com: purple #673ab6 / #5e35b1, light purple #c1afde,
+   charcoal #222, Material green / orange / red for state; type is Inter; buttons have 6px corners.
+   Layout: a deep purple app bar with the tool tabs, then each tool's own page on a faintly purple-tinted ground. */
+:root{
+  --bg:#f5f3f9;--card:#ffffff;--text:#222222;--muted:#5f586d;--line:#e3dded;--tile:#ece7f5;
+  --accent:#673ab6;--accent-strong:#5e35b1;--accent-soft:#efe8f9;--accent-text:#ffffff;
+  --ok:#2e7d32;--warn:#b45f00;--bad:#c62828;
+  --bar:#4a2a96;--bar-text:#ffffff;--bar-muted:rgb(255 255 255 / .76);--bar-line:rgb(255 255 255 / .22);--bar-hover:rgb(255 255 255 / .1);
+  --shadow:0 1px 2px rgb(40 22 80 / .06),0 2px 8px rgb(40 22 80 / .05);
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;--f-mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+  --r:6px;--r-card:12px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141119;--card:#1e1a26;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;--tile:#272033;
+  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2238;--accent-text:#1a1424;
+  --ok:#81c784;--warn:#ffb74d;--bad:#ef9a9a;
+  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247 / .72);--bar-line:rgb(242 239 247 / .18);--bar-hover:rgb(242 239 247 / .08);
+  --shadow:0 1px 2px rgb(0 0 0 / .3);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141119;--card:#1e1a26;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;--tile:#272033;
+  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2238;--accent-text:#1a1424;
+  --ok:#81c784;--warn:#ffb74d;--bad:#ef9a9a;
+  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247 / .72);--bar-line:rgb(242 239 247 / .18);--bar-hover:rgb(242 239 247 / .08);
+  --shadow:0 1px 2px rgb(0 0 0 / .3);color-scheme:dark}
+
+body{background:var(--bg);color:var(--text);font-family:var(--f-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3{letter-spacing:-.01em}
+h1{font-weight:700}
+a{color:var(--accent)}
+
+/* app bar */
+.lx-bar{background:var(--bar);border-bottom:0;color:var(--bar-text);padding-block:8px}
+.lx-brand{color:var(--bar-text);font-weight:700;letter-spacing:-.01em}
+.lx-tab{color:var(--bar-muted);font-weight:600;border-radius:var(--r)}
+.lx-tab:hover{color:var(--bar-text);background:var(--bar-hover)}
+.lx-tab[aria-current="page"]{color:var(--bar);background:var(--bar-text);border-color:transparent}
+.lx-venue{color:var(--bar-muted)}
+.lx-venue select{background:var(--bar-hover);color:var(--bar-text);border-color:var(--bar-line);border-radius:var(--r)}
+.lx-venue select option{color:var(--text);background:var(--card)}
+.lx-bar :focus-visible{outline:2px solid var(--bar-text)!important;outline-offset:2px}
+
+/* buttons, fields and focus */
+button,.btn,.rf button,.st button,.lx-strip button,.lx-row button{border-radius:var(--r)}
+button:not(:disabled):not(.sec):not(.rf-sec):not(.st-sec):not(.lx-sec):not(.lx-tab):not(.lx-brand):not(.st-link):not(.lx-link):not(.st-x):not(.st-box):not(.st-org):not(.opt):hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+.sec:not(:disabled):hover,.rf-sec:not(:disabled):hover,.st-sec:not(:disabled):hover,.lx-sec:not(:disabled):hover{border-color:var(--accent)!important;color:var(--accent)!important}
+input,select,textarea,.rf input,.st input,.st select,.st textarea{border-radius:var(--r)}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+:focus-visible{outline-color:var(--accent)}
+
+/* surfaces */
+.card,.lx-card,.st-card,.rf-card,.rf-kpi,.lx-step,.lx-strip{border-radius:var(--r-card);box-shadow:var(--shadow)}
+.lx-strip{border-left-color:var(--accent)}
+.lx-step.next{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow)}
+.lx-step.next .lx-num{background:var(--accent-soft)}
+.lx-step.done .lx-num,.st .st-step.is-done .st-box{color:var(--card)!important}
+.st-chip.a,.badge{background:var(--accent-soft);border-color:transparent}
+.st-chip.a{color:var(--accent)}
+.st-org{box-shadow:var(--shadow)}
+.st-org:hover{border-color:var(--accent)!important}
+.st-bar i,.lx-bar2 i{background:var(--accent)}
+.st-nav a:hover{background:var(--accent-soft)}
+.lx-toolsh,.st-phase,.rf .rf-card h3{color:var(--muted)}
+th{font-weight:600}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+[hidden]{display:none!important}
+/* legal pages (legal.html) and the footer on every view */
+.lx-legal{max-width:1000px;margin:0 auto;padding-block:24px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start}
+.lx-lnav{display:grid;gap:2px;position:sticky;top:12px;font-size:.9rem}
+.lx-lnav a,.lx-foot a{color:var(--accent);text-decoration:none}.lx-lnav a{padding:5px 8px;border-radius:6px}
+.lx-lnav a[aria-current="page"]{background:var(--accent-soft);font-weight:600}
+.lx-lnav a:hover,.lx-foot a:hover{text-decoration:underline}
+.lx-lnav a:focus-visible,.lx-foot a:focus-visible,.lg-doc a:focus-visible,.lx-cn a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lg-doc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 24px;min-width:0;line-height:1.55;max-width:78ch}
+.lg-doc h1{font-size:1.5rem;margin:0 0 4px;text-wrap:balance}.lg-doc h2{font-size:1.08rem;margin:22px 0 6px}
+.lg-doc p,.lg-doc li{font-size:.95rem}.lg-doc ul{padding-left:1.2em}.lg-doc li{margin:4px 0}
+.lg-doc a{color:var(--accent)}
+.lg-upd{color:var(--muted);font-size:.85rem!important;margin:0 0 14px}
+.lg-tw{overflow-x:auto;margin:8px 0}
+.lg-t{border-collapse:collapse;width:100%;font-size:.86rem}
+.lg-t th,.lg-t td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.lg-t th{background:var(--bg);font-weight:600}
+.lg-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:8px 0 14px}.lg-dl dt{color:var(--muted)}.lg-dl dd{margin:0}
+.lx-foot{border-top:1px solid var(--line);background:var(--card);color:var(--muted);font-size:.82rem;padding-block:14px 18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:6px;justify-items:center;text-align:center}
+.lx-foot p{margin:0}.lx-foot nav{display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:center}
+.lx-cn{font-size:.82rem;color:var(--muted);margin:6px 0 0;line-height:1.4}.lx-cn a{color:var(--accent)}
+@media (max-width:720px){.lx-legal{grid-template-columns:1fr}.lx-lnav{position:static;display:flex;flex-wrap:wrap;gap:4px}.lg-doc{padding:16px}}
+.lx-top{padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card);font-weight:700}.lx-top a{color:var(--text);text-decoration:none}</style>
+</head>
+<body>
+<header class="lx-top"><a href="/">Oolio Menu Tools</a></header>
+<main class="lx-legal">
+<nav class="lx-lnav" aria-label="Policies"><a href="#privacy">Privacy Policy</a><a href="#terms">Terms of Use</a><a href="#use">Acceptable Use Policy</a><a href="#cookies">Cookies and Browser Storage</a><a href="#disclaimer">Disclaimer</a><a href="#ai">Use of AI</a><a href="#accessibility">Accessibility</a><a href="#security">Security</a><a href="#credits">Credits and Licences</a><a href="#contact">Contact and Business Details</a></nav>
+<div><article class="lg-doc" id="lg-privacy" data-title="Privacy Policy">
+<h1>Privacy Policy</h1>
+<p class="lg-upd">Last updated 11 November 2026</p>
+<p>Oolio Menu Tools (“the tools”, “we”, “us”) is run by Oscar Hudson (ABN 60 219 896 086). This policy explains what personal information the tools collect, why, who it goes to, and how you can see, correct or complain about it. We follow the Australian Privacy Principles (APPs) in the <i>Privacy Act 1988</i> (Cth). It covers the website at https://menurunner.ochudson05.workers.dev and the shared copy of the tools on claude.ai.</p>
+
+<h2>Who the tools are for</h2>
+<p>The tools are for staff who set up venues on Oolio One: they convert menus, find product photos, look up venue details and track setup progress. They are not for the public and not for anyone under 18.</p>
+
+<h2>What we collect</h2>
+<ul>
+<li><b>Your sign-in email.</b> The website is protected by Cloudflare Access, which emails a one-time code to an approved work address. We receive your email address when you sign in. We never see or store a password.</li>
+<li><b>Records you save.</b> Venue and organisation names, addresses, phone numbers, websites, ABNs and legal names, menus and menu versions, setup-tracker progress and notes. Each record also stores the email of the person who last changed it and when.</li>
+<li><b>Files and text you add.</b> Menu files, photos, PDFs, pasted text and web addresses. These are read in your own browser. They are only kept if you save the result to a venue.</li>
+<li><b>Lookups.</b> The venue names, suburbs and web addresses you search for, and the results: public business details, opening hours, and Google reviews, which can include the reviewer’s display name.</li>
+<li><b>Technical information.</b> Cloudflare, which hosts the website, records each visit’s IP address, browser and time for security. We don’t use analytics, advertising or tracking tools.</li>
+</ul>
+<p>We don’t ask for sensitive information (such as health information) and ask you not to enter it. Contact details of venue staff should be business details only.</p>
+
+<h2>Why we collect it</h2>
+<ul>
+<li>To let approved staff sign in, and to keep everyone else out.</li>
+<li>To share venue records with the team, and to show who changed what.</li>
+<li>To find and convert menus, product photos and venue details.</li>
+<li>To keep the tools secure, fix faults and stay within the monthly limits of the services we pay for.</li>
+</ul>
+<p>We don’t send marketing emails or texts, and we don’t sell, rent or trade personal information. If we ever sent marketing, it would be opt-in only, identify us, and have a one-click unsubscribe that we honour within 5 business days, as the <i>Spam Act 2003</i> requires.</p>
+
+<h2>Who it goes to, and where</h2>
+<p>We use the services below to run the tools. Some are outside Australia, so your information may be stored or processed overseas. Each one is bound by its own terms and privacy commitments for the service we use.</p>
+<div class="lg-tw"><table class="lg-t">
+<thead><tr><th scope="col">Service</th><th scope="col">What it’s used for</th><th scope="col">What it receives</th><th scope="col">Where</th></tr></thead>
+<tbody>
+<tr><td>Cloudflare (Workers, D1, Access)</td><td>Hosting the website, sign-in, the shared records</td><td>Sign-in email, saved records, visit logs</td><td>Global network; company in the USA</td></tr>
+<tr><td>Google (Places API)</td><td>Venue details, hours and reviews in Restaurant Lookup</td><td>Venue names and suburbs you search for</td><td>USA</td></tr>
+<tr><td>Firecrawl</td><td>Reading web pages that can’t be read for free</td><td>The web addresses and searches involved</td><td>USA</td></tr>
+<tr><td>Australian Business Register (ABN Lookup)</td><td>Legal names and ABNs</td><td>Business names and ABNs</td><td>Australia</td></tr>
+<tr><td>DuckDuckGo</td><td>Web searches for a venue’s links</td><td>Search words</td><td>USA</td></tr>
+<tr><td>Pexels, Pixabay, Openverse, Wikimedia Commons, wsrv.nl</td><td>Free product photos in Photo Finder</td><td>Product names; your browser contacts them directly</td><td>Germany, USA, Netherlands</td></tr>
+<tr><td>Menu feeds (me&amp;u / Mr Yum, Hungry Hungry)</td><td>Reading a venue’s online ordering menu</td><td>The venue’s menu address</td><td>Australia</td></tr>
+<tr><td>Google Fonts, cdnjs, jsDelivr</td><td>The page’s font and code libraries</td><td>Your IP address and browser, when the page loads</td><td>Global</td></tr>
+<tr><td>Anthropic (claude.ai copy only)</td><td>Hosting the claude.ai copy; reading menus with Claude when you allow it</td><td>The menu text or picture, under your own Claude account</td><td>USA</td></tr>
+</tbody></table></div>
+<p>We may also disclose information when the law requires it, or to deal with a security incident.</p>
+
+<h2>How we keep it safe</h2>
+<ul>
+<li>The whole website uses HTTPS. Every request to the shared records checks a signed Cloudflare Access sign-in, so only approved staff can read or change them.</li>
+<li>There are no passwords to steal: sign-in uses one-time email codes. Service keys are kept as encrypted secrets in Cloudflare, never in the page.</li>
+<li>Cloudflare encrypts the shared records at rest.</li>
+<li>Keys you type into the tools yourself (for example a Pexels key) stay only in your browser.</li>
+</ul>
+
+<h2>How long we keep it</h2>
+<div class="lg-tw"><table class="lg-t">
+<thead><tr><th scope="col">Information</th><th scope="col">Kept for</th></tr></thead>
+<tbody>
+<tr><td>Venue records, menus and setup progress</td><td>Until a team member deletes the venue. Once a year we review the records and delete venues that are no longer being set up.</td></tr>
+<tr><td>Sign-in records (Cloudflare Access)</td><td>As set by Cloudflare’s log retention for our plan</td></tr>
+<tr><td>Visit logs</td><td>Cloudflare’s standard retention (a few days)</td></tr>
+<tr><td>Saved lookups and page reads in your browser</td><td>7 to 14 days, then refreshed or dropped; you can clear them at any time by clearing this site’s data</td></tr>
+<tr><td>Files you add but don’t save</td><td>Not kept: they’re gone when you close the page</td></tr>
+</tbody></table></div>
+
+<h2>Seeing and correcting your information</h2>
+<p>You can ask what personal information we hold about you, and ask us to correct or delete it, by emailing <a href="mailto:ochudson05@gmail.com">ochudson05@gmail.com</a>. We reply within 30 days. There’s no charge. If we can’t do what you ask, we’ll explain why.</p>
+
+<h2>Complaints</h2>
+<p>Email <a href="mailto:ochudson05@gmail.com">ochudson05@gmail.com</a> with the details. We’ll acknowledge it within 5 business days and aim to resolve it within 30 days. If you’re not satisfied, you can complain to the Office of the Australian Information Commissioner (OAIC) at <a href="https://www.oaic.gov.au/privacy/privacy-complaints" target="_blank" rel="noopener">oaic.gov.au</a> or on 1300 363 992.</p>
+
+<h2>Data breaches</h2>
+<p>If a breach is likely to cause someone serious harm, we will notify the people affected and the OAIC under the Notifiable Data Breaches scheme, as soon as practicable and within 30 days of becoming aware of it.</p>
+
+<h2>Visitors outside Australia</h2>
+<p><b>EU and UK:</b> we process information on the basis of our legitimate interest in running the tools for the team, and to meet legal obligations. You can ask for access, correction, deletion, restriction or a copy of your information, object to processing, and complain to your local data protection authority.</p>
+<p><b>California and other US states:</b> we do not sell or share personal information, or use it for targeted advertising. You can ask to know, correct or delete it, and we won’t treat you differently for asking.</p>
+
+<h2>Changes</h2>
+<p>We’ll update this page when our practices change and show the date at the top.</p>
+</article>
+
+<article class="lg-doc" id="lg-terms" data-title="Terms of Use">
+<h1>Terms of Use</h1>
+<p class="lg-upd">Last updated 11 November 2026</p>
+<p>These terms apply to Oolio Menu Tools, run by Oscar Hudson (ABN 60 219 896 086). By signing in or using the tools, you agree to them. If you don’t agree, don’t use the tools.</p>
+
+<h2>1. Who can use the tools</h2>
+<p>The tools are for approved staff, 18 or over, using a work email that has been given access. Your access is personal: don’t share sign-in codes. Tell us straight away at <a href="mailto:ochudson05@gmail.com">ochudson05@gmail.com</a> if you think someone else has used your access.</p>
+
+<h2>2. What the tools do</h2>
+<p>The tools help prepare venue setups for Oolio One: they turn menus into import files, suggest product photos, gather public information about venues and track setup progress. They are provided free of charge, as a working aid. Results are suggestions that you must check before you rely on them or import them anywhere.</p>
+
+<h2>3. Your responsibilities</h2>
+<ul>
+<li>Follow the <a href="#use" data-lg="use">Acceptable Use Policy</a>.</li>
+<li>Only upload menus, files and details you’re allowed to use, and don’t enter sensitive personal information.</li>
+<li>Check names, prices, tax settings, categories and photos before using them. You are responsible for what you import into a venue’s system.</li>
+<li>Respect the licence of each photo (see <a href="#credits" data-lg="credits">Credits and licences</a>) and the terms of the services the tools use, such as Google and Firecrawl.</li>
+</ul>
+
+<h2>4. Intellectual property</h2>
+<p>The tools’ code, design and text are © 2026 Oscar Hudson, except the open-source libraries, fonts and photos listed in <a href="#credits" data-lg="credits">Credits and licences</a>, which belong to their owners and are used under their licences. Menus, files and venue information you add stay with whoever owns them; you let us store and process them only to run the tools for the team. Oolio and Oolio One are trade marks of their owner and are mentioned to describe the products these tools work with.</p>
+
+<h2>5. Fees, refunds and consumer law</h2>
+<p>The tools are free. There are no subscriptions, automatic renewals, hidden fees, sales or deliveries, so there is nothing to cancel or refund. Nothing in these terms excludes, restricts or changes any guarantee, right or remedy you have under the Australian Consumer Law or any other law that can’t lawfully be excluded.</p>
+
+<h2>6. Availability</h2>
+<p>We aim to keep the tools running but don’t promise any particular uptime or service level. Features can change, and the services the tools rely on (Cloudflare, Google, Firecrawl, photo libraries) can limit or stop what they provide. Keep your own copies of any files you need.</p>
+
+<h2>7. Liability</h2>
+<p>To the extent the law allows, the tools are provided “as is”, and we are not liable for any indirect or consequential loss, lost profits, or loss caused by relying on a result you didn’t check. Where our liability under the Australian Consumer Law can be limited, it is limited to supplying the service again. Nothing here limits liability that can’t be limited by law, including for fraud or our own negligence causing personal injury.</p>
+
+<h2>8. Suspension and ending access</h2>
+<p>You can stop using the tools at any time. We can suspend or end your access if you break these terms or the Acceptable Use Policy, if your work email is no longer approved, or to protect the tools or other people. Where it’s reasonable, we’ll tell you first and explain why.</p>
+
+<h2>9. Changes to these terms</h2>
+<p>We may update these terms when the tools or the law change. We’ll show the date at the top and, for significant changes, tell signed-in users before they apply. If you don’t agree with a change, stop using the tools.</p>
+
+<h2>10. Disputes and governing law</h2>
+<p>Please contact us first at <a href="mailto:ochudson05@gmail.com">ochudson05@gmail.com</a>, and we’ll try in good faith to resolve the issue within 30 days. These terms are governed by the laws of Queensland, Australia, and the courts of Queensland and the Commonwealth have jurisdiction.</p>
+</article>
+
+<article class="lg-doc" id="lg-use" data-title="Acceptable Use Policy">
+<h1>Acceptable Use Policy</h1>
+<p class="lg-upd">Last updated 11 November 2026</p>
+<p>Signed-in users share venue records with the rest of the team. To keep that safe and accurate, don’t use the tools to:</p>
+<ul>
+<li>upload or save anything unlawful, defamatory, abusive, or that infringes someone’s copyright, trade mark or privacy;</li>
+<li>enter sensitive personal information, payment card details, passwords, or personal details that aren’t needed for a venue setup;</li>
+<li>scrape or download websites in breach of their terms, or run lookups in bulk beyond normal work use;</li>
+<li>try to get around sign-in, read records you aren’t meant to, overload the service, or test its security without following the <a href="#security" data-lg="security">security policy</a>;</li>
+<li>share your access, or use the Firecrawl, Google or other allowances for anything other than venue setups;</li>
+<li>add fake, paid or misleading reviews or claims to a venue’s profile.</li>
+</ul>
+
+<h2>Reporting content and takedowns</h2>
+<p>If something saved in the tools infringes your rights, is defamatory, or shouldn’t be there, email <a href="mailto:ochudson05@gmail.com">ochudson05@gmail.com</a> with the subject “Content complaint”. Say what it is, where it appears, and why it should be removed. We’ll acknowledge it within 2 business days and remove or fix content that breaks this policy or the law promptly, usually within 5 business days. The person who added it can ask us to review the decision by replying to the same email; we’ll reply within 10 business days.</p>
+<p>Reviews shown in Restaurant Lookup come from Google and are attributed there. They aren’t endorsements, and we don’t edit, filter or pay for them.</p>
+</article>
+
+<article class="lg-doc" id="lg-cookies" data-title="Cookies and Browser Storage">
+<h1>Cookies and browser storage</h1>
+<p class="lg-upd">Last updated 11 November 2026</p>
+<p>The tools use only what they need to work. There are no analytics, advertising, social media or remarketing cookies, pixels or tags, so there’s nothing to opt in to and no consent banner.</p>
+<div class="lg-tw"><table class="lg-t">
+<thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Purpose</th><th scope="col">How long</th></tr></thead>
+<tbody>
+<tr><td>CF_Authorization</td><td>Cookie (Cloudflare Access)</td><td>Keeps you signed in to the website. Strictly necessary.</td><td>The sign-in session length set in Cloudflare Access (24 hours by default)</td></tr>
+<tr><td>Saved lookups and page reads</td><td>Browser storage</td><td>Avoids paying for the same lookup twice</td><td>7 to 14 days</td></tr>
+<tr><td>Your settings (venue picked, spirit brands, photo keys)</td><td>Browser storage</td><td>Remembers your choices on this device</td><td>Until you clear them</td></tr>
+</tbody></table></div>
+<p>Browser storage never leaves your device. You can clear it, and the cookie, in your browser’s settings for this site; you’ll need to sign in again.</p>
+<p>When the page loads, your browser fetches its font from Google Fonts and code libraries from cdnjs and jsDelivr. These services receive your IP address and browser details but don’t set cookies for us.</p>
+</article>
+
+<article class="lg-doc" id="lg-disclaimer" data-title="Disclaimer">
+<h1>Disclaimer</h1>
+<p class="lg-upd">Last updated 11 November 2026</p>
+<ul>
+<li><b>Not professional advice.</b> Tax names, GST settings, categories and similar suggestions are setup conventions, not tax, legal, accounting or financial advice. Check tax treatment with the venue or its accountant.</li>
+<li><b>Check every result.</b> Menus read from photos, PDFs and websites can contain mistakes in names, prices or modifiers. Always compare the result with the original before importing it.</li>
+<li><b>Public information can be out of date.</b> Venue details come from Google, the venue’s own website, ordering sites and the Australian Business Register. We don’t guarantee they are current or complete.</li>
+<li><b>Photos.</b> Photo Finder suggests freely licensed photos. Each photo’s licence is listed in its credits file; check it suits the use before publishing the photo.</li>
+<li><b>No endorsement.</b> Links to delivery, booking and ordering sites, and reviews from Google, are shown for reference only. We have no sponsorships, affiliate links or paid placements.</li>
+</ul>
+</article>
+
+<article class="lg-doc" id="lg-ai" data-title="Use of AI">
+<h1>Use of AI</h1>
+<p class="lg-upd">Last updated 11 November 2026</p>
+<p>We want you to know when a result was produced by AI.</p>
+<ul>
+<li><b>On claude.ai and in the Claude app,</b> the Menu Converter can ask Claude (an AI model made by Anthropic) to read menu photos, scanned PDFs and web pages. It only does this after you allow it, using your own Claude account. Menus read this way are AI-generated and must be checked.</li>
+<li><b>On the website,</b> no AI model is used. Photos and scans are read with text recognition (OCR) in your browser, and categories, printers and size variants are worked out by fixed rules.</li>
+<li>Firecrawl, used to read some web pages, may use automated extraction. Its results are treated as unchecked like any other.</li>
+<li>You are never talking to a chatbot in the tools, and none of this text was written to look like it came from a person when it didn’t.</li>
+</ul>
+</article>
+
+<article class="lg-doc" id="lg-accessibility" data-title="Accessibility">
+<h1>Accessibility statement</h1>
+<p class="lg-upd">Last updated 11 November 2026</p>
+<p>We aim for the tools to meet the Web Content Accessibility Guidelines (WCAG) 2.2 at Level AA, and to be usable with a keyboard alone, with screen readers, at 200% zoom and in light or dark mode.</p>
+<h2>What we do</h2>
+<ul>
+<li>Every form field has a label, buttons and links have visible focus outlines, and status messages are announced to screen readers.</li>
+<li>Text and controls aim to meet AA colour contrast, and the pages follow your system’s light or dark setting.</li>
+<li>Pages work on phones and narrow windows without sideways scrolling.</li>
+</ul>
+<h2>Known limitations</h2>
+<ul>
+<li>Some wide tables of products and modifiers need scrolling sideways on small screens.</li>
+<li>Photos found by Photo Finder are product photos with the product’s name as their description, which may not describe the picture fully.</li>
+<li>Text recognised from menu photos can be wrong and must be checked by eye against the original.</li>
+</ul>
+<h2>Feedback and adjustments</h2>
+<p>If something is hard to use, or you need it in another form, email <a href="mailto:ochudson05@gmail.com">ochudson05@gmail.com</a>. We’ll reply within 5 business days and fix confirmed problems within 30 days where we can, or offer a reasonable adjustment, as the <i>Disability Discrimination Act 1992</i> expects. If you’re not satisfied with our response, you can contact the <a href="https://humanrights.gov.au/complaints" target="_blank" rel="noopener">Australian Human Rights Commission</a>.</p>
+</article>
+
+<article class="lg-doc" id="lg-security" data-title="Security">
+<h1>Security and vulnerability disclosure</h1>
+<p class="lg-upd">Last updated 11 November 2026</p>
+<p>If you find a security problem in the tools, please tell us at <a href="mailto:ochudson05@gmail.com">ochudson05@gmail.com</a> with the subject “Security”. Include the steps to reproduce it. We’ll acknowledge your report within 3 business days and keep you updated until it’s fixed.</p>
+<ul>
+<li>Please don’t access, change or delete other people’s records, run denial-of-service or automated scanning, or use social engineering.</li>
+<li>Give us a reasonable time to fix the problem before telling anyone else.</li>
+<li>If you act in good faith and follow this policy, we won’t take legal action against you over the research.</li>
+</ul>
+<p>The website also publishes this contact at <code>/.well-known/security.txt</code>.</p>
+<p>We keep the shared records backed up (Cloudflare D1 keeps point-in-time history of the shared records, and the Setup Tracker can download a full backup) and have a written plan for responding to incidents and data breaches.</p>
+</article>
+
+<article class="lg-doc" id="lg-credits" data-title="Credits and Licences">
+<h1>Credits and licences</h1>
+<p class="lg-upd">Last updated 11 November 2026</p>
+<p>© 2026 Oscar Hudson. The tools’ own code, design and text may not be copied without permission. They are built with the following, used under their licences:</p>
+<div class="lg-tw"><table class="lg-t">
+<thead><tr><th scope="col">Component</th><th scope="col">Used for</th><th scope="col">Licence</th></tr></thead>
+<tbody>
+<tr><td>SheetJS Community Edition 0.18.5</td><td>Reading and writing spreadsheets</td><td>Apache 2.0</td></tr>
+<tr><td>PDF.js 3.11.174 (Mozilla)</td><td>Reading menu PDFs</td><td>Apache 2.0</td></tr>
+<tr><td>Tesseract.js 5.1.1</td><td>Text recognition on the website</td><td>Apache 2.0</td></tr>
+<tr><td>JSZip 3.10.1</td><td>Saving photo folders</td><td>MIT (or GPL 3.0)</td></tr>
+<tr><td>Inter typeface (Rasmus Andersson)</td><td>The page font</td><td>SIL Open Font License 1.1</td></tr>
+</tbody></table></div>
+<p>Full licence texts are in the THIRD_PARTY_NOTICES.md file that comes with the tools’ code.</p>
+<h2>Photos</h2>
+<p>Photo Finder searches free photo libraries: Pexels (Pexels License), Pixabay (Pixabay Content License), Openverse (filtered to licences that allow business use) and Wikimedia Commons. Each saved folder includes a credits list with the photographer, source page and licence of every photo; keep it with the photos.</p>
+<h2>Venue information</h2>
+<p>Venue details and reviews come from Google Maps, and ABN details from the Australian Business Register (ABN Lookup), under their terms of use.</p>
+</article>
+
+<article class="lg-doc" id="lg-contact" data-title="Contact and Business Details">
+<h1>Contact and business details</h1>
+<p class="lg-upd">Last updated 11 November 2026</p>
+<dl class="lg-dl"><dt>Business</dt><dd>Oscar Hudson</dd><dt>ABN</dt><dd>60 219 896 086</dd><dt>Email</dt><dd><a href="mailto:ochudson05@gmail.com">ochudson05@gmail.com</a></dd><dt>Phone</dt><dd><a href="tel:0408941151">0408 941 151</a></dd></dl>
+<p>We reply to emails within 2 business days. For privacy, accessibility, content or security matters, the response times in those policies apply.</p>
+</article></div>
+</main>
+<footer class="lx-foot"><p>© 2026 Oscar Hudson · ABN 60 219 896 086</p><nav aria-label="Legal and policies"><a href="#privacy">Privacy Policy</a><a href="#terms">Terms of Use</a><a href="#use">Acceptable Use Policy</a><a href="#cookies">Cookies and Browser Storage</a><a href="#disclaimer">Disclaimer</a><a href="#ai">Use of AI</a><a href="#accessibility">Accessibility</a><a href="#security">Security</a><a href="#credits">Credits and Licences</a><a href="#contact">Contact and Business Details</a></nav></footer>
+<script>(()=>{const ks=[...document.querySelectorAll('.lg-doc')].map(a=>a.id.slice(3));function show(){let v=location.hash.slice(1);if(!ks.includes(v))v=ks[0];document.querySelectorAll('.lg-doc').forEach(a=>{a.hidden=a.id!=='lg-'+v});document.querySelectorAll('.lx-lnav a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});document.title=document.getElementById('lg-'+v).dataset.title+' · Oolio Menu Tools';window.scrollTo(0,0)}window.addEventListener('hashchange',show);show()})();</script>
+</body>
+</html>

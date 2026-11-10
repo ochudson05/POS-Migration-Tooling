@@ -1,0 +1,7 @@
+# Security contact for Oolio Menu Tools (RFC 9116)
+Contact: mailto:ochudson05@gmail.com
+Contact: https://menurunner.ochudson05.workers.dev/legal/#security
+Policy: https://menurunner.ochudson05.workers.dev/legal/#security
+Preferred-Languages: en
+Canonical: https://menurunner.ochudson05.workers.dev/.well-known/security.txt
+Expires: 2027-11-11T00:00:00.000Z
