@@ -37,7 +37,7 @@ function newVenue(prefill){const d=g('lx-dlg');
   d.innerHTML='<form method="dialog" class="lx-form"><h2>New venue</h2>'+
     '<label>Venue name<input id="lx-nn" required autocomplete="off" value="'+esc(prefill&&prefill.name||'')+'"></label>'+
     '<label>Suburb or street<input id="lx-nl" autocomplete="off" placeholder="e.g. Surry Hills" value="'+esc(prefill&&prefill.loc||'')+'"></label>'+
-    '<label class="lx-ck"><input type="checkbox" id="lx-nrun" checked> Look it up now (free with the Google relay in the Claude app; otherwise about 10–13 Firecrawl credits)</label>'+
+    '<label class="lx-ck"><input type="checkbox" id="lx-nrun" checked> Look it up now ('+(window.OOLIO_HOSTED?'free: Google, the venue’s website and the ABN register':'free with the Google relay in the Claude app; otherwise about 10–13 Firecrawl credits')+')</label>'+
     '<div class="lx-row"><button value="ok">Create venue</button><button value="cancel" class="lx-sec" formnovalidate>Cancel</button></div></form>';
   d.showModal();g('lx-nn').focus();
   d.querySelector('form').onsubmit=async e=>{if(e.submitter&&e.submitter.value!=='ok')return;const name=clean(g('lx-nn').value),loc=clean(g('lx-nl').value),run=g('lx-nrun').checked;if(!name)return;

@@ -59,9 +59,11 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 <h2>1. Source files</h2>
 <label for="file">Choose one or more files: spreadsheets (.csv, .xlsx), menu PDFs, saved web pages (.html), text files or photos of a menu (.jpg, .png)</label>
 <input type="file" id="file" accept=".csv,.tsv,.txt,.md,.xlsx,.xlsm,.xls,.ods,.pdf,.html,.htm,.png,.jpg,.jpeg,.webp,.gif" multiple>
-<div class="warn" style="margin-top:6px">Menu photos and scanned PDFs are read by Claude, which uses a little of your own Claude usage. The first time, you’re asked to allow it. Take photos straight on, in good light, one page at a time.</div>
+<div class="warn hosted-only" style="margin-top:6px">Menu photos and scanned PDFs are read with text recognition (OCR) in your browser, which can take a minute. Check names and prices carefully against the photo. Take photos straight on, in good light, one page at a time.</div>
+<div class="warn claude-only" style="margin-top:6px">Menu photos and scanned PDFs are read by Claude, which uses a little of your own Claude usage. The first time, you’re asked to allow it. Take photos straight on, in good light, one page at a time.</div>
 <div class="two" style="margin-top:10px"><input id="url" type="url" placeholder="Or a menu web page, e.g. https://venue.com.au/menu"><button id="urlb" type="button" class="sec" style="margin:0">Read page</button></div>
-<div class="warn" style="margin-top:4px">On the shared claude.ai page, web pages are read with your Firecrawl connector (add it once in claude.ai Settings → Connectors). A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too, and Claude reads the menu, using a little of your Claude usage. Pages are read for free first (directly, or with the Claude app’s browser when this page is open in the Claude app); Firecrawl is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
+<div class="warn hosted-only" style="margin-top:4px">A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too. Pages are read for free by the website; Firecrawl (the team’s account) is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
+<div class="warn claude-only" style="margin-top:4px">On the shared claude.ai page, web pages are read with your Firecrawl connector (add it once in claude.ai Settings → Connectors). A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too, and Claude reads the menu, using a little of your Claude usage. Pages are read for free first (directly, or with the Claude app’s browser when this page is open in the Claude app); Firecrawl is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
 <details style="margin-top:6px" id="svcbox"><summary>Menu scraper service</summary>
 <div class="warn" style="margin-top:4px">If you run the menu scraper (the menu-scraper folder), web pages are read through it first. It finds the site’s menu pages and PDFs, loads pages that need JavaScript, and reads the menu with Claude when it’s set up to.</div>
 <div class="two" style="margin-top:6px"><input id="svc" type="url" placeholder="Service address, e.g. http://localhost:8787"><input id="svck" type="password" placeholder="API key (if the service has one)" autocomplete="off"></div>
@@ -302,7 +304,7 @@ function layoutLines(its,W){
   return[...lines.values()].sort((a,b)=>a.col-b.col||b.y-a.y).map(l=>({text:l.parts.sort((a,b)=>a.x-b.x).map(p=>p.text).join('  '),h:l.h,tag:''}));}
 const HOSTED=!/^(file:|https?:\/\/(localhost|127\.0\.0\.1)[:/])/.test(location.href);
 async function ocrLines(srcs){
-  if(HOSTED)throw new Error('Photos and scanned PDFs are read by Claude on this page, but Claude isn’t available in this view. Open the page on claude.ai while signed in, or send the photo to Claude in chat.');
+  if(HOSTED&&!window.OOLIO_HOSTED)throw new Error('Photos and scanned PDFs are read by Claude on this page, but Claude isn’t available in this view. Open the page on claude.ai while signed in, or send the photo to Claude in chat.');
   await loadScript(TESS);const out=[];
   const w=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text')say('Reading the menu with OCR… '+Math.round(m.progress*100)+'%')}});
   for(const s of srcs){const {data}=await w.recognize(s);(data.lines||[]).forEach(l=>out.push({text:l.text,h:l.bbox?l.bbox.y1-l.bbox.y0:0,tag:''}))}
@@ -934,10 +936,10 @@ function cacheGet(u){try{const c=JSON.parse(localStorage.getItem(cacheKey(u))||'
 function cachePut(u,t){try{localStorage.setItem(cacheKey(u),JSON.stringify({at:Date.now(),file:t.file,doc:t.doc,rows:t.rows,urls:t.urls||[],imgs:t.imgs||[],extra:(t.extra||[]).map(x=>({file:x.file,rows:x.rows}))}))}catch(e){}}
 const cancelled=e=>e&&(e.code==='cancelled'||e.message==='Stopped.');
 async function directGet(u,signal){
-  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000),off=()=>ctl.abort();signal.addEventListener('abort',off);
-  try{const r=await fetch(u,{signal:ctl.signal,credentials:'omit'});if(!r.ok)return null;const ct=r.headers.get('content-type')||'';
-    if(/pdf/i.test(ct)||/\.pdf($|[?#])/i.test(u))return{pdf:true,buf:await r.arrayBuffer(),url:r.url||u};
-    if(/html|text\/plain/i.test(ct))return{html:await r.text(),url:r.url||u};return null}
+  const H=!!window.OOLIO_HOSTED,ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),H?20000:8000),off=()=>ctl.abort();signal.addEventListener('abort',off);
+  try{const r=await fetch(H?'/api/fetch?url='+encodeURIComponent(u):u,{signal:ctl.signal,credentials:H?'same-origin':'omit'});if(!r.ok)return null;const ct=r.headers.get('content-type')||'',fu=(H&&r.headers.get('x-final-url'))||r.url||u;
+    if(/pdf/i.test(ct)||/\.pdf($|[?#])/i.test(u))return{pdf:true,buf:await r.arrayBuffer(),url:fu};
+    if(/html|text\/plain/i.test(ct))return{html:await r.text(),url:fu};return null}
   catch(e){return null}finally{clearTimeout(tm);signal.removeEventListener('abort',off)}}
 // the Claude desktop app's browser (host:claude_browser); answers only inside the Claude app
 const BR='host:claude_browser';let BRTAB=null,BROFF=false;
@@ -1083,7 +1085,7 @@ async function readSite(u,mcp,force,opts){opts=opts||{};const B=opts.budget,link
   const ok=p=>p&&(p.pdf||priceLines(p.md)>=5||(p.html&&structuredRows(p.doc,p.html).length>=5));
   // an ordering site's menu feed, free first: direct, then the Claude app's browser, then Firecrawl
   const getJson=async url=>{
-    try{const r=await fetch(url,{signal:sig,credentials:'omit'});if(r.ok)return{data:await r.json(),via:'direct'}}catch(e){stopped()}
+    try{const H=!!window.OOLIO_HOSTED,r=await fetch(H?'/api/fetch?url='+encodeURIComponent(url):url,{signal:sig,credentials:H?'same-origin':'omit'});if(r.ok)return{data:await r.json(),via:'direct'}}catch(e){stopped()}
     if(!BROFF){try{const j=jsonIn(await brText(mcp,url,sig));if(j){free.browser++;return{data:j,via:'browser'}}}catch(e){if(cancelled(e))throw new Error('Stopped.');BROFF=true}}
     if(!fcOk())throw new Error('The menu feed couldn’t be read within the Firecrawl limit.');
     const p=await viaFc(url),j=jsonIn(p.html?new DOMParser().parseFromString(p.html,'text/html').body.textContent:p.md);
@@ -1206,7 +1208,7 @@ function menuImgs(doc,base,menuPage){const out=[],seen=new Set();
   doc.querySelectorAll('img').forEach(i=>{const w=+i.getAttribute('width')||0;add(i.getAttribute('data-src')||i.getAttribute('src')||(i.getAttribute('srcset')||'').split(',').pop(),[i.alt,i.title,i.getAttribute('aria-label')].join(' '),!w||w>=500)});
   doc.querySelectorAll('a[href]').forEach(a=>{const h=a.getAttribute('href')||'';if(/\.(jpe?g|png|webp)(\?|$)/i.test(h))add(h,a.textContent+' '+(a.title||''),true)});
   return out.slice(0,8)}
-async function imgBlob(u,signal){for(const x of[u,'https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=2400&we&output=jpg']){
+async function imgBlob(u,signal){for(const x of[window.OOLIO_HOSTED?'/api/fetch?url='+encodeURIComponent(u):u,'https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=2400&we&output=jpg']){
   try{const r=await fetch(x,{signal,credentials:'omit'});if(!r.ok)continue;const b=await r.blob();if(/^image\//.test(b.type)&&b.size>15000)return b}catch(e){if(signal&&signal.aborted)throw new Error('Stopped.')}}return null}
 async function ddRead(store,mcp,B,signal){
   if(B.credits<5)throw new Error('not enough Firecrawl budget left for DoorDash (5 credits)');
@@ -1249,10 +1251,10 @@ async function findAllMenus(ctx){if(FA.run)return;const mcp=await getMcp(),plan=
       catch(e){L.st='err';L.msg=e.message==='Stopped.'?'stopped':String(e.message||e).slice(0,160);if(FA.stop)break}}
     // menu pictures found on the site, read by Claude (uses a little Claude usage, no Firecrawl credits)
     const imgs=[...images].slice(0,6);
-    if(imgs.length&&!FA.stop){const can=await getSample();
-      for(let i=0;i<imgs.length&&!FA.stop;i++){const L={label:'Menu picture '+(i+1)+': '+imgs[i].replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:can?'run':'err',msg:can?'':'Claude isn’t available in this view'};FA.log.push(L);faDraw('Finding every menu for '+name+'…');if(!can)continue;
+    if(imgs.length&&!FA.stop){const can=await getSample(),ocr=!can&&!!window.OOLIO_HOSTED;
+      for(let i=0;i<imgs.length&&!FA.stop;i++){const L={label:'Menu picture '+(i+1)+': '+imgs[i].replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:can||ocr?'run':'err',msg:can||ocr?'':'Claude isn’t available in this view'};FA.log.push(L);faDraw('Finding every menu for '+name+'…');if(!can&&!ocr)continue;
         try{const b=await imgBlob(imgs[i]);if(!b){L.st='err';L.msg='couldn’t be downloaded';continue}
-          const t=await claudeRead(name+' menu picture '+(i+1),[b],'menu picture');const n=take(t,null,'Menu picture '+(i+1),4,false);
+          const t=can?await claudeRead(name+' menu picture '+(i+1),[b],'menu picture'):docTable(name+' menu picture '+(i+1),await ocrLines([b]),'menu picture (OCR)');const n=take(t,null,'Menu picture '+(i+1),4,false);
           L.st=n?'ok':'err';L.msg=n?n+' items':'no menu items in it'}
         catch(e){L.st='err';L.msg=String(e.message||e).slice(0,120)}}}}
   finally{FA.run=false;readCtl=null}

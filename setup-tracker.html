@@ -261,6 +261,7 @@ async function start(){
       Object.entries(Q).forEach(([id,q])=>{if(q.p&&ORGS[id])ORGS[id]=deepMerge(ORGS[id],q.p)});
       LOADED=true;soonRender();notify()},
       e=>{clearTimeout(timer);LOADED=true;LOADMSG='The shared tracker stopped answering ('+(e&&e.code||'error')+'). Reload the page to reconnect.';render()})}
+  else if(window.OOLIO_HOSTED){MODE='db';READONLY=true;LOADED=true;LOADMSG='You’re not signed in, so the team’s venues can’t be shown. Reload the page to sign in.';render();notify()}// on the website, never fall back to this browser alone
   else{MODE='local';Object.assign(ORGS,local.all());LOADED=true;render();notify()}
   if(ME)names([ME]);}
 // one write at a time per organisation; edits made meanwhile are merged into the next write
@@ -432,7 +433,7 @@ async function diagramImages(f,max){if(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.na
   const bm=await createImageBitmap(f),sc=Math.min(1,2600/Math.max(bm.width,bm.height));if(sc===1&&f.size<4e6)return[f];
   const c=document.createElement('canvas');c.width=Math.round(bm.width*sc);c.height=Math.round(bm.height*sc);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return[await toJpeg(c)]}
 async function readDiagram(f){const m=g('st-dmsg'),say=x=>{if(g('st-dmsg'))g('st-dmsg').textContent=x},id=VIEW.org;
-  const s=await use('sample');if(!s){say('Reading diagrams needs Claude, which is only available when this page is open on claude.ai.');return}
+  const s=await use('sample');if(!s){say(window.OOLIO_HOSTED?'Reading diagrams needs Claude, which isn’t switched on for the website yet. Add the devices and printers below by hand for now.':'Reading diagrams needs Claude, which is only available when this page is open on claude.ai.');return}
   let max=1;try{const l=await s.limits();if(!l||!l.images){say('Claude can’t read images in this view.');return}max=Math.max(1,l.images.maxCount||1)}catch(e){}
   try{say('Preparing '+f.name+'…');const imgs=(await diagramImages(f,Math.min(max,4)));
     say('Claude is reading the diagram. This can take up to a minute…');
@@ -463,6 +464,26 @@ function reviewPlan(id,plan,file){const o=ORGS[id],d=g('st-dlg'),haveD=new Set((
     const patch={devices:devs,printers:prns,diagram:{at:Date.now(),by:ME||'',file:file||'',summary,notes:plan.notes},steps:{'prof-split':{v:{list:all.join(', ')}},'prep-hw':{s:'done',by:ME,at:Date.now()}}};
     const oldNote=st(o2,'prep-hw').note||'';if(plan.notes.length)patch.steps['prep-hw'].note=(oldNote?oldNote+'\n':'')+'From the diagram: '+plan.notes.join(' ');
     save(id,patch);VIEW.open.add('dev-list');VIEW.open.add('prn-list');render();flash(summary+' Printer names are now offered in the Menu Converter.')}}
+
+/* ---------- backup and restore ----------
+   One JSON file with every venue and its menu versions. Used to move the records between the claude.ai version and the
+   website, and as a safety copy. Restoring adds venues that aren't here yet and leaves existing ones alone. */
+const bmsg=x=>{const m=g('st-bmsg');if(m)m.textContent=x};
+async function backup(){bmsg('Preparing the backup…');const out={kind:'oolio-menu-tools-backup',version:1,at:Date.now(),venues:[]};
+  for(const [id,o] of Object.entries(ORGS)){let menus=[];try{menus=(await menuVersions(id)).map(v=>{const d=Object.assign({},v);delete d.id;return{id:v.id,data:d}})}catch(e){}
+    out.venues.push({id,data:o,menus})}
+  const blob=new Blob([JSON.stringify(out)],{type:'application/json'}),fn='Oolio Menu Tools backup '+new Date().toISOString().slice(0,10)+'.json',dl=await use('downloads');
+  try{if(dl)await dl.save({filename:fn,data:blob});else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove()}
+    bmsg('Saved '+out.venues.length+' venue'+(out.venues.length===1?'':'s')+' to “'+fn+'”.')}catch(e){bmsg(e&&e.code==='declined'?'':'The backup couldn’t be saved.')}}
+async function restore(f){if(READONLY)return;let j;try{j=JSON.parse(await f.text())}catch(e){bmsg('That file isn’t a backup.');return}
+  if(!j||j.kind!=='oolio-menu-tools-backup'||!Array.isArray(j.venues)){bmsg('That file isn’t an Oolio Menu Tools backup.');return}
+  let added=0,skipped=0,menus=0;
+  for(const v of j.venues){if(!v||!v.id||!v.data)continue;if(ORGS[v.id]){skipped++;continue}
+    bmsg('Restoring '+(v.data.name||v.id)+'…');
+    try{if(MODE==='db')await DB.collection(COL).doc(v.id).set(v.data);else local.put(v.id,v.data);ORGS[v.id]=v.data;added++;
+      for(const m of v.menus||[]){if(!m||!m.id||!m.data)continue;if(MODE==='db')await DB.collection(MCOL(v.id)).doc(m.id).set(m.data);else mlocal.put(v.id,m.id,m.data);menus++}}
+    catch(e){bmsg('Stopped at '+(v.data.name||v.id)+': '+((e&&(e.message||e.code))||'error'));render();return}}
+  notify();render();bmsg('Restored '+added+' venue'+(added===1?'':'s')+' and '+menus+' menu version'+(menus===1?'':'s')+(skipped?'; '+skipped+' already here were left as they are':'')+'.')}
 
 /* ---------- data from the other tabs ---------- */
 const goBtn=(tab,t)=>'<button type="button" class="st-sec st-sm" data-goto="'+tab+'">'+esc(t)+'</button>';
@@ -524,7 +545,8 @@ function listHtml(){const all=Object.entries(ORGS).sort((a,b)=>(b[1].updatedAt||
   let h=head()+'<div class="st-row">'+(READONLY?'':'<button type="button" data-a="new">New organisation</button>')+
     '<input class="st-grow" type="search" id="st-q" placeholder="Search organisations" value="'+esc(VIEW.q)+'" aria-label="Search organisations">'+
     '<select id="st-stagef" aria-label="Filter by stage" style="width:auto"><option value="">All stages</option>'+STAGES.map(([k,t])=>'<option value="'+k+'"'+(VIEW.stage===k?' selected':'')+'>'+t+'</option>').join('')+'</select>'+
-    '<button type="button" class="st-sec" data-a="guides">All guides</button></div>';
+    '<button type="button" class="st-sec" data-a="guides">All guides</button></div>'+
+    '<div class="st-row st-small" style="margin-top:8px"><button type="button" class="st-link" data-a="backup">Download backup</button>'+(READONLY?'':'<label class="st-link" style="cursor:pointer;font-weight:600;color:var(--accent)">Restore from backup<input type="file" id="st-restore" accept=".json,application/json" style="display:none"></label>')+'<span id="st-bmsg" class="st-muted"></span></div>';
   if(!LOADED)return h+'<p class="st-msg">Loading organisations…</p>';
   if(!all.length)return h+'<div class="st-empty" style="margin-top:14px">No organisations yet. Start one with “New organisation”, or use “Start setup tracker” on a Restaurant Lookup result.</div>';
   h+='<div class="st-orgs">';
@@ -704,6 +726,7 @@ root.addEventListener('click',e=>{const t=e.target;
   const a=t.closest('[data-a]');if(!a)return;const act=a.dataset.a,o=VIEW.org&&ORGS[VIEW.org];
   if(act==='new')newOrg();
   else if(act==='list'){VIEW.org=null;VIEW.tab='list';VIEW.q='';render();window.scrollTo(0,0)}
+  else if(act==='backup')backup();
   else if(act==='guides'){VIEW.tab='guides';VIEW.q='';render();window.scrollTo(0,0)}
   else if(act==='recap')showRecap(o);
   else if(act==='fill')fillDialog(VIEW.org);
@@ -738,7 +761,7 @@ function onField(t,final){const id=VIEW.org;if(!id)return;
   clearTimeout(textT[key]);
   if(final)save(id,patch);else{const o=ORGS[id];ORGS[id]=deepMerge(o,patch);textT[key]=setTimeout(()=>save(id,patch),700)}}
 root.addEventListener('input',e=>{const t=e.target;if(t.type==='checkbox'||t.tagName==='SELECT')return;onField(t,false)});
-root.addEventListener('change',e=>{const t=e.target;if(t.id==='st-dfile'){const f=t.files&&t.files[0];t.value='';if(f)readDiagram(f);return}if(t.id==='st-stagef'){VIEW.stage=t.value;render();return}if(t.id==='st-q')return;onField(t,true);if(t.type==='checkbox'||t.tagName==='SELECT'){held=false;render()}});
+root.addEventListener('change',e=>{const t=e.target;if(t.id==='st-restore'){const f=t.files&&t.files[0];t.value='';if(f)restore(f);return}if(t.id==='st-dfile'){const f=t.files&&t.files[0];t.value='';if(f)readDiagram(f);return}if(t.id==='st-stagef'){VIEW.stage=t.value;render();return}if(t.id==='st-q')return;onField(t,true);if(t.type==='checkbox'||t.tagName==='SELECT'){held=false;render()}});
 // leaving a field redraws, so checks and badges catch up
 root.addEventListener('focusout',e=>{const t=e.target;if(t.dataset&&(t.dataset.step||t.dataset.tbl||t.dataset.note)||t.id==='st-name')setTimeout(()=>{if(!root.contains(document.activeElement)||!/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))render()},0)});
 

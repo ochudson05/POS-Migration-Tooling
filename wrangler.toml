@@ -1,9 +1,20 @@
-# Cloudflare deploy settings for the relay Worker (relay-worker.js).
-# Cloudflare deploys this automatically when changes are pushed to GitHub (Workers Builds).
-# GOOGLE_KEY and RELAY_TOKEN live in Cloudflare as secrets: never put them in this file.
+# Cloudflare deploy settings for the Worker "menurunner" (relay-worker.js): the Oolio Menu Tools website,
+# its API and the Google relay. Cloudflare deploys this automatically when changes are pushed to GitHub (Workers Builds).
+# Keys and passwords live in Cloudflare as secrets (see the top of relay-worker.js): never put them in this file.
 name = "menurunner"
 main = "relay-worker.js"
 compatibility_date = "2026-11-01"
 
 # keep variables set in the Cloudflare dashboard when deploying
 keep_vars = true
+
+# the website itself: public/index.html, built by build_apps.py
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+# shared venue records: venues, menu versions, Firecrawl usage
+[[d1_databases]]
+binding = "DB"
+database_name = "oolio-tools"
+database_id = "c3c0e022-71b9-4ac5-b838-dc4862e4eeb4"

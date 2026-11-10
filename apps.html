@@ -109,6 +109,12 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .lx-form label{display:grid;gap:4px;font-size:.85rem;color:var(--muted)}
 .lx-form input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
 .lx-form .lx-ck{display:flex;gap:8px;align-items:flex-start}.lx-form .lx-ck input{width:auto;margin-top:3px}
+/* notes that differ between claude.ai and the website (hosted.js adds .oolio-hosted to <html>) */
+.hosted-only{display:none!important}
+html.oolio-hosted .hosted-only{display:block!important}
+html.oolio-hosted .claude-only,html.oolio-hosted #rf-setbox{display:none!important}
+.oh-banner{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px));background:var(--warn);color:var(--card);font-size:.92rem}
+.oh-banner button{font:inherit;font-weight:600;background:var(--card);color:var(--text);border:0;border-radius:6px;padding:4px 12px;cursor:pointer;margin:0}
 #lx-pfframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
 
 
@@ -400,9 +406,11 @@ th{font-weight:600}
 <h2>1. Source files</h2>
 <label for="file">Choose one or more files: spreadsheets (.csv, .xlsx), menu PDFs, saved web pages (.html), text files or photos of a menu (.jpg, .png)</label>
 <input type="file" id="file" accept=".csv,.tsv,.txt,.md,.xlsx,.xlsm,.xls,.ods,.pdf,.html,.htm,.png,.jpg,.jpeg,.webp,.gif" multiple>
-<div class="warn" style="margin-top:6px">Menu photos and scanned PDFs are read by Claude, which uses a little of your own Claude usage. The first time, you’re asked to allow it. Take photos straight on, in good light, one page at a time.</div>
+<div class="warn hosted-only" style="margin-top:6px">Menu photos and scanned PDFs are read with text recognition (OCR) in your browser, which can take a minute. Check names and prices carefully against the photo. Take photos straight on, in good light, one page at a time.</div>
+<div class="warn claude-only" style="margin-top:6px">Menu photos and scanned PDFs are read by Claude, which uses a little of your own Claude usage. The first time, you’re asked to allow it. Take photos straight on, in good light, one page at a time.</div>
 <div class="two" style="margin-top:10px"><input id="url" type="url" placeholder="Or a menu web page, e.g. https://venue.com.au/menu"><button id="urlb" type="button" class="sec" style="margin:0">Read page</button></div>
-<div class="warn" style="margin-top:4px">On the shared claude.ai page, web pages are read with your Firecrawl connector (add it once in claude.ai Settings → Connectors). A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too, and Claude reads the menu, using a little of your Claude usage. Pages are read for free first (directly, or with the Claude app’s browser when this page is open in the Claude app); Firecrawl is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
+<div class="warn hosted-only" style="margin-top:4px">A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too. Pages are read for free by the website; Firecrawl (the team’s account) is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
+<div class="warn claude-only" style="margin-top:4px">On the shared claude.ai page, web pages are read with your Firecrawl connector (add it once in claude.ai Settings → Connectors). A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too, and Claude reads the menu, using a little of your Claude usage. Pages are read for free first (directly, or with the Claude app’s browser when this page is open in the Claude app); Firecrawl is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
 <details style="margin-top:6px" id="svcbox"><summary>Menu scraper service</summary>
 <div class="warn" style="margin-top:4px">If you run the menu scraper (the menu-scraper folder), web pages are read through it first. It finds the site’s menu pages and PDFs, loads pages that need JavaScript, and reads the menu with Claude when it’s set up to.</div>
 <div class="two" style="margin-top:6px"><input id="svc" type="url" placeholder="Service address, e.g. http://localhost:8787"><input id="svck" type="password" placeholder="API key (if the service has one)" autocomplete="off"></div>
@@ -487,7 +495,8 @@ Double Shot=60</textarea></div>
 <div id="lx-rf" hidden>
 <main class="rf" id="rf-root">
 <h1>Restaurant Lookup</h1>
-<p class="rf-sub">Type a venue’s name and where it is. You get one page with its address, legal name and ABN, services, reviews and the dishes people mention most, plus links to its delivery, booking and ordering sites. Free sources are always tried first, and Firecrawl is only used when they fail. In the Claude desktop app, with the Google relay set up (in Settings below), a lookup usually uses no Firecrawl credits at all. In a web browser it uses about 10–13. Each result is saved in this browser for 14 days, so opening the same venue again is free.</p>
+<p class="rf-sub hosted-only">Type a venue’s name and where it is. You get one page with its address, legal name and ABN, services, reviews and the dishes people mention most, plus links to its delivery, booking and ordering sites. Lookups use Google, the venue’s own website and the ABN register for free; Firecrawl is only used when those fail. The result is saved with the venue, so opening it again is free for everyone.</p>
+<p class="rf-sub claude-only">Type a venue’s name and where it is. You get one page with its address, legal name and ABN, services, reviews and the dishes people mention most, plus links to its delivery, booking and ordering sites. Free sources are always tried first, and Firecrawl is only used when they fail. In the Claude desktop app, with the Google relay set up (in Settings below), a lookup usually uses no Firecrawl credits at all. In a web browser it uses about 10–13. Each result is saved in this browser for 14 days, so opening the same venue again is free.</p>
 
 <div class="rf-card">
 <form class="rf-form" id="rf-form" autocomplete="off">
@@ -684,7 +693,7 @@ function layoutLines(its,W){
   return[...lines.values()].sort((a,b)=>a.col-b.col||b.y-a.y).map(l=>({text:l.parts.sort((a,b)=>a.x-b.x).map(p=>p.text).join('  '),h:l.h,tag:''}));}
 const HOSTED=!/^(file:|https?:\/\/(localhost|127\.0\.0\.1)[:/])/.test(location.href);
 async function ocrLines(srcs){
-  if(HOSTED)throw new Error('Photos and scanned PDFs are read by Claude on this page, but Claude isn’t available in this view. Open the page on claude.ai while signed in, or send the photo to Claude in chat.');
+  if(HOSTED&&!window.OOLIO_HOSTED)throw new Error('Photos and scanned PDFs are read by Claude on this page, but Claude isn’t available in this view. Open the page on claude.ai while signed in, or send the photo to Claude in chat.');
   await loadScript(TESS);const out=[];
   const w=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text')say('Reading the menu with OCR… '+Math.round(m.progress*100)+'%')}});
   for(const s of srcs){const {data}=await w.recognize(s);(data.lines||[]).forEach(l=>out.push({text:l.text,h:l.bbox?l.bbox.y1-l.bbox.y0:0,tag:''}))}
@@ -1316,10 +1325,10 @@ function cacheGet(u){try{const c=JSON.parse(localStorage.getItem(cacheKey(u))||'
 function cachePut(u,t){try{localStorage.setItem(cacheKey(u),JSON.stringify({at:Date.now(),file:t.file,doc:t.doc,rows:t.rows,urls:t.urls||[],imgs:t.imgs||[],extra:(t.extra||[]).map(x=>({file:x.file,rows:x.rows}))}))}catch(e){}}
 const cancelled=e=>e&&(e.code==='cancelled'||e.message==='Stopped.');
 async function directGet(u,signal){
-  const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000),off=()=>ctl.abort();signal.addEventListener('abort',off);
-  try{const r=await fetch(u,{signal:ctl.signal,credentials:'omit'});if(!r.ok)return null;const ct=r.headers.get('content-type')||'';
-    if(/pdf/i.test(ct)||/\.pdf($|[?#])/i.test(u))return{pdf:true,buf:await r.arrayBuffer(),url:r.url||u};
-    if(/html|text\/plain/i.test(ct))return{html:await r.text(),url:r.url||u};return null}
+  const H=!!window.OOLIO_HOSTED,ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),H?20000:8000),off=()=>ctl.abort();signal.addEventListener('abort',off);
+  try{const r=await fetch(H?'/api/fetch?url='+encodeURIComponent(u):u,{signal:ctl.signal,credentials:H?'same-origin':'omit'});if(!r.ok)return null;const ct=r.headers.get('content-type')||'',fu=(H&&r.headers.get('x-final-url'))||r.url||u;
+    if(/pdf/i.test(ct)||/\.pdf($|[?#])/i.test(u))return{pdf:true,buf:await r.arrayBuffer(),url:fu};
+    if(/html|text\/plain/i.test(ct))return{html:await r.text(),url:fu};return null}
   catch(e){return null}finally{clearTimeout(tm);signal.removeEventListener('abort',off)}}
 // the Claude desktop app's browser (host:claude_browser); answers only inside the Claude app
 const BR='host:claude_browser';let BRTAB=null,BROFF=false;
@@ -1465,7 +1474,7 @@ async function readSite(u,mcp,force,opts){opts=opts||{};const B=opts.budget,link
   const ok=p=>p&&(p.pdf||priceLines(p.md)>=5||(p.html&&structuredRows(p.doc,p.html).length>=5));
   // an ordering site's menu feed, free first: direct, then the Claude app's browser, then Firecrawl
   const getJson=async url=>{
-    try{const r=await fetch(url,{signal:sig,credentials:'omit'});if(r.ok)return{data:await r.json(),via:'direct'}}catch(e){stopped()}
+    try{const H=!!window.OOLIO_HOSTED,r=await fetch(H?'/api/fetch?url='+encodeURIComponent(url):url,{signal:sig,credentials:H?'same-origin':'omit'});if(r.ok)return{data:await r.json(),via:'direct'}}catch(e){stopped()}
     if(!BROFF){try{const j=jsonIn(await brText(mcp,url,sig));if(j){free.browser++;return{data:j,via:'browser'}}}catch(e){if(cancelled(e))throw new Error('Stopped.');BROFF=true}}
     if(!fcOk())throw new Error('The menu feed couldn’t be read within the Firecrawl limit.');
     const p=await viaFc(url),j=jsonIn(p.html?new DOMParser().parseFromString(p.html,'text/html').body.textContent:p.md);
@@ -1588,7 +1597,7 @@ function menuImgs(doc,base,menuPage){const out=[],seen=new Set();
   doc.querySelectorAll('img').forEach(i=>{const w=+i.getAttribute('width')||0;add(i.getAttribute('data-src')||i.getAttribute('src')||(i.getAttribute('srcset')||'').split(',').pop(),[i.alt,i.title,i.getAttribute('aria-label')].join(' '),!w||w>=500)});
   doc.querySelectorAll('a[href]').forEach(a=>{const h=a.getAttribute('href')||'';if(/\.(jpe?g|png|webp)(\?|$)/i.test(h))add(h,a.textContent+' '+(a.title||''),true)});
   return out.slice(0,8)}
-async function imgBlob(u,signal){for(const x of[u,'https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=2400&we&output=jpg']){
+async function imgBlob(u,signal){for(const x of[window.OOLIO_HOSTED?'/api/fetch?url='+encodeURIComponent(u):u,'https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=2400&we&output=jpg']){
   try{const r=await fetch(x,{signal,credentials:'omit'});if(!r.ok)continue;const b=await r.blob();if(/^image\//.test(b.type)&&b.size>15000)return b}catch(e){if(signal&&signal.aborted)throw new Error('Stopped.')}}return null}
 async function ddRead(store,mcp,B,signal){
   if(B.credits<5)throw new Error('not enough Firecrawl budget left for DoorDash (5 credits)');
@@ -1631,10 +1640,10 @@ async function findAllMenus(ctx){if(FA.run)return;const mcp=await getMcp(),plan=
       catch(e){L.st='err';L.msg=e.message==='Stopped.'?'stopped':String(e.message||e).slice(0,160);if(FA.stop)break}}
     // menu pictures found on the site, read by Claude (uses a little Claude usage, no Firecrawl credits)
     const imgs=[...images].slice(0,6);
-    if(imgs.length&&!FA.stop){const can=await getSample();
-      for(let i=0;i<imgs.length&&!FA.stop;i++){const L={label:'Menu picture '+(i+1)+': '+imgs[i].replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:can?'run':'err',msg:can?'':'Claude isn’t available in this view'};FA.log.push(L);faDraw('Finding every menu for '+name+'…');if(!can)continue;
+    if(imgs.length&&!FA.stop){const can=await getSample(),ocr=!can&&!!window.OOLIO_HOSTED;
+      for(let i=0;i<imgs.length&&!FA.stop;i++){const L={label:'Menu picture '+(i+1)+': '+imgs[i].replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:can||ocr?'run':'err',msg:can||ocr?'':'Claude isn’t available in this view'};FA.log.push(L);faDraw('Finding every menu for '+name+'…');if(!can&&!ocr)continue;
         try{const b=await imgBlob(imgs[i]);if(!b){L.st='err';L.msg='couldn’t be downloaded';continue}
-          const t=await claudeRead(name+' menu picture '+(i+1),[b],'menu picture');const n=take(t,null,'Menu picture '+(i+1),4,false);
+          const t=can?await claudeRead(name+' menu picture '+(i+1),[b],'menu picture'):docTable(name+' menu picture '+(i+1),await ocrLines([b]),'menu picture (OCR)');const n=take(t,null,'Menu picture '+(i+1),4,false);
           L.st=n?'ok':'err';L.msg=n?n+' items':'no menu items in it'}
         catch(e){L.st='err';L.msg=String(e.message||e).slice(0,120)}}}}
   finally{FA.run=false;readCtl=null}
@@ -1946,7 +1955,8 @@ async function alex(provider,capability,options){
 /* ---------- reading a web page: free direct download first, Firecrawl last ---------- */
 async function directGet(u){
   const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000),off=()=>ctl.abort();RUN.signal.addEventListener('abort',off);
-  try{const r=await fetch(u,{signal:ctl.signal,credentials:'omit'});if(!r.ok)return null;return{text:await r.text(),url:r.url||u,type:r.headers.get('content-type')||''}}
+  const H=!!window.OOLIO_HOSTED;
+  try{const r=await fetch(H?'/api/fetch?url='+encodeURIComponent(u):u,{signal:ctl.signal,credentials:H?'same-origin':'omit'});if(!r.ok)return null;return{text:await r.text(),url:(H&&r.headers.get('x-final-url'))||r.url||u,type:r.headers.get('content-type')||''}}
   catch(e){return null}finally{clearTimeout(tm);RUN.signal.removeEventListener('abort',off)}}
 async function readSite(u){
   const d=await directGet(u);
@@ -1972,7 +1982,8 @@ async function brText(u,max){if(BROFF)return null;const mcp=await getMcp();if(!m
   catch(e){if(RUN&&RUN.signal.aborted)throw e;if(e&&/server_not_connected|not_in_manifest|blocked_by_policy|unavailable/.test(e.code||''))BROFF=true;return null}}
 
 /* ---------- the Google relay (relay-worker.js on Cloudflare): free Google Places, page reads and web search ---------- */
-const relayBase=()=>clean(store.get('rf-relay')||'').replace(/\/+$/,''),relayOn=()=>!!relayBase();
+// on the website, the site itself is the relay (signed in, no token needed)
+const relayBase=()=>window.OOLIO_HOSTED?location.origin:clean(store.get('rf-relay')||'').replace(/\/+$/,''),relayOn=()=>!!relayBase();
 let RELAYVIA='';
 async function relay(path,params){if(!relayOn())return null;
   const u=relayBase()+path+'?'+new URLSearchParams(Object.assign({},params,{t:store.get('rf-relaytok')||''})).toString();
@@ -1997,7 +2008,7 @@ async function freeSearch(q){
   if(res.length){SEARCHVIA='DuckDuckGo in the Claude app’s browser (free)';return res}return null;}
 
 /* ---------- ABN Lookup (abr.business.gov.au JSON service, free with a GUID) ---------- */
-const guid=()=>clean(store.get('rf-guid')||'');
+const guid=()=>window.OOLIO_HOSTED?'server':clean(store.get('rf-guid')||'');// the website adds the team's GUID
 const jsonIn=t=>{if(!t)return null;const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a<0||b<a)return null;try{return JSON.parse(t.slice(a,b+1))}catch(e){return null}};
 let ABRVIA='';
 async function abr(path,params,noFc){
@@ -2260,7 +2271,7 @@ function render(){
     pi.map(x=>'<tr><td><b>'+esc(x.name)+'</b></td><td class="n">'+esc(x.mentions)+'</td><td><span class="rf-chip '+(x.sentiment==='positive'?'ok':'w')+'">'+esc(x.sentiment||'')+'</span></td><td>'+(x.quote?'<q>'+esc(x.quote)+'</q>':'')+'</td></tr>').join('')+'</tbody></table></div>':'<p style="margin:0">'+(P.ai||!RUN?miss('No dishes are named in the latest reviews, or Claude wasn’t available.'):pend())+'</p>')+
     ((ai.praise||[]).length||(ai.complaints||[]).length?'<div class="rf-cols"><div><b>Praised for</b><ul>'+(ai.praise||[]).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div><div><b>Complaints</b><ul>'+((ai.complaints||[]).length?ai.complaints.map(x=>'<li>'+esc(x)+'</li>').join(''):'<li class="rf-miss">None that recur</li>')+'</ul></div></div>':'')+'</section>';
   // reviews
-  {const list=P.reviews?P.reviews.list.filter(r=>r.text):[],can60=!rs&&!!window.claude;
+  {const list=P.reviews?P.reviews.list.filter(r=>r.text):[],can60=!rs&&!!window.claude&&!window.OOLIO_HOSTED;
     let side='';
     if(rs){const hist=rs.sample_histogram||{},tot=Object.values(hist).reduce((a,b)=>a+(+b||0),0)||1;
       side='<div><div class="rf-hist" role="img" aria-label="Star ratings of the latest '+tot+' reviews">'+[5,4,3,2,1].map(s=>{const c=+hist[s]||0;return'<div><span>'+s+'★</span><span class="rf-bar"><i style="width:'+(c/tot*100).toFixed(1)+'%"></i></span><span class="n">'+c+'</span></div>'}).join('')+'</div><p class="rf-note">Latest '+tot+' Google reviews. '+(rs.with_text!=null?rs.with_text+' have text.':'')+'</p></div>'}
@@ -2462,6 +2473,7 @@ async function start(){
       Object.entries(Q).forEach(([id,q])=>{if(q.p&&ORGS[id])ORGS[id]=deepMerge(ORGS[id],q.p)});
       LOADED=true;soonRender();notify()},
       e=>{clearTimeout(timer);LOADED=true;LOADMSG='The shared tracker stopped answering ('+(e&&e.code||'error')+'). Reload the page to reconnect.';render()})}
+  else if(window.OOLIO_HOSTED){MODE='db';READONLY=true;LOADED=true;LOADMSG='You’re not signed in, so the team’s venues can’t be shown. Reload the page to sign in.';render();notify()}// on the website, never fall back to this browser alone
   else{MODE='local';Object.assign(ORGS,local.all());LOADED=true;render();notify()}
   if(ME)names([ME]);}
 // one write at a time per organisation; edits made meanwhile are merged into the next write
@@ -2633,7 +2645,7 @@ async function diagramImages(f,max){if(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.na
   const bm=await createImageBitmap(f),sc=Math.min(1,2600/Math.max(bm.width,bm.height));if(sc===1&&f.size<4e6)return[f];
   const c=document.createElement('canvas');c.width=Math.round(bm.width*sc);c.height=Math.round(bm.height*sc);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return[await toJpeg(c)]}
 async function readDiagram(f){const m=g('st-dmsg'),say=x=>{if(g('st-dmsg'))g('st-dmsg').textContent=x},id=VIEW.org;
-  const s=await use('sample');if(!s){say('Reading diagrams needs Claude, which is only available when this page is open on claude.ai.');return}
+  const s=await use('sample');if(!s){say(window.OOLIO_HOSTED?'Reading diagrams needs Claude, which isn’t switched on for the website yet. Add the devices and printers below by hand for now.':'Reading diagrams needs Claude, which is only available when this page is open on claude.ai.');return}
   let max=1;try{const l=await s.limits();if(!l||!l.images){say('Claude can’t read images in this view.');return}max=Math.max(1,l.images.maxCount||1)}catch(e){}
   try{say('Preparing '+f.name+'…');const imgs=(await diagramImages(f,Math.min(max,4)));
     say('Claude is reading the diagram. This can take up to a minute…');
@@ -2664,6 +2676,26 @@ function reviewPlan(id,plan,file){const o=ORGS[id],d=g('st-dlg'),haveD=new Set((
     const patch={devices:devs,printers:prns,diagram:{at:Date.now(),by:ME||'',file:file||'',summary,notes:plan.notes},steps:{'prof-split':{v:{list:all.join(', ')}},'prep-hw':{s:'done',by:ME,at:Date.now()}}};
     const oldNote=st(o2,'prep-hw').note||'';if(plan.notes.length)patch.steps['prep-hw'].note=(oldNote?oldNote+'\n':'')+'From the diagram: '+plan.notes.join(' ');
     save(id,patch);VIEW.open.add('dev-list');VIEW.open.add('prn-list');render();flash(summary+' Printer names are now offered in the Menu Converter.')}}
+
+/* ---------- backup and restore ----------
+   One JSON file with every venue and its menu versions. Used to move the records between the claude.ai version and the
+   website, and as a safety copy. Restoring adds venues that aren't here yet and leaves existing ones alone. */
+const bmsg=x=>{const m=g('st-bmsg');if(m)m.textContent=x};
+async function backup(){bmsg('Preparing the backup…');const out={kind:'oolio-menu-tools-backup',version:1,at:Date.now(),venues:[]};
+  for(const [id,o] of Object.entries(ORGS)){let menus=[];try{menus=(await menuVersions(id)).map(v=>{const d=Object.assign({},v);delete d.id;return{id:v.id,data:d}})}catch(e){}
+    out.venues.push({id,data:o,menus})}
+  const blob=new Blob([JSON.stringify(out)],{type:'application/json'}),fn='Oolio Menu Tools backup '+new Date().toISOString().slice(0,10)+'.json',dl=await use('downloads');
+  try{if(dl)await dl.save({filename:fn,data:blob});else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove()}
+    bmsg('Saved '+out.venues.length+' venue'+(out.venues.length===1?'':'s')+' to “'+fn+'”.')}catch(e){bmsg(e&&e.code==='declined'?'':'The backup couldn’t be saved.')}}
+async function restore(f){if(READONLY)return;let j;try{j=JSON.parse(await f.text())}catch(e){bmsg('That file isn’t a backup.');return}
+  if(!j||j.kind!=='oolio-menu-tools-backup'||!Array.isArray(j.venues)){bmsg('That file isn’t an Oolio Menu Tools backup.');return}
+  let added=0,skipped=0,menus=0;
+  for(const v of j.venues){if(!v||!v.id||!v.data)continue;if(ORGS[v.id]){skipped++;continue}
+    bmsg('Restoring '+(v.data.name||v.id)+'…');
+    try{if(MODE==='db')await DB.collection(COL).doc(v.id).set(v.data);else local.put(v.id,v.data);ORGS[v.id]=v.data;added++;
+      for(const m of v.menus||[]){if(!m||!m.id||!m.data)continue;if(MODE==='db')await DB.collection(MCOL(v.id)).doc(m.id).set(m.data);else mlocal.put(v.id,m.id,m.data);menus++}}
+    catch(e){bmsg('Stopped at '+(v.data.name||v.id)+': '+((e&&(e.message||e.code))||'error'));render();return}}
+  notify();render();bmsg('Restored '+added+' venue'+(added===1?'':'s')+' and '+menus+' menu version'+(menus===1?'':'s')+(skipped?'; '+skipped+' already here were left as they are':'')+'.')}
 
 /* ---------- data from the other tabs ---------- */
 const goBtn=(tab,t)=>'<button type="button" class="st-sec st-sm" data-goto="'+tab+'">'+esc(t)+'</button>';
@@ -2725,7 +2757,8 @@ function listHtml(){const all=Object.entries(ORGS).sort((a,b)=>(b[1].updatedAt||
   let h=head()+'<div class="st-row">'+(READONLY?'':'<button type="button" data-a="new">New organisation</button>')+
     '<input class="st-grow" type="search" id="st-q" placeholder="Search organisations" value="'+esc(VIEW.q)+'" aria-label="Search organisations">'+
     '<select id="st-stagef" aria-label="Filter by stage" style="width:auto"><option value="">All stages</option>'+STAGES.map(([k,t])=>'<option value="'+k+'"'+(VIEW.stage===k?' selected':'')+'>'+t+'</option>').join('')+'</select>'+
-    '<button type="button" class="st-sec" data-a="guides">All guides</button></div>';
+    '<button type="button" class="st-sec" data-a="guides">All guides</button></div>'+
+    '<div class="st-row st-small" style="margin-top:8px"><button type="button" class="st-link" data-a="backup">Download backup</button>'+(READONLY?'':'<label class="st-link" style="cursor:pointer;font-weight:600;color:var(--accent)">Restore from backup<input type="file" id="st-restore" accept=".json,application/json" style="display:none"></label>')+'<span id="st-bmsg" class="st-muted"></span></div>';
   if(!LOADED)return h+'<p class="st-msg">Loading organisations…</p>';
   if(!all.length)return h+'<div class="st-empty" style="margin-top:14px">No organisations yet. Start one with “New organisation”, or use “Start setup tracker” on a Restaurant Lookup result.</div>';
   h+='<div class="st-orgs">';
@@ -2905,6 +2938,7 @@ root.addEventListener('click',e=>{const t=e.target;
   const a=t.closest('[data-a]');if(!a)return;const act=a.dataset.a,o=VIEW.org&&ORGS[VIEW.org];
   if(act==='new')newOrg();
   else if(act==='list'){VIEW.org=null;VIEW.tab='list';VIEW.q='';render();window.scrollTo(0,0)}
+  else if(act==='backup')backup();
   else if(act==='guides'){VIEW.tab='guides';VIEW.q='';render();window.scrollTo(0,0)}
   else if(act==='recap')showRecap(o);
   else if(act==='fill')fillDialog(VIEW.org);
@@ -2939,7 +2973,7 @@ function onField(t,final){const id=VIEW.org;if(!id)return;
   clearTimeout(textT[key]);
   if(final)save(id,patch);else{const o=ORGS[id];ORGS[id]=deepMerge(o,patch);textT[key]=setTimeout(()=>save(id,patch),700)}}
 root.addEventListener('input',e=>{const t=e.target;if(t.type==='checkbox'||t.tagName==='SELECT')return;onField(t,false)});
-root.addEventListener('change',e=>{const t=e.target;if(t.id==='st-dfile'){const f=t.files&&t.files[0];t.value='';if(f)readDiagram(f);return}if(t.id==='st-stagef'){VIEW.stage=t.value;render();return}if(t.id==='st-q')return;onField(t,true);if(t.type==='checkbox'||t.tagName==='SELECT'){held=false;render()}});
+root.addEventListener('change',e=>{const t=e.target;if(t.id==='st-restore'){const f=t.files&&t.files[0];t.value='';if(f)restore(f);return}if(t.id==='st-dfile'){const f=t.files&&t.files[0];t.value='';if(f)readDiagram(f);return}if(t.id==='st-stagef'){VIEW.stage=t.value;render();return}if(t.id==='st-q')return;onField(t,true);if(t.type==='checkbox'||t.tagName==='SELECT'){held=false;render()}});
 // leaving a field redraws, so checks and badges catch up
 root.addEventListener('focusout',e=>{const t=e.target;if(t.dataset&&(t.dataset.step||t.dataset.tbl||t.dataset.note)||t.id==='st-name')setTimeout(()=>{if(!root.contains(document.activeElement)||!/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))render()},0)});
 
@@ -3015,7 +3049,7 @@ function newVenue(prefill){const d=g('lx-dlg');
   d.innerHTML='<form method="dialog" class="lx-form"><h2>New venue</h2>'+
     '<label>Venue name<input id="lx-nn" required autocomplete="off" value="'+esc(prefill&&prefill.name||'')+'"></label>'+
     '<label>Suburb or street<input id="lx-nl" autocomplete="off" placeholder="e.g. Surry Hills" value="'+esc(prefill&&prefill.loc||'')+'"></label>'+
-    '<label class="lx-ck"><input type="checkbox" id="lx-nrun" checked> Look it up now (free with the Google relay in the Claude app; otherwise about 10–13 Firecrawl credits)</label>'+
+    '<label class="lx-ck"><input type="checkbox" id="lx-nrun" checked> Look it up now ('+(window.OOLIO_HOSTED?'free: Google, the venue’s website and the ABN register':'free with the Google relay in the Claude app; otherwise about 10–13 Firecrawl credits')+')</label>'+
     '<div class="lx-row"><button value="ok">Create venue</button><button value="cancel" class="lx-sec" formnovalidate>Cancel</button></div></form>';
   d.showModal();g('lx-nn').focus();
   d.querySelector('form').onsubmit=async e=>{if(e.submitter&&e.submitter.value!=='ok')return;const name=clean(g('lx-nn').value),loc=clean(g('lx-nl').value),run=g('lx-nrun').checked;if(!name)return;

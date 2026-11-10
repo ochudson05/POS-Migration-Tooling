@@ -119,6 +119,12 @@ LAUNCHER_CSS = r"""
 .lx-form label{display:grid;gap:4px;font-size:.85rem;color:var(--muted)}
 .lx-form input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
 .lx-form .lx-ck{display:flex;gap:8px;align-items:flex-start}.lx-form .lx-ck input{width:auto;margin-top:3px}
+/* notes that differ between claude.ai and the website (hosted.js adds .oolio-hosted to <html>) */
+.hosted-only{display:none!important}
+html.oolio-hosted .hosted-only{display:block!important}
+html.oolio-hosted .claude-only,html.oolio-hosted #rf-setbox{display:none!important}
+.oh-banner{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px));background:var(--warn);color:var(--card);font-size:.92rem}
+.oh-banner button{font:inherit;font-weight:600;background:var(--card);color:var(--text);border:0;border-radius:6px;padding:4px 12px;cursor:pointer;margin:0}
 #lx-pfframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
 """
 
@@ -233,6 +239,13 @@ full = (
     + "</body>\n</html>\n"
 )
 (HERE / "apps.html").write_text(full, encoding="utf-8")
+# the website (Cloudflare Worker "menurunner", see wrangler.toml): the same page with hosted.js first,
+# which connects the tools to the website's sign-in, shared records and Firecrawl instead of claude.ai's
+hosted = full.replace("<title>Oolio Menu Tools</title>",
+                      "<title>Oolio Menu Tools</title>\n<script>" + (HERE / "hosted.js").read_text(encoding="utf-8") + "</script>", 1)
+(HERE / "public").mkdir(exist_ok=True)
+(HERE / "public" / "index.html").write_bytes(hosted.replace("\r\n", "\n").encode("utf-8"))
+print("wrote", HERE / "public" / "index.html", len(hosted), "bytes")
 print("wrote", HERE / "apps.html", len(full), "bytes")
 if len(sys.argv) > 1:
     Path(sys.argv[1]).write_text(page, encoding="utf-8")

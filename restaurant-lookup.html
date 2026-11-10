@@ -79,7 +79,8 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
 <body>
 <main class="rf" id="rf-root">
 <h1>Restaurant Lookup</h1>
-<p class="rf-sub">Type a venue’s name and where it is. You get one page with its address, legal name and ABN, services, reviews and the dishes people mention most, plus links to its delivery, booking and ordering sites. Free sources are always tried first, and Firecrawl is only used when they fail. In the Claude desktop app, with the Google relay set up (in Settings below), a lookup usually uses no Firecrawl credits at all. In a web browser it uses about 10–13. Each result is saved in this browser for 14 days, so opening the same venue again is free.</p>
+<p class="rf-sub hosted-only">Type a venue’s name and where it is. You get one page with its address, legal name and ABN, services, reviews and the dishes people mention most, plus links to its delivery, booking and ordering sites. Lookups use Google, the venue’s own website and the ABN register for free; Firecrawl is only used when those fail. The result is saved with the venue, so opening it again is free for everyone.</p>
+<p class="rf-sub claude-only">Type a venue’s name and where it is. You get one page with its address, legal name and ABN, services, reviews and the dishes people mention most, plus links to its delivery, booking and ordering sites. Free sources are always tried first, and Firecrawl is only used when they fail. In the Claude desktop app, with the Google relay set up (in Settings below), a lookup usually uses no Firecrawl credits at all. In a web browser it uses about 10–13. Each result is saved in this browser for 14 days, so opening the same venue again is free.</p>
 
 <div class="rf-card">
 <form class="rf-form" id="rf-form" autocomplete="off">
@@ -150,7 +151,8 @@ async function alex(provider,capability,options){
 /* ---------- reading a web page: free direct download first, Firecrawl last ---------- */
 async function directGet(u){
   const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000),off=()=>ctl.abort();RUN.signal.addEventListener('abort',off);
-  try{const r=await fetch(u,{signal:ctl.signal,credentials:'omit'});if(!r.ok)return null;return{text:await r.text(),url:r.url||u,type:r.headers.get('content-type')||''}}
+  const H=!!window.OOLIO_HOSTED;
+  try{const r=await fetch(H?'/api/fetch?url='+encodeURIComponent(u):u,{signal:ctl.signal,credentials:H?'same-origin':'omit'});if(!r.ok)return null;return{text:await r.text(),url:(H&&r.headers.get('x-final-url'))||r.url||u,type:r.headers.get('content-type')||''}}
   catch(e){return null}finally{clearTimeout(tm);RUN.signal.removeEventListener('abort',off)}}
 async function readSite(u){
   const d=await directGet(u);
@@ -176,7 +178,8 @@ async function brText(u,max){if(BROFF)return null;const mcp=await getMcp();if(!m
   catch(e){if(RUN&&RUN.signal.aborted)throw e;if(e&&/server_not_connected|not_in_manifest|blocked_by_policy|unavailable/.test(e.code||''))BROFF=true;return null}}
 
 /* ---------- the Google relay (relay-worker.js on Cloudflare): free Google Places, page reads and web search ---------- */
-const relayBase=()=>clean(store.get('rf-relay')||'').replace(/\/+$/,''),relayOn=()=>!!relayBase();
+// on the website, the site itself is the relay (signed in, no token needed)
+const relayBase=()=>window.OOLIO_HOSTED?location.origin:clean(store.get('rf-relay')||'').replace(/\/+$/,''),relayOn=()=>!!relayBase();
 let RELAYVIA='';
 async function relay(path,params){if(!relayOn())return null;
   const u=relayBase()+path+'?'+new URLSearchParams(Object.assign({},params,{t:store.get('rf-relaytok')||''})).toString();
@@ -201,7 +204,7 @@ async function freeSearch(q){
   if(res.length){SEARCHVIA='DuckDuckGo in the Claude app’s browser (free)';return res}return null;}
 
 /* ---------- ABN Lookup (abr.business.gov.au JSON service, free with a GUID) ---------- */
-const guid=()=>clean(store.get('rf-guid')||'');
+const guid=()=>window.OOLIO_HOSTED?'server':clean(store.get('rf-guid')||'');// the website adds the team's GUID
 const jsonIn=t=>{if(!t)return null;const a=t.indexOf('{'),b=t.lastIndexOf('}');if(a<0||b<a)return null;try{return JSON.parse(t.slice(a,b+1))}catch(e){return null}};
 let ABRVIA='';
 async function abr(path,params,noFc){
@@ -464,7 +467,7 @@ function render(){
     pi.map(x=>'<tr><td><b>'+esc(x.name)+'</b></td><td class="n">'+esc(x.mentions)+'</td><td><span class="rf-chip '+(x.sentiment==='positive'?'ok':'w')+'">'+esc(x.sentiment||'')+'</span></td><td>'+(x.quote?'<q>'+esc(x.quote)+'</q>':'')+'</td></tr>').join('')+'</tbody></table></div>':'<p style="margin:0">'+(P.ai||!RUN?miss('No dishes are named in the latest reviews, or Claude wasn’t available.'):pend())+'</p>')+
     ((ai.praise||[]).length||(ai.complaints||[]).length?'<div class="rf-cols"><div><b>Praised for</b><ul>'+(ai.praise||[]).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></div><div><b>Complaints</b><ul>'+((ai.complaints||[]).length?ai.complaints.map(x=>'<li>'+esc(x)+'</li>').join(''):'<li class="rf-miss">None that recur</li>')+'</ul></div></div>':'')+'</section>';
   // reviews
-  {const list=P.reviews?P.reviews.list.filter(r=>r.text):[],can60=!rs&&!!window.claude;
+  {const list=P.reviews?P.reviews.list.filter(r=>r.text):[],can60=!rs&&!!window.claude&&!window.OOLIO_HOSTED;
     let side='';
     if(rs){const hist=rs.sample_histogram||{},tot=Object.values(hist).reduce((a,b)=>a+(+b||0),0)||1;
       side='<div><div class="rf-hist" role="img" aria-label="Star ratings of the latest '+tot+' reviews">'+[5,4,3,2,1].map(s=>{const c=+hist[s]||0;return'<div><span>'+s+'★</span><span class="rf-bar"><i style="width:'+(c/tot*100).toFixed(1)+'%"></i></span><span class="n">'+c+'</span></div>'}).join('')+'</div><p class="rf-note">Latest '+tot+' Google reviews. '+(rs.with_text!=null?rs.with_text+' have text.':'')+'</p></div>'}
