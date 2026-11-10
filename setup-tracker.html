@@ -306,6 +306,7 @@ window.OolioVenues={
   stage(id){const o=ORGS[id];return o?(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1]:''},
   printers(id){const o=ORGS[id];return o?(o.printers||[]).map(x=>clean(x.name)).filter(Boolean):[]},
   address(id){return ORGS[id]?val(ORGS[id],'biz-address','address'):''},
+  website(id){return ORGS[id]?val(ORGS[id],'prep-gmb','website'):''},
   me(){return ME},
   on(f){LISTEN.add(f);return()=>LISTEN.delete(f)}};
 

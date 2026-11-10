@@ -16,6 +16,11 @@ const view=()=>location.hash.slice(1);
 const go=v=>{if(view()===v)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=v};
 function suburbOf(a){const parts=String(a||'').split(',').map(s=>s.trim()).filter(Boolean);
   const s=parts.find(x=>/\b(NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\b/.test(x))||parts[1]||'';return s.replace(/\s*\d{4}\s*$/,'').trim()}
+function menuCtx(a){const P=OV.lookup(a.id)||{},pl=P.place||{},f=P.found||{},d=P.det||{};
+  const urls=o=>Object.entries(o||{}).filter(([,u])=>/^https?:\/\//.test(u));
+  return{venue:a.name,website:pl.website||OV.website(a.id),links:(d.menu||[]).slice(),delivery:urls(f.delivery),ordering:[]}}
+function findAll(a){if(!a||!window.convFindAll)return;go('converter');setTimeout(()=>window.convFindAll(menuCtx(a)),50)}
+function estimate(a){if(!window.convPlan)return null;const p=window.convPlan(menuCtx(a));return p.sources.length?p:null}
 function queryOf(o){const q=o.lookupQ||{};return{name:q.name||o.name||'',loc:q.loc||suburbOf(OV.address(o.id))}}
 
 /* ---------- header: which venue ---------- */
@@ -49,10 +54,10 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
         (OV.ready?'<p class="lx-muted">No venues yet.</p>':'<p class="lx-muted">Loading venues…</p>'))+'</div>';
     return}
   const P=OV.lookup(a.id),pre=OV.progress(a.id,'pre'),trn=OV.progress(a.id,'trn'),all=OV.progress(a.id),m=a.menu,f=a.photos;
-  const menuLinks=P&&P.det&&(P.det.menu||[]).length;
+  const est=!m&&a.lookup?estimate(a):null;
   const steps=[
     {k:'lookup',t:'Look up the venue',done:!!a.lookup,s:a.lookup?'Done '+day(a.lookup.at)+'. Business details, contacts and links are filled in.':'Finds the address, ABN, contacts, services, delivery and booking sites, and menu links.',b:a.lookup?'View lookup':'Look it up'},
-    {k:'menu',t:'Convert the menu',done:!!m,s:m?m.products+' products in '+(m.cats||[]).length+' categories, '+day(m.at)+'.':(menuLinks?'The lookup found '+menuLinks+' menu link'+(menuLinks>1?'s':'')+' to read.':'From a menu PDF, photo, web page or POS export.'),b:m?'Open converter':'Convert menu'},
+    {k:'menu',t:'Find and convert the menus',done:!!m,s:m?m.products+' products in '+(m.cats||[]).length+' categories, '+day(m.at)+'.':(est?'Reads all '+est.sources.length+' menu source'+(est.sources.length>1?'s':'')+' the lookup found (website, PDFs, ordering and delivery sites, menu pictures). Free reads first; at most '+est.max+' Firecrawl credits.':'From a menu PDF, photo, web page or POS export.'),b:m?'Open converter':est?'Find all menus':'Convert menu'},
     {k:'photos',t:'Find product photos',done:!!f,s:f?f.saved+' photos saved, '+day(f.at)+'.':(m?'Uses the '+m.products+' converted products.':'Uses the converted menu, so do that first.'),b:'Find photos'},
     {k:'setup',t:'Setup checklist',done:all.total>0&&all.done===all.total,s:'Pre-config '+pre.done+'/'+pre.total+' · Training '+trn.done+'/'+trn.total+(a.training?' · Training '+new Date(a.training+'T00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}):''),b:'Open checklist'}];
   const next=steps.findIndex(s=>!s.done);
@@ -66,7 +71,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-hub]');if(
   else if(k==='pick'){OV.setActive(b.dataset.id)}
   else if(k==='none'){OV.setActive('')}
   else if(k==='lookup'){if(!a)return;LK.for='';go('venue');if(!a.lookup){const q=queryOf(a);LK.for=a.id;window.dispatchEvent(new CustomEvent('oolio:lookup-fill',{detail:Object.assign(q,{force:true,clear:true,run:true})}))}}
-  else if(k==='menu')go('converter');
+  else if(k==='menu'){if(a&&!a.menu&&a.lookup&&estimate(a))findAll(a);else go('converter')}
   else if(k==='photos')go('photos');
   else if(k==='setup'){OV.open(a&&a.id);go('setup')}});
 
@@ -87,11 +92,11 @@ function drawRf(){const a=OV.active(),P=LK.last,nm=P&&P.place&&P.place.name;let 
   if(!a&&!P)h='No venue selected. Look one up, then save it as a venue to use it in the other tools.';
   else if(!a&&P)h='Use '+esc(nm)+' in the other tools? <button type="button" data-rf="new">Save as a new venue</button>';
   else if(!P)h='Looking up <b>'+esc(a.name)+'</b>. The result is saved with it and fills its business details.';
-  else if(LK.attached)h='Saved with <b>'+esc(a.name)+'</b>. Its business details and links are in the checklist. <button type="button" class="lx-sec" data-rf="menu">Next: convert the menu</button>';
+  else if(LK.attached)h='Saved with <b>'+esc(a.name)+'</b>. Its business details and links are in the checklist. <button type="button" class="lx-sec" data-rf="menu">Next: find all menus</button>';
   else h='This isn’t the lookup saved with <b>'+esc(a.name)+'</b>. <button type="button" data-rf="attach">Save it to '+esc(a.name)+'</button><button type="button" class="lx-sec" data-rf="new">Save as a new venue</button>';
   rfbar.innerHTML=h;rfbar.hidden=OV.readOnly&&!a}
 rfbar.addEventListener('click',async e=>{const b=e.target.closest('[data-rf]');if(!b)return;const k=b.dataset.rf,P=LK.last,a=OV.active();
-  if(k==='menu')go('converter');
+  if(k==='menu'){if(a&&estimate(a))findAll(a);else go('converter')}
   else if(k==='attach'&&a&&P){OV.attachLookup(a.id,P);LK.attached=true;LK.shown=a.id;drawRf()}
   else if(k==='new'&&P){b.disabled=true;try{const id=await OV.create({name:P.place.name,lookupQ:P.query||{name:P.place.name,loc:''}});OV.attachLookup(id,P);LK.attached=true;LK.shown=id}
     catch(x){alert('Couldn’t create the venue: '+((x&&(x.message||x.code))||'error'))}drawRf()}});
@@ -104,12 +109,15 @@ function syncConv(){const a=OV.active(),pr=a?OV.printers(a.id):[];
   window.OOLIO_VENUE_NAME=a?a.name:'';const sig=pr.join('|');window.OOLIO_PRINTERS=pr;
   if(sig!==cvSig){cvSig=sig;if(window.convRefresh)window.convRefresh()}
   if(!a){cvbar.innerHTML='No venue selected. Pick one at the top and downloads are named after it and saved to its checklist.';return}
-  const P=OV.lookup(a.id),links=P&&P.det?(P.det.menu||[]).slice(0,4):[],site=P&&P.place&&P.place.website,m=a.menu;
+  const P=OV.lookup(a.id),links=P&&P.det?(P.det.menu||[]).slice(0,4):[],site=P&&P.place&&P.place.website,m=a.menu,est=estimate(a);
   cvbar.innerHTML='<div>Converting the menu for <b>'+esc(a.name)+'</b>. Files are named after it, and downloading the import saves a summary to its checklist'+(m?' (last: '+m.products+' products, '+day(m.at)+')':'')+'.</div>'+
     '<div>'+(pr.length?'Printers from its checklist: <b>'+esc(pr.join(', '))+'</b>. “Auto” picks from these.':'No printers in its checklist yet, so generic printer names are used. <button type="button" class="lx-link" data-cv="printers">Add the printers</button>')+'</div>'+
-    (links.length||site?'<div class="lx-row">'+links.map((u,i)=>'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(u)+'">Read menu '+(links.length>1?i+1+' ':'')+(/\.pdf(\?|$)/i.test(u)?'(PDF)':'(page)')+'</button>').join('')+
-      (!links.length&&site?'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(site)+'">Read the venue’s website</button>':'')+'<span class="lx-muted lx-small">found by the lookup</span></div>':'')}
+    (est?'<div class="lx-row"><button type="button" data-cv="all">Find all menus</button><span class="lx-muted lx-small">'+est.sources.length+' source'+(est.sources.length>1?'s':'')+' from the lookup, plus menu pictures on the site. Free reads first; at most '+est.max+' Firecrawl credits.</span></div>':
+      '<div class="lx-muted lx-small">Look the venue up first and every menu it has can be found in one click.</div>')+
+    (links.length||site?'<details><summary class="lx-small">Or read one source</summary><div class="lx-row" style="margin-top:6px">'+links.map((u,i)=>'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(u)+'">Read menu '+(links.length>1?i+1+' ':'')+(/\.pdf(\?|$)/i.test(u)?'(PDF)':'(page)')+'</button>').join('')+
+      (site?'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(site)+'">Website</button>':'')+'</div></details>':'')}
 cvbar.addEventListener('click',e=>{const b=e.target.closest('[data-cv]');if(!b)return;
+  if(b.dataset.cv==='all'){const a=OV.active();if(a&&window.convFindAll)window.convFindAll(menuCtx(a));return}
   if(b.dataset.cv==='printers'){const a=OV.active();if(a){OV.open(a.id);go('setup');setTimeout(()=>{const s=document.getElementById('st-prn');if(s)s.scrollIntoView()},60)}}
   else{const u=g('url'),r=g('urlb');if(u&&r){u.value=b.dataset.u;r.click()}}});
 window.addEventListener('oolio:menu',e=>{const d=e.detail;if(!d)return;lastMenu=d;const a=OV.active();

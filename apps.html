@@ -342,6 +342,7 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 <div class="two" style="margin-top:6px"><input id="svc" type="url" placeholder="Service address, e.g. http://localhost:8787"><input id="svck" type="password" placeholder="API key (if the service has one)" autocomplete="off"></div>
 <div id="svcmsg" class="warn"></div></details>
 <details style="margin-top:6px"><summary>Or paste the menu text</summary><textarea id="paste" placeholder="Copy the menu from a website or PDF (Ctrl+A, Ctrl+C) and paste it here." style="margin-top:6px"></textarea><button id="pasteb" type="button" class="sec">Add pasted menu</button></details>
+<div id="findbox" style="display:none;margin-top:10px"></div>
 <div id="dmsg" class="warn"></div>
 <div id="srcs" style="margin-top:10px"></div>
 </div>
@@ -815,7 +816,7 @@ function extract(t){
       price:num(v('price')),tax:v('tax'),desc:v('description'),sku:v('sku'),barcode:v('barcode'),gtin:v('gtin'),plu:v('plu'),
       pos:v('pos'),kitchen:v('kitchen'),printer:v('printer'),reporting:v('reporting'),dietary:v('dietary'),allergens:v('allergens'),
       image:v('image'),location:v('location'),visible:v('visible'),varp:v('varp'),minp:num(v('minp')),maxp:num(v('maxp')),
-      src:a.src,file:t.file,row:i+1};
+      src:a.src,file:t.file,row:i+1,tid:t.id,rank:t.rank||3,srcLabel:t.srcLabel||t.file,delivery:!!t.delivery};
     if(m.printer==null)it.printer=null;
     if(pt==='modifier'||/^(1|true|yes)$/i.test(v('ismod'))){mods.push({name,price:it.price,group:it.catSrc||it.sub||it.screen||'Modifiers',g:null,src:a.src,file:t.file,row:i+1});continue}
     items.push(it);}
@@ -1047,7 +1048,7 @@ function applyGroups(items,gs){
     else if(g.type==='file'){it.name=it.name+' - '+mb.v;it.variation=''}})});}
 
 /* ---------------- state ---------------- */
-let tables=[],base=[],mods=[],vg=[],catCfg={},res=null,dropped=[];
+let tables=[],base=[],mods=[],vg=[],catCfg={},res=null,dropped=[],merged=[],deliveryOnly=[];
 const S={};
 function readSettings(){S.tax=clean($('tax').value)||'GST';S.free=clean($('taxfree').value)||'GST Free';S.pgrp=clean($('pgrp').value);S.comb=$('comb').checked;
   S.mUnit='Unit';S.mVol=clean($('mVol').value);S.mWt=clean($('mWt').value);S.mVolU=clean($('mVolU').value);S.mWtU=clean($('mWtU').value);readSizes();}
@@ -1057,11 +1058,59 @@ function taxOf(raw){const t=clean(raw);if(!t||/^(true|false|yes|no)$/i.test(t))r
 const yn=v=>/^(true|yes|y|1)$/i.test(v)?'Yes':/^(false|no|n|0)$/i.test(v)?'No':'';
 const selling=v=>!v||/^(public|true|yes|y|1|visible|active|available|enabled)$/i.test(v)?'Yes':'No';
 
+/* ---------------- one item, several sources ----------------
+   When menus come from several places (website, PDFs, ordering site, delivery apps, menu photos), the same dish
+   shows up more than once. Items from different sources with the same name and size, the same words in another
+   order, or nearly the same spelling (and a similar price) are merged. The best source wins: an ordering site's
+   own feed, then the venue's own menus, then photos, then delivery apps (their prices are often marked up).
+   Items within one source are never merged with each other, so nothing a single menu lists twice is lost. */
+const STOPW=new Set(['the','a','an','our','house','homemade','home','made','with','w','and','n','of','on']);
+function normName(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' and ').replace(/\([^)]*\)/g,' ')
+  .replace(/\b(gfo?|vgo?|veo?|vo|dfo?|nfo?|v)\b/g,' ').replace(/[^a-z0-9 ]+/g,' ').split(/\s+/).filter(w=>w&&!STOPW.has(w))
+  .map(w=>w.length>3&&/[^s]s$/.test(w)?w.slice(0,-1):w).join(' ')}
+const normSize=v=>{const s=String(v||'').toLowerCase().trim();return({sml:'small',sm:'small',reg:'regular',med:'medium',lge:'large',lrg:'large',lg:'large',btl:'bottle',gls:'glass'})[s]||s};
+// edit distance where swapping two neighbouring letters counts as one edit (Ceasar / Caesar)
+function lev(a,b){if(a===b)return 0;const m=a.length,n=b.length;if(!m||!n)return m||n;const d=[];for(let i=0;i<=m;i++){d[i]=[i];for(let j=1;j<=n;j++)d[i][j]=i?0:j}
+  for(let i=1;i<=m;i++)for(let j=1;j<=n;j++){const c=a[i-1]===b[j-1]?0:1;d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+c);
+    if(i>1&&j>1&&a[i-1]===b[j-2]&&a[i-2]===b[j-1])d[i][j]=Math.min(d[i][j],d[i-2][j-2]+1)}return d[m][n]}
+const pclose=(x,y,lim)=>{const p=+x.it.price,q=+y.it.price;return!p||!q||Math.abs(p-q)/Math.max(p,q)<=lim};
+// the same words with one shortened (Avo / Avocado, Choc / Chocolate, Parma / Parmigiana)
+const shortForm=(a,b)=>{const A=a.split(' '),Bw=b.split(' ');if(A.length!==Bw.length||A.length<2)return false;let short=0;
+  for(let i=0;i<A.length;i++){const x=A[i],y=Bw[i];if(x===y)continue;const s=x.length<y.length?x:y,l=x.length<y.length?y:x;if(s.length<3||!l.startsWith(s))return false;short++}return short===1};
+const near=(x,y)=>{const a=x.k,b=y.k;if(shortForm(a,b))return pclose(x,y,0.1);if(Math.abs(a.length-b.length)>3||Math.min(a.length,b.length)<6)return false;
+  return 1-lev(a,b)/Math.max(a.length,b.length)>=0.88&&pclose(x,y,0.2)};
+function mergeSources(){merged=[];deliveryOnly=[];
+  if(new Set(base.map(it=>it.tid)).size<2)return;
+  const E=base.map(it=>{const k=normName(it.name);return{it,k,t:k.split(' ').sort().join(' '),s:normSize(it.variation)}});
+  const better=(a,b)=>a.it.rank!==b.it.rank?a.it.rank<b.it.rank:((a.it.desc||'').length>(b.it.desc||'').length);
+  const gone=new Set(),keep=new Map();// kept entry -> merged entries
+  const groupBy=f=>{const m=new Map();E.forEach(e=>{if(gone.has(e)||!e.k)return;const key=f(e)+'|'+e.s;(m.get(key)||m.set(key,[]).get(key)).push(e)});return m};
+  const fold=list=>{if(new Set(list.map(e=>e.it.tid)).size<2)return;
+    // one kept item per source table at most: the best entry absorbs entries from other sources only
+    let best=list[0];list.forEach(e=>{if(better(e,best))best=e});
+    list.forEach(e=>{if(e===best||e.it.tid===best.it.tid||gone.has(e))return;gone.add(e);(keep.get(best)||keep.set(best,[]).get(best)).push(e)})};
+  groupBy(e=>e.k).forEach(fold);
+  groupBy(e=>e.t).forEach(fold);
+  const rest=E.filter(e=>!gone.has(e)&&e.k);
+  for(let i=0;i<rest.length;i++)for(let j=i+1;j<rest.length;j++){const a=rest[i],b=rest[j];
+    if(gone.has(a)||gone.has(b)||a.it.tid===b.it.tid||a.s!==b.s||!near(a,b))continue;fold([a,b])}
+  keep.forEach((ms,k)=>{const it=k.it;
+    ms.forEach(m=>{const o=m.it;
+      if(!it.desc||(o.desc||'').length>it.desc.length*1.5)it.desc=o.desc||it.desc;
+      if(o.dietary)it.dietary=[...new Set((it.dietary?it.dietary.split(/\s*,\s*/):[]).concat(o.dietary.split(/\s*,\s*/)))].filter(Boolean).join(', ');
+      if(!it.cat&&o.cat)it.cat=o.cat;
+      if(it.delivery&&!o.delivery&&o.price){it.price=o.price;it.delivery=false}// the venue's own price beats a delivery app's
+      if(!it.price&&o.price)it.price=o.price;});
+    merged.push(it.name+(it.variation?' ('+it.variation+')':'')+(it.price?' $'+it.price:'')+', kept from '+it.srcLabel+'. Also on '+ms.map(m=>m.it.srcLabel+(m.it.name!==it.name?' as “'+m.it.name+'”':'')+(m.it.price&&m.it.price!==it.price?' at $'+m.it.price:'')).join(', '))});
+  const drop=new Set([...gone].map(e=>e.it));base=base.filter(it=>!drop.has(it));
+  const multi=new Set(base.map(it=>it.tid)).size>1;
+  if(multi)base.forEach(it=>{if(it.delivery)deliveryOnly.push(it.name+(it.variation?' ('+it.variation+')':'')+(it.price?' $'+it.price:'')+' from '+it.srcLabel)});}
 function prep(){
   const seen=new Map();dropped=[];
   base.forEach(it=>{
     const cs=it.src==='square'?it.catSrc.split(',')[0]:it.catSrc;
     it.cat=clean(cs)||(it.sub?(S.comb?lsCat(it.sub,it.screen):it.sub):it.screen)||it.section||'';});
+  mergeSources();
   mergeSizeCats();
   regroup();
   base=base.filter(it=>{const k=[it.name,it.cat,it.variation,it.price].map(x=>String(x).toLowerCase()).join('|');if(seen.has(k)){dropped.push(it);return false}seen.set(k,1);return true});
@@ -1198,7 +1247,7 @@ async function claudeText(name,pages){
 const FC_MAX=3,LINK_MAX=3,CACHE_DAYS=7,CKEY='menuRead:';
 const cacheKey=u=>CKEY+u.trim().replace(/^https?:\/\/(www\.)?/i,'').replace(/#.*$/,'').replace(/\/+$/,'').toLowerCase();
 function cacheGet(u){try{const c=JSON.parse(localStorage.getItem(cacheKey(u))||'null');if(c&&Date.now()-c.at<CACHE_DAYS*864e5)return c}catch(e){}return null}
-function cachePut(u,t){try{localStorage.setItem(cacheKey(u),JSON.stringify({at:Date.now(),file:t.file,doc:t.doc,rows:t.rows,extra:(t.extra||[]).map(x=>({file:x.file,rows:x.rows}))}))}catch(e){}}
+function cachePut(u,t){try{localStorage.setItem(cacheKey(u),JSON.stringify({at:Date.now(),file:t.file,doc:t.doc,rows:t.rows,urls:t.urls||[],imgs:t.imgs||[],extra:(t.extra||[]).map(x=>({file:x.file,rows:x.rows}))}))}catch(e){}}
 const cancelled=e=>e&&(e.code==='cancelled'||e.message==='Stopped.');
 async function directGet(u,signal){
   const ctl=new AbortController(),tm=setTimeout(()=>ctl.abort(),8000),off=()=>ctl.abort();signal.addEventListener('abort',off);
@@ -1324,12 +1373,17 @@ async function brRead(mcp,u,signal){
     if(tog){try{await br(mcp,'computer',Object.assign({action:'left_click',ref:tog.ref,action_summary:'Opens the menu section of the page'},tab),signal);await wait(1);const p2=await read();if(priceLines(p2.text)>priceLines(pg.text))pg=p2}catch(e){if(cancelled(e))throw e}}}
   const html=els.filter(x=>x.href&&!x.href.startsWith('#')).map(x=>'<a href="'+esc(x.href)+'">'+esc(x.name||x.href)+'</a>').join('');
   return{url:pg.url||u,title:pg.title,md:pg.text,html:'',doc:new DOMParser().parseFromString(html,'text/html'),via:'browser'};}
-async function readSite(u,mcp,force){
-  if(!force){const c=cacheGet(u);if(c){const t={file:c.file,sheet:'',doc:c.doc,rows:c.rows};t.extra=(c.extra||[]).map(x=>({file:x.file,sheet:'',rows:x.rows}));t.cachedAt=c.at;return t}}
+async function readSite(u,mcp,force,opts){opts=opts||{};const B=opts.budget,linkMax=opts.linkMax!=null?opts.linkMax:LINK_MAX;
+  if(opts.opened)opts.opened.add(u.replace(/\/+$/,''));
+  if(!force){const c=cacheGet(u);if(c){if(opts.opened)(c.urls||[]).forEach(x=>opts.opened.add(String(x).replace(/\/+$/,'')));if(opts.images)(c.imgs||[]).forEach(x=>opts.images.add(x));const t={file:c.file,sheet:'',doc:c.doc,rows:c.rows};t.extra=(c.extra||[]).map(x=>({file:x.file,sheet:'',rows:x.rows}));t.cachedAt=c.at;return t}}
   readCtl=new AbortController();const sig=readCtl.signal,stopped=()=>{if(sig.aborted)throw new Error('Stopped.')};
   let fc=0,credits=0;const free={direct:0,browser:0},notes=[];
-  const viaFc=async url=>{fc++;sayStop('Free reading didn’t work, so Firecrawl is loading '+url+' (Firecrawl call '+fc+' of up to '+FC_MAX+')…');
-    const p=await fcScrape(mcp,url,sig);credits+=+(p.meta.creditsUsed||1);p.via='firecrawl';
+  // a "find all menus" search shares one credit budget across every source; a single read keeps to FC_MAX calls
+  const fcOk=()=>B?B.credits>=1:fc<FC_MAX;
+  const myImgs=new Set(),grabImgs=p=>{if(p&&p.doc)menuImgs(p.doc,p.url||u,/menu|food|drink/i.test(p.url||'')&&priceLines(p.md||'')<5).forEach(x=>{myImgs.add(x);if(opts.images)opts.images.add(x)})};
+  const viaFc=async url=>{if(B&&B.credits<1)throw new Error('The Firecrawl budget for this search is used up.');fc++;
+    sayStop('Free reading didn’t work, so Firecrawl is loading '+url+(B?' ('+B.credits+' credits left in this search)…':' (Firecrawl call '+fc+' of up to '+FC_MAX+')…'));
+    const p=await fcScrape(mcp,url,sig);const c=+(p.meta.creditsUsed||1);credits+=c;if(B){B.credits-=c;B.used+=c}p.via='firecrawl';
     if(p.html)p.doc=new DOMParser().parseFromString(p.html,'text/html');return p};
   const freeRead=async(url,label)=>{const pdf=/\.pdf($|[?#])/i.test(url);
     sayStop('Reading '+label+': '+url);
@@ -1347,7 +1401,7 @@ async function readSite(u,mcp,force){
   const getJson=async url=>{
     try{const r=await fetch(url,{signal:sig,credentials:'omit'});if(r.ok)return{data:await r.json(),via:'direct'}}catch(e){stopped()}
     if(!BROFF){try{const j=jsonIn(await brText(mcp,url,sig));if(j){free.browser++;return{data:j,via:'browser'}}}catch(e){if(cancelled(e))throw new Error('Stopped.');BROFF=true}}
-    if(fc>=FC_MAX)throw new Error('The menu feed couldn’t be read within '+FC_MAX+' Firecrawl calls.');
+    if(!fcOk())throw new Error('The menu feed couldn’t be read within the Firecrawl limit.');
     const p=await viaFc(url),j=jsonIn(p.html?new DOMParser().parseFromString(p.html,'text/html').body.textContent:p.md);
     if(!j)throw new Error('The ordering site’s menu feed couldn’t be read.');return{data:j,via:'firecrawl'}};
   const runPlat=async url=>{const fn=platformFor(url);if(!fn)return null;sayStop('Reading the full menu, with sizes and add-ons, from the ordering site '+new URL(url).hostname+'…');
@@ -1361,12 +1415,12 @@ async function readSite(u,mcp,force){
     const direct=await runPlat(u);if(direct)return platTable(direct);
     const pages=[],failed=[],queue=[],seen=new Set([u.replace(/\/+$/,'')]);let opened=0,plat=null;
     // linked menus (lunch, dinner, drinks, PDFs...): up to LINK_MAX per read
-    const addLinks=p=>{if(!p||!p.doc)return;let ls=menuLinks(p.doc,p.url,8);
-      if(priceLines(p.md)>=8)ls=ls.filter(l=>l.score>=6||l.pdf);// the menu is already here: only obvious menu pages and PDFs
-      ls.forEach(l=>{const k=l.url.replace(/\/+$/,'');if(!seen.has(k)){seen.add(k);queue.push(l)}});queue.sort((a,b)=>b.score-a.score)};
-    const readLinks=async()=>{while(queue.length&&opened<LINK_MAX){const l=queue.shift();opened++;
+    const addLinks=p=>{if(!p||!p.doc)return;grabImgs(p);let ls=menuLinks(p.doc,p.url,Math.max(8,linkMax));
+      if(priceLines(p.md)>=8&&!opts.all)ls=ls.filter(l=>l.score>=6||l.pdf);// the menu is already here: only obvious menu pages and PDFs
+      ls.forEach(l=>{const k=l.url.replace(/\/+$/,'');if(!seen.has(k)&&!(opts.opened&&opts.opened.has(k))){seen.add(k);queue.push(l)}});queue.sort((a,b)=>b.score-a.score)};
+    const readLinks=async()=>{while(queue.length&&opened<linkMax){const l=queue.shift();opened++;if(opts.opened)opts.opened.add(l.url.replace(/\/+$/,''));
       if(!plat&&platformFor(l.url)){plat=await runPlat(l.url);if(plat)return;continue}// the venue orders through a platform: its feed has the whole menu
-      const p=await freeRead(l.url,'menu '+(l.pdf?'PDF':'page')+' '+opened+' of up to '+LINK_MAX);
+      const p=await freeRead(l.url,'menu '+(l.pdf?'PDF':'page')+' '+opened+' of up to '+linkMax);grabImgs(p);
       if(ok(p))pages.push(p);else failed.push(l.url)}};
     const offSite=(p,base)=>{try{const f=new URL(p.url);return f.pathname.replace(/\/+$/,'')===''&&f.hostname!==new URL(base).hostname}catch(e){return false}};
     // 1. everything free: the page given, then its menu links
@@ -1375,11 +1429,11 @@ async function readSite(u,mcp,force){
     if(plat)return platTable(plat);
     // 2. last resort for the page given: nothing free found a menu
     let fcFirst=null;
-    if(!pages.length&&fc<FC_MAX){fcFirst=await viaFc(u).catch(e=>{if(cancelled(e))throw e;notes.push(e.message);return null});
+    if(!pages.length&&fcOk()){fcFirst=await viaFc(u).catch(e=>{if(cancelled(e))throw e;notes.push(e.message);return null});
       if(fcFirst){if(ok(fcFirst))pages.push(fcFirst);addLinks(fcFirst);await readLinks();if(plat)return platTable(plat)}}
     // 3. last resort for linked menus that couldn't be read free
-    for(const url of failed){if(fc>=FC_MAX){notes.push('Skipped '+url+' to stay within '+FC_MAX+' Firecrawl calls.');continue}
-      try{const p=await viaFc(url);if(!offSite(p,u))pages.push(p)}catch(e){if(cancelled(e))throw e}}
+    for(const url of failed){if(!fcOk()){notes.push('Skipped '+url+' to stay within the Firecrawl limit.');continue}
+      try{const p=await viaFc(url);grabImgs(p);if(!offSite(p,u))pages.push(p)}catch(e){if(cancelled(e))throw e}}
     stopped();
     const any=fcFirst||first;
     if(!pages.length&&any&&any.md&&any.md.trim())pages.push(any);// no prices anywhere: let Claude or the parser try what there is
@@ -1397,7 +1451,7 @@ async function readSite(u,mcp,force){
         try{const r=await claudeText(name,texts);if(r.count)t=r.table;else notes.push('Claude found no menu items'+(r.notes.length?' ('+r.notes.join(' ')+')':'')+', so the built-in parser read it instead.')}
         catch(e){if(cancelled(e))throw new Error('Stopped.');notes.push(e.message+' The built-in parser read it instead.')}}
       if(!t)t=docTable(name,texts.flatMap(p=>p.lines||markdownLines(p.md)),'web page'+(texts.length>1?' ('+texts.length+' pages)':''));}
-    t.note=[spent,...notes].join(' ');
+    t.note=[spent,...notes].join(' ');t.urls=pages.map(p=>p.url).filter(Boolean);t.imgs=[...myImgs];
     if(t.doc&&t.doc.count)cachePut(u,t);
     return t;}
   finally{readCtl=null}}
@@ -1444,6 +1498,85 @@ async function addUrl(force){
     else addTables([htmlTable(name,await r.text())]);
     say('');$('url').value='';renderSources();rebuild();}
   catch(e){$('dmsg').innerHTML='That website doesn’t let other pages read it, so it couldn’t be loaded here. Open the menu in your browser, then either save it (Ctrl+S, “Webpage, HTML only”) and choose the saved file above, or select all the menu text (Ctrl+A, Ctrl+C) and paste it into “Or paste the menu text”. If the menu is a PDF link, download the PDF and choose it above.';}}
+/* ---------------- find every menu a venue has ----------------
+   Given what Restaurant Lookup knows about a venue (website, menu links, delivery and ordering sites), reads all of them:
+   the website and up to 8 of its menu pages and PDFs, each menu link the lookup found, the venue's ordering site feed
+   (Hungry Hungry, me&u), DoorDash, Uber Eats, Menulog and other delivery pages, and menu pictures on the site (read by Claude).
+   Free reading comes first everywhere; Firecrawl shares one credit budget for the whole search. Everything found is added
+   as separate sources, and matching items are merged when the sources are combined (see mergeSources). */
+const DELIV=[['DoorDash',/doordash\.com/i],['Uber Eats',/ubereats\.com/i],['Menulog',/menulog\.com\.au/i],['Deliveroo',/deliveroo\./i]];
+function findPlan(ctx){const src=[],seen=new Set(),add=(kind,label,url,cost,extra)=>{if(!url)return;const k=url.replace(/^https?:\/\/(www\.)?/,'').replace(/\/+$/,'').toLowerCase();if(seen.has(k))return;seen.add(k);src.push(Object.assign({kind,label,url,cost},extra||{}))};
+  if(ctx.website)add('site','Website',ctx.website,3);
+  (ctx.links||[]).slice(0,10).forEach((u,i)=>add(platformFor(u)?'plat':'link',platformFor(u)?'Ordering site':/\.pdf(\?|$)/i.test(u)?'Menu PDF':'Menu page',u,1));
+  (ctx.ordering||[]).forEach(([n,u])=>add('plat',n,u,1));
+  (ctx.delivery||[]).forEach(([n,u])=>{const dd=/doordash\.com/i.test(u)&&ddStore(u);add('delivery',n,u,dd?5:2,{dd})});
+  return{sources:src,max:Math.min(25,src.reduce((a,s)=>a+s.cost,0))}}
+window.convPlan=findPlan;
+const ddStore=u=>{const m=String(u).match(/\/store\/(?:[^\/?#]*-)?(\d{3,20})(?:[\/?#]|$)/);return m?m[1]:''};
+// pictures that look like menus: named or captioned "menu", or every large picture on a menu page that has no menu text
+function menuImgs(doc,base,menuPage){const out=[],seen=new Set();
+  const add=(src,txt,big)=>{if(!src)return;let u;try{u=new URL(src.trim().split(/\s+/)[0],base)}catch(e){return}if(!/^https?:$/.test(u.protocol))return;
+    const s=(decodeURIComponent(u.pathname)+' '+(txt||'')).toLowerCase();if(/logo|icon|favicon|sprite|avatar|banner|hero|social|instagram|facebook/.test(s))return;
+    if(!(/menu|carta|drinks?[-_ ]?list|wine[-_ ]?list|cocktails?[-_ ]list|specials? ?board|price ?list/.test(s)||(menuPage&&big)))return;
+    if(/\.(svg|gif)(\?|$)/i.test(u.pathname))return;const k=u.href.replace(/[?#].*$/,'');if(seen.has(k))return;seen.add(k);out.push(u.href)};
+  doc.querySelectorAll('img').forEach(i=>{const w=+i.getAttribute('width')||0;add(i.getAttribute('data-src')||i.getAttribute('src')||(i.getAttribute('srcset')||'').split(',').pop(),[i.alt,i.title,i.getAttribute('aria-label')].join(' '),!w||w>=500)});
+  doc.querySelectorAll('a[href]').forEach(a=>{const h=a.getAttribute('href')||'';if(/\.(jpe?g|png|webp)(\?|$)/i.test(h))add(h,a.textContent+' '+(a.title||''),true)});
+  return out.slice(0,8)}
+async function imgBlob(u,signal){for(const x of[u,'https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=2400&we&output=jpg']){
+  try{const r=await fetch(x,{signal,credentials:'omit'});if(!r.ok)continue;const b=await r.blob();if(/^image\//.test(b.type)&&b.size>15000)return b}catch(e){if(signal&&signal.aborted)throw new Error('Stopped.')}}return null}
+async function ddRead(store,mcp,B,signal){
+  if(B.credits<5)throw new Error('not enough Firecrawl budget left for DoorDash (5 credits)');
+  let res;try{res=await mcp.callTool('Firecrawl','firecrawl_scrape',{alexandria:{provider:'doordash-com',capability:'products/items',options:{store_id:store}},objective:'Read a restaurant’s DoorDash menu so it can be converted into an Oolio One product import file.'},{signal,cache:false})}
+  catch(e){throw new Error(firecrawlErr(e))}
+  let p=res&&res.payload!==undefined?res.payload:res;if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){}}
+  if(p&&Array.isArray(p.content)){try{p=JSON.parse(p.content.map(x=>x&&x.text||'').join(''))}catch(e){}}
+  const find=(o,k,d=0)=>{if(!o||typeof o!=='object'||d>6)return;if(k in o)return o[k];for(const v of Object.values(o)){const r=find(v,k,d+1);if(r!==undefined)return r}};
+  const a=find(p,'alexandria'),r=Array.isArray(a)?a[0]:null;B.credits-=5;B.used+=5;
+  if(!r||r.error)throw new Error('DoorDash: '+((r&&r.error&&(r.error.message||r.error.code))||'no answer'));
+  const groups=(r.data&&r.data.groups)||[],rows=[],seen=new Set();
+  groups.forEach(g=>{if(/popular|most ordered|featured|deals?|recommended/i.test(g.id+' '+g.name))return;
+    (g.items||[]).forEach(it=>{if(!it||!it.name||seen.has(it.item_id))return;seen.add(it.item_id);const pr=it.price&&it.price.amount;
+      rows.push([tidy(g.name||''),tidy(it.name),'',pr==null?'':num(pr),clean(it.description||''),''])})});
+  return rows}
+const FA={run:false,stop:false,log:[]};
+function faDraw(head){const b=$('findbox');b.style.display='block';
+  b.innerHTML='<div class="chk i"><b>'+esc(head)+'</b>'+(FA.run?' <button type="button" class="sec" id="fastop" style="padding:4px 10px;margin:0 0 0 6px">Stop</button>':'')+
+    '<ul style="max-height:none;color:var(--text)">'+FA.log.map(l=>'<li>'+(l.st==='ok'?'✓ ':l.st==='err'?'✗ ':l.st==='run'?'… ':'· ')+esc(l.label)+(l.msg?' <span style="color:var(--muted)">'+esc(l.msg)+'</span>':'')+'</li>').join('')+'</ul></div>';
+  const s=$('fastop');if(s)s.addEventListener('click',()=>{FA.stop=true;if(readCtl)readCtl.abort()})}
+async function findAllMenus(ctx){if(FA.run)return;const mcp=await getMcp(),plan=findPlan(ctx);
+  const B={credits:ctx.budget!=null?ctx.budget:Math.max(3,plan.max),used:0},opened=new Set(),images=new Set(),found=[];
+  FA.run=true;FA.stop=false;FA.log=plan.sources.map(s=>({label:s.label+': '+s.url.replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:'wait',s}));
+  const name=ctx.venue||'Venue';faDraw('Finding every menu for '+name+'…');
+  const take=(t,s,label,rank,delivery)=>{const same=found.filter(x=>x.srcLabel&&x.srcLabel.replace(/ \d+$/,'')===label).length;if(same)label+=' '+(same+1);t.file=label;t.rank=rank;t.srcLabel=label;t.delivery=!!delivery;found.push(t);(t.extra||[]).forEach(x=>{x.file=label+' modifiers';found.push(x)});
+    return t.doc?t.doc.count:(t.rows||[]).length};
+  try{
+    for(const L of FA.log){if(FA.stop)break;const s=L.s;
+      const k=s.url.replace(/\/+$/,'');if(s.kind!=='site'&&opened.has(k)){L.st='ok';L.msg='already read with the website';faDraw('Finding every menu for '+name+'…');continue}
+      L.st='run';faDraw('Finding every menu for '+name+'…');
+      try{
+        if(s.dd&&mcp){try{const rows=await ddRead(s.dd,mcp,B,new AbortController().signal);
+            if(rows.length){const n=take(mkDocTable(name+' (DoorDash)',rows,[],'DoorDash menu'),s,s.label,5,true);L.st='ok';L.msg=n+' items';continue}}
+          catch(e){L.msg='DoorDash reader: '+e.message+'. Reading the page instead…';faDraw('Finding every menu for '+name+'…')}}
+        if(!mcp&&s.kind!=='site'&&s.kind!=='link'){L.st='err';L.msg='needs claude.ai (Firecrawl or the Claude app)';continue}
+        const t=await readSite(s.url,mcp||{callTool:()=>Promise.reject({code:'server_not_connected'})},false,{all:true,budget:B,opened,images,linkMax:s.kind==='site'?8:2});
+        const isPlat=t.doc&&/ordering site/.test(t.doc.how||''),rank=s.kind==='delivery'?5:isPlat?1:(t.doc&&/menu data/.test(t.doc.how||''))?2:3;
+        const n=take(t,s,s.label+(isPlat&&s.kind==='site'?' (ordering site)':''),rank,s.kind==='delivery');L.st='ok';L.msg=n+' items'+(t.cachedAt?' (saved result, free)':'')}
+      catch(e){L.st='err';L.msg=e.message==='Stopped.'?'stopped':String(e.message||e).slice(0,160);if(FA.stop)break}}
+    // menu pictures found on the site, read by Claude (uses a little Claude usage, no Firecrawl credits)
+    const imgs=[...images].slice(0,6);
+    if(imgs.length&&!FA.stop){const can=await getSample();
+      for(let i=0;i<imgs.length&&!FA.stop;i++){const L={label:'Menu picture '+(i+1)+': '+imgs[i].replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:can?'run':'err',msg:can?'':'Claude isn’t available in this view'};FA.log.push(L);faDraw('Finding every menu for '+name+'…');if(!can)continue;
+        try{const b=await imgBlob(imgs[i]);if(!b){L.st='err';L.msg='couldn’t be downloaded';continue}
+          const t=await claudeRead(name+' menu picture '+(i+1),[b],'menu picture');const n=take(t,null,'Menu picture '+(i+1),4,false);
+          L.st=n?'ok':'err';L.msg=n?n+' items':'no menu items in it'}
+        catch(e){L.st='err';L.msg=String(e.message||e).slice(0,120)}}}}
+  finally{FA.run=false;readCtl=null}
+  const good=found.filter(t=>t.rows&&t.rows.length);
+  if(good.length){addTables(good);renderSources();rebuild()}
+  const items=good.filter(t=>t.doc).reduce((a,t)=>a+t.doc.count,0);
+  faDraw((FA.stop?'Stopped. ':'')+'Found '+good.filter(t=>t.doc).length+' menu source'+(good.length===1?'':'s')+' with '+items+' lines for '+name+(merged.length?'; '+merged.length+' items found on more than one source were merged':'')+'. '+(B.used?'Used '+B.used+' Firecrawl credits.':'No Firecrawl credits used.'));
+  say('');return{sources:good.length,items,credits:B.used}}
+window.convFindAll=findAllMenus;
 function addPaste(){const t=$('paste').value;if(!t.trim())return;addTables([docTable('Pasted menu '+(tables.filter(x=>/^Pasted/.test(x.file)).length+1),textLines(t),'pasted text')]);$('paste').value='';renderSources();rebuild();}
 function renderSources(){
   $('srcs').innerHTML=tables.map(t=>{
@@ -1632,6 +1765,8 @@ function convert(){
   chk('barcodes or GTINs were not valid numbers and were left blank.',badCodes);
   chk('items are measured by volume or weight. Check that these are right.',vol,true);
   chk('duplicate rows (same name, category, size and price) were removed.',dropped.map(i=>i.name+' ('+(i.cat||'no category')+')'),true);
+  chk('items were on more than one menu source and were merged into one. The kept version is shown first; check none of these are really different items.',merged,true);
+  chk('items were only found on a delivery app. Delivery apps often charge more than the venue does in store, so check these prices with the venue.',deliveryOnly);
   chk('items have a price of 0. Check that this is right.',items.filter(i=>i.price==='0').map(i=>i.name),true);
   tables.forEach(t=>{if(t.on&&t.doc&&t.doc.ignored.length)checks.push({msg:'lines in “'+t.file+'” were not read as menu items (headings with no items, notes, opening hours, items with no price). Add any real items by hand.',list:t.doc.ignored,info:true})});
   tables.forEach(t=>{if(t.on&&t.a&&t.info&&!t.info.items.length&&!t.info.mods.length)checks.push({msg:'“'+t.file+(t.sheet?' › '+t.sheet:'')+'” has no rows to convert'+(t.a.marker?'. It looks like an empty pre-work template.':'.'),list:[]})});
@@ -2301,6 +2436,7 @@ window.OolioVenues={
   stage(id){const o=ORGS[id];return o?(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1]:''},
   printers(id){const o=ORGS[id];return o?(o.printers||[]).map(x=>clean(x.name)).filter(Boolean):[]},
   address(id){return ORGS[id]?val(ORGS[id],'biz-address','address'):''},
+  website(id){return ORGS[id]?val(ORGS[id],'prep-gmb','website'):''},
   me(){return ME},
   on(f){LISTEN.add(f);return()=>LISTEN.delete(f)}};
 
@@ -2625,6 +2761,11 @@ const view=()=>location.hash.slice(1);
 const go=v=>{if(view()===v)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=v};
 function suburbOf(a){const parts=String(a||'').split(',').map(s=>s.trim()).filter(Boolean);
   const s=parts.find(x=>/\b(NSW|VIC|QLD|SA|WA|TAS|ACT|NT)\b/.test(x))||parts[1]||'';return s.replace(/\s*\d{4}\s*$/,'').trim()}
+function menuCtx(a){const P=OV.lookup(a.id)||{},pl=P.place||{},f=P.found||{},d=P.det||{};
+  const urls=o=>Object.entries(o||{}).filter(([,u])=>/^https?:\/\//.test(u));
+  return{venue:a.name,website:pl.website||OV.website(a.id),links:(d.menu||[]).slice(),delivery:urls(f.delivery),ordering:[]}}
+function findAll(a){if(!a||!window.convFindAll)return;go('converter');setTimeout(()=>window.convFindAll(menuCtx(a)),50)}
+function estimate(a){if(!window.convPlan)return null;const p=window.convPlan(menuCtx(a));return p.sources.length?p:null}
 function queryOf(o){const q=o.lookupQ||{};return{name:q.name||o.name||'',loc:q.loc||suburbOf(OV.address(o.id))}}
 
 /* ---------- header: which venue ---------- */
@@ -2658,10 +2799,10 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
         (OV.ready?'<p class="lx-muted">No venues yet.</p>':'<p class="lx-muted">Loading venues…</p>'))+'</div>';
     return}
   const P=OV.lookup(a.id),pre=OV.progress(a.id,'pre'),trn=OV.progress(a.id,'trn'),all=OV.progress(a.id),m=a.menu,f=a.photos;
-  const menuLinks=P&&P.det&&(P.det.menu||[]).length;
+  const est=!m&&a.lookup?estimate(a):null;
   const steps=[
     {k:'lookup',t:'Look up the venue',done:!!a.lookup,s:a.lookup?'Done '+day(a.lookup.at)+'. Business details, contacts and links are filled in.':'Finds the address, ABN, contacts, services, delivery and booking sites, and menu links.',b:a.lookup?'View lookup':'Look it up'},
-    {k:'menu',t:'Convert the menu',done:!!m,s:m?m.products+' products in '+(m.cats||[]).length+' categories, '+day(m.at)+'.':(menuLinks?'The lookup found '+menuLinks+' menu link'+(menuLinks>1?'s':'')+' to read.':'From a menu PDF, photo, web page or POS export.'),b:m?'Open converter':'Convert menu'},
+    {k:'menu',t:'Find and convert the menus',done:!!m,s:m?m.products+' products in '+(m.cats||[]).length+' categories, '+day(m.at)+'.':(est?'Reads all '+est.sources.length+' menu source'+(est.sources.length>1?'s':'')+' the lookup found (website, PDFs, ordering and delivery sites, menu pictures). Free reads first; at most '+est.max+' Firecrawl credits.':'From a menu PDF, photo, web page or POS export.'),b:m?'Open converter':est?'Find all menus':'Convert menu'},
     {k:'photos',t:'Find product photos',done:!!f,s:f?f.saved+' photos saved, '+day(f.at)+'.':(m?'Uses the '+m.products+' converted products.':'Uses the converted menu, so do that first.'),b:'Find photos'},
     {k:'setup',t:'Setup checklist',done:all.total>0&&all.done===all.total,s:'Pre-config '+pre.done+'/'+pre.total+' · Training '+trn.done+'/'+trn.total+(a.training?' · Training '+new Date(a.training+'T00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}):''),b:'Open checklist'}];
   const next=steps.findIndex(s=>!s.done);
@@ -2675,7 +2816,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-hub]');if(
   else if(k==='pick'){OV.setActive(b.dataset.id)}
   else if(k==='none'){OV.setActive('')}
   else if(k==='lookup'){if(!a)return;LK.for='';go('venue');if(!a.lookup){const q=queryOf(a);LK.for=a.id;window.dispatchEvent(new CustomEvent('oolio:lookup-fill',{detail:Object.assign(q,{force:true,clear:true,run:true})}))}}
-  else if(k==='menu')go('converter');
+  else if(k==='menu'){if(a&&!a.menu&&a.lookup&&estimate(a))findAll(a);else go('converter')}
   else if(k==='photos')go('photos');
   else if(k==='setup'){OV.open(a&&a.id);go('setup')}});
 
@@ -2696,11 +2837,11 @@ function drawRf(){const a=OV.active(),P=LK.last,nm=P&&P.place&&P.place.name;let 
   if(!a&&!P)h='No venue selected. Look one up, then save it as a venue to use it in the other tools.';
   else if(!a&&P)h='Use '+esc(nm)+' in the other tools? <button type="button" data-rf="new">Save as a new venue</button>';
   else if(!P)h='Looking up <b>'+esc(a.name)+'</b>. The result is saved with it and fills its business details.';
-  else if(LK.attached)h='Saved with <b>'+esc(a.name)+'</b>. Its business details and links are in the checklist. <button type="button" class="lx-sec" data-rf="menu">Next: convert the menu</button>';
+  else if(LK.attached)h='Saved with <b>'+esc(a.name)+'</b>. Its business details and links are in the checklist. <button type="button" class="lx-sec" data-rf="menu">Next: find all menus</button>';
   else h='This isn’t the lookup saved with <b>'+esc(a.name)+'</b>. <button type="button" data-rf="attach">Save it to '+esc(a.name)+'</button><button type="button" class="lx-sec" data-rf="new">Save as a new venue</button>';
   rfbar.innerHTML=h;rfbar.hidden=OV.readOnly&&!a}
 rfbar.addEventListener('click',async e=>{const b=e.target.closest('[data-rf]');if(!b)return;const k=b.dataset.rf,P=LK.last,a=OV.active();
-  if(k==='menu')go('converter');
+  if(k==='menu'){if(a&&estimate(a))findAll(a);else go('converter')}
   else if(k==='attach'&&a&&P){OV.attachLookup(a.id,P);LK.attached=true;LK.shown=a.id;drawRf()}
   else if(k==='new'&&P){b.disabled=true;try{const id=await OV.create({name:P.place.name,lookupQ:P.query||{name:P.place.name,loc:''}});OV.attachLookup(id,P);LK.attached=true;LK.shown=id}
     catch(x){alert('Couldn’t create the venue: '+((x&&(x.message||x.code))||'error'))}drawRf()}});
@@ -2713,12 +2854,15 @@ function syncConv(){const a=OV.active(),pr=a?OV.printers(a.id):[];
   window.OOLIO_VENUE_NAME=a?a.name:'';const sig=pr.join('|');window.OOLIO_PRINTERS=pr;
   if(sig!==cvSig){cvSig=sig;if(window.convRefresh)window.convRefresh()}
   if(!a){cvbar.innerHTML='No venue selected. Pick one at the top and downloads are named after it and saved to its checklist.';return}
-  const P=OV.lookup(a.id),links=P&&P.det?(P.det.menu||[]).slice(0,4):[],site=P&&P.place&&P.place.website,m=a.menu;
+  const P=OV.lookup(a.id),links=P&&P.det?(P.det.menu||[]).slice(0,4):[],site=P&&P.place&&P.place.website,m=a.menu,est=estimate(a);
   cvbar.innerHTML='<div>Converting the menu for <b>'+esc(a.name)+'</b>. Files are named after it, and downloading the import saves a summary to its checklist'+(m?' (last: '+m.products+' products, '+day(m.at)+')':'')+'.</div>'+
     '<div>'+(pr.length?'Printers from its checklist: <b>'+esc(pr.join(', '))+'</b>. “Auto” picks from these.':'No printers in its checklist yet, so generic printer names are used. <button type="button" class="lx-link" data-cv="printers">Add the printers</button>')+'</div>'+
-    (links.length||site?'<div class="lx-row">'+links.map((u,i)=>'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(u)+'">Read menu '+(links.length>1?i+1+' ':'')+(/\.pdf(\?|$)/i.test(u)?'(PDF)':'(page)')+'</button>').join('')+
-      (!links.length&&site?'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(site)+'">Read the venue’s website</button>':'')+'<span class="lx-muted lx-small">found by the lookup</span></div>':'')}
+    (est?'<div class="lx-row"><button type="button" data-cv="all">Find all menus</button><span class="lx-muted lx-small">'+est.sources.length+' source'+(est.sources.length>1?'s':'')+' from the lookup, plus menu pictures on the site. Free reads first; at most '+est.max+' Firecrawl credits.</span></div>':
+      '<div class="lx-muted lx-small">Look the venue up first and every menu it has can be found in one click.</div>')+
+    (links.length||site?'<details><summary class="lx-small">Or read one source</summary><div class="lx-row" style="margin-top:6px">'+links.map((u,i)=>'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(u)+'">Read menu '+(links.length>1?i+1+' ':'')+(/\.pdf(\?|$)/i.test(u)?'(PDF)':'(page)')+'</button>').join('')+
+      (site?'<button type="button" class="lx-sec" data-cv="read" data-u="'+esc(site)+'">Website</button>':'')+'</div></details>':'')}
 cvbar.addEventListener('click',e=>{const b=e.target.closest('[data-cv]');if(!b)return;
+  if(b.dataset.cv==='all'){const a=OV.active();if(a&&window.convFindAll)window.convFindAll(menuCtx(a));return}
   if(b.dataset.cv==='printers'){const a=OV.active();if(a){OV.open(a.id);go('setup');setTimeout(()=>{const s=document.getElementById('st-prn');if(s)s.scrollIntoView()},60)}}
   else{const u=g('url'),r=g('urlb');if(u&&r){u.value=b.dataset.u;r.click()}}});
 window.addEventListener('oolio:menu',e=>{const d=e.detail;if(!d)return;lastMenu=d;const a=OV.active();
