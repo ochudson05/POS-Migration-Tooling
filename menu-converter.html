@@ -85,6 +85,13 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 <option value="auto" selected>Auto: group items by type when the file’s categories are too specific or missing</option>
 <option value="all">Always group items by type (Hot Coffee, Pizza, Wine…)</option>
 <option value="keep">Keep the file’s categories</option></select></div>
+<details style="margin-top:10px" id="spiritbox"><summary>Spirit categories: <span id="spiritn"></span></summary>
+<div class="warn" style="margin:6px 0 8px">Spirits are put in a category by type: Vodka, Gin, Rum, Whisky, Bourbon, Tequila, Brandy &amp; Cognac, Liqueurs and Aperitifs (Gordon’s → Gin, Miska → Vodka). If the file or website already lists the item under a spirit category such as “Gin” or “Whisky &amp; Bourbon”, that category is kept. Otherwise the brand list below is used, then words in the name and description. Items in a catch-all category such as “Spirits”, “Top Shelf” or “Back Bar” are split by type, and canned or bottled mixed drinks go in Premix. “Keep the file’s categories” turns this off.</div>
+<label for="spiritx">Your spirit brands, one per line as Brand = Category. These win over the built-in list and are saved in this browser.</label>
+<textarea id="spiritx" placeholder="Brookvale Union = Premix&#10;Archie Rose = Gin&#10;Local Distillery Vodka = Vodka" style="min-height:70px"></textarea>
+<label for="spiritq" style="margin-top:8px">Check a name</label><input id="spiritq" placeholder="e.g. Hendrick's 30ml"><div class="warn" id="spirita" style="margin:4px 0 0;display:none"></div>
+<details style="margin-top:8px"><summary>Built-in brand list</summary><div id="spiritlist" class="warn" style="margin:6px 0 0;max-height:260px;overflow:auto;font-size:12px"></div></details>
+</details>
 <label class="ck" style="margin-top:10px"><input type="checkbox" id="comb" checked>Lightspeed: add the screen name to subscreen categories (Wine › Red becomes “Red Wine”)</label>
 <h3>Measured By</h3>
 <div class="warn" style="margin:0 0 8px">Items sold by the unit leave Measured By, Default Value and Unit blank. An item is only given a measure when its name, size or category shows it is poured. Draught beer (pot, middy, schooner, pint, jug), wine by the glass, spirit nips and anything with a poured volume such as “Glass 150ml” or “(30ml)” is measured by volume. Bottles, cans and packs stay as units. Change the result for a whole category in step 3.</div>
@@ -538,7 +545,7 @@ const COOKED=/\b(scotch (fillet|eggs?)|(gin|vodka|whisk(e)?y|beetroot)[- ]cured|
 const DRINK_PHRASE=/\b((iced?|hot|cold|frozen)\s+(chocolate|choc\w*|coffee|latte|tea|mocha|matcha|chai)|lemon,? lime (and|&|n)? ?bitters|llb|root beer( float)?|ginger (beer|ale)|spider|float|soft drinks?|bubble tea|boba)\b/i;
 const DRINK_D=/\b(vodka|gin|rum|tequila|mezcal|whisk(e)?y|bourbon|scotch|brandy|cognac|liqueurs?|spirits?|aperol|campari|vermouth|prosecco|champagne|sparkling|soda|tonic|juice|syrup|bitters|cordial|espresso|shots?|nips?|over ice|on ice|on the rocks|crushed ice|shaken|stirred|garnish(ed)?|glass|poured|brewed|steeped|blended|fizz|bubbles|abv|\d+(\.\d+)?\s?%|\d+\s?ml|liquids?|mixers?|steamed milk|chilled milk|frothed|foam|on tap|draught|hops|hoppy|malt|tannins?|palate|notes of|finish|served (cold|chilled|hot) in|sip|drink)\b/gi;
 const FOOD_D=/\b(served with|chips|fries|salad|toasted|grilled|fried|baked|roasted|crumbed|battered|sauce|aioli|mayo|buns?|bread|sourdough|brioche|wrap|cheese|eggs?|bacon|beef|chicken|pork|lamb|fish|prawns?|rice|noodles|pastry|slaw|jus|gravy|mash|dressing|herbs|rocket|tomato|onion|pickles?|patty|fillet|crispy|plate|bowl)\b/gi;
-const DRINK_CATS=new Set(['Mocktails','Cocktails','Cold Drinks','Iced Drinks','Shakes & Smoothies','Tea','Hot Coffee','Beer & Cider','Wine','Spirits']);
+const DRINK_CATS=new Set(['Mocktails','Cocktails','Cold Drinks','Iced Drinks','Shakes & Smoothies','Tea','Hot Coffee','Beer & Cider','Wine','Spirits','Premix','Vodka','Gin','Rum','Whisky','Bourbon','Tequila','Brandy & Cognac','Liqueurs','Aperitifs']);
 const words=s=>(s.match(/\p{L}[\p{L}'-]*/gu)||[]);
 function drinkScore(o){
   const name=clean(o.name),desc=clean(o.desc||''),cat=clean(o.catOrig||o.cat||''),vari=clean(o.variation||o.vhint||'');
@@ -547,7 +554,8 @@ function drinkScore(o){
   else if(DRINK_PHRASE.test(name))s+=6;
   else{const ws=words(name),last=ws[ws.length-1]||'',last2=ws.slice(-2).join(' ');
     if(DRINK_N.test(last))s+=5;else if(FOOD_N.test(last))s-=5;else if(DRINK_N.test(last2))s+=5;else if(FOOD_N.test(last2))s-=5;
-    ws.slice(0,-1).forEach(w=>{if(DRINK_N.test(w))s+=2;else if(FOOD_N.test(w))s-=2});}
+    ws.slice(0,-1).forEach(w=>{if(DRINK_N.test(w))s+=2;else if(FOOD_N.test(w))s-=2});
+    if(!FOOD_N.test(last)&&spiritItem({name}))s+=4;}
   if(cat&&!GEN.test(cat)){if(DRINK_N.test(cat)&&!FOOD_N.test(cat))s+=3;else if(FOOD_N.test(cat)&&!DRINK_N.test(cat))s-=3;}
   if(desc&&!COOKED.test(desc)){s+=Math.min(4,(desc.match(DRINK_D)||[]).length);s-=Math.min(4,(desc.match(FOOD_D)||[]).length);}
   if(/\b(glass|bottle|btl|carafe|pot|middy|schooner|pint|jug|pitcher|shot|nip|can)\b|\d+\s?(ml|l|oz|cl)\b/i.test(vari+' '+name))s+=2;
@@ -577,11 +585,77 @@ function guessRG(o){
 /* High-level categories worked out from what each item is (Margherita Pizza → Pizza, Latte → Hot Coffee).
    Rules run in order; the first match wins. Drinks come before food so "Chocee Shake" isn't a dessert. */
 const COFFEEW=/\b(coffees?|lattes?|cappuc+h?inos?|flat whites?|long blacks?|short blacks?|espresso|doppio|macchiato|piccolo|mocha|ristretto|americano|magic|cortado|babyc+inos?|baby ?cinos?|chai|hot choc\w*|chocee|matcha|turmeric latte|golden latte|beetroot latte|mugaccino)\b/;
+/* ---------------- spirit brands → spirit category ----------------
+   Brand names (lower case, no apostrophes or accents) for each spirit category. Used only when the
+   file or website doesn't already put the item in a spirit-type category (Gin, Vodka, Whisky…).
+   Add venue-specific brands in step 2 ("Your spirit brands"); those win over this list. */
+const SPIRIT_DB={
+'Vodka':`absolut|smirnoff|grey goose|belvedere|ketel one|stolichnaya|stoli|finlandia|wyborowa|russian standard|skyy|titos|ciroc|haku|miska|42 below|zubrowka|chopin|beluga|reyka|sobieski|eristoff|crystal head|snow leopard|pinnacle vodka|three olives|svedka|danzka|luksusowa|potocki|nikolai|karloff|ursus|stumbras|belenkaya|black cow|hartshorn|grey goose la poire|absolut citron|absolut vanilia|absolut raspberri|absolut mandrin|absolut kurant|smirnoff red|smirnoff black|ketel|cape byron vodka|blue duck vodka|imperia|russian standard platinum|mamont|purity vodka|elit|au vodka|deep eddy|new amsterdam|koskenkorva|grey goose vx|level vodka|vodka o`,
+'Gin':`gordons|tanqueray|tanqueray ten|tanqueray no ten|tanqueray sevilla|bombay sapphire|bombay bramble|bombay|hendricks|beefeater|four pillars|monkey 47|roku|malfy|the botanist|botanist|plymouth|sipsmith|aviation|brokers|bulldog|citadelle|nolets|gin mare|ink gin|husk ink|empress 1908|never never|poor toms|applewood|brookies|whitley neill|silent pool|opihr|seagrams gin|gilbeys|haymans|procera|ki no bi|kinobi|etsu|sakurao|anther|rogue society|brogans way|warners|edinburgh gin|caorunn|fords gin|pinkster|copperhead|melbourne gin company|west winds|the west winds|kangaroo island spirits|mchenry|manly spirits gin|archie rose dry gin|bloom gin|greenalls|hepple|ki no tea|nikka coffey gin|suntory roku|jinzu|tanqueray rangpur|tanqueray flor de sevilla|gordons pink|beefeater pink|salcombe|sacred gin|tarquins|portobello road|east london gin|amass|loch lomond gin|harahorn|brockmans|martin millers|martin miller|g vine|bobbys|elephant gin|gin lane|puddleduck gin|distillery botanica|ambleside|tamworth gin|ink|by the dutch|hayman|old tom gin`,
+'Rum':`bacardi|captain morgan|sailor jerry|bundaberg|bundy|kraken|the kraken|havana club|appleton|mount gay|diplomatico|plantation|ron zacapa|zacapa|el dorado|goslings|wray and nephew|myers|flor de cana|don papa|pampero|brugal|matusalem|bumbu|chairmans reserve|doorlys|foursquare|pussers|smith and cross|lambs|coruba|stroh|inner circle|beenleigh|ron abuelo|abuelo|santa teresa|dictador|pyrat|malibu|cachaca|leblon|sagatiba|ypioca|51 cachaca|bacardi carta blanca|bacardi oakheart|bacardi spiced|captain morgan spiced|captain morgan white|bundaberg red|bundaberg op|bundy op|bundy red|kraken black spiced|banks rum|mount gilboa|clement|rhum jm|neisson|trois rivieres|damoiseau|st james rhum|la favorite|cana brava|bacardi 8|havana 7|havana 3|angostura 1919|angostura 7|kill devil|duppy share|annasandra|husk rum|killik|hampden|worthy park|rum bar|stiggins|blackwell|cockspur|el ron prohibido|ron barcelo|barcelo|ron botran|botran|bayou rum|admiral nelson|lemon hart|watsons|wood's old navy|woods old navy|old monk|tanduay|takamaka|sampan|black tot|transcontinental rum|equiano`,
+'Whisky':`johnnie walker|johnny walker|jw red|jw black|jw blue|jw gold|jw green|jw double black|chivas regal|chivas|glenfiddich|glenlivet|the glenlivet|macallan|the macallan|glenmorangie|laphroaig|lagavulin|talisker|ardbeg|bowmore|highland park|oban|dalwhinnie|dalmore|the dalmore|balvenie|the balvenie|aberlour|monkey shoulder|dewars|famous grouse|the famous grouse|naked grouse|naked malt|j and b|ballantines|grants|teachers|bells|cutty sark|black and white|white horse|glendronach|glenfarclas|glen moray|glengoyne|auchentoshan|bruichladdich|port charlotte|octomore|caol ila|bunnahabhain|kilchoman|springbank|longrow|hazelburn|cardhu|cragganmore|the singleton|singleton|old pulteney|tomatin|deanston|arran|isle of jura|jura|scapa|benriach|craigellachie|aultmore|royal brackla|compass box|buchanans|glenkinchie|glen grant|glenrothes|tamdhu|tobermory|ledaig|edradour|benromach|tullibardine|loch lomond|glen scotia|old parr|vat 69|passport scotch|william lawsons|lawsons|whyte and mackay|label 5|sheep dip|big peat|wemyss|douglas laing|jameson|jamo|bushmills|tullamore dew|tullamore|redbreast|powers|teeling|writers tears|green spot|yellow spot|midleton|roe and co|slane|kilbeggan|connemara|the busker|paddy|method and madness|knappogue|west cork|dead rabbit|suntory toki|toki|hibiki|yamazaki|hakushu|nikka|nikka from the barrel|taketsuru|yoichi|miyagikyo|chita|kakubin|akashi|mars iwai|kurayoshi|chichibu|canadian club|crown royal|seagrams vo|seagrams 7|black velvet|forty creek|pike creek|lot 40|j p wiser|jp wisers|wisers|alberta premium|starward|sullivans cove|lark|hellyers road|limeburners|overeem|belgrove|fleurieu|iniquity|morris whisky|chiefs son|heartwood|bakery hill|nant|tin shed|black gate|archie rose single malt|adams distillery|corra linn|whipper snapper|white oak|amrut|paul john|kavalan|penderyn|mackmyra|kornog|brenne|glen breton|johnnie walker black|johnnie walker red|johnnie walker blue|johnnie walker gold|johnnie walker double black|johnnie walker green|chivas 12|chivas 18|glenfiddich 12|glenlivet 12|macallan 12`,
+'Bourbon':`jim beam|beam black|jack daniels|jack daniel|jd|gentleman jack|makers mark|makers 46|wild turkey|woodford reserve|woodford|buffalo trace|bulleit|four roses|knob creek|evan williams|elijah craig|eagle rare|blantons|basil hayden|old forester|pappy van winkle|van winkle|weller|w l weller|heaven hill|larceny|michters|angels envy|early times|ten high|old grand dad|jeffersons|rittenhouse|templeton|whistlepig|whistle pig|high west|redemption|bookers|bakers bourbon|old crow|benchmark|red stag|jim beam honey|jim beam devils cut|jim beam double oak|jack daniels honey|jack daniels fire|jack daniels apple|jack daniels single barrel|jd honey|george dickel|uncle nearest|old fitzgerald|stagg|e h taylor|colonel e h taylor|russells reserve|rare breed|old overholt|sazerac rye|knob creek rye|bulleit rye|wild turkey 101|wild turkey rare breed|old charter|blood oath|barrell|new riff|wilderness trail|woodinville|maker s mark|willett|yellowstone|hudson whiskey|wild turkey honey|american honey|ezra brooks|rebel yell|very old barton|jim beam white|jim beam black`,
+'Tequila':`patron|don julio|jose cuervo|cuervo|el jimador|jimador|espolon|herradura|olmeca|olmeca altos|altos|casamigos|1800 silver|1800 reposado|1800 anejo|1800 blanco|1800 cristalino|sauza|cazadores|clase azul|avion|cabo wabo|hornitos|milagro|tequila ocho|arette|fortaleza|siete leguas|tapatio|el tesoro|codigo 1530|818 tequila|cincoro|teremana|dos hombres|del maguey|montelobos|ilegal|400 conejos|monte alban|la puritita|el silencio|cazcabel|agavales|pepe lopez|camino real|patron silver|patron reposado|patron anejo|don julio 1942|don julio blanco|don julio reposado|herradura reposado|jose cuervo especial|jose cuervo tradicional|gran centenario|corralejo|tres generaciones|volcan de mi tierra|volcan|lalo|g4 tequila|ocho blanco|calle 23|arette blanco|tromba|el padrino|mijenta|tequila rose liqueur|alipus|vago|banhez|pierde almas|mezcal vida|vida mezcal|creyente|amaras|madre mezcal|los danzantes|sombra`,
+'Brandy & Cognac':`hennessy|remy martin|remy|martell|courvoisier|camus|hine|delamain|frapin|otard|st agnes|saint agnes|chatelle|armagnac|calvados|pisco|grappa|metaxa|torres 10|torres 15|stock 84|asbach|boulard|pere magloire|lecompte|christian brothers|e and j|st remy|saint remy|napoleon brandy|vecchia romagna|cardenal mendoza|fundador|lepanto|carlos i|cognac|vsop|hennessy vs|hennessy vsop|hennessy xo|remy martin vsop|remy martin xo|martell vs|martell vsop|martell xo|courvoisier vs|courvoisier vsop|janneau|chateau de laubade|darroze|pierre ferrand|ferrand|baron otard|bisquit|kelt|godet|nonino|nardini|marolo|capel pisco|barsol|macchu pisco|waipiti|black bottle brandy|hardys black bottle|chatelle napoleon|vok brandy|bols brandy`,
+'Liqueurs':`baileys|kahlua|frangelico|cointreau|grand marnier|galliano|galliano vanilla|galliano black|midori|tia maria|disaronno|amaretto disaronno|chambord|drambuie|jagermeister|jager|sambuca|ouzo|limoncello|lemoncello|southern comfort|soco|fireball|sheridans|st germain|chartreuse|benedictine|licor 43|mozart|butterscotch schnapps|peach schnapps|schnapps|archers|de kuyper|dekuyper|bols|marie brizard|triple sec|blue curacao|curacao|creme de cacao|creme de menthe|creme de cassis|creme de mure|creme de violette|advocaat|warninks|passoa|mr black|borghetti|patron xo cafe|patron citronge|tequila rose|vok|opal nera|molinari|strega|luxardo|maraschino|cherry heering|heering|goldschlager|rumple minze|rumplemintz|absinthe|pernod|ricard|pastis|irish cream|coffee liqueur|cherry brandy|apricot brandy|peach brandy|amarula|kahlua mudslide|frangelico hazelnut|cointreau noir|grand marnier cordon rouge|galliano amaretto|lychee liqueur|soho lychee|kwai feh|giffard|monin liqueur|de kuyper peachtree|peachtree|malibu liqueur|baileys salted caramel|baileys espresso|bols blue|vok blue curacao|vok triple sec|vok peach schnapps|vok butterscotch|vok creme de menthe|vok banana|vok cassis|vok strawberry|ouzo 12|sambuca molinari|romana sambuca|pallini|villa massa|nocello|frangelico|jagermeister cold brew|aftershock|sourz|apple sourz|black sambuca|fernet stock|becherovka|unicum zwack|amaretto|irish mist|glayva|lochan ora|mandarine napoleon|kahlua coffee|tia maria coffee|mr black coffee|sheridans coffee|liquore strega|aperol liqueur|st germain elderflower|kleiner feigling|minttu|xante|tuaca|99 bananas|hot shot|baileys original|dooleys|bailey|mangaroca|batida`,
+'Aperitifs':`aperol|campari|pimms|lillet|lillet blanc|lillet rose|cinzano|noilly prat|dolin|carpano antica|antica formula|carpano|cocchi|punt e mes|select aperitivo|contratto|suze|amaro montenegro|montenegro|averna|ramazzotti|cynar|fernet branca|fernet|martini rosso|martini bianco|martini extra dry|martini dry|martini fiero|martini rosato|martini ambrato|martini riserva|regal rogue|maidenii|causes and cures|okar|amaro nonino|amaro lucano|lucano|braulio|meletti|nardini amaro|amaro|vermouth|aperitivo|campari bitter|aperol aperitivo|cappelletti|amaro di angostura|angostura amaro|byrrh|dubonnet|cocchi americano|mancino|ambrosia aperitivo|italicus|st raphael|bonal|picon|amer picon|salers|lillet vive`
+};
+const SPIRIT_TYPES=Object.keys(SPIRIT_DB);
+// "Gordon's Gin" → "gordons gin"; accents, apostrophes and punctuation removed, & spelt "and"
+const sN=s=>' '+String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/['’`]/g,'').replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim()+' ';
+// the type words a name, category or description can carry (checked in this order: "cherry brandy" is a liqueur, "bourbon whiskey" is bourbon)
+const SPIRIT_WORDS=[
+ ['Liqueurs',/ (liqueurs?|schnapps|sambuca|ouzo|limoncello|lemoncello|irish cream|cream liqueur|amaretto|triple sec|curacao|creme de [a-z]+|absinthe|pastis|(cherry|apricot|peach|blackberry) brandy|coffee liqueur|whisk(e)?y liqueur|rum cream) /],
+ ['Aperitifs',/ (aperitifs?|aperitivo|vermouth|amaro|amari|digestifs?|bitter aperitif) /],
+ ['Bourbon',/ (bourbons?|rye whisk(e)?y|tennessee whisk(e)?y|american whisk(e)?y|tennessee) /],
+ ['Whisky',/ (whisk(e)?ys?|whiskies|scotch|single malts?|blended malts?|malt whisk(e)?y|irish whisk(e)?y|japanese whisk(e)?y) /],
+ ['Tequila',/ (tequilas?|mezcals?|mescal|agave spirit) /],
+ ['Brandy & Cognac',/ (brandy|brandies|cognacs?|armagnac|calvados|pisco|grappa) /],
+ ['Rum',/ (rums?|rhum|cachaca|spiced rum) /],
+ ['Gin',/ (gins?|london dry|navy strength gin|sloe gin) /],
+ ['Vodka',/ (vodkas?) /]];
+const spiritWord=t=>{t=sN(t);for(const[c,r]of SPIRIT_WORDS)if(r.test(t))return c;return''};
+// every type word a text carries ("Whisky & Bourbon" has two)
+const spiritWords=t=>{t=sN(t);return SPIRIT_WORDS.filter(([,r])=>r.test(t)).map(([c])=>c)};
+let spiritMap=new Map(),spiritRe=null,SPIRIT_ASSIGNED=new Set(SPIRIT_TYPES);
+const SPIRITX='oolio.spiritBrands';
+function loadSpiritX(){try{return localStorage.getItem(SPIRITX)||''}catch(e){return''}}
+function saveSpiritX(v){try{localStorage.setItem(SPIRITX,v)}catch(e){}}
+// "Brand = Category" lines the user added; they win over the built-in list
+function parseSpiritX(v){return String(v||'').split(/\n/).map(l=>l.split('=')).filter(p=>p.length>=2&&sN(p[0]).trim()&&clean(p.slice(1).join('='))).map(p=>[sN(p[0]).trim(),clean(p.slice(1).join('='))])}
+function buildSpiritDB(extra){
+  spiritMap=new Map();
+  for(const c of SPIRIT_TYPES)SPIRIT_DB[c].split('|').forEach(b=>{b=sN(b).trim();if(b&&!spiritMap.has(b))spiritMap.set(b,c)});
+  parseSpiritX(extra).forEach(([b,c])=>{spiritMap.set(b,c);SPIRIT_ASSIGNED.add(c)});
+  const keys=[...spiritMap.keys()].sort((a,b)=>b.length-a.length).map(reEsc);
+  spiritRe=new RegExp(' ('+keys.join('|')+') ');}
+// the brand a name carries and its category ("Bombay Sapphire 30ml" → {brand:'bombay sapphire',cat:'Gin'})
+function spiritBrand(name){if(!spiritRe)buildSpiritDB(loadSpiritX());const m=sN(name).match(spiritRe);return m?{brand:m[1],cat:spiritMap.get(m[1])}:null}
+// the spirit category for a drink: the brand list first (Fireball is a liqueur even though it says whisky), then type words in the name, then the description
+function spiritType(it){const b=spiritBrand(it.name);if(b)return b.cat;return spiritWord(it.name)||spiritWord(it.desc||'')||''}
+// the file's own category when it already names one spirit type ("Gins" → Gin); a mixed one ("Whisky & Bourbon") is kept as written
+function srcSpiritCat(c){if(GENSPIRIT.test(clean(c)))return'';const w=spiritWords(c);if(!w.length)return'';if(/\b(premix|rtd|ready to drink|cocktails?|mocktails?)\b/i.test(c))return'';return w.length===1?w[0]:clean(c)}
+// catch-all spirit categories that get split by type
+const GENSPIRIT=/^(spirits?|house spirits?|basic spirits?|standard spirits?|premium spirits?|top shelf( spirits)?|back bar|bar|shots?|nips?|shots? (and|&) nips?|liquor|spirits? (and|&|\/) (liqueurs?|mixers?)|spirits? menu|spirits? list|the bar|bottle shop spirits?|spirits? by the (nip|shot|glass)|top shelf (and|&) premium)$/i;
+// ready-to-drink cans and bottles ("Jim Beam & Cola 375ml can", "Vodka Cruiser")
+const RTD=/ (vodka cruiser|cruiser|ucb|woodstock|smirnoff ice|smirnoff double black|bacardi breezer|breezer|hard rated|fellr|billsons|suntory 196|196|canadian club and dry|cc and dry|jim beam and cola|wild turkey and cola|bundaberg and cola|bundy and cola|jack daniels and cola|jd and cola|vodka mudshake|mudshake|good drinks|hard solo|haymans and tonic|gordons and tonic can|premix|rtd) /;
+const MIXER=/ (and|n|with|cola|coke|pepsi|lemonade|soda|tonic|dry|ginger ale|ginger beer|lime|raspberry|red bull|mixer|zero|no sugar|squash) /;
+function isPremix(name){const t=sN(name);if(RTD.test(t))return true;
+  return MIXER.test(t)&&(PACK.test(name)||/\b(2[5-9]\d|[3-5]\d\d)\s?ml\b|\b\d+(\.\d+)?\s?%/i.test(name))&&(!!spiritBrand(name)||!!spiritWord(name))}
+// a name that is a brand plus cocktail words ("Aperol Spritz", "Jameson Sour") is a cocktail, not a spirit
+const COCKTAIL_W=/ (cocktails?|martini|espresso martini|spritz|negroni|margaritas?|mojitos?|daiquiris?|colada|cosmopolitan|cosmo|bellini|sangria|old fashioned|manhattan|bloody mary|long island|mai tai|caipirinha|sours?|mules?|fizz|collins|punch|smash|julep|toddy|sling|zombie|flip|cobbler|highball|slushie|slushy|frozen|jug|pitcher|tower) /;
+function spiritItem(it){const b=spiritBrand(it.name);if(!b)return'';
+  const rest=sN(it.name).replace(' '+b.brand+' ',' ');
+  if(COCKTAIL_W.test(rest))return'';
+  // "Bells Two Hearted Ale", "Baileys Hot Chocolate": the rest of the name says it's another kind of drink
+  const c=classify(rest);if(c&&c!=='Spirits'&&!(c==='Cold Drinks'&&MIXER.test(rest)))return'';
+  return b.cat}
 const HIGH=[
  ['Gift Cards',/\b(gift ?cards?|vouchers?)\b/],
  ['Desserts & Sweets',/\b(cakes?|cheesecakes?|brownies?|muffins?|slices?|cookies?|tarts?|donuts?|doughnuts?|croissants?|scones?|banana bread|danish)\b/],
  ['Pizza',/\b(pizzas?|calzones?|margherita|capric+i?os+a|hawaiian|pepperoni|meat lovers?|quattro formaggi|diavola)\b/],
  ['Wine',/\bhouse (red|white|ros[eé]|sparkling|bubbles|wine)\b|\b(red|white|ros[eé]|sparkling|dessert) wines?\b/],
+ ['Premix',/\b(premix(es)?|rtds?|ready to drink)\b/],
  ['Mocktails',/\b(mocktails?|virgin)\b/],
  ['Cocktails',/\b(cocktails?|martini|spritz|negroni|margarita|mojito|daiquiri|colada|pinacolada|cosmopolitan|bellini|sangria|old fashioned|manhattan|bloody mary|long island|mai tai|caipirinha|(whisk(e)?y|amaretto|pisco|midori|gin|vodka) sour)\b/],
  ['Cold Drinks',/\b(ice|iced|cold)\b.*\btea\b|\btea\b.*\b(ice|iced)\b/],
@@ -613,11 +687,22 @@ function highCat(it){
   const d=isDrink(it);
   const texts=[it.name,it.catOrig||it.cat,it.desc||''];
   const fits=c=>d===null||c==='Gift Cards'||DRINK_CATS.has(c)===d;
+  if(d!==false){
+    // canned and bottled mixed drinks, then a known spirit brand on its own ("Lagavulin 16", "Gordon's & Tonic")
+    if(isPremix(it.name))return'Premix';
+    const sb=spiritItem(it);if(sb)return srcSpiritCat(it.catOrig||it.cat)||sb;
+    // a name that says its type ("Archie Rose Signature Dry Gin"), unless it's a cocktail or another kind of drink
+    const sw=spiritWord(it.name),nt=sN(it.name);
+    if(sw&&!COCKTAIL_W.test(nt)){const k=classify(it.name);if(!k||k==='Spirits'||k==='Wine'||(k==='Cold Drinks'&&MIXER.test(nt)))return srcSpiritCat(it.catOrig||it.cat)||sw}}
+  // "Bombay Potatoes": the brand is the only spirit sign and the rest of the name is food, so the Spirits rule is skipped
+  const brandOnly=!!spiritBrand(it.name)&&!spiritItem(it)&&!spiritWord(it.name);
   for(let i=0;i<texts.length;i++){const t=(texts[i]||'').toLowerCase();if(!t)continue;
     // first rule that matches AND agrees with drink/food ("Scotch Fillet" skips Spirits, lands in Mains)
-    let c='';for(const[h,r]of HIGH){if((typeof r==='function'?r(t):r.test(t))&&fits(h)){c=h;break}}
+    let c='';for(const[h,r]of HIGH){if((typeof r==='function'?r(t):r.test(t))&&fits(h)&&!(h==='Spirits'&&i===0&&brandOnly)){c=h;break}}
     // a named drink whose description lists a spirit ("Sunset Serenade: vodka, …") is a cocktail
     if(c==='Spirits'&&i===2)c='Cocktails';
+    // a spirit goes in its type: the file's own spirit category first, then the brand list and type words
+    if(c==='Spirits')c=srcSpiritCat(it.catOrig||it.cat)||spiritType(it)||'Spirits';
     if(c)return c}
   if(d===true){const t=(it.name+' '+(it.desc||'')).toLowerCase();
     if(/\b(vodka|gin|rum|tequila|mezcal|whisk(e)?y|bourbon|liqueurs?|spirits?|aperol|campari|vermouth|prosecco|cointreau|triple sec)\b/.test(t))return'Cocktails';
@@ -632,7 +717,16 @@ function regroup(){
   const tooFew=base.length>=10&&cats.length<=2&&cats.every(c=>cnt.get(c)>=base.length*0.3)&&!cats.some(c=>HIGH.some(([h])=>h===c));
   base.forEach(it=>{
     const need=mode==='all'||tooFine||tooFew||!it.cat||N(it.cat)===N(it.name)||(it.src==='document'&&cnt.get(it.cat)===1);
-    if(!need)return;const h=highCat(it);if(h){it.catOrig=it.cat;it.cat=h}});}
+    if(!need)return;const h=highCat(it);if(h){it.catOrig=it.cat;it.cat=h}});
+  splitSpirits();}
+// Items in a catch-all spirit category ("Spirits", "Top Shelf", "Back Bar") move to their type: Gordon's → Gin, Miska → Vodka.
+// A spirit-type category from the file or website ("Gin", "Whisky & Bourbon") is left alone.
+function splitSpirits(){
+  base.forEach(it=>{const c=clean(it.cat);
+    if(!(c==='Spirits'||GENSPIRIT.test(c)))return;
+    if(isDrink(it)===false)return;
+    if(isPremix(it.name)){if(!it.catOrig)it.catOrig=it.cat;it.cat='Premix';return}
+    const t=spiritBrand(it.name)?spiritItem(it):COCKTAIL_W.test(sN(it.name))?'':spiritType(it);if(t){if(!it.catOrig)it.catOrig=it.cat;it.cat=t}});}
 const COURSE=/^(mains?|starters?|entr[eé]es?|desserts?|sides?|snacks?|food|drinks?|beverages?|kids|lunch|dinner|breakfast|specials?)( menu)?$/i;
 const GEN=/^(add-?ons?|extras?|other|misc[a-z]*|specials?|modifiers?|sides?|mains?|starters?|entr[eé]es?|desserts?|drinks?|beverages?|food|kids|lunch|dinner|breakfast|menu|general|uncategori[sz]ed)$/i;
 function sing(s){const t=s.split(' ');let w=t.pop();
@@ -668,7 +762,7 @@ function measureAuto(o){
   if(m&&pour)return{k:'volume',amt:toMl(parseFloat(m[1]),m[2])};
   const sz=SIZES.find(s=>s.re.test(nm));
   if(sz&&pour)return{k:'volume',amt:sz.ml};
-  if(SPIRITCAT.test(o.cat)&&!COCKTAIL.test(o.name)){const s=SIZES.find(s=>/^(shot|nip)$/i.test(s.n));return{k:'volume',amt:s?s.ml:'30'};}
+  if((SPIRITCAT.test(o.cat)||SPIRIT_ASSIGNED.has(o.cat))&&(!COCKTAIL.test(o.name)||spiritItem({name:o.name}))){const s=SIZES.find(s=>/^(shot|nip)$/i.test(s.n));return{k:'volume',amt:s?s.ml:'30'};}
   return{k:'unit',amt:''};}
 // Unit items leave Default Value and Unit blank (the Oolio setup wizard rejects a default of 1).
 function measure(o){const g=catCfg[o.cat];let a=measureAuto(o);if(g&&g.meas&&g.meas!=='*'&&g.meas!==a.k)a={k:g.meas,amt:''};return fillMeasure(a);}
@@ -1344,8 +1438,8 @@ const PRESETS=[
  {name:'Milk',rg:'Beverage',req:'Yes',max:'1',kw:COFFEE,cats:'coffee, hot coffee, iced coffee',opts:'Full Cream\nSkim\nLactose Free\nSoy=0.50\nAlmond=0.50\nOat=0.50'},
  {name:'Coffee Extras',rg:'Beverage',req:'',max:'',kw:COFFEE,cats:'coffee, hot coffee, iced coffee',opts:'Extra Shot=0.50\nDecaf=0.50\nVanilla Syrup=0.50\nCaramel Syrup=0.50\nHazelnut Syrup=0.50\nExtra Hot\nHalf Strength'},
  {name:'Sweetener',rg:'Beverage',req:'',max:'2',kw:COFFEE,cats:'coffee, hot coffee, iced coffee',opts:'Sugar\nRaw Sugar\nEqual\nStevia'},
- {name:'Spirit Mixer',rg:'Beverage',req:'Yes',max:'1',kw:SPIRIT,cats:'spirit, spirits, '+SPIRIT+', scotch, liqueur, liqueurs',opts:'Coke\nCoke No Sugar\nLemonade\nSoda\nTonic\nDry Ginger\nGinger Beer\nNeat\nOn Ice\nRed Bull=4'},
- {name:'Spirit Extras',rg:'Beverage',req:'',max:'',kw:SPIRIT,cats:'spirit, spirits, '+SPIRIT+', scotch, liqueur, liqueurs',opts:'Lime\nLemon\nBitters\nDouble Shot'},
+ {name:'Spirit Mixer',rg:'Beverage',req:'Yes',max:'1',kw:SPIRIT,cats:'spirit, spirits, '+SPIRIT+', scotch, brandy, cognac, mezcal, liqueur, liqueurs',opts:'Coke\nCoke No Sugar\nLemonade\nSoda\nTonic\nDry Ginger\nGinger Beer\nNeat\nOn Ice\nRed Bull=4'},
+ {name:'Spirit Extras',rg:'Beverage',req:'',max:'',kw:SPIRIT,cats:'spirit, spirits, '+SPIRIT+', scotch, brandy, cognac, mezcal, liqueur, liqueurs',opts:'Lime\nLemon\nBitters\nDouble Shot'},
  {name:'Beer Extras',rg:'Beverage',req:'',max:'',kw:'',cats:'beer, beers, draught, tap beer, beer on tap',opts:'Lemon\nLime\nShandy'},
  {name:'Ice',rg:'Beverage',req:'',max:'',kw:'juice, soft drink, coke, sprite, fanta, lemonade, lemon lime bitters, iced tea',cats:'soft drink, soft drinks, juice, juices, cold drink, cold drinks',opts:'Ice\nNo Ice\nLight Ice'}];
 let pre=PRESETS.map(p=>({...p,on:false,dup:false,ex:new Set()})),preSig='',preInit=false;
@@ -1510,6 +1604,15 @@ $('dlm').addEventListener('click',()=>{const r=[['Modifier Group','Modifier','Pr
 $('file').addEventListener('change',e=>{if(e.target.files.length)handleFiles([...e.target.files])});
 $('comb').addEventListener('change',rebuild);
 $('catmode').addEventListener('change',()=>{catCfg={};rebuild()});
+// spirit brand list: the user's own lines are saved in this browser and win over the built-in list
+(function(){const x=$('spiritx');x.value=loadSpiritX();buildSpiritDB(x.value);
+  const count=()=>{const own=parseSpiritX(x.value).length;$('spiritn').textContent=spiritMap.size+' brands'+(own?' ('+own+' of yours)':'')};
+  $('spiritlist').innerHTML=SPIRIT_TYPES.map(c=>'<b>'+esc(c)+'</b>: '+esc(SPIRIT_DB[c].split('|').join(', '))).join('<br><br>');
+  const check=()=>{const v=clean($('spiritq').value),a=$('spirita');if(!v){a.style.display='none';return}
+    const b=spiritBrand(v),t=isPremix(v)?'Premix':spiritItem({name:v})||spiritWord(v);
+    a.style.display='';a.textContent=t?(t+(b?' (brand: '+b.brand.trim()+')':' (from the words in the name)')):'Not recognised as a spirit. Add it above as Brand = Category.'};
+  let tm;x.addEventListener('input',()=>{saveSpiritX(x.value);buildSpiritDB(x.value);count();check();clearTimeout(tm);tm=setTimeout(()=>{catCfg={};rebuild()},400)});
+  $('spiritq').addEventListener('input',check);count();})();
 ['tax','taxfree','pgrp','mVol','mWt','mVolU','mWtU','sizes'].forEach(id=>$(id).addEventListener('input',run));
 $('kwb').addEventListener('click',addKW);
 if(ONCLAUDE)$('svcbox').remove();else{const c=svcCfg();$('svc').value=c.url;$('svck').value=c.key;if(c.url)$('svcbox').open=true;checkSvc();
