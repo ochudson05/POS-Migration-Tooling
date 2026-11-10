@@ -94,6 +94,12 @@ LAUNCHER_CSS = r"""
 .lx-recent{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .lx-recent button{display:grid;gap:2px;text-align:left;margin:0;font-weight:400}
 .lx-recent button span{color:var(--muted);font-size:.82rem}
+.lx-vcard{display:grid;gap:4px}.lx-vcard>button:first-child{width:100%}
+.lx-del{justify-self:end;background:none!important;border:0!important;padding:0 2px!important;margin:0!important;font:inherit;font-size:.78rem;color:var(--muted)!important;cursor:pointer}
+.lx-del:hover,.lx-del:focus-visible{color:var(--bad)!important;text-decoration:underline}
+.lx-bad,.lx-link.lx-bad{color:var(--bad)!important}
+.lx-dtext{margin:0;font-size:.9rem}
+.lx-row .lx-danger{background:var(--bad)!important;color:#fff!important}.lx-row .lx-danger:disabled{opacity:.45;cursor:not-allowed}
 .lx-vhead{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:end;justify-content:space-between}
 .lx-vhead p{margin:2px 0 0;color:var(--muted)}
 .lx-prog{display:flex;gap:8px;align-items:center;font-size:.88rem;font-variant-numeric:tabular-nums}

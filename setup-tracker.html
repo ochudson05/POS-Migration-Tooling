@@ -279,7 +279,13 @@ async function flush(id){const q=Q[id];q.busy=true;setSaving(true);
 async function createOrg(o){const id='o'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   o=Object.assign({name:'',stage:'pre',flags:{},links:{},steps:{},devices:[],printers:[],createdAt:Date.now(),createdBy:ME||'',updatedAt:Date.now(),updatedBy:ME||''},o);
   ORGS[id]=o;if(MODE==='db')await DB.collection(COL).doc(id).set(o);else local.put(id,o);notify();return id}
-async function deleteOrg(id){delete ORGS[id];if(ACTIVE===id){ACTIVE='';ls.set('ov-active','')}notify();if(MODE==='db')await DB.collection(COL).doc(id).delete();else local.del(id)}
+// deleting a venue also deletes its saved menu versions; edits still waiting to be sent are dropped
+async function deleteOrg(id){if(READONLY)throw new Error('You can only view this tracker.');
+  if(Q[id])Q[id].p=null;delete ORGS[id];if(ACTIVE===id){ACTIVE='';ls.set('ov-active','')}if(VIEW.org===id)VIEW.org=null;notify();render();
+  if(MODE==='db'){const mc=DB.collection(MCOL(id));
+    for(let round=0;round<20;round++){const s=await mc.get();if(!s.docs.length)break;await Promise.all(s.docs.map(d=>mc.doc(d.id).delete()))}
+    await DB.collection(COL).doc(id).delete()}
+  else{local.del(id);const m=mlocal.all();if(m[id]){delete m[id];ls.set(mlocal.key,JSON.stringify(m))}}}
 let savingT=null;function setSaving(b){const el=g('st-saving');if(!el)return;clearTimeout(savingT);if(b)el.textContent='Saving…';else savingT=setTimeout(()=>{el.textContent=MODE==='db'?'Saved for the team':'Saved on this browser'},300)}
 function flash(t,err){const el=g('st-flash');if(el){el.className='st-msg'+(err?' err':'');el.textContent=t}}
 
@@ -351,6 +357,7 @@ window.OolioVenues={
   me(){return ME},
   addMenuVersion(id,snap){return addMenuVersion(id,snap)},
   menuVersions(id){return menuVersions(id)},
+  remove(id){return deleteOrg(id)},
   on(f){LISTEN.add(f);return()=>LISTEN.delete(f)}};
 
 /* ---------- people ---------- */
@@ -732,7 +739,7 @@ root.addEventListener('click',e=>{const t=e.target;
   else if(act==='fill')fillDialog(VIEW.org);
   else if(act==='expand'){VIEW.open=new Set(outstanding(o).map(x=>x.id));render()}
   else if(act==='collapse'){VIEW.open=new Set();render()}
-  else if(act==='delete'){if(confirm('Delete “'+(o.name||'Untitled')+'” and all its progress for everyone? This can’t be undone.')){const id=VIEW.org;VIEW.org=null;deleteOrg(id).catch(x=>alert('Couldn’t delete: '+(x&&(x.message||x.code))));render()}}
+  else if(act==='delete'){if(window.lxDeleteVenue){window.lxDeleteVenue(VIEW.org);return}if(confirm('Delete “'+(o.name||'Untitled')+'” and all its progress for everyone? This can’t be undone.')){const id=VIEW.org;VIEW.org=null;deleteOrg(id).catch(x=>alert('Couldn’t delete: '+(x&&(x.message||x.code))));render()}}
   else if(act==='fixprefix'){save(VIEW.org,{devices:(o.devices||[]).map(d=>d.role==='POS'&&d.num?Object.assign({},d,{prefix:String(+d.num)}):d)});render()}
   else if(act==='names'){save(VIEW.org,{devices:(o.devices||[]).map(d=>Object.assign({},d,{name:[d.role==='POS'&&d.num?'POS '+d.num:d.role,d.loc,d.hw?'– '+d.hw.replace(' (roaming)','').replace(/^(Sunmi) (.+)$/,'$2 $1'):''].filter(Boolean).join(' ')}))});render()}
   else if(act==='pairfb'){const rows=(o.printers||[]).map(r=>Object.assign({},r)),byName={};rows.forEach(r=>{byName[(r.name||'').toLowerCase()]=r});

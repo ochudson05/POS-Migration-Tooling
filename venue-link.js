@@ -50,7 +50,8 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
   if(!a){const L=OV.list().slice(0,8);
     el.innerHTML='<h1>Oolio Menu Tools</h1><p>Pick the venue you’re setting up. Every tool then works on it: the lookup fills its business details, the converted menu goes to Photo Finder and the checklist, and progress is shared with the team.</p>'+
       '<div class="lx-card lx-pick">'+(OV.readOnly?'':'<button type="button" data-hub="new">New venue</button>')+
-      (L.length?'<div class="lx-recent">'+L.map(o=>{const p=OV.progress(o.id);return '<button type="button" class="lx-sec" data-hub="pick" data-id="'+esc(o.id)+'"><b>'+esc(o.name||'Untitled')+'</b><span>'+esc(OV.stage(o.id))+' · '+p.done+'/'+p.total+' steps</span></button>'}).join('')+'</div>':
+      (L.length?'<div class="lx-recent">'+L.map(o=>{const p=OV.progress(o.id);return '<div class="lx-vcard"><button type="button" class="lx-sec" data-hub="pick" data-id="'+esc(o.id)+'"><b>'+esc(o.name||'Untitled')+'</b><span>'+esc(OV.stage(o.id))+' · '+p.done+'/'+p.total+' steps</span></button>'+
+        (OV.readOnly?'':'<button type="button" class="lx-del" data-hub="del" data-id="'+esc(o.id)+'" title="Delete '+esc(o.name||'Untitled')+'" aria-label="Delete '+esc(o.name||'Untitled')+'">Delete</button>')+'</div>'}).join('')+'</div>':
         (OV.ready?'<p class="lx-muted">No venues yet.</p>':'<p class="lx-muted">Loading venues…</p>'))+'</div>';
     return}
   const P=OV.lookup(a.id),pre=OV.progress(a.id,'pre'),trn=OV.progress(a.id,'trn'),all=OV.progress(a.id),m=a.menu,f=a.photos;
@@ -65,11 +66,30 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
     '<div class="lx-prog"><span class="lx-bar2"><i style="width:'+(all.total?Math.round(all.done/all.total*100):0)+'%"></i></span>'+all.done+'/'+all.total+' steps</div></div>'+
     '<ol class="lx-steps">'+steps.map((s,i)=>'<li class="lx-step'+(s.done?' done':'')+(i===next?' next':'')+'"><span class="lx-num">'+(s.done?'✓':i+1)+'</span><div><h2>'+esc(s.t)+'</h2><p>'+esc(s.s)+'</p></div>'+
       '<button type="button"'+(i===next?'':' class="lx-sec"')+' data-hub="'+s.k+'">'+esc(s.b)+'</button></li>').join('')+'</ol>'+
-    '<p class="lx-muted lx-small">Working on another venue? Switch at the top, or <button type="button" class="lx-link" data-hub="none">clear the venue</button>.</p>'}
+    '<p class="lx-muted lx-small">Working on another venue? Switch at the top, or <button type="button" class="lx-link" data-hub="none">clear the venue</button>.'+
+    (OV.readOnly?'':' Finished with it? <button type="button" class="lx-link lx-bad" data-hub="del" data-id="'+esc(a.id)+'">Delete this venue</button>.')+'</p>'}
+
+/* ---------- delete a venue ---------- */
+// removes the venue for the whole team: checklist progress, the saved lookup and every menu version
+function deleteVenue(id){const o=OV.get(id);if(!o||OV.readOnly)return;const d=g('lx-dlg'),n=(o.menuLog||[]).length;
+  const what=['its setup checklist and progress',o.lookup?'the saved venue lookup':'',n?n+' saved menu version'+(n>1?'s':''):''].filter(Boolean);
+  d.innerHTML='<form method="dialog" class="lx-form"><h2>Delete “'+esc(o.name||'Untitled')+'”?</h2>'+
+    '<p class="lx-dtext">This deletes '+esc(what.length>1?what.slice(0,-1).join(', ')+' and '+what[what.length-1]:what[0])+(OV.mode==='local'?' from this browser':' for everyone on the team')+'. It can’t be undone.</p>'+
+    '<label>Type the venue name to confirm<input id="lx-dn" autocomplete="off" placeholder="'+esc(o.name||'Untitled')+'"></label>'+
+    '<p class="lx-dtext lx-bad" id="lx-derr" hidden></p>'+
+    '<div class="lx-row"><button value="ok" class="lx-danger" id="lx-dok" disabled>Delete venue</button><button value="cancel" class="lx-sec" formnovalidate>Cancel</button></div></form>';
+  d.showModal();const inp=g('lx-dn'),ok=g('lx-dok'),want=clean(o.name||'Untitled').toLowerCase();
+  inp.addEventListener('input',()=>{ok.disabled=clean(inp.value).toLowerCase()!==want});inp.focus();
+  d.querySelector('form').onsubmit=async e=>{if(!e.submitter||e.submitter.value!=='ok')return;e.preventDefault();
+    ok.disabled=true;ok.textContent='Deleting…';
+    try{await OV.remove(id);d.close();if(view()==='setup')OV.open(null);else if(view()&&view()!=='setup')go('')}
+    catch(x){const m=g('lx-derr');m.hidden=false;m.textContent='Couldn’t delete it: '+((x&&(x.message||x.code))||'error')+'. Some of it may already be gone; try again.';ok.disabled=false;ok.textContent='Delete venue'}}}
+window.lxDeleteVenue=deleteVenue;
 document.addEventListener('click',e=>{const b=e.target.closest('[data-hub]');if(!b)return;const k=b.dataset.hub,a=OV.active();
   if(k==='new')newVenue();
   else if(k==='pick'){OV.setActive(b.dataset.id)}
   else if(k==='none'){OV.setActive('')}
+  else if(k==='del'){deleteVenue(b.dataset.id)}
   else if(k==='lookup'){if(!a)return;LK.for='';go('venue');if(!a.lookup){const q=queryOf(a);LK.for=a.id;window.dispatchEvent(new CustomEvent('oolio:lookup-fill',{detail:Object.assign(q,{force:true,clear:true,run:true})}))}}
   else if(k==='menu'){if(a&&!a.menu&&a.lookup&&estimate(a))findAll(a);else go('converter')}
   else if(k==='photos')go('photos');
