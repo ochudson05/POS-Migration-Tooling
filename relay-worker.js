@@ -19,8 +19,7 @@
      RELAY_TOKEN     secret  password for the old relay endpoints
      FIRECRAWL_KEY   secret  Firecrawl API key (fc-...)
      ABR_GUID        secret  ABN Lookup GUID, shared by the team
-     ACCESS_TEAM     text    Zero Trust team name: the "xxx" in xxx.cloudflareaccess.com
-     ACCESS_AUD      text    the Access application's Audience (AUD) tag
+     ACCESS_TEAM / ACCESS_AUD  optional: built in below (dawn-star-10db and the menurunner Access app)
      FIRECRAWL_MONTHLY_CAP  text (optional)  Firecrawl credits the site may use per month, default 500
 */
 const FIELDS = [
@@ -32,7 +31,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-10.2';
+const VERSION = '2026-11-11.1';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -40,11 +39,14 @@ const out = (o, status = 200) => new Response(JSON.stringify(o), { status, heade
 const api = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: API_HEAD });
 const RELAY = new Set(['/ping', '/place', '/page', '/search']);
 
-/* ---------- Cloudflare Access sign-in ---------- */
+/* ---------- Cloudflare Access sign-in ----------
+   Which sign-in to trust: the Zero Trust team and the Access app's Audience tag. Neither is secret (both appear in every
+   sign-in link), so they're built in here; ACCESS_TEAM / ACCESS_AUD set in the dashboard override them. */
+const TEAM = env => env.ACCESS_TEAM || 'dawn-star-10db';
+const AUD = env => env.ACCESS_AUD || '64a99e246fcfc30de5b899a9ec7d84010dec1a06ef42257f1580a00716aa0e8e';
 const b64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
 let CERTS = null, CERTS_AT = 0;
 async function accessUser(req, env) {
-  if (!env.ACCESS_TEAM || !env.ACCESS_AUD) return null;
   const cookie = (req.headers.get('Cookie') || '').match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
   const token = req.headers.get('Cf-Access-Jwt-Assertion') || (cookie && cookie[1]);
   if (!token) return null;
@@ -52,9 +54,9 @@ async function accessUser(req, env) {
   if (!h || !p || !s) return null;
   let head, body;
   try { head = JSON.parse(new TextDecoder().decode(b64u(h))); body = JSON.parse(new TextDecoder().decode(b64u(p))); } catch (e) { return null; }
-  const iss = 'https://' + env.ACCESS_TEAM + '.cloudflareaccess.com';
+  const iss = 'https://' + TEAM(env) + '.cloudflareaccess.com';
   const aud = Array.isArray(body.aud) ? body.aud : [body.aud];
-  if (body.iss !== iss || !aud.includes(env.ACCESS_AUD) || !(body.exp > Date.now() / 1000)) return null;
+  if (body.iss !== iss || !aud.includes(AUD(env)) || !(body.exp > Date.now() / 1000)) return null;
   if (!CERTS || Date.now() - CERTS_AT > 3600e3) { CERTS = (await (await fetch(iss + '/cdn-cgi/access/certs')).json()).keys || []; CERTS_AT = Date.now(); }
   const jwk = CERTS.find(k => k.kid === head.kid);
   if (!jwk) return null;
@@ -149,7 +151,7 @@ export default {
       /* ----- the website's API: signed-in people only ----- */
       if (u.pathname.startsWith('/api/')) {
         const user = await accessUser(req, env);
-        if (!user) return api({ error: env.ACCESS_TEAM ? 'Please sign in again (reload the page).' : 'Sign-in isn’t set up on the website yet.', code: 'not_granted' }, 401);
+        if (!user) return api({ error: 'Please sign in again (reload the page).', code: 'not_granted' }, 401);
         const route = u.pathname.slice(5);
         if (route === 'me') return api({ email: user.email, name: nameOf(user.email), version: VERSION });
         if (route.startsWith('db/')) return db(route.slice(3), req, env, user, p);
