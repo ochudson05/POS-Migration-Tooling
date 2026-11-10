@@ -1,0 +1,65 @@
+/* Oolio One look for Oolio Menu Tools.
+   build_apps.py adds this after every tool's own CSS (and inside the Photo Finder frame), so it only has to restate
+   the shared colour tokens and a few shapes. Colours follow oolio.com: purple #673ab6 / #5e35b1, light purple #c1afde,
+   charcoal #222, Material green / orange / red for state; type is Inter; buttons have 6px corners.
+   Layout: a deep purple app bar with the tool tabs, then each tool's own page on a faintly purple-tinted ground. */
+:root{
+  --bg:#f5f3f9;--card:#ffffff;--text:#222222;--muted:#5f586d;--line:#e3dded;--tile:#ece7f5;
+  --accent:#673ab6;--accent-strong:#5e35b1;--accent-soft:#efe8f9;--accent-text:#ffffff;
+  --ok:#2e7d32;--warn:#b45f00;--bad:#c62828;
+  --bar:#4a2a96;--bar-text:#ffffff;--bar-muted:rgb(255 255 255 / .76);--bar-line:rgb(255 255 255 / .22);--bar-hover:rgb(255 255 255 / .1);
+  --shadow:0 1px 2px rgb(40 22 80 / .06),0 2px 8px rgb(40 22 80 / .05);
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;--f-mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+  --r:6px;--r-card:12px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141119;--card:#1e1a26;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;--tile:#272033;
+  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2238;--accent-text:#1a1424;
+  --ok:#81c784;--warn:#ffb74d;--bad:#ef9a9a;
+  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247 / .72);--bar-line:rgb(242 239 247 / .18);--bar-hover:rgb(242 239 247 / .08);
+  --shadow:0 1px 2px rgb(0 0 0 / .3);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141119;--card:#1e1a26;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;--tile:#272033;
+  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2238;--accent-text:#1a1424;
+  --ok:#81c784;--warn:#ffb74d;--bad:#ef9a9a;
+  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247 / .72);--bar-line:rgb(242 239 247 / .18);--bar-hover:rgb(242 239 247 / .08);
+  --shadow:0 1px 2px rgb(0 0 0 / .3);color-scheme:dark}
+
+body{background:var(--bg);color:var(--text);font-family:var(--f-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3{letter-spacing:-.01em}
+h1{font-weight:700}
+a{color:var(--accent)}
+
+/* app bar */
+.lx-bar{background:var(--bar);border-bottom:0;color:var(--bar-text);padding-block:8px}
+.lx-brand{color:var(--bar-text);font-weight:700;letter-spacing:-.01em}
+.lx-tab{color:var(--bar-muted);font-weight:600;border-radius:var(--r)}
+.lx-tab:hover{color:var(--bar-text);background:var(--bar-hover)}
+.lx-tab[aria-current="page"]{color:var(--bar);background:var(--bar-text);border-color:transparent}
+.lx-venue{color:var(--bar-muted)}
+.lx-venue select{background:var(--bar-hover);color:var(--bar-text);border-color:var(--bar-line);border-radius:var(--r)}
+.lx-venue select option{color:var(--text);background:var(--card)}
+.lx-bar :focus-visible{outline:2px solid var(--bar-text)!important;outline-offset:2px}
+
+/* buttons, fields and focus */
+button,.btn,.rf button,.st button,.lx-strip button,.lx-row button{border-radius:var(--r)}
+button:not(:disabled):not(.sec):not(.rf-sec):not(.st-sec):not(.lx-sec):not(.lx-tab):not(.lx-brand):not(.st-link):not(.lx-link):not(.st-x):not(.st-box):not(.st-org):not(.opt):hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+.sec:not(:disabled):hover,.rf-sec:not(:disabled):hover,.st-sec:not(:disabled):hover,.lx-sec:not(:disabled):hover{border-color:var(--accent)!important;color:var(--accent)!important}
+input,select,textarea,.rf input,.st input,.st select,.st textarea{border-radius:var(--r)}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+:focus-visible{outline-color:var(--accent)}
+
+/* surfaces */
+.card,.lx-card,.st-card,.rf-card,.rf-kpi,.lx-step,.lx-strip{border-radius:var(--r-card);box-shadow:var(--shadow)}
+.lx-strip{border-left-color:var(--accent)}
+.lx-step.next{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow)}
+.lx-step.next .lx-num{background:var(--accent-soft)}
+.lx-step.done .lx-num,.st .st-step.is-done .st-box{color:var(--card)!important}
+.st-chip.a,.badge{background:var(--accent-soft);border-color:transparent}
+.st-chip.a{color:var(--accent)}
+.st-org{box-shadow:var(--shadow)}
+.st-org:hover{border-color:var(--accent)!important}
+.st-bar i,.lx-bar2 i{background:var(--accent)}
+.st-nav a:hover{background:var(--accent-soft)}
+.lx-toolsh,.st-phase,.rf .rf-card h3{color:var(--muted)}
+th{font-weight:600}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}

@@ -53,6 +53,10 @@ st_body = stp[st_body_start:st_script].strip()
 st_js = stp[st_script + len("<script>"):stp.rindex("</script>")]
 
 # the Photo Finder's page as a JS string; "</" is written "<\/" so it can't close this page's <script>
+# the Oolio One look (oolio-theme.css) goes after every tool's own CSS, and into the Photo Finder frame too
+THEME = (HERE / "oolio-theme.css").read_text(encoding="utf-8")
+FONT = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">'
+pf = pf.replace("</head>", FONT + "\n<style>" + THEME + "</style>\n</head>", 1)
 pf_js = json.dumps(pf, ensure_ascii=False).replace("</", "<\\/")
 
 LAUNCHER_CSS = r"""
@@ -212,7 +216,8 @@ page = (
     "<title>Oolio Menu Tools</title>\n"
     '<meta name="claude:viewport-fit-sides" content="cover">\n'
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>\n'
-    "<style>" + conv_css + LAUNCHER_CSS + rl_css + st_css + "</style>\n"
+    + FONT + "\n"
+    "<style>" + conv_css + LAUNCHER_CSS + rl_css + st_css + THEME + "</style>\n"
     + LAUNCHER_HTML
     + "<script>" + conv_js + "</script>\n"
     + "<script>" + rl_js + "</script>\n"
