@@ -102,6 +102,7 @@ LAUNCHER_CSS = r"""
 .lx-row .lx-danger{background:var(--bad)!important;color:#fff!important}.lx-row .lx-danger:disabled{opacity:.45;cursor:not-allowed}
 .lx-vhead{display:flex;flex-wrap:wrap;gap:8px 20px;align-items:end;justify-content:space-between}
 .lx-vhead p{margin:2px 0 0;color:var(--muted)}
+.lx-vhead .lx-org{margin:0 0 2px;font-size:.88rem}
 .lx-prog{display:flex;gap:8px;align-items:center;font-size:.88rem;font-variant-numeric:tabular-nums}
 .lx-bar2{display:block;width:160px;height:8px;border-radius:4px;background:var(--line);overflow:hidden}.lx-bar2 i{display:block;height:100%;background:var(--ok)}
 .lx-steps{list-style:none;margin:0;padding:0;display:grid;gap:10px}

@@ -116,6 +116,29 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
 .st-dlg{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);padding:18px;max-width:min(560px,calc(100vw - 32px));width:100%}
 .st-dlg::backdrop{background:rgb(0 0 0 / .4)}
 .st-dlg form{display:grid;gap:12px}
+.st-groups{display:grid;gap:14px;margin-top:14px}
+.st-grp{display:grid;gap:10px}
+.st-grph{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.st-grph h2{margin:0}
+.st-gname{font-size:1.08rem;text-align:left}
+.st-grph .st-prog{margin-left:auto;display:grid;grid-template-columns:110px auto;gap:8px;align-items:center;font-variant-numeric:tabular-nums}
+.st-move{display:inline-flex;gap:6px;align-items:center;margin-left:auto}
+.st-move select{width:auto;max-width:220px}
+.st-glayout{display:grid;gap:16px;grid-template-columns:minmax(0,1fr) 320px;align-items:start}
+.st-gmain{display:grid;gap:16px;min-width:0}
+.st-gfields{display:grid;gap:10px}
+.st-vcards{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.st-vcard{border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:8px;align-content:start;background:var(--bg);min-width:0}
+.st-vcard header{display:flex;flex-wrap:wrap;gap:6px;align-items:center;justify-content:space-between}
+.st-vcard p{margin:0}
+.st-vcard .st-prog{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;font-variant-numeric:tabular-nums}
+.st-vdl{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;margin:0;font-size:.84rem}
+.st-vdl dt{color:var(--muted)}.st-vdl dd{margin:0;min-width:0}
+.st-kpis{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));margin-bottom:8px}
+.st-kpis div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:2px;background:var(--bg)}
+.st-kpis b{font-size:1.35rem;font-variant-numeric:tabular-nums;line-height:1.2}
+.st-kpis span{font-size:.8rem;color:var(--muted)}
+@media (max-width:900px){.st-glayout{grid-template-columns:minmax(0,1fr)}}
 @media (max-width:820px){.st-layout{grid-template-columns:minmax(0,1fr)}.st-nav{position:static;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.st-nav .st-phase{grid-column:1/-1}.st-body{padding-left:0}}
 </style>
 </head>
@@ -145,6 +168,10 @@ const TZ_BY_STATE={NSW:'Australia/Sydney',ACT:'Australia/Sydney',VIC:'Australia/
 const HW=['Oolio 15.6" Touch PC','Sunmi 15.6"','Sunmi 8.7" NFC (roaming)','L3 handheld','11" Android tablet','iPad','21.5" KDS screen','NUC PC + monitor','Windows','Other'];
 const USES=['','Dockets','Receipts'];// '' = dockets and receipts
 const ROLES=['POS','MPOS','Kiosk','KDS','Customer display'];
+// every venue gets a device and profile for Oolio support staff, on top of what the site diagram needs
+const SUPPORT_DEV='OOLIO SUPPORT DEVICE',SUPPORT_PROF='OOLIO SUPPORT PROFILE';
+const hasSupport=L=>(L||[]).some(d=>clean(d.name).toUpperCase()===SUPPORT_DEV);
+const supportDevice=()=>({num:'',name:SUPPORT_DEV,loc:'',hw:'',role:'POS',profile:SUPPORT_PROF,prefix:'',serial:''});
 
 /* ---------- the checklist (from the Config Recap Checklist), in order ---------- */
 const SECTIONS=[
@@ -175,7 +202,7 @@ const SECTIONS=[
   {id:'ecom-store',t:'Online store settings: e-com string and surcharge rate',info:['Set in the online store itself, separately from the business detail references.','The online store also needs the business number, contact details, slug, address and timezone.'],why:'This is commonly missed.',fields:[['string','E-com string entered','select',['','Yes','Waiting on KYC']],['rate','E-com surcharge rate %','text']],guides:['create-an-oolio-online-store','create-an-online-menu','assign-qr-codes-to-tables']},
 ]},
 {id:'dev',phase:'pre',t:'Devices',d:'Pre-create every device before the session, named from the hardware diagram.',steps:[
-  {id:'dev-list',t:'Create all devices',table:'devices',info:['Name by POS number, location and hardware, for example “POS 4 – 8.7” NFC Sunmi”.','Sunmi roaming devices are set up as POS devices, not MPOS.','Each POS’s sales prefix matches its number: POS 1 → 1, POS 2 → 2. Don’t leave wrong auto-generated prefixes.'],check:devCheck,guides:['get-started-with-oolio-one-pos','configure-device-profiles']},
+  {id:'dev-list',t:'Create all devices',table:'devices',info:['Name by POS number, location and hardware, for example “POS 4 – 8.7” NFC Sunmi”.','Sunmi roaming devices are set up as POS devices, not MPOS.','Each POS’s sales prefix matches its number: POS 1 → 1, POS 2 → 2. Don’t leave wrong auto-generated prefixes.','Always add an OOLIO SUPPORT DEVICE on the OOLIO SUPPORT PROFILE, as well as the venue’s own devices.'],check:devCheck,guides:['get-started-with-oolio-one-pos','configure-device-profiles']},
   {id:'dev-prefix',t:'Check sales prefixes',info:['Open each device and confirm the sales prefix matches the POS number.'],check:o=>{const r=devIssues(o).filter(x=>/prefix/i.test(x));return (o.devices||[]).length?(r.length?{m:r.join(' ')}:{ok:1,m:'All POS prefixes match their numbers.'}):null}},
   {id:'dev-term',t:'Connect payment terminals',info:['Find each terminal’s serial number and enter it against the right device.','Serials can be added later by the techs if unknown.'],guides:['connect-payment-terminals','use-s1f2-android-terminals','process-standalone-payments']},
 ]},
@@ -187,7 +214,7 @@ const SECTIONS=[
   {id:'prn-highlight',t:'Kitchen docket highlighting',info:['Ask whether removes, allergies and notes should be highlighted.','Especially important on impact printers, which can print in red.'],subs:['Removes highlighted','Allergies highlighted','Notes highlighted'],guides:['configure-printer-profiles','configure-allergens']},
 ]},
 {id:'prof',phase:'pre',t:'Device profiles & MPOS',steps:[
-  {id:'prof-split',t:'Create the device profiles needed',info:['Separate profiles where needed for online ordering, MPOS and POS defaults.'],fields:[['list','Profiles created','text','POS default, MPOS, Online']],extra:o=>{const L=profileList(o);return L.length?'<div class="st-check">Profiles named on the devices: <b>'+esc(L.join(', '))+'</b>. Create one device profile for each.</div>':''},guides:['configure-device-profiles','create-and-customise-function-maps']},
+  {id:'prof-split',t:'Create the device profiles needed',info:['Separate profiles where needed for online ordering, MPOS and POS defaults.','Always create the OOLIO SUPPORT PROFILE, used by the OOLIO SUPPORT DEVICE.'],fields:[['list','Profiles created','text','POS default, MPOS, Online']],extra:o=>{const L=profileList(o);return L.length?'<div class="st-check">Profiles named on the devices: <b>'+esc(L.join(', '))+'</b>. Create one device profile for each.</div>':''},guides:['configure-device-profiles','create-and-customise-function-maps']},
   {id:'mpos-profile',when:'mpos',t:'Dedicated MPOS / pay-at-table profile',info:['Create a profile just for MPOS with these settings:'],subs:['Dine-in only','PIN login','No floor view','No ordering workflows','Pay-at-table focused','Prompt for print / email receipt','Don’t print notes on receipts'],guides:['configure-mpos','configure-device-profiles']},
   {id:'mpos-device',when:'mpos',t:'Dedicated MPOS device',info:['Usually linked to the host terminal or a pay-at-table device.','Serial numbers can be assigned later by the techs.'],guides:['configure-mpos','process-a-payment-on-mpos','place-an-order-on-mpos']},
 ]},
@@ -222,7 +249,8 @@ const STEP={};SECTIONS.forEach(s=>s.steps.forEach(st=>{st.sec=s;STEP[st.id]=st})
 /* ---------- checks ---------- */
 function abnOk(a){const d=String(a).replace(/\D/g,'');if(d.length!==11)return false;const w=[10,1,3,5,7,9,11,13,15,17,19];
   let s=0;for(let i=0;i<11;i++)s+=((+d[i])-(i===0?1:0))*w[i];return s%89===0}
-function val(o,id,k){const s=o.steps&&o.steps[id];return clean(s&&s.v&&s.v[k]||'')}
+function val(o,id,k){if(isShared(id,k)){const G=groupOf(o),x=G?clean((G.biz||{})[k]||''):'';if(x)return x}
+  const s=o.steps&&o.steps[id];return clean(s&&s.v&&s.v[k]||'')}
 function devIssues(o){const out=[];(o.devices||[]).forEach((d,i)=>{const nm=d.name||'Row '+(i+1),n=parseInt(d.num,10);
   if(!d.name)out.push('Row '+(i+1)+' has no name.');
   if(d.role==='POS'&&n){if(clean(d.prefix)&&+d.prefix!==n)out.push(nm+': sales prefix '+d.prefix+' should be '+n+'.');
@@ -230,7 +258,8 @@ function devIssues(o){const out=[];(o.devices||[]).forEach((d,i)=>{const nm=d.na
     if(d.name&&!new RegExp('^POS\\s*'+n+'\\b','i').test(d.name))out.push(nm+': name should start “POS '+n+'”.')}
   if(/roaming/i.test(d.hw||'')&&d.role==='MPOS')out.push(nm+': Sunmi roaming devices are set up as POS, not MPOS.')});
   const nums=(o.devices||[]).filter(d=>d.role==='POS'&&d.num).map(d=>+d.num),dup=nums.filter((n,i)=>nums.indexOf(n)!==i);
-  if(dup.length)out.push('POS number used twice: '+[...new Set(dup)].join(', ')+'.');return out}
+  if(dup.length)out.push('POS number used twice: '+[...new Set(dup)].join(', ')+'.');
+  if((o.devices||[]).length&&!hasSupport(o.devices))out.push('Add the '+SUPPORT_DEV+' (profile '+SUPPORT_PROF+'). Every venue has one.');return out}
 function devCheck(o){if(!(o.devices||[]).length)return null;const r=devIssues(o).filter(x=>!/prefix/i.test(x));return r.length?{m:r}:{ok:1,m:'Names, numbers and prefixes look right.'}}
 function prnCheck(o){const p=o.printers||[];if(!p.length)return null;const r=[],names=p.map(x=>x.name);
   p.forEach((x,i)=>{const nm=x.name||'Row '+(i+1);if(!x.name)r.push('Row '+(i+1)+' has no name.');
@@ -248,6 +277,36 @@ const local={key:'st-orgs',all(){try{return JSON.parse(ls.get(this.key)||'{}')}c
   put(id,o){const a=this.all();a[id]=o;if(!ls.set(this.key,JSON.stringify(a)))throw new Error('This browser wouldn’t save (storage is full or blocked).')},
   del(id){const a=this.all();delete a[id];ls.set(this.key,JSON.stringify(a))}};
 let DB=null;
+/* ---------- organisations: a group of venues sharing business details ----------
+   groups/<id> = {name, biz:{abn, legal, code, emails, csp, hubspot}, contact, notes, createdAt, createdBy, updatedAt, updatedBy}
+   and each venue (orgs/<id>) has group:<id>. Shared fields show the organisation's value in every venue's checklist,
+   and editing them anywhere edits the organisation. A venue without one gets its own, named after it, with the fixed
+   id "g-<venueId>" so two people loading at once create the same record, not two. */
+const GROUPS={},GCOL='groups';let GLOADED=false;
+const glocal={key:'st-groups',all(){try{return JSON.parse(ls.get(this.key)||'{}')}catch(e){return{}}},
+  put(id,o){const a=this.all();a[id]=o;ls.set(this.key,JSON.stringify(a))},del(id){const a=this.all();delete a[id];ls.set(this.key,JSON.stringify(a))}};
+const SHARED={'biz-abn':['abn','legal'],'pay-merchant':['code'],'biz-emails':['emails'],'prep-csp':['csp'],'prep-hubspot':['hubspot']};
+const isShared=(id,k)=>!!(SHARED[id]&&SHARED[id].includes(k));
+const groupOf=o=>o&&o.group&&GROUPS[o.group]||null;
+const venuesOf=gid=>Object.entries(ORGS).filter(([,o])=>o.group===gid).sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||''));
+function sharedFrom(o){const biz={};Object.entries(SHARED).forEach(([id,ks])=>ks.forEach(k=>{const s=o.steps&&o.steps[id],x=clean(s&&s.v&&s.v[k]||'');if(x)biz[k]=x}));return biz}
+async function createGroup(o,id){id=id||'g'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  o=Object.assign({name:'',biz:{},contact:'',notes:'',createdAt:Date.now(),createdBy:ME||'',updatedAt:Date.now(),updatedBy:ME||''},o);
+  GROUPS[id]=o;if(MODE==='db')await DB.collection(GCOL).doc(id).set(o);else glocal.put(id,o);notify();soonRender();return id}
+function saveG(id,patch){const o=GROUPS[id];if(!o||READONLY)return;
+  patch=Object.assign({},patch,{updatedAt:Date.now(),updatedBy:ME||''});GROUPS[id]=deepMerge(o,patch);
+  const k='G:'+id,q=Q[k]||(Q[k]={p:null,busy:false,g:id});q.p=deepMerge(q.p||{},patch);if(!q.busy)flush(k);notify();soonRender()}
+async function deleteGroup(id){if(READONLY||venuesOf(id).length)return;delete GROUPS[id];if(VIEW.grp===id)VIEW.grp=null;notify();render();
+  if(MODE==='db')await DB.collection(GCOL).doc(id).delete();else glocal.del(id)}
+// copy a venue's own business details up to its organisation where the organisation has none yet
+function pushShared(vid){const o=ORGS[vid],G=groupOf(o);if(!o||!G||READONLY)return;const own=sharedFrom(o),add={};
+  Object.entries(own).forEach(([k,x])=>{if(!clean((G.biz||{})[k]||''))add[k]=x});if(Object.keys(add).length)saveG(o.group,{biz:add})}
+let ENSURING=false;
+async function ensureGroups(){if(ENSURING||READONLY||!LOADED||!GLOADED)return;ENSURING=true;
+  try{for(const [vid,o] of Object.entries(ORGS)){if(o.group&&GROUPS[o.group])continue;const gid=o.group||('g-'+vid);
+      if(!GROUPS[gid])await createGroup({name:o.name||'Untitled',biz:sharedFrom(o)},gid);
+      if(o.group!==gid)save(vid,{group:gid})}}
+  catch(e){console.error(e)}finally{ENSURING=false}}
 function deepMerge(a,b){const o=Object.assign({},a);for(const[k,v]of Object.entries(b||{})){
   o[k]=v&&typeof v==='object'&&!Array.isArray(v)&&o[k]&&typeof o[k]==='object'&&!Array.isArray(o[k])?deepMerge(o[k],v):v}return o}
 async function start(){
@@ -259,10 +318,14 @@ async function start(){
       snap.docChanges().forEach(ch=>{if(ch.type==='removed')delete ORGS[ch.doc.id];else ORGS[ch.doc.id]=ch.doc.data()});
       // the patch this page is still sending stays on top of what the store has
       Object.entries(Q).forEach(([id,q])=>{if(q.p&&ORGS[id])ORGS[id]=deepMerge(ORGS[id],q.p)});
-      LOADED=true;soonRender();notify()},
-      e=>{clearTimeout(timer);LOADED=true;LOADMSG='The shared tracker stopped answering ('+(e&&e.code||'error')+'). Reload the page to reconnect.';render()})}
+      LOADED=true;soonRender();notify();ensureGroups()},
+      e=>{clearTimeout(timer);LOADED=true;LOADMSG='The shared tracker stopped answering ('+(e&&e.code||'error')+'). Reload the page to reconnect.';render()});
+    DB.collection(GCOL).onSnapshot(snap=>{
+      snap.docChanges().forEach(ch=>{if(ch.type==='removed')delete GROUPS[ch.doc.id];else GROUPS[ch.doc.id]=ch.doc.data()});
+      Object.entries(Q).forEach(([k,q])=>{if(q.p&&q.g&&GROUPS[q.g])GROUPS[q.g]=deepMerge(GROUPS[q.g],q.p)});
+      GLOADED=true;soonRender();notify();ensureGroups()},e=>{GLOADED=true;render()})}
   else if(window.OOLIO_HOSTED){MODE='db';READONLY=true;LOADED=true;LOADMSG='You’re not signed in, so the team’s venues can’t be shown. Reload the page to sign in.';render();notify()}// on the website, never fall back to this browser alone
-  else{MODE='local';Object.assign(ORGS,local.all());LOADED=true;render();notify()}
+  else{MODE='local';Object.assign(ORGS,local.all());Object.assign(GROUPS,glocal.all());LOADED=GLOADED=true;render();notify();ensureGroups()}
   if(ME)names([ME]);}
 // one write at a time per organisation; edits made meanwhile are merged into the next write
 const Q={};
@@ -271,7 +334,8 @@ function save(id,patch){const o=ORGS[id];if(!o||READONLY)return;
   const q=Q[id]||(Q[id]={p:null,busy:false});q.p=deepMerge(q.p||{},patch);if(!q.busy)flush(id);notify();soonRender()}
 async function flush(id){const q=Q[id];q.busy=true;setSaving(true);
   while(q.p){const p=q.p;q.p=null;
-    try{if(MODE==='db')await DB.collection(COL).doc(id).update(p);else local.put(id,ORGS[id])}
+    try{if(q.g){if(MODE==='db')await DB.collection(GCOL).doc(q.g).update(p);else glocal.put(q.g,GROUPS[q.g])}
+      else if(MODE==='db')await DB.collection(COL).doc(id).update(p);else local.put(id,ORGS[id])}
     catch(e){let c=e&&e.code;if(c==='unavailable'){await new Promise(r=>setTimeout(r,800+Math.random()*800));q.p=deepMerge(p,q.p||{});continue}
       if(c==='invalid_argument'&&MODE==='db'&&USER&&(await USER.can('data.write').catch(()=>null))!==true){READONLY=true;render()}
       flash(c==='quota_exceeded'?'The tracker’s database is full. Delete finished organisations to make room.':'Couldn’t save that change ('+(c||e.message||'error')+').',true)}}
@@ -346,8 +410,13 @@ window.OolioVenues={
   open(id){if(id&&ORGS[id]){VIEW.org=id;VIEW.tab='list';VIEW.open=new Set(outstanding(ORGS[id]).slice(0,1).map(x=>x.id))}else VIEW.org=null;render()},
   save(id,patch){save(id,patch)},
   tick(id,step){const o=ORGS[id];if(o&&st(o,step).s!=='done')save(id,{steps:{[step]:{s:'done',by:ME,at:Date.now()}}})},
-  async create(o){const id=await createOrg(o);this.setActive(id);return id},
-  attachLookup(id,P){const o=ORGS[id];if(!o||!P||!P.place)return;const pt=fillPatch(o,venueOf(P));pt.lookup=slimLookup(P);save(id,pt)},
+  async create(o){const id=await createOrg(o);this.setActive(id);ensureGroups();return id},
+  groups(){return Object.entries(GROUPS).map(([id,o])=>Object.assign({id},o,{venues:venuesOf(id).map(([v])=>v)})).sort((a,b)=>(a.name||'').localeCompare(b.name||''))},
+  group(id){return id&&GROUPS[id]?Object.assign({id},GROUPS[id],{venues:venuesOf(id).map(([v])=>v)}):null},
+  groupOf(vid){const o=ORGS[vid];return o&&o.group&&GROUPS[o.group]?this.group(o.group):null},
+  async createGroup(o){return createGroup(o)},
+  openGroup(gid){VIEW.org=null;VIEW.tab='list';VIEW.grp=gid&&GROUPS[gid]?gid:null;render()},
+  attachLookup(id,P){const o=ORGS[id];if(!o||!P||!P.place)return;const pt=fillPatch(o,venueOf(P));pt.lookup=slimLookup(P);save(id,pt);pushShared(id)},
   lookup(id){return lookupOf(ORGS[id])},
   progress(id,ph){const o=ORGS[id];return o?progress(o,ph):null},
   stage(id){const o=ORGS[id];return o?(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1]:''},
@@ -421,7 +490,9 @@ function planFromDiagram(j,o){const locs=(j&&Array.isArray(j.locations))?j.locat
   P.forEach((x,i)=>{if(x.fb)return;const mate=P.find((y,j)=>j!==i&&!y.fb&&y._b===x._b)||P.find((y,j)=>j!==i&&y._l===x._l&&y.use===x.use)||P.find((y,j)=>j!==i&&y._k===x._k&&y.use!=='Receipts');// kitchen-side to kitchen-side, front of house to front of house
     if(mate){x.fb=mate.name;if(!mate.fb&&mate._b===x._b)mate.fb=x.name}});
   P.forEach(x=>{delete x._b;delete x._l;delete x._k});
+  if(!hasSupport(o.devices)&&!hasSupport(D))D.push(supportDevice());
   const profiles=[...new Set(D.map(d=>d.profile).filter(Boolean))];
+  if(!profiles.includes(SUPPORT_PROF)&&!profileList(o).includes(SUPPORT_PROF))profiles.push(SUPPORT_PROF);
   if(eft)notes.unshift(eft+' payment terminal'+(eft>1?'s':'')+' paired with POS devices: connect them in Devices → Connect payment terminals.');
   return{devices:D,printers:P,profiles,notes,venue:clean(j&&j.venue)}}
 window.__stPlanFromDiagram=planFromDiagram;
@@ -476,7 +547,7 @@ function reviewPlan(id,plan,file){const o=ORGS[id],d=g('st-dlg'),haveD=new Set((
    One JSON file with every venue and its menu versions. Used to move the records between the claude.ai version and the
    website, and as a safety copy. Restoring adds venues that aren't here yet and leaves existing ones alone. */
 const bmsg=x=>{const m=g('st-bmsg');if(m)m.textContent=x};
-async function backup(){bmsg('Preparing the backup…');const out={kind:'oolio-menu-tools-backup',version:1,at:Date.now(),venues:[]};
+async function backup(){bmsg('Preparing the backup…');const out={kind:'oolio-menu-tools-backup',version:2,at:Date.now(),venues:[],groups:Object.entries(GROUPS).map(([id,data])=>({id,data}))};
   for(const [id,o] of Object.entries(ORGS)){let menus=[];try{menus=(await menuVersions(id)).map(v=>{const d=Object.assign({},v);delete d.id;return{id:v.id,data:d}})}catch(e){}
     out.venues.push({id,data:o,menus})}
   const blob=new Blob([JSON.stringify(out)],{type:'application/json'}),fn='Oolio Menu Tools backup '+new Date().toISOString().slice(0,10)+'.json',dl=await use('downloads');
@@ -484,13 +555,14 @@ async function backup(){bmsg('Preparing the backup…');const out={kind:'oolio-m
     bmsg('Saved '+out.venues.length+' venue'+(out.venues.length===1?'':'s')+' to “'+fn+'”.')}catch(e){bmsg(e&&e.code==='declined'?'':'The backup couldn’t be saved.')}}
 async function restore(f){if(READONLY)return;let j;try{j=JSON.parse(await f.text())}catch(e){bmsg('That file isn’t a backup.');return}
   if(!j||j.kind!=='oolio-menu-tools-backup'||!Array.isArray(j.venues)){bmsg('That file isn’t an Oolio Menu Tools backup.');return}
-  let added=0,skipped=0,menus=0;
+  let added=0,skipped=0,menus=0,orgs=0;
+  for(const x of j.groups||[]){if(!x||!x.id||!x.data||GROUPS[x.id])continue;try{await createGroup(x.data,x.id);orgs++}catch(e){}}
   for(const v of j.venues){if(!v||!v.id||!v.data)continue;if(ORGS[v.id]){skipped++;continue}
     bmsg('Restoring '+(v.data.name||v.id)+'…');
     try{if(MODE==='db')await DB.collection(COL).doc(v.id).set(v.data);else local.put(v.id,v.data);ORGS[v.id]=v.data;added++;
       for(const m of v.menus||[]){if(!m||!m.id||!m.data)continue;if(MODE==='db')await DB.collection(MCOL(v.id)).doc(m.id).set(m.data);else mlocal.put(v.id,m.id,m.data);menus++}}
     catch(e){bmsg('Stopped at '+(v.data.name||v.id)+': '+((e&&(e.message||e.code))||'error'));render();return}}
-  notify();render();bmsg('Restored '+added+' venue'+(added===1?'':'s')+' and '+menus+' menu version'+(menus===1?'':'s')+(skipped?'; '+skipped+' already here were left as they are':'')+'.')}
+  notify();render();ensureGroups();bmsg('Restored '+(orgs?orgs+' organisation'+(orgs===1?'':'s')+', ':'')+added+' venue'+(added===1?'':'s')+' and '+menus+' menu version'+(menus===1?'':'s')+(skipped?'; '+skipped+' already here were left as they are':'')+'.')}
 
 /* ---------- data from the other tabs ---------- */
 const goBtn=(tab,t)=>'<button type="button" class="st-sec st-sm" data-goto="'+tab+'">'+esc(t)+'</button>';
@@ -530,7 +602,7 @@ function lookupPanel(o){const P=lookupOf(o);if(!P||!P.place)return'';const f=P.f
     '<div class="st-tools" style="margin-top:6px">'+goBtn('venue','Open the lookup')+'</div></div>'}
 
 /* ---------- rendering ---------- */
-let VIEW={org:null,tab:'list',q:'',stage:'',open:new Set()};
+let VIEW={org:null,grp:null,tab:'list',q:'',stage:'',open:new Set()};
 const CHECK='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 let rq=null;function soonRender(){if(rq)return;rq=requestAnimationFrame(()=>{rq=null;render()})}
 let held=false;
@@ -538,8 +610,8 @@ function render(){const root=g('st-view');if(!root)return;
   // don't redraw under someone's cursor; redraw when they leave the field
   const a=document.activeElement;if(a&&root.contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.type!=='checkbox'){held=true;return}
   held=false;const y=window.scrollY;
-  if(VIEW.org&&!ORGS[VIEW.org])VIEW.org=null;
-  root.innerHTML=VIEW.org?orgHtml(ORGS[VIEW.org],VIEW.org):VIEW.tab==='guides'?guidesHtml():listHtml();
+  if(VIEW.org&&!ORGS[VIEW.org])VIEW.org=null;if(VIEW.grp&&!GROUPS[VIEW.grp])VIEW.grp=null;
+  root.innerHTML=VIEW.org?orgHtml(ORGS[VIEW.org],VIEW.org):VIEW.grp?groupHtml(GROUPS[VIEW.grp],VIEW.grp):VIEW.tab==='guides'?guidesHtml():listHtml();
   window.scrollTo(0,y);
   const ids=[];Object.values(ORGS).forEach(o=>{ids.push(o.updatedBy,o.createdBy);Object.values(o.steps||{}).forEach(s=>ids.push(s.by))});names(ids)}
 document.addEventListener('focusout',()=>{if(held)setTimeout(()=>{if(held)render()},0)});
@@ -547,24 +619,82 @@ document.addEventListener('focusout',()=>{if(held)setTimeout(()=>{if(held)render
 function head(){const where=MODE==='db'?'Shared with everyone who opens this page.':'Saved on this browser only. On claude.ai the tracker is shared with your team.';
   return '<h1>Setup Tracker</h1><p class="st-sub">Track each organisation’s setup against the Config Recap Checklist, with the right help.oolio.com guide on every step. '+esc(where)+(READONLY?' You can view but not change it.':'')+'</p>'+
   (LOADMSG?'<p class="st-msg err">'+esc(LOADMSG)+'</p>':'')}
-function listHtml(){const all=Object.entries(ORGS).sort((a,b)=>(b[1].updatedAt||0)-(a[1].updatedAt||0));
-  const q=VIEW.q.toLowerCase(),list=all.filter(([,o])=>(!VIEW.stage||o.stage===VIEW.stage)&&(!q||(o.name||'').toLowerCase().includes(q)));
-  let h=head()+'<div class="st-row">'+(READONLY?'':'<button type="button" data-a="new">New organisation</button>')+
-    '<input class="st-grow" type="search" id="st-q" placeholder="Search organisations" value="'+esc(VIEW.q)+'" aria-label="Search organisations">'+
+// one venue as a row: stage, progress and what needs fixing
+function venueRow(id,o){const p=progress(o),pp=progress(o,'pre'),tp=progress(o,'trn'),w=warnings(o).length,stg=(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1],tr=o.training;
+  return '<button type="button" class="st-org" data-org="'+id+'"><span><b>'+esc(o.name||'Untitled')+'</b> <span class="st-chip a">'+esc(stg)+'</span>'+(w?' <span class="st-chip w">'+w+' to fix</span>':'')+'</span>'+
+    '<span class="st-prog"><span class="st-bar"><i style="width:'+p.pct+'%"></i></span><span>'+p.done+'/'+p.total+'</span></span>'+
+    '<span class="st-meta"><span>Pre-config '+pp.pct+'%</span><span>Training '+tp.pct+'%</span>'+(tr?'<span>Training '+esc(fmtDate(tr))+'</span>':'')+
+    '<span>Updated '+esc(when(o.updatedAt))+(o.updatedBy?' by '+esc(who(o.updatedBy)):'')+'</span></span></button>'}
+const plural=(n,w)=>n+' '+w+(n===1?'':'s');
+function groupTotals(gid){const V=venuesOf(gid).map(([,o])=>o),t={venues:V.length,done:0,total:0,dev:{},printers:0,impact:0,profiles:new Set(),products:0,photos:0,fix:0};
+  V.forEach(o=>{const p=progress(o);t.done+=p.done;t.total+=p.total;(o.devices||[]).forEach(d=>{const r=d.role||'POS';t.dev[r]=(t.dev[r]||0)+1});
+    t.printers+=(o.printers||[]).length;t.impact+=(o.printers||[]).filter(x=>x.kind==='Impact').length;profileList(o).forEach(x=>t.profiles.add(x));
+    t.products+=o.menu?+o.menu.products||0:0;t.photos+=o.photos?+o.photos.saved||0:0;t.fix+=warnings(o).length});return t}
+function listHtml(){const q=VIEW.q.toLowerCase(),vm=(id,o)=>(!VIEW.stage||o.stage===VIEW.stage);
+  const gs=Object.entries(GROUPS).map(([gid,G])=>{const all=venuesOf(gid),gm=!q||(G.name||'').toLowerCase().includes(q);
+      const vs=all.filter(([id,o])=>vm(id,o)&&(gm||(o.name||'').toLowerCase().includes(q)));
+      const last=Math.max(G.updatedAt||0,...all.map(([,o])=>o.updatedAt||0));return{gid,G,all,vs,show:(gm&&!VIEW.stage)||vs.length,last}})
+    .filter(x=>x.show).sort((a,b)=>b.last-a.last);
+  const loose=Object.entries(ORGS).filter(([,o])=>!groupOf(o)&&vm(0,o)&&(!q||(o.name||'').toLowerCase().includes(q)));
+  let h=head()+'<div class="st-row">'+(READONLY?'':'<button type="button" data-a="newgroup">New organisation</button>')+
+    '<input class="st-grow" type="search" id="st-q" placeholder="Search organisations and venues" value="'+esc(VIEW.q)+'" aria-label="Search organisations and venues">'+
     '<select id="st-stagef" aria-label="Filter by stage" style="width:auto"><option value="">All stages</option>'+STAGES.map(([k,t])=>'<option value="'+k+'"'+(VIEW.stage===k?' selected':'')+'>'+t+'</option>').join('')+'</select>'+
     '<button type="button" class="st-sec" data-a="guides">All guides</button></div>'+
     '<div class="st-row st-small" style="margin-top:8px"><button type="button" class="st-link" data-a="backup">Download backup</button>'+(READONLY?'':'<label class="st-link" style="cursor:pointer;font-weight:600;color:var(--accent)">Restore from backup<input type="file" id="st-restore" accept=".json,application/json" style="display:none"></label>')+'<span id="st-bmsg" class="st-muted"></span></div>';
-  if(!LOADED)return h+'<p class="st-msg">Loading organisations…</p>';
-  if(!all.length)return h+'<div class="st-empty" style="margin-top:14px">No organisations yet. Start one with “New organisation”, or use “Start setup tracker” on a Restaurant Lookup result.</div>';
-  h+='<div class="st-orgs">';
-  list.forEach(([id,o])=>{const p=progress(o),pp=progress(o,'pre'),tp=progress(o,'trn'),w=warnings(o).length,stg=(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1];
-    const tr=o.training;
-    h+='<button type="button" class="st-org" data-org="'+id+'"><span><b>'+esc(o.name||'Untitled')+'</b> <span class="st-chip a">'+esc(stg)+'</span>'+(w?' <span class="st-chip w">'+w+' to fix</span>':'')+'</span>'+
-      '<span class="st-prog"><span class="st-bar"><i style="width:'+p.pct+'%"></i></span><span>'+p.done+'/'+p.total+'</span></span>'+
-      '<span class="st-meta"><span>Pre-config '+pp.pct+'%</span><span>Training '+tp.pct+'%</span>'+(tr?'<span>Training '+esc(fmtDate(tr))+'</span>':'')+
-      '<span>Updated '+esc(when(o.updatedAt))+(o.updatedBy?' by '+esc(who(o.updatedBy)):'')+'</span></span></button>'});
-  if(!list.length)h+='<p class="st-msg">No organisations match.</p>';
+  if(!LOADED||!GLOADED)return h+'<p class="st-msg">Loading organisations…</p>';
+  if(!Object.keys(GROUPS).length&&!Object.keys(ORGS).length)return h+'<div class="st-empty" style="margin-top:14px">No organisations yet. Start one with “New organisation”, then add its venues.</div>';
+  h+='<div class="st-groups">';
+  gs.forEach(({gid,G,all,vs})=>{const tt=groupTotals(gid),pct=tt.total?Math.round(tt.done/tt.total*100):0;
+    h+='<section class="st-card st-grp"><header class="st-grph"><button type="button" class="st-link st-gname" data-grp="'+gid+'">'+esc(G.name||'Untitled')+'</button>'+
+      '<span class="st-small st-muted">'+all.length+' venue'+(all.length===1?'':'s')+(tt.fix?' · <span class="st-chip w">'+tt.fix+' to fix</span>':'')+'</span>'+
+      '<span class="st-prog st-small"><span class="st-bar"><i style="width:'+pct+'%"></i></span><span>'+tt.done+'/'+tt.total+'</span></span></header>'+
+      (vs.length?'<div class="st-orgs">'+vs.map(([id,o])=>venueRow(id,o)).join('')+'</div>':'<p class="st-small st-muted" style="margin:6px 0 0">'+(all.length?'No venues match.':'No venues yet.')+' <button type="button" class="st-link" data-grp="'+gid+'">Open organisation</button></p>')+'</section>'});
+  if(loose.length)h+='<section class="st-card st-grp"><header class="st-grph"><b>No organisation</b></header><div class="st-orgs">'+loose.map(([id,o])=>venueRow(id,o)).join('')+'</div></section>';
+  if(!gs.length&&!loose.length)h+='<p class="st-msg">Nothing matches.</p>';
   return h+'</div>'}
+
+// the organisation: shared details, its venues, totals across them, and one recap for all
+const GFIELDS=[['legal','Legal entity name','text'],['abn','ABN','text','11 digits'],['code','Merchant code','text','Oolio group_AFP'],['emails','Report emails','text','owner@venue.com.au, …'],['csp','CSP / ticket link','url'],['hubspot','HubSpot link','url']];
+function groupHtml(G,gid){const dis=READONLY?' disabled':'',V=venuesOf(gid),tt=groupTotals(gid),pct=tt.total?Math.round(tt.done/tt.total*100):0,biz=G.biz||{};
+  const abnMsg=biz.abn?(abnOk(biz.abn)?'<span class="st-chip ok">ABN checksum is valid</span>':'<span class="st-chip w">This ABN fails the checksum</span>'):'';
+  let h='<p class="st-row"><button type="button" class="st-link" data-a="list">← Organisations</button><span class="st-small st-muted" id="st-saving">'+(MODE==='db'?'Saved for the team':'Saved on this browser')+'</span></p>'+
+    '<div class="st-head st-card"><div class="st-title"><input id="st-gname" value="'+esc(G.name)+'" aria-label="Organisation name" placeholder="Organisation name"'+dis+'><span class="st-chip">Organisation</span></div>'+
+    '<div class="st-row st-small"><span class="st-bar st-grow" style="max-width:300px"><i style="width:'+pct+'%"></i></span><span>'+tt.done+' of '+tt.total+' steps across '+V.length+' venue'+(V.length===1?'':'s')+'</span></div>'+
+    '<div class="st-tools">'+(READONLY?'':'<button type="button" class="st-sm" data-a="addvenue">Add venue</button>')+'<button type="button" class="st-sec st-sm" data-a="grecap">Organisation recap</button>'+
+    (READONLY?'':V.length?'':'<button type="button" class="st-sec st-sm" data-a="delgroup">Delete organisation</button>')+'</div><div id="st-flash" class="st-msg" style="margin:0"></div></div>';
+  h+='<div class="st-glayout"><div class="st-gmain">';
+  h+='<section class="st-card"><header class="st-grph"><h2>Venues</h2><span class="st-small st-muted">'+V.length+'</span></header>'+
+    (V.length?'<div class="st-vcards">'+V.map(([id,o])=>{const p=progress(o),pp=progress(o,'pre'),tp=progress(o,'trn'),w=warnings(o).length,stg=(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1],m=o.menu,f=o.photos;
+        return '<article class="st-vcard"><header><b>'+esc(o.name||'Untitled')+'</b><span class="st-chip a">'+esc(stg)+'</span></header>'+
+          (val(o,'biz-address','address')?'<p class="st-small st-muted">'+esc(val(o,'biz-address','address'))+'</p>':'')+
+          '<div class="st-prog st-small"><span class="st-bar"><i style="width:'+p.pct+'%"></i></span><span>'+p.done+'/'+p.total+'</span></div>'+
+          '<dl class="st-vdl"><dt>Pre-config</dt><dd>'+pp.done+'/'+pp.total+'</dd><dt>Training</dt><dd>'+tp.done+'/'+tp.total+(o.training?' · '+esc(fmtDate(o.training)):'')+'</dd>'+
+          '<dt>Menu</dt><dd>'+(m?m.products+' products'+((o.menuLog||[]).length>1?' · '+o.menuLog.length+' versions':''):'not yet')+'</dd><dt>Photos</dt><dd>'+(f?f.saved+' saved':'not yet')+'</dd>'+
+          '<dt>Devices</dt><dd>'+plural((o.devices||[]).length,'device')+' · '+plural((o.printers||[]).length,'printer')+'</dd></dl>'+
+          (w?'<p class="st-small"><span class="st-chip w">'+w+' to fix</span></p>':'')+
+          '<div class="st-tools"><button type="button" class="st-sm" data-org="'+id+'">Open checklist</button></div></article>'}).join('')+'</div>':
+      '<p class="st-msg">No venues yet. '+(READONLY?'':'<button type="button" class="st-link" data-a="addvenue">Add the first venue</button>')+'</p>')+'</section>';
+  const roles=Object.entries(tt.dev).map(([r,n])=>n+' '+r+(n>1&&!/s$/.test(r)?(r==='Customer display'?'s':''):'')).join(', ');
+  const fixes=[];V.forEach(([id,o])=>warnings(o).forEach(([x,m])=>m.forEach(msg=>fixes.push([o.name||'Untitled',x.t,msg]))));
+  h+='<section class="st-card"><header class="st-grph"><h2>Across all venues</h2></header>'+
+    '<div class="st-kpis"><div><b>'+(Object.values(tt.dev).reduce((a,b)=>a+b,0))+'</b><span>devices'+(roles?' ('+esc(roles)+')':'')+'</span></div><div><b>'+tt.printers+'</b><span>printers'+(tt.impact?' ('+tt.impact+' impact)':'')+'</span></div>'+
+    '<div><b>'+tt.profiles.size+'</b><span>device profiles</span></div><div><b>'+tt.products+'</b><span>menu products</span></div><div><b>'+tt.photos+'</b><span>product photos</span></div><div><b>'+tt.fix+'</b><span>to fix</span></div></div>'+
+    (tt.profiles.size?'<p class="st-small"><span class="st-muted">Profiles:</span> '+esc([...tt.profiles].join(', '))+'</p>':'')+
+    (fixes.length?'<details class="st-small"><summary>'+fixes.length+' thing'+(fixes.length===1?'':'s')+' to fix</summary><ul class="st-info">'+fixes.slice(0,60).map(([v,s,m])=>'<li><b>'+esc(v)+'</b> · '+esc(s)+': '+esc(m)+'</li>').join('')+'</ul></details>':'')+'</section>';
+  h+='</div><aside class="st-gside"><section class="st-card"><header class="st-grph"><h2>Shared details</h2></header>'+
+    '<p class="st-small st-muted" style="margin:0 0 8px">Used by every venue in this organisation. Editing them here, or in any venue’s checklist, changes them for all.</p>'+
+    '<div class="st-gfields">'+GFIELDS.map(([k,l,ty,ph])=>{const v=clean(biz[k]||'');return '<label class="st-f">'+esc(l)+'<input data-gk="'+k+'" type="'+(ty==='url'?'url':'text')+'" value="'+esc(v)+'"'+(ph?' placeholder="'+esc(ph)+'"':'')+dis+'>'+
+      (k==='abn'&&abnMsg?abnMsg:'')+(ty==='url'&&/^https?:\/\//.test(v)?'<a href="'+esc(v)+'" target="_blank" rel="noopener" class="st-small">Open</a>':'')+'</label>'}).join('')+
+    '<label class="st-f">Main contact<input id="st-gcontact" value="'+esc(G.contact||'')+'" placeholder="Name, role, mobile, email"'+dis+'></label>'+
+    '<label class="st-f">Notes<textarea id="st-gnotes" placeholder="Anything that applies to every venue"'+dis+'>'+esc(G.notes||'')+'</textarea></label></div></section></aside></div>';
+  return h}
+function groupRecap(gid){const G=GROUPS[gid],V=venuesOf(gid),b=G.biz||{},L=[];
+  L.push((G.name||'Untitled')+' – Oolio setup recap ('+V.length+' venue'+(V.length===1?'':'s')+')','');
+  const det=[['Legal name',b.legal],['ABN',b.abn],['Merchant code',b.code],['Report emails',b.emails],['Main contact',G.contact],['CSP ticket',b.csp],['HubSpot',b.hubspot]].filter(x=>clean(x[1]));
+  if(det.length)L.push('ORGANISATION',...det.map(x=>'  '+x[0]+': '+x[1]),'');
+  if(clean(G.notes))L.push('NOTES',...String(G.notes).split('\n').map(x=>'  '+x),'');
+  V.forEach(([,o])=>{L.push('========================================',recapText(o),'')});
+  return L.join('\n').replace(/\n{3,}/g,'\n\n').trim()}
 const fmtDate=d=>{const t=new Date(d+'T00:00');return isNaN(t)?d:t.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})};
 
 function guideHtml(slug){const x=GUIDES[slug];if(!x)return'';
@@ -577,7 +707,8 @@ function guidesHtml(){const q=VIEW.q.toLowerCase(),by={};
   Object.entries(by).forEach(([c,L])=>{h+='<section><h3>'+esc(c)+' ('+L.length+')</h3><div class="st-guides">'+L.map(guideHtml).join('')+'</div></section>'});
   return h+(Object.keys(by).length?'':'<p class="st-msg">No guides match.</p>')+'</div>'}
 
-function fieldHtml(o,step,f){const[k,label,type,extra]=f,v=val(o,step.id,k),dis=READONLY?' disabled':'',nm=' data-step="'+step.id+'" data-k="'+k+'"';
+function fieldHtml(o,step,f){let[k,label,type,extra]=f;const v=val(o,step.id,k),dis=READONLY?' disabled':'',G=isShared(step.id,k)&&groupOf(o),nm=' data-step="'+step.id+'" data-k="'+k+'"';
+  if(G)label=label+' · shared with '+(G.name||'the organisation');
   if(type==='select')return '<label class="st-f">'+esc(label)+'<select'+nm+dis+'><option value=""></option>'+extra.filter(Boolean).map(x=>'<option'+(x===v?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select></label>';
   return '<label class="st-f">'+esc(label)+'<input type="'+(type==='url'?'url':type==='date'?'date':type==='email'?'email':type==='tel'?'tel':'text')+'"'+nm+dis+' value="'+esc(v)+'"'+(extra&&typeof extra==='string'?' placeholder="'+esc(extra)+'"':'')+'>'+
     (type==='url'&&v&&/^https?:\/\//.test(v)?'<a href="'+esc(v)+'" target="_blank" rel="noopener" class="st-small">Open</a>':'')+'</label>'}
@@ -619,9 +750,12 @@ function stepHtml(o,step){const s=st(o,step.id),open=VIEW.open.has(step.id),cls=
   h+='<label class="st-f">Notes<textarea data-note="'+step.id+'"'+(READONLY?' disabled':'')+' placeholder="Anything to remember or follow up">'+esc(s.note||'')+'</textarea></label>';
   if(!READONLY)h+='<div class="st-tools"><button type="button" class="st-sec st-sm" data-na="'+step.id+'">'+(s.s==='na'?'It’s needed after all':'Not needed for this venue')+'</button></div>';
   return h+'</div></details>'}
-function orgHtml(o,id){const p=progress(o),pp=progress(o,'pre'),tp=progress(o,'trn'),fl=o.flags||{},dis=READONLY?' disabled':'';
-  let h='<p class="st-row"><button type="button" class="st-link" data-a="list">← Organisations</button><span class="st-small st-muted" id="st-saving">'+(MODE==='db'?'Saved for the team':'Saved on this browser')+'</span></p>'+
-    '<div class="st-head st-card"><div class="st-title"><input id="st-name" value="'+esc(o.name)+'" aria-label="Organisation name" placeholder="Organisation name"'+dis+'>'+
+function orgHtml(o,id){const p=progress(o),pp=progress(o,'pre'),tp=progress(o,'trn'),fl=o.flags||{},dis=READONLY?' disabled':'',G=groupOf(o);
+  let h='<p class="st-row">'+(G?'<button type="button" class="st-link" data-grp="'+o.group+'">← '+esc(G.name||'Organisation')+'</button>':'<button type="button" class="st-link" data-a="list">← Organisations</button>')+
+    '<span class="st-small st-muted" id="st-saving">'+(MODE==='db'?'Saved for the team':'Saved on this browser')+'</span>'+
+    '<label class="st-small st-muted st-move">Organisation <select id="st-move"'+dis+'>'+Object.entries(GROUPS).sort((a,b)=>(a[1].name||'').localeCompare(b[1].name||'')).map(([gid,x])=>'<option value="'+gid+'"'+(o.group===gid?' selected':'')+'>'+esc(x.name||'Untitled')+'</option>').join('')+
+      (o.group&&GROUPS[o.group]?'':'<option value="" selected>None</option>')+(READONLY?'':'<option value="+">+ New organisation…</option>')+'</select></label></p>'+
+    '<div class="st-head st-card"><div class="st-title"><input id="st-name" value="'+esc(o.name)+'" aria-label="Venue name" placeholder="Venue name"'+dis+'>'+
     '<select id="st-stage" aria-label="Stage" style="width:auto"'+dis+'>'+STAGES.map(([k,t])=>'<option value="'+k+'"'+(o.stage===k?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
     '<div class="st-row st-small"><span class="st-bar st-grow" style="max-width:300px"><i style="width:'+p.pct+'%"></i></span><span>'+p.done+' of '+p.total+' steps</span><span class="st-muted">Pre-config '+pp.done+'/'+pp.total+' · Training '+tp.done+'/'+tp.total+'</span></div>'+
     '<div class="st-kv"><label class="st-f">Training date<input type="date" id="st-training" value="'+esc(o.training||'')+'"'+dis+'></label>'+
@@ -664,7 +798,7 @@ function recapText(o){const L=[],v=(id,k)=>val(o,id,k),fl=o.flags||{},p=progress
   const lk=[['CSP ticket',v('prep-csp','csp')],['HubSpot',v('prep-hubspot','hubspot')],['Hardware diagram',v('prep-hw','diagram')]].filter(x=>x[1]);
   if(lk.length)L.push('LINKS',...lk.map(x=>'  '+x[0]+': '+x[1]));
   return L.join('\n').replace(/\n{3,}/g,'\n\n').trim()}
-function showRecap(o){const t=recapText(o),d=g('st-dlg');
+function showRecap(o,text){const t=text||recapText(o),d=g('st-dlg');
   d.innerHTML='<form method="dialog" class="st st-recap" style="padding:0;max-width:none"><h2>Recap</h2><p class="st-small st-muted" style="margin:0">Paste into HubSpot, or trim the internal parts and send it to the venue.</p>'+
     '<textarea id="st-recap" readonly aria-label="Recap text">'+esc(t)+'</textarea><div class="st-tools"><button type="button" data-r="copy">Copy</button><button type="button" class="st-sec" data-r="save">Save as .txt</button><button class="st-sec" value="close">Close</button></div><div class="st-msg" id="st-rmsg"></div></form>';
   d.showModal();
@@ -693,8 +827,19 @@ function fillDialog(id){const own=lookupOf(ORGS[id]),L=(own?[venueOf(own)]:[]).c
       '<p class="st-msg">No recent lookups on this browser. Look the venue up in the Restaurant Lookup tab, then press “Start setup tracker” there.</p>')+
     '<div class="st-tools"><button class="st-sec" value="close">Close</button></div></form>';
   d.showModal();d.onclick=e=>{const b=e.target.closest('[data-pick]');if(!b)return;const o=ORGS[id];save(id,fillPatch(o,L[+b.dataset.pick]));d.close();render();flash('Filled the empty fields from the lookup. Check them against Google My Business before ticking.')}}
-async function newOrg(v){if(READONLY)return;let name=v&&v.name;
-  if(!v){const d=g('st-dlg');d.innerHTML='<form method="dialog" class="st" style="padding:0;max-width:none" id="st-newf"><h2>New organisation</h2><label class="st-f">Organisation / venue name<input id="st-newname" required autocomplete="off"></label>'+
+async function newGroup(){if(READONLY)return;const d=g('st-dlg');
+  d.innerHTML='<form method="dialog" class="st" style="padding:0;max-width:none"><h2>New organisation</h2><label class="st-f">Organisation name<input id="st-gnew" required autocomplete="off" placeholder="e.g. Orkhestra Group"></label>'+
+    '<p class="st-small st-muted" style="margin:0">Add its venues on the next page. Business details entered there are shared by all of them.</p>'+
+    '<div class="st-tools"><button value="ok">Create organisation</button><button class="st-sec" value="cancel" formnovalidate>Cancel</button></div></form>';
+  d.showModal();g('st-gnew').focus();
+  d.querySelector('form').onsubmit=async e=>{if(e.submitter&&e.submitter.value!=='ok')return;const name=clean(g('st-gnew').value);if(!name)return;
+    try{const gid=await createGroup({name});VIEW.org=null;VIEW.grp=gid;location.hash='setup';render();window.scrollTo(0,0)}catch(x){alert('Couldn’t create it: '+(x&&(x.message||x.code)))}}}
+function delGroupDialog(gid){const G=GROUPS[gid],d=g('st-dlg');if(!G)return;
+  d.innerHTML='<form method="dialog" class="st" style="padding:0;max-width:none"><h2>Delete “'+esc(G.name||'Untitled')+'”?</h2><p class="st-small" style="margin:0">It has no venues. Its shared details and notes are deleted for everyone.</p>'+
+    '<div class="st-tools"><button value="ok">Delete organisation</button><button class="st-sec" value="cancel" formnovalidate>Cancel</button></div></form>';
+  d.showModal();d.querySelector('form').onsubmit=e=>{if(e.submitter&&e.submitter.value==='ok')deleteGroup(gid).catch(x=>alert('Couldn’t delete: '+(x&&(x.message||x.code))))}}
+async function newOrg(v,gid){if(READONLY)return;let name=v&&v.name;
+  if(!v){const d=g('st-dlg');d.innerHTML='<form method="dialog" class="st" style="padding:0;max-width:none" id="st-newf"><h2>'+(gid&&GROUPS[gid]?'New venue in '+esc(GROUPS[gid].name):'New venue')+'</h2><label class="st-f">Venue name<input id="st-newname" required autocomplete="off"></label>'+
       (lookups().length?'<p class="st-small st-muted" style="margin:0">Or pick a recent lookup to fill the business details:</p><div class="st-pick">'+lookups().slice(0,8).map((x,i)=>'<button type="button" class="st-sec" data-pick="'+i+'"><b>'+esc(x.name)+'</b> <span class="st-small st-muted">'+esc(x.address)+'</span></button>').join('')+'</div>':'')+
       '<div class="st-tools"><button value="ok">Create</button><button class="st-sec" value="cancel" formnovalidate>Cancel</button></div></form>';
     d.showModal();g('st-newname').focus();
@@ -702,7 +847,7 @@ async function newOrg(v){if(READONLY)return;let name=v&&v.name;
       d.querySelector('form').onsubmit=e=>r({val:e.submitter?e.submitter.value:'ok'});d.onclose=()=>r({val:d.returnValue})});
     if(res.pick){v=res.pick;name=v.name}else if(res.val==='ok')name=clean(g('st-newname').value);else return}
   if(!name)return;
-  try{const id=await createOrg({name});window.OolioVenues.setActive(id);if(v)save(id,fillPatch(ORGS[id],v));VIEW.org=id;VIEW.open=new Set();location.hash='setup';render();window.scrollTo(0,0);
+  try{const id=await createOrg(gid&&GROUPS[gid]?{name,group:gid}:{name});window.OolioVenues.setActive(id);if(v){save(id,fillPatch(ORGS[id],v));pushShared(id)}ensureGroups();VIEW.org=id;VIEW.open=new Set();location.hash='setup';render();window.scrollTo(0,0);
     if(v)flash('Business details filled from Restaurant Lookup. Check them before ticking.')}
   catch(e){alert('Couldn’t create it: '+(e&&(e.message||e.code)))}}
 
@@ -713,6 +858,7 @@ function stepSet(id,patch){const o=ORGS[VIEW.org];if(!o)return;save(VIEW.org,{st
 root.addEventListener('click',e=>{const t=e.target;
   const tick=t.closest('[data-tick]');if(tick){e.preventDefault();e.stopPropagation();const id=tick.dataset.tick,o=ORGS[VIEW.org],cur=st(o,id).s;
     stepSet(id,{s:cur==='done'?'':'done',by:ME,at:Date.now()});render();return}
+  const gg=t.closest('[data-grp]');if(gg){VIEW.org=null;VIEW.grp=gg.dataset.grp;VIEW.tab='list';render();window.scrollTo(0,0);return}
   const og=t.closest('[data-org]');if(og){window.OolioVenues.setActive(og.dataset.org);VIEW.org=og.dataset.org;VIEW.open=new Set();render();window.scrollTo(0,0);return}
   const na=t.closest('[data-na]');if(na){const id=na.dataset.na,cur=st(ORGS[VIEW.org],id).s;stepSet(id,{s:cur==='na'?'':'na',by:ME,at:Date.now()});render();return}
   const add=t.closest('[data-add]');if(add){const k=add.dataset.add,o=ORGS[VIEW.org],rows=(o[k]||[]).slice();
@@ -732,7 +878,11 @@ root.addEventListener('click',e=>{const t=e.target;
   const jump=t.closest('[data-jump]');if(jump){e.preventDefault();const el=g('st-'+jump.dataset.jump);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});return}
   const a=t.closest('[data-a]');if(!a)return;const act=a.dataset.a,o=VIEW.org&&ORGS[VIEW.org];
   if(act==='new')newOrg();
-  else if(act==='list'){VIEW.org=null;VIEW.tab='list';VIEW.q='';render();window.scrollTo(0,0)}
+  else if(act==='newgroup')newGroup();
+  else if(act==='addvenue')newOrg(null,VIEW.grp);
+  else if(act==='grecap'){if(VIEW.grp)showRecap({name:(GROUPS[VIEW.grp]||{}).name},groupRecap(VIEW.grp))}
+  else if(act==='delgroup'){if(VIEW.grp)delGroupDialog(VIEW.grp)}
+  else if(act==='list'){VIEW.org=null;VIEW.grp=null;VIEW.tab='list';VIEW.q='';render();window.scrollTo(0,0)}
   else if(act==='backup')backup();
   else if(act==='guides'){VIEW.tab='guides';VIEW.q='';render();window.scrollTo(0,0)}
   else if(act==='recap')showRecap(o);
@@ -746,9 +896,21 @@ root.addEventListener('click',e=>{const t=e.target;
     rows.forEach(r=>{if(r.fb)return;const m=(r.name||'').match(/^(.*?)(\d+)\s*$/);if(!m)return;const other=byName[(m[1]+(m[2]==='1'?'2':m[2]==='2'?'1':'')).toLowerCase()];if(other&&other!==r)r.fb=other.name});
     save(VIEW.org,{printers:rows});render()}});
 root.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('st-mhist'))VIEW.mhist=d.open;if(d.dataset&&d.dataset.sid){if(d.open)VIEW.open.add(d.dataset.sid);else VIEW.open.delete(d.dataset.sid)}},true);
-function onField(t,final){const id=VIEW.org;if(!id)return;
+function onField(t,final){const id=VIEW.org;
   if(t.id==='st-q'){VIEW.q=t.value;held=false;const pos=t.selectionStart;render();const n=g('st-q');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}return}
   if(t.id==='st-stagef')return;
+  // the organisation page
+  if(!id&&VIEW.grp){let gp=null,key='';
+    if(t.id==='st-gname'){gp={name:clean(t.value)};key='gname'}else if(t.id==='st-gcontact'){gp={contact:t.value};key='gcontact'}
+    else if(t.id==='st-gnotes'){gp={notes:t.value};key='gnotes'}else if(t.dataset.gk){gp={biz:{[t.dataset.gk]:clean(t.value)}};key='g'+t.dataset.gk}
+    if(!gp)return;const gid=VIEW.grp;clearTimeout(textT[key]);
+    if(final)saveG(gid,gp);else{GROUPS[gid]=deepMerge(GROUPS[gid],gp);textT[key]=setTimeout(()=>saveG(gid,gp),700)}return}
+  if(!id)return;
+  if(t.id==='st-move'){const v=t.value;if(v==='+'){const o=ORGS[id];createGroup({name:o.name||'Untitled',biz:sharedFrom(o)}).then(gid=>{save(id,{group:gid});render()});return}
+    if(v&&GROUPS[v]){save(id,{group:v});pushShared(id)}return}
+  // a shared business detail is saved on the venue's organisation
+  if(t.dataset.step&&isShared(t.dataset.step,t.dataset.k)&&groupOf(ORGS[id])){const gid=ORGS[id].group,gp={biz:{[t.dataset.k]:clean(t.value)}},key='g'+t.dataset.k;
+    clearTimeout(textT[key]);if(final)saveG(gid,gp);else{GROUPS[gid]=deepMerge(GROUPS[gid],gp);textT[key]=setTimeout(()=>saveG(gid,gp),700)}return}
   let patch=null,key='';
   if(t.id==='st-name'){patch={name:clean(t.value)};key='name'}
   else if(t.id==='st-stage'){patch={stage:t.value};key='stage'}
@@ -770,7 +932,7 @@ function onField(t,final){const id=VIEW.org;if(!id)return;
 root.addEventListener('input',e=>{const t=e.target;if(t.type==='checkbox'||t.tagName==='SELECT')return;onField(t,false)});
 root.addEventListener('change',e=>{const t=e.target;if(t.id==='st-restore'){const f=t.files&&t.files[0];t.value='';if(f)restore(f);return}if(t.id==='st-dfile'){const f=t.files&&t.files[0];t.value='';if(f)readDiagram(f);return}if(t.id==='st-stagef'){VIEW.stage=t.value;render();return}if(t.id==='st-q')return;onField(t,true);if(t.type==='checkbox'||t.tagName==='SELECT'){held=false;render()}});
 // leaving a field redraws, so checks and badges catch up
-root.addEventListener('focusout',e=>{const t=e.target;if(t.dataset&&(t.dataset.step||t.dataset.tbl||t.dataset.note)||t.id==='st-name')setTimeout(()=>{if(!root.contains(document.activeElement)||!/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))render()},0)});
+root.addEventListener('focusout',e=>{const t=e.target;if(t.dataset&&(t.dataset.step||t.dataset.tbl||t.dataset.note||t.dataset.gk)||t.id==='st-name'||t.id==='st-gname')setTimeout(()=>{if(!root.contains(document.activeElement)||!/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))render()},0)});
 
 render();start();
 })();

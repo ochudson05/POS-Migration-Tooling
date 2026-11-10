@@ -25,9 +25,12 @@ function queryOf(o){const q=o.lookupQ||{};return{name:q.name||o.name||'',loc:q.l
 
 /* ---------- header: which venue ---------- */
 const sel=g('lx-venue');
-function drawPicker(){const a=OV.activeId,L=OV.list();
-  sel.innerHTML=(OV.ready?'<option value="">No venue selected</option>':'<option value="">Loading venues…</option>')+
-    L.map(o=>'<option value="'+esc(o.id)+'">'+esc(o.name||'Untitled')+'</option>').join('')+(OV.readOnly||!OV.ready?'':'<option value="+">+ New venue…</option>');
+function drawPicker(){const a=OV.activeId,L=OV.list(),G=OV.groups?OV.groups():[],opt=o=>'<option value="'+esc(o.id)+'">'+esc(o.name||'Untitled')+'</option>';
+  const byName=(x,y)=>(x.name||'').localeCompare(y.name||''),inG=new Set();
+  const groups=G.filter(gr=>gr.venues.length).map(gr=>{const vs=gr.venues.map(id=>L.find(o=>o.id===id)).filter(Boolean).sort(byName);vs.forEach(o=>inG.add(o.id));
+    return '<optgroup label="'+esc(gr.name||'Untitled')+'">'+vs.map(opt).join('')+'</optgroup>'}).join('');
+  sel.innerHTML=(OV.ready?'<option value="">No venue selected</option>':'<option value="">Loading venues…</option>')+groups+
+    L.filter(o=>!inG.has(o.id)).sort(byName).map(opt).join('')+(OV.readOnly||!OV.ready?'':'<option value="+">+ New venue…</option>');
   sel.value=a}
 sel.addEventListener('change',()=>{if(sel.value==='+'){sel.value=OV.activeId;newVenue();return}
   OV.setActive(sel.value);if(view()==='setup')OV.open(sel.value)});
@@ -37,11 +40,13 @@ function newVenue(prefill){const d=g('lx-dlg');
   d.innerHTML='<form method="dialog" class="lx-form"><h2>New venue</h2>'+
     '<label>Venue name<input id="lx-nn" required autocomplete="off" value="'+esc(prefill&&prefill.name||'')+'"></label>'+
     '<label>Suburb or street<input id="lx-nl" autocomplete="off" placeholder="e.g. Surry Hills" value="'+esc(prefill&&prefill.loc||'')+'"></label>'+
+    '<label>Organisation<select id="lx-ng"><option value="">A new organisation with the same name</option>'+(OV.groups?OV.groups():[]).map(gr=>'<option value="'+esc(gr.id)+'"'+(prefill&&prefill.group===gr.id?' selected':'')+'>'+esc(gr.name||'Untitled')+' ('+gr.venues.length+' venue'+(gr.venues.length===1?'':'s')+')</option>').join('')+'</select></label>'+
     '<label class="lx-ck"><input type="checkbox" id="lx-nrun" checked> Look it up now ('+(window.OOLIO_HOSTED?'free: Google, the venue’s website and the ABN register':'free with the Google relay in the Claude app; otherwise about 10–13 Firecrawl credits')+')</label>'+
     '<div class="lx-row"><button value="ok">Create venue</button><button value="cancel" class="lx-sec" formnovalidate>Cancel</button></div></form>';
   d.showModal();g('lx-nn').focus();
   d.querySelector('form').onsubmit=async e=>{if(e.submitter&&e.submitter.value!=='ok')return;const name=clean(g('lx-nn').value),loc=clean(g('lx-nl').value),run=g('lx-nrun').checked;if(!name)return;
-    try{const id=await OV.create({name,lookupQ:{name,loc}});
+    const grp=(g('lx-ng')||{}).value||'';
+    try{const id=await OV.create(Object.assign({name,lookupQ:{name,loc}},grp?{group:grp}:{}));
       if(run){LK.for=id;go('venue');window.dispatchEvent(new CustomEvent('oolio:lookup-fill',{detail:{name,loc,force:true,clear:true,run:true}}))}else go('')}
     catch(e){alert('Couldn’t create the venue: '+((e&&(e.message||e.code))||'error'))}}}
 
@@ -50,7 +55,7 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
   if(!a){const L=OV.list().slice(0,8);
     el.innerHTML='<h1>Oolio Menu Tools</h1><p>Pick the venue you’re setting up. Every tool then works on it: the lookup fills its business details, the converted menu goes to Photo Finder and the checklist, and progress is shared with the team.</p>'+
       '<div class="lx-card lx-pick">'+(OV.readOnly?'':'<button type="button" data-hub="new">New venue</button>')+
-      (L.length?'<div class="lx-recent">'+L.map(o=>{const p=OV.progress(o.id);return '<div class="lx-vcard"><button type="button" class="lx-sec" data-hub="pick" data-id="'+esc(o.id)+'"><b>'+esc(o.name||'Untitled')+'</b><span>'+esc(OV.stage(o.id))+' · '+p.done+'/'+p.total+' steps</span></button>'+
+      (L.length?'<div class="lx-recent">'+L.map(o=>{const p=OV.progress(o.id);return '<div class="lx-vcard"><button type="button" class="lx-sec" data-hub="pick" data-id="'+esc(o.id)+'"><b>'+esc(o.name||'Untitled')+'</b><span>'+(()=>{const gr=OV.groupOf&&OV.groupOf(o.id);return gr&&gr.name!==o.name?esc(gr.name)+' · ':''})()+esc(OV.stage(o.id))+' · '+p.done+'/'+p.total+' steps</span></button>'+
         (OV.readOnly?'':'<button type="button" class="lx-del" data-hub="del" data-id="'+esc(o.id)+'" title="Delete '+esc(o.name||'Untitled')+'" aria-label="Delete '+esc(o.name||'Untitled')+'">Delete</button>')+'</div>'}).join('')+'</div>':
         (OV.ready?'<p class="lx-muted">No venues yet.</p>':'<p class="lx-muted">Loading venues…</p>'))+'</div>';
     return}
@@ -62,7 +67,8 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
     {k:'photos',t:'Find product photos',done:!!f,s:f?f.saved+' photos saved, '+day(f.at)+'.':(m?'Uses the '+m.products+' converted products.':'Uses the converted menu, so do that first.'),b:'Find photos'},
     {k:'setup',t:'Setup checklist',done:all.total>0&&all.done===all.total,s:'Pre-config '+pre.done+'/'+pre.total+' · Training '+trn.done+'/'+trn.total+(a.training?' · Training '+new Date(a.training+'T00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}):''),b:'Open checklist'}];
   const next=steps.findIndex(s=>!s.done);
-  el.innerHTML='<div class="lx-vhead"><div><h1>'+esc(a.name||'Untitled')+'</h1><p>'+esc([OV.address(a.id),OV.stage(a.id)].filter(Boolean).join(' · '))+'</p></div>'+
+  const gr=OV.groupOf?OV.groupOf(a.id):null;
+  el.innerHTML='<div class="lx-vhead"><div>'+(gr?'<p class="lx-org"><button type="button" class="lx-link" data-hub="org" data-id="'+esc(gr.id)+'">'+esc(gr.name||'Organisation')+'</button>'+(gr.venues.length>1?' · '+gr.venues.length+' venues':'')+'</p>':'')+'<h1>'+esc(a.name||'Untitled')+'</h1><p>'+esc([OV.address(a.id),OV.stage(a.id)].filter(Boolean).join(' · '))+'</p></div>'+
     '<div class="lx-prog"><span class="lx-bar2"><i style="width:'+(all.total?Math.round(all.done/all.total*100):0)+'%"></i></span>'+all.done+'/'+all.total+' steps</div></div>'+
     '<ol class="lx-steps">'+steps.map((s,i)=>'<li class="lx-step'+(s.done?' done':'')+(i===next?' next':'')+'"><span class="lx-num">'+(s.done?'✓':i+1)+'</span><div><h2>'+esc(s.t)+'</h2><p>'+esc(s.s)+'</p></div>'+
       '<button type="button"'+(i===next?'':' class="lx-sec"')+' data-hub="'+s.k+'">'+esc(s.b)+'</button></li>').join('')+'</ol>'+
@@ -90,6 +96,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-hub]');if(
   else if(k==='pick'){OV.setActive(b.dataset.id)}
   else if(k==='none'){OV.setActive('')}
   else if(k==='del'){deleteVenue(b.dataset.id)}
+  else if(k==='org'){OV.openGroup(b.dataset.id);go('setup')}
   else if(k==='lookup'){if(!a)return;LK.for='';go('venue');if(!a.lookup){const q=queryOf(a);LK.for=a.id;window.dispatchEvent(new CustomEvent('oolio:lookup-fill',{detail:Object.assign(q,{force:true,clear:true,run:true})}))}}
   else if(k==='menu'){if(a&&!a.menu&&a.lookup&&estimate(a))findAll(a);else go('converter')}
   else if(k==='photos')go('photos');
