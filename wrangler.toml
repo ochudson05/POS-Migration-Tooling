@@ -8,6 +8,13 @@ compatibility_date = "2026-11-01"
 # keep variables set in the Cloudflare dashboard when deploying
 keep_vars = true
 
+# which Cloudflare Access sign-in the API trusts (not secrets: both appear in every sign-in link)
+# ACCESS_TEAM: the Zero Trust team, dawn-star-10db.cloudflareaccess.com
+# ACCESS_AUD: the Audience tag of the Access app on menurunner.ochudson05.workers.dev
+[vars]
+ACCESS_TEAM = "dawn-star-10db"
+ACCESS_AUD = "64a99e246fcfc30de5b899a9ec7d84010dec1a06ef42257f1580a00716aa0e8e"
+
 # the website itself: public/index.html, built by build_apps.py
 [assets]
 directory = "./public"
