@@ -1,6 +1,6 @@
 # Website legal and compliance: status
 
-How Oolio Menu Tools (the website at menurunner.ochudson05.workers.dev and the claude.ai copy) covers each item on the
+How Menu Hauler (the website at menurunner.ochudson05.workers.dev and the claude.ai copy) covers each item on the
 *Website Legal and Compliance Checklist* (11 Nov 2026). The public pages are in `legal.html`. The business details are in
 `BUSINESS` in `build_apps.py`. Run `python build_apps.py` after changing either.
 
@@ -21,8 +21,8 @@ A lawyer should review the final set before you rely on it. The checklist says t
    add a policy with action **Bypass**, include **Everyone**, for the paths `/legal/*` and `/.well-known/*`.
    Also add a link to `/legal/#privacy` in the Access login page's custom text. That is the collection notice at the sign-in form.
 5. **GST.** Register when GST turnover reaches $75,000. If you register, add "GST registered" next to the ABN in the footer.
-6. **Trade mark.** The tools use the names "Oolio" and "Oolio One", which belong to their owner. Confirm you have permission to
-   run them under that name with your ABN, or rename the site.
+6. **Trade mark.** The site was renamed "Menu Hauler" on 11 Nov 2026. Search ATMOSS (IP Australia) for "Menu Hauler" before
+   using it widely. The tools still mention "Oolio" and "Oolio One" only to describe the products they work with.
 7. **Yearly review** (each November): delete venues no longer being set up (the Privacy Policy promises this),
    check this file, update `updated` in `BUSINESS`, and renew `Expires` in security.txt (it's written by `build_apps.py`).
 

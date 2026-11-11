@@ -1,6 +1,6 @@
 # Third-party notices
 
-Oolio Menu Tools loads the libraries below from public CDNs at run time. Each one is used unmodified under its licence.
+Menu Hauler loads the libraries below from public CDNs at run time. Each one is used unmodified under its licence.
 
 | Component | Version | Loaded from | Licence | Copyright |
 |---|---|---|---|---|

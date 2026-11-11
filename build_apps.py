@@ -200,7 +200,7 @@ html.oolio-hosted .claude-only,html.oolio-hosted #rf-setbox{display:none!importa
 
 LAUNCHER_HTML = """
 <header class="lx-bar">
-  <button type="button" class="lx-brand" data-go="">Oolio Menu Tools</button>
+  <button type="button" class="lx-brand" data-go="">Menu Hauler</button>
   <nav class="lx-tabs" aria-label="Tools">
     <button type="button" class="lx-tab" data-go="converter">Menu Converter</button>
     <button type="button" class="lx-tab" data-go="photos">Photo Finder</button>
@@ -279,7 +279,7 @@ LAUNCHER_JS = r"""
       .then(()=>{const i=new Image();i.onload=()=>end(true);i.onerror=()=>end(false);i.src='https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Example.jpg/40px-Example.jpg'}).catch(()=>end(false))})}
   function show(){let v=location.hash.slice(1);if(!(v in views))v='';
     const cur=views[v];new Set(Object.values(views)).forEach(el=>{el.hidden=el!==cur});
-    if(LEGAL.includes(v)){document.querySelectorAll('#lx-legal .lg-doc').forEach(a=>{a.hidden=a.id!=='lg-'+v});document.querySelectorAll('.lx-lnav a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});document.title=g('lg-'+v).dataset.title+' · Oolio Menu Tools'}else document.title='Oolio Menu Tools';
+    if(LEGAL.includes(v)){document.querySelectorAll('#lx-legal .lg-doc').forEach(a=>{a.hidden=a.id!=='lg-'+v});document.querySelectorAll('.lx-lnav a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});document.title=g('lg-'+v).dataset.title+' · Menu Hauler'}else document.title='Menu Hauler';
     document.querySelectorAll('.lx-tab').forEach(b=>{if(b.dataset.go===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
     if(v==='photos')openPF();window.scrollTo(0,0)}
   document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;const v=b.dataset.go;
@@ -295,7 +295,7 @@ LAUNCHER_JS = r"""
 """
 
 page = (
-    "<title>Oolio Menu Tools</title>\n"
+    "<title>Menu Hauler</title>\n"
     '<meta name="claude:viewport-fit-sides" content="cover">\n'
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>\n'
     + FONT + "\n"
@@ -317,23 +317,23 @@ full = (
 (HERE / "apps.html").write_text(full, encoding="utf-8")
 # the website (Cloudflare Worker "menurunner", see wrangler.toml): the same page with hosted.js first,
 # which connects the tools to the website's sign-in, shared records and Firecrawl instead of claude.ai's
-hosted = full.replace("<title>Oolio Menu Tools</title>",
-                      "<title>Oolio Menu Tools</title>\n<script>" + (HERE / "hosted.js").read_text(encoding="utf-8") + "</script>", 1)
+hosted = full.replace("<title>Menu Hauler</title>",
+                      "<title>Menu Hauler</title>\n<script>" + (HERE / "hosted.js").read_text(encoding="utf-8") + "</script>", 1)
 (HERE / "public").mkdir(exist_ok=True)
 (HERE / "public" / "index.html").write_bytes(hosted.replace("\r\n", "\n").encode("utf-8"))
 print("wrote", HERE / "public" / "index.html", len(hosted), "bytes")
 # public/legal/: the same pages, readable without signing in (needs a Cloudflare Access "Bypass" rule for /legal/* and /.well-known/*)
 standalone = ('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
-    "<title>Policies · Oolio Menu Tools</title>\n" + FONT + "\n<style>" + THEME + "[hidden]{display:none!important}" + LEGAL_CSS +
+    "<title>Policies · Menu Hauler</title>\n" + FONT + "\n<style>" + THEME + "[hidden]{display:none!important}" + LEGAL_CSS +
     ".lx-top{padding:12px 16px;border-bottom:1px solid var(--line);background:var(--card);font-weight:700}.lx-top a{color:var(--text);text-decoration:none}</style>\n</head>\n<body>\n"
-    '<header class="lx-top"><a href="/">Oolio Menu Tools</a></header>\n<main class="lx-legal">\n<nav class="lx-lnav" aria-label="Policies">' + LEGAL_NAV + "</nav>\n<div>" + legal + "</div>\n</main>\n" + FOOTER +
+    '<header class="lx-top"><a href="/">Menu Hauler</a></header>\n<main class="lx-legal">\n<nav class="lx-lnav" aria-label="Policies">' + LEGAL_NAV + "</nav>\n<div>" + legal + "</div>\n</main>\n" + FOOTER +
     "\n<script>(()=>{const ks=[...document.querySelectorAll('.lg-doc')].map(a=>a.id.slice(3));function show(){let v=location.hash.slice(1);if(!ks.includes(v))v=ks[0];"
     "document.querySelectorAll('.lg-doc').forEach(a=>{a.hidden=a.id!=='lg-'+v});document.querySelectorAll('.lx-lnav a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});"
-    "document.title=document.getElementById('lg-'+v).dataset.title+' · Oolio Menu Tools';window.scrollTo(0,0)}window.addEventListener('hashchange',show);show()})();</script>\n</body>\n</html>\n")
+    "document.title=document.getElementById('lg-'+v).dataset.title+' · Menu Hauler';window.scrollTo(0,0)}window.addEventListener('hashchange',show);show()})();</script>\n</body>\n</html>\n")
 (HERE / "public" / "legal").mkdir(exist_ok=True)
 (HERE / "public" / "legal" / "index.html").write_bytes(standalone.replace("\r\n", "\n").encode("utf-8"))
 (HERE / "public" / ".well-known").mkdir(exist_ok=True)
-sec = ("# Security contact for Oolio Menu Tools (RFC 9116)\n" + ("Contact: mailto:" + B["email"] + "\n" if B["email"] else "") +
+sec = ("# Security contact for Menu Hauler (RFC 9116)\n" + ("Contact: mailto:" + B["email"] + "\n" if B["email"] else "") +
        "Contact: " + B["site"] + "/legal/#security\nPolicy: " + B["site"] + "/legal/#security\nPreferred-Languages: en\n"
        "Canonical: " + B["site"] + "/.well-known/security.txt\nExpires: 2027-11-11T00:00:00.000Z\n")
 (HERE / "public" / ".well-known" / "security.txt").write_bytes(sec.encode("utf-8"))

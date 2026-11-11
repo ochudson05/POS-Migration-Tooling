@@ -1,4 +1,4 @@
-# Security contact for Oolio Menu Tools (RFC 9116)
+# Security contact for Menu Hauler (RFC 9116)
 Contact: mailto:ochudson05@gmail.com
 Contact: https://menurunner.ochudson05.workers.dev/legal/#security
 Policy: https://menurunner.ochudson05.workers.dev/legal/#security

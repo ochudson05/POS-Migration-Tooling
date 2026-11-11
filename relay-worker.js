@@ -1,4 +1,4 @@
-/* Oolio Menu Tools website and relay: the Cloudflare Worker "menurunner" (free plan).
+/* Menu Hauler website and relay: the Cloudflare Worker "menurunner" (free plan).
 
    It serves the tools as a website (the files in public/, built by build_apps.py) and the API they use there:
      /api/me                  who is signed in (from Cloudflare Access)

@@ -550,11 +550,11 @@ const bmsg=x=>{const m=g('st-bmsg');if(m)m.textContent=x};
 async function backup(){bmsg('Preparing the backup…');const out={kind:'oolio-menu-tools-backup',version:2,at:Date.now(),venues:[],groups:Object.entries(GROUPS).map(([id,data])=>({id,data}))};
   for(const [id,o] of Object.entries(ORGS)){let menus=[];try{menus=(await menuVersions(id)).map(v=>{const d=Object.assign({},v);delete d.id;return{id:v.id,data:d}})}catch(e){}
     out.venues.push({id,data:o,menus})}
-  const blob=new Blob([JSON.stringify(out)],{type:'application/json'}),fn='Oolio Menu Tools backup '+new Date().toISOString().slice(0,10)+'.json',dl=await use('downloads');
+  const blob=new Blob([JSON.stringify(out)],{type:'application/json'}),fn='Menu Hauler backup '+new Date().toISOString().slice(0,10)+'.json',dl=await use('downloads');
   try{if(dl)await dl.save({filename:fn,data:blob});else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove()}
     bmsg('Saved '+out.venues.length+' venue'+(out.venues.length===1?'':'s')+' to “'+fn+'”.')}catch(e){bmsg(e&&e.code==='declined'?'':'The backup couldn’t be saved.')}}
 async function restore(f){if(READONLY)return;let j;try{j=JSON.parse(await f.text())}catch(e){bmsg('That file isn’t a backup.');return}
-  if(!j||j.kind!=='oolio-menu-tools-backup'||!Array.isArray(j.venues)){bmsg('That file isn’t an Oolio Menu Tools backup.');return}
+  if(!j||j.kind!=='oolio-menu-tools-backup'||!Array.isArray(j.venues)){bmsg('That file isn’t an Menu Hauler backup.');return}
   let added=0,skipped=0,menus=0,orgs=0;
   for(const x of j.groups||[]){if(!x||!x.id||!x.data||GROUPS[x.id])continue;try{await createGroup(x.data,x.id);orgs++}catch(e){}}
   for(const v of j.venues){if(!v||!v.id||!v.data)continue;if(ORGS[v.id]){skipped++;continue}

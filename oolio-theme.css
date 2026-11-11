@@ -1,4 +1,4 @@
-/* Oolio One look for Oolio Menu Tools.
+/* Oolio One look for Menu Hauler.
    build_apps.py adds this after every tool's own CSS (and inside the Photo Finder frame), so it only has to restate
    the shared colour tokens and a few shapes. Colours follow oolio.com: purple #673ab6 / #5e35b1, light purple #c1afde,
    charcoal #222, Material green / orange / red for state; type is Inter; buttons have 6px corners.

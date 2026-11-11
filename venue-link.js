@@ -1,4 +1,4 @@
-/* Oolio Menu Tools: links the four tools to one venue.
+/* Menu Hauler: links the four tools to one venue.
    The venue (an organisation in the Setup Tracker, shared with the team on claude.ai) is picked in the header,
    and every tab works on it:
    - Restaurant Lookup: a venue's lookup is saved with it and shown again for free; new lookups fill its business details.
@@ -54,7 +54,7 @@ function newVenue(prefill){const d=g('lx-dlg');
 /* ---------- home: the venue's progress through the tools ---------- */
 function drawHub(){const el=g('lx-hub'),a=OV.active();
   if(!a){const L=OV.list().slice(0,8);
-    el.innerHTML='<h1>Oolio Menu Tools</h1><p>Pick the venue you’re setting up. Every tool then works on it: the lookup fills its business details, the converted menu goes to Photo Finder and the checklist, and progress is shared with the team.</p>'+
+    el.innerHTML='<h1>Menu Hauler</h1><p>Pick the venue you’re setting up. Every tool then works on it: the lookup fills its business details, the converted menu goes to Photo Finder and the checklist, and progress is shared with the team.</p>'+
       '<div class="lx-card lx-pick">'+(OV.readOnly?'':'<button type="button" data-hub="new">New venue</button>')+
       (L.length?'<div class="lx-recent">'+L.map(o=>{const p=OV.progress(o.id);return '<div class="lx-vcard"><button type="button" class="lx-sec" data-hub="pick" data-id="'+esc(o.id)+'"><b>'+esc(o.name||'Untitled')+'</b><span>'+(()=>{const gr=OV.groupOf&&OV.groupOf(o.id);return gr&&gr.name!==o.name?esc(gr.name)+' · ':''})()+esc(OV.stage(o.id))+' · '+p.done+'/'+p.total+' steps</span></button>'+
         (OV.readOnly?'':'<button type="button" class="lx-del" data-hub="del" data-id="'+esc(o.id)+'" title="Delete '+esc(o.name||'Untitled')+'" aria-label="Delete '+esc(o.name||'Untitled')+'">Delete</button>')+'</div>'}).join('')+'</div>':

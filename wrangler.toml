@@ -1,4 +1,4 @@
-# Cloudflare deploy settings for the Worker "menurunner" (relay-worker.js): the Oolio Menu Tools website,
+# Cloudflare deploy settings for the Worker "menurunner" (relay-worker.js): the Menu Hauler website,
 # its API and the Google relay. Cloudflare deploys this automatically when changes are pushed to GitHub (Workers Builds).
 # Keys and passwords live in Cloudflare as secrets (see the top of relay-worker.js): never put them in this file.
 name = "menurunner"

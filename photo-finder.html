@@ -465,7 +465,7 @@ const dz=$('drop');['dragenter','dragover'].forEach(n=>dz.addEventListener(n,e=>
 ['dragleave','drop'].forEach(n=>dz.addEventListener(n,e=>{e.preventDefault();dz.classList.remove('on')}));
 dz.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f)loadFile(f)});
 $('venue').addEventListener('input',()=>{$('venue').dataset.typed=$('venue').value?'1':''});
-// Oolio Menu Tools sends the current venue and the products from its Menu Converter, so no export has to be loaded
+// Menu Hauler sends the current venue and the products from its Menu Converter, so no export has to be loaded
 let fromTools=false,toolsSig='';
 window.addEventListener('message',e=>{if(e.source!==window.parent||window.parent===window)return;const d=e.data;if(!d||d.type!=='oolio:ctx')return;
   if(d.venue&&!$('venue').dataset.typed)$('venue').value=d.venue;
