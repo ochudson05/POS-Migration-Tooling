@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · Menu Hauler</title>
+<!-- build_apps.py adds the Inter font and oolio-theme.css here and writes public/admin.html (served at /admin, owner and admins only) -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>/* Oolio One look for Menu Hauler.
+   build_apps.py adds this after every tool's own CSS (and inside the Photo Finder frame), so it only has to restate
+   the shared colour tokens and a few shapes. Colours follow oolio.com: purple #673ab6 / #5e35b1, light purple #c1afde,
+   charcoal #222, Material green / orange / red for state; type is Inter; buttons have 6px corners.
+   Layout: a deep purple app bar with the tool tabs, then each tool's own page on a faintly purple-tinted ground. */
+:root{
+  --bg:#f5f3f9;--card:#ffffff;--text:#222222;--muted:#5f586d;--line:#e3dded;--tile:#ece7f5;
+  --accent:#673ab6;--accent-strong:#5e35b1;--accent-soft:#efe8f9;--accent-text:#ffffff;
+  --ok:#2e7d32;--warn:#b45f00;--bad:#c62828;
+  --bar:#4a2a96;--bar-text:#ffffff;--bar-muted:rgb(255 255 255 / .76);--bar-line:rgb(255 255 255 / .22);--bar-hover:rgb(255 255 255 / .1);
+  --shadow:0 1px 2px rgb(40 22 80 / .06),0 2px 8px rgb(40 22 80 / .05);
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;--f-mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+  --r:6px;--r-card:12px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141119;--card:#1e1a26;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;--tile:#272033;
+  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2238;--accent-text:#1a1424;
+  --ok:#81c784;--warn:#ffb74d;--bad:#ef9a9a;
+  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247 / .72);--bar-line:rgb(242 239 247 / .18);--bar-hover:rgb(242 239 247 / .08);
+  --shadow:0 1px 2px rgb(0 0 0 / .3);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141119;--card:#1e1a26;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;--tile:#272033;
+  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2238;--accent-text:#1a1424;
+  --ok:#81c784;--warn:#ffb74d;--bad:#ef9a9a;
+  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247 / .72);--bar-line:rgb(242 239 247 / .18);--bar-hover:rgb(242 239 247 / .08);
+  --shadow:0 1px 2px rgb(0 0 0 / .3);color-scheme:dark}
+
+body{background:var(--bg);color:var(--text);font-family:var(--f-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3{letter-spacing:-.01em}
+h1{font-weight:700}
+a{color:var(--accent)}
+
+/* app bar */
+.lx-bar{background:var(--bar);border-bottom:0;color:var(--bar-text);padding-block:8px}
+.lx-brand{color:var(--bar-text);font-weight:700;letter-spacing:-.01em}
+.lx-tab{color:var(--bar-muted);font-weight:600;border-radius:var(--r)}
+.lx-tab:hover{color:var(--bar-text);background:var(--bar-hover)}
+.lx-tab[aria-current="page"]{color:var(--bar);background:var(--bar-text);border-color:transparent}
+.lx-venue{color:var(--bar-muted)}
+.lx-venue select{background:var(--bar-hover);color:var(--bar-text);border-color:var(--bar-line);border-radius:var(--r)}
+.lx-venue select option{color:var(--text);background:var(--card)}
+.lx-bar :focus-visible{outline:2px solid var(--bar-text)!important;outline-offset:2px}
+
+/* buttons, fields and focus */
+button,.btn,.rf button,.st button,.lx-strip button,.lx-row button{border-radius:var(--r)}
+button:not(:disabled):not(.sec):not(.rf-sec):not(.st-sec):not(.iw-sec):not(.iw-tb):not(.iw-ic):not(.lx-sec):not(.lx-tab):not(.lx-brand):not(.st-link):not(.lx-link):not(.st-x):not(.st-box):not(.st-org):not(.opt):hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+.sec:not(:disabled):hover,.rf-sec:not(:disabled):hover,.st-sec:not(:disabled):hover,.lx-sec:not(:disabled):hover,.iw-sec:not(:disabled):hover{border-color:var(--accent)!important;color:var(--accent)!important}
+input,select,textarea,.rf input,.st input,.st select,.st textarea{border-radius:var(--r)}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+:focus-visible{outline-color:var(--accent)}
+
+/* surfaces */
+.card,.lx-card,.st-card,.rf-card,.rf-kpi,.lx-step,.lx-strip,.iw-card{border-radius:var(--r-card);box-shadow:var(--shadow)}
+.lx-strip{border-left-color:var(--accent)}
+.lx-step.next{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow)}
+.lx-step.next .lx-num{background:var(--accent-soft)}
+.lx-step.done .lx-num,.st .st-step.is-done .st-box{color:var(--card)!important}
+.st-chip.a,.badge{background:var(--accent-soft);border-color:transparent}
+.st-chip.a{color:var(--accent)}
+.st-org{box-shadow:var(--shadow)}
+.st-org:hover{border-color:var(--accent)!important}
+.st-bar i,.lx-bar2 i{background:var(--accent)}
+.st-nav a:hover{background:var(--accent-soft)}
+.lx-toolsh,.st-phase,.rf .rf-card h3{color:var(--muted)}
+th{font-weight:600}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+[hidden]{display:none!important}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 var(--f-body,system-ui,sans-serif)}
+.ad-top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px));background:var(--bar);color:var(--bar-text)}
+.ad-top b{font-size:1rem}.ad-top .ad-sp{flex:1}
+.ad-top a{color:var(--bar-text);text-decoration:none;font-weight:600;font-size:.9rem;padding:5px 10px;border-radius:var(--r)}
+.ad-top a:hover{background:var(--bar-hover)}.ad-top a:focus-visible{outline:2px solid var(--bar-text);outline-offset:2px}
+.ad-tag{font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--bar-hover);color:var(--bar-text)}
+main{max-width:1180px;margin:0 auto;padding:22px max(16px,env(safe-area-inset-left,0px)) 56px;display:grid;gap:18px}
+h1{font-size:1.45rem;margin:0}h2{font-size:1.08rem;margin:0 0 10px}
+.ad-sub{color:var(--muted);margin:4px 0 0;max-width:75ch}
+.ad-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.ad-kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);padding:12px 14px;box-shadow:var(--shadow)}
+.ad-kpi span{display:block;color:var(--muted);font-size:.82rem}.ad-kpi b{font-size:1.5rem;font-variant-numeric:tabular-nums}
+.ad-card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-card);padding:16px;box-shadow:var(--shadow);min-width:0}
+.ad-two{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px}
+@media (max-width:860px){.ad-two{grid-template-columns:minmax(0,1fr)}}
+button{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-text);border:1px solid var(--accent);border-radius:var(--r);padding:7px 13px;cursor:pointer;margin:0}
+button.sec{background:transparent;color:var(--text);border-color:var(--line)}
+button.bad{background:transparent;color:var(--bad);border-color:var(--line)}
+button.sm{padding:4px 9px;font-size:.84rem}
+button.bad:not(:disabled):hover{background:var(--bad)!important;border-color:var(--bad)!important;color:#fff!important}
+button.sec:not(:disabled):hover{background:transparent!important;border-color:var(--accent)!important;color:var(--accent)!important}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select,textarea{font:inherit;font-size:.92rem;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:7px 9px;min-width:0}
+input[type=checkbox]{width:auto;padding:0}
+label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:end}
+.grow{flex:1 1 220px;min-width:0}.grow input{width:100%}
+.muted{color:var(--muted)}.small{font-size:.85rem}
+.msg{font-size:.88rem;min-height:1.3em;margin:8px 0 0;color:var(--muted)}.msg.err{color:var(--bad)}.msg.ok{color:var(--ok)}
+.chips{display:flex;flex-wrap:wrap;gap:4px 12px}.chips label{display:flex;gap:6px;align-items:center;font-size:.88rem;color:var(--text)}
+.tw{overflow-x:auto;margin:0 -4px}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);font-weight:600;white-space:nowrap}
+td.num{font-variant-numeric:tabular-nums;text-align:right}
+.who b{display:block}.who>span{display:block;color:var(--muted);font-size:.82rem;overflow-wrap:anywhere}
+.pill{display:inline-block;font-size:.76rem;font-weight:600;padding:1px 8px;border-radius:99px;border:1px solid var(--line);white-space:nowrap}
+.pill.owner,.pill.admin{background:var(--accent-soft);color:var(--accent);border-color:transparent}
+.pill.blocked{color:var(--bad);border-color:var(--bad)}.pill.live{color:var(--ok);border-color:var(--ok)}
+.acts{display:flex;flex-wrap:wrap;gap:4px}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--ok);margin-right:6px;vertical-align:middle}
+.feed{list-style:none;margin:0;padding:0;display:grid;gap:0;max-height:520px;overflow:auto}
+.feed li{display:grid;grid-template-columns:110px minmax(0,1fr);gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.86rem}
+.feed time{color:var(--muted);font-variant-numeric:tabular-nums}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);padding:18px;width:min(560px,calc(100vw - 32px));max-height:90vh}
+dialog::backdrop{background:rgb(0 0 0/.45)}
+.form{display:grid;gap:14px}.form h2{margin:0}
+fieldset{border:0;margin:0;padding:0;display:grid;gap:6px}legend{font-size:.82rem;color:var(--muted);padding:0;margin-bottom:4px}
+.opt{display:flex;gap:8px;align-items:flex-start;font-size:.9rem}.opt input{margin-top:4px}
+.opt span small{display:block;color:var(--muted);font-size:.8rem}
+.note{border-left:3px solid var(--warn);background:var(--bg);padding:8px 10px;border-radius:6px;font-size:.86rem}
+@media (max-width:640px){.hide-s{display:none}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+<header class="ad-top"><b>Menu Hauler</b><span class="ad-tag">Admin</span><span class="ad-sp"></span><a href="/">Back to the tools</a><a href="/auth/logout">Sign out</a></header>
+<main>
+  <div><h1>People and access</h1><p class="ad-sub">Everyone who has signed in or been added, what they may use, and what they’ve been doing. Changes take effect straight away.</p></div>
+  <p class="msg" id="msg" role="status" aria-live="polite"></p>
+  <section class="ad-kpis" id="kpis" aria-label="Summary"></section>
+
+  <section class="ad-card" aria-labelledby="h-people">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 id="h-people" style="margin:0">People</h2>
+      <div class="row"><label class="f grow" style="flex-basis:240px">Search<input type="search" id="q" placeholder="Name or email" autocomplete="off"></label>
+      <label class="f">Show<select id="show"><option value="">Everyone</option><option value="live">Signed in now</option><option value="admin">Admins</option><option value="blocked">Blocked</option></select></label>
+      <button type="button" id="add">Add person</button></div></div>
+    <div class="tw"><table><thead><tr><th scope="col">Person</th><th scope="col">Access</th><th scope="col" class="hide-s">Tools</th><th scope="col">Last seen</th><th scope="col" class="hide-s num">Sign-ins</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody id="people"></tbody></table></div>
+  </section>
+
+  <div class="ad-two">
+    <section class="ad-card" aria-labelledby="h-act">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 id="h-act" style="margin:0">Recent activity</h2><label class="f">Person<select id="actwho"><option value="">Everyone</option></select></label></div>
+      <ul class="feed" id="feed"></ul>
+      <p class="small muted" id="actnote" style="margin:8px 0 0"></p>
+    </section>
+    <section class="ad-card" aria-labelledby="h-who">
+      <h2 id="h-who">Who can sign in</h2>
+      <p class="small" style="margin:0 0 10px">Anyone with an email at these domains can sign in without being added first. They start as members with every tool. Leave it empty so only people you add can sign in.</p>
+      <div class="row"><label class="f grow">Allowed email domains<input type="text" id="domains" placeholder="oolio.com, example.com" autocomplete="off"></label><button type="button" id="savedom">Save</button></div>
+      <p class="small muted" id="domnote" style="margin:8px 0 0"></p>
+      <p class="small" style="margin:14px 0 0">To keep someone out, <b>block</b> them. Removing a person only deletes their settings, so they can sign in again if their domain is allowed.</p>
+    </section>
+  </div>
+</main>
+
+<dialog id="dlg"><form class="form" id="form" method="dialog">
+  <h2 id="dtitle">Add person</h2>
+  <label class="f">Email<input type="email" id="f-email" required autocomplete="off"></label>
+  <fieldset><legend>Role</legend>
+    <label class="opt"><input type="radio" name="role" value="member" checked><span>Member<small>Uses the tools they’re given.</small></span></label>
+    <label class="opt"><input type="radio" name="role" value="admin" id="f-admin"><span>Admin<small>Also opens this page and manages members. Only the owner can make or change admins.</small></span></label>
+  </fieldset>
+  <fieldset><legend>Access</legend>
+    <label class="opt"><input type="radio" name="status" value="active" checked><span>Active</span></label>
+    <label class="opt"><input type="radio" name="status" value="blocked"><span>Blocked<small>Signed out everywhere straight away and can’t sign in again.</small></span></label>
+  </fieldset>
+  <fieldset><legend>Tools they can open</legend><div class="chips" id="f-tools"></div></fieldset>
+  <fieldset><legend>Permissions</legend>
+    <label class="opt"><input type="checkbox" id="f-edit" checked><span>Can add, change and delete venues<small>Off: they can see venues but not change them.</small></span></label>
+    <label class="opt"><input type="checkbox" id="f-fc" checked><span>Can use the team’s Firecrawl credits<small>Off: web pages are read without Firecrawl.</small></span></label>
+  </fieldset>
+  <label class="f">Note (only admins see it)<textarea id="f-note" rows="2" maxlength="300"></textarea></label>
+  <div id="f-hist" hidden><h3 style="font-size:.9rem;margin:0 0 6px">Their recent activity</h3><ul class="feed" id="f-feed" style="max-height:180px"></ul></div>
+  <p class="msg" id="fmsg" role="status"></p>
+  <div class="row" style="justify-content:flex-end"><button type="button" class="sec" id="cancel">Cancel</button><button type="submit" id="save">Save</button></div>
+</form></dialog>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id),esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+const TOOLNAME={converter:'Menu Converter',photos:'Photo Finder',venue:'Restaurant Lookup',setup:'Setup Tracker',word:'Image to Word'};
+const nameOf=e=>e.split('@')[0].split(/[._-]+/).filter(Boolean).map(w=>w[0].toUpperCase()+w.slice(1)).join(' ');
+let D=null,editing=null;
+const msg=(t,k)=>{$('msg').textContent=t||'';$('msg').className='msg'+(k?' '+k:'')};
+async function call(path,body){const r=await fetch('/api/admin/'+path,body===undefined?{credentials:'same-origin'}:{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  let j={};try{j=await r.json()}catch(e){}if(r.status===401){location.href='/login?next=/admin';throw new Error('Signed out')}if(!r.ok)throw new Error(j.error||('Error '+r.status));return j}
+function ago(t){if(!t)return'Never';const s=(Date.now()-t)/1000;if(s<90)return'Just now';if(s<3600)return Math.round(s/60)+' min ago';if(s<86400)return Math.round(s/3600)+' h ago';if(s<86400*30)return Math.round(s/86400)+' days ago';return new Date(t).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})}
+const when=t=>new Date(t).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+function line(a){const who=a.email===D.me.email?'You':nameOf(a.email);
+  if(a.what==='sign-in')return'<b>'+esc(who)+'</b> signed in';
+  if(a.what==='open')return'<b>'+esc(who)+'</b> opened '+esc(TOOLNAME[a.detail]||a.detail);
+  if(a.what==='admin')return'<b>'+esc(who)+'</b>: '+esc(a.detail);return'<b>'+esc(who)+'</b> '+esc(a.what)+' '+esc(a.detail||'')}
+async function load(){try{D=await call('overview')}catch(e){msg(e.message,'err');return}draw();loadFeed()}
+function draw(){const U=D.users,wk=Date.now()-7*864e5;
+  $('kpis').innerHTML=[['People',U.length],['Signed in now',U.filter(u=>u.live).length],['Active in the last 7 days',U.filter(u=>u.lastSeen>wk).length],['Admins',U.filter(u=>u.role!=='member').length],['Blocked',U.filter(u=>u.status==='blocked').length],['Firecrawl this month',D.firecrawl.used+' / '+D.firecrawl.cap]]
+    .map(([k,v])=>'<div class="ad-kpi"><span>'+k+'</span><b>'+v+'</b></div>').join('');
+  const q=$('q').value.trim().toLowerCase(),sh=$('show').value;
+  const rows=U.filter(u=>(!q||u.email.includes(q)||nameOf(u.email).toLowerCase().includes(q))&&(!sh||(sh==='live'?u.live:sh==='admin'?u.role!=='member':u.status==='blocked')));
+  $('people').innerHTML=rows.map(u=>{const fixed=u.role==='owner'||u.email===D.me.email||(D.me.role!=='owner'&&u.role==='admin');
+    const tools=u.tools?(u.tools.length?u.tools.map(t=>TOOLNAME[t]).join(', '):'None'):'All tools';
+    const perms=[u.canEdit?'':'View only',u.firecrawl?'':'No Firecrawl'].filter(Boolean);
+    return'<tr data-e="'+esc(u.email)+'"><td class="who"><b>'+(u.live?'<span class="dot" title="Signed in"></span>':'')+esc(nameOf(u.email))+(u.email===D.me.email?' (you)':'')+'</b><span>'+esc(u.email)+'</span>'+(u.note?'<span>'+esc(u.note)+'</span>':'')+'</td>'+
+      '<td><span class="pill '+u.role+'">'+(u.role==='owner'?'Owner':u.role==='admin'?'Admin':'Member')+'</span> '+(u.status==='blocked'?'<span class="pill blocked">Blocked</span>':'')+(perms.length?'<div class="small muted">'+perms.join(' · ')+'</div>':'')+'</td>'+
+      '<td class="hide-s small">'+esc(tools)+'</td><td class="small">'+ago(u.lastSeen)+(u.lastTool?'<div class="muted">'+esc(TOOLNAME[u.lastTool]||'')+'</div>':'')+'</td><td class="hide-s num">'+u.signIns+'</td>'+
+      '<td><div class="acts">'+(fixed?'<span class="small muted">'+(u.role==='owner'?'Always full access':u.email===D.me.email?'':'Owner manages')+'</span>':
+        '<button type="button" class="sm sec" data-a="edit">Edit</button>'+(u.live?'<button type="button" class="sm sec" data-a="signout">Sign out</button>':'')+
+        (u.status==='blocked'?'<button type="button" class="sm sec" data-a="unblock">Unblock</button>':'<button type="button" class="sm bad" data-a="block">Block</button>')+'<button type="button" class="sm bad" data-a="remove">Remove</button>')+'</div></td></tr>'}).join('')||'<tr><td colspan="6" class="muted">Nobody matches.</td></tr>';
+  const sel=$('actwho'),v=sel.value;sel.innerHTML='<option value="">Everyone</option>'+U.map(u=>'<option value="'+esc(u.email)+'">'+esc(nameOf(u.email))+' · '+esc(u.email)+'</option>').join('');sel.value=v;
+  $('domains').value=D.domains.join(', ');const own=D.me.role==='owner';$('domains').disabled=!own;$('savedom').hidden=!own;
+  $('domnote').textContent=(own?'':'Only the owner can change this. ')+(D.domainsFrom==='cloudflare'?'Currently taken from the ALLOWED_DOMAINS setting in Cloudflare until you save here.':D.domainsFrom==='default'?'Currently the built-in default until you save here.':'')+(D.extraEmails.length?' Also allowed by the ALLOWED_EMAILS setting in Cloudflare: '+D.extraEmails.join(', ')+'.':'');
+  $('f-admin').disabled=!own}
+async function loadFeed(){const e=$('actwho').value;try{const r=await call('activity?'+new URLSearchParams({email:e,limit:150}));
+  $('feed').innerHTML=r.items.map(a=>'<li><time datetime="'+new Date(a.at).toISOString()+'">'+when(a.at)+'</time><span>'+line(a)+'</span></li>').join('')||'<li><span></span><span class="muted">Nothing yet.</span></li>';
+  $('actnote').textContent='Sign-ins, tools opened (once per person and tool every 30 minutes) and admin changes, kept for '+D.activityDays+' days. Venue changes are recorded on each venue.'}catch(err){msg(err.message,'err')}}
+$('q').addEventListener('input',draw);$('show').addEventListener('change',draw);$('actwho').addEventListener('change',loadFeed);
+$('savedom').addEventListener('click',async()=>{const v=$('domains').value;
+  if(!v.trim()&&!confirm('With no domains, only people added here can sign in. Continue?'))return;
+  try{const r=await call('settings',{domains:v});msg('Saved. Allowed domains: '+(r.domains.join(', ')||'none')+'.','ok');load()}catch(e){msg(e.message,'err')}});
+
+/* ---------- add / edit ---------- */
+$('f-tools').innerHTML=Object.entries(TOOLNAME).map(([k,n])=>'<label><input type="checkbox" value="'+k+'" checked> '+n+'</label>').join('');
+function open(u){editing=u;$('fmsg').textContent='';$('dtitle').textContent=u?'Edit '+nameOf(u.email):'Add person';
+  $('f-email').value=u?u.email:'';$('f-email').readOnly=!!u;
+  document.querySelector('input[name=role][value='+(u&&u.role==='admin'?'admin':'member')+']').checked=true;
+  document.querySelector('input[name=status][value='+(u&&u.status==='blocked'?'blocked':'active')+']').checked=true;
+  $('f-tools').querySelectorAll('input').forEach(c=>{c.checked=!u||!u.tools||u.tools.includes(c.value)});
+  $('f-edit').checked=!u||u.canEdit;$('f-fc').checked=!u||u.firecrawl;$('f-note').value=u?u.note:'';
+  $('f-hist').hidden=!u;if(u){$('f-feed').innerHTML='<li><span></span><span class="muted">Loading…</span></li>';
+    call('activity?'+new URLSearchParams({email:u.email,limit:30})).then(r=>{$('f-feed').innerHTML=r.items.map(a=>'<li><time>'+when(a.at)+'</time><span>'+line(a)+'</span></li>').join('')||'<li><span></span><span class="muted">Nothing yet.</span></li>'}).catch(()=>{})}
+  $('dlg').showModal();(u?$('f-edit'):$('f-email')).focus()}
+$('add').addEventListener('click',()=>open(null));$('cancel').addEventListener('click',()=>$('dlg').close());
+$('form').addEventListener('submit',async e=>{e.preventDefault();const email=$('f-email').value.trim().toLowerCase();
+  if(!editing&&D.users.some(u=>u.email===email)){$('fmsg').textContent='That person is already on the list. Use Edit.';$('fmsg').className='msg err';return}
+  const tools=[...$('f-tools').querySelectorAll('input:checked')].map(c=>c.value);
+  const body={email,role:document.querySelector('input[name=role]:checked').value,status:document.querySelector('input[name=status]:checked').value,
+    tools:tools.length===Object.keys(TOOLNAME).length?null:tools,canEdit:$('f-edit').checked,firecrawl:$('f-fc').checked,note:$('f-note').value.trim()};
+  $('save').disabled=true;try{await call('user',body);$('dlg').close();msg((editing?'Saved changes for ':'Added ')+email+'.'+(!editing?' They can now sign in at menuhauler.com with that email.':''),'ok');load()}
+  catch(err){$('fmsg').textContent=err.message;$('fmsg').className='msg err'}$('save').disabled=false});
+$('people').addEventListener('click',async e=>{const b=e.target.closest('button[data-a]');if(!b)return;const email=b.closest('tr').dataset.e,u=D.users.find(x=>x.email===email),a=b.dataset.a;
+  if(a==='edit')return open(u);
+  const ask={signout:'Sign '+email+' out on every device? They can sign in again.',block:'Block '+email+'? They’re signed out now and can’t sign in again until unblocked.',
+    unblock:'Unblock '+email+'?',remove:'Remove '+email+' and their settings? If their email domain is allowed they can still sign in, as a new member. To keep them out, block them instead.'}[a];
+  if(!confirm(ask))return;b.disabled=true;
+  try{if(a==='signout')await call('signout',{email});else if(a==='remove')await call('remove',{email});
+    else await call('user',{email,role:u.role,status:a==='block'?'blocked':'active',tools:u.tools,canEdit:u.canEdit,firecrawl:u.firecrawl,note:u.note});
+    msg({signout:'Signed out ',block:'Blocked ',unblock:'Unblocked ',remove:'Removed '}[a]+email+'.','ok');load()}catch(err){msg(err.message,'err');b.disabled=false}});
+load();setInterval(()=>{if(!document.hidden&&!$('dlg').open)load()},60000);
+})();
+</script>
+</body>
+</html>

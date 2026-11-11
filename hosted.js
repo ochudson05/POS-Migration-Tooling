@@ -59,7 +59,7 @@ const DB={collection:p=>new Query(p),doc:p=>{const i=p.lastIndexOf('/');return n
 /* ---------- who is signed in ---------- */
 const USER={async id(){try{return 'u:'+(await me()).email}catch(e){return null}},
   async me(){try{const m=await me();return{id:'u:'+m.email,name:m.name,email:m.email}}catch(e){return{id:'',name:''}}},
-  isOwner:()=>false,canEdit:()=>true,async can(){return true},
+  isOwner:()=>!!(ME_NOW&&ME_NOW.role==='owner'),canEdit:()=>!ME_NOW||ME_NOW.canEdit!==false,async can(){try{return(await me()).canEdit!==false}catch(e){return false}},
   async profiles(ids){const o={};(ids||[]).forEach(id=>{const e=String(id).replace(/^u:/,'');o[id]={id,name:e.includes('@')?nameOf(e):''}});return o},
   async search(){return[]}};
 
@@ -74,6 +74,23 @@ window.claude={use:async n=>{
   if(n==='user')return USER;
   if(n==='mcp')return MCP;
   return null}};
+
+/* ---------- what this person may use (set on /admin) ---------- */
+// tabs and cards for tools they haven't been given are hidden, and opening one by its address goes back to the start;
+// view-only and Firecrawl limits are also enforced by the website itself. Admins get a link to /admin in the footer.
+let ME_NOW=null;
+const TOOLKEYS=['converter','photos','venue','setup','word'];
+function applyAccess(m){ME_NOW=m;const ok=t=>!m.tools||m.tools.includes(t);
+  document.querySelectorAll('.lx-tab[data-go],.lx-card .lx-open[data-go]').forEach(b=>{const t=b.dataset.go;if(TOOLKEYS.includes(t)&&!ok(t))(b.closest('.lx-card')||b).hidden=true});
+  const guard=()=>{const v=location.hash.slice(1);if(TOOLKEYS.includes(v)&&!ok(v)){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}window.dispatchEvent(new HashChangeEvent('hashchange'))}};
+  window.addEventListener('hashchange',guard);guard();
+  if(m.admin){const f=document.querySelector('.lx-foot .hosted-only');if(f&&!f.querySelector('a[href="/admin"]')){const a=document.createElement('a');a.href='/admin';a.textContent='Admin';f.prepend(a,' · ')}}
+  if(m.canEdit===false){const b=document.createElement('div');b.className='oh-banner';b.style.background='var(--accent)';b.textContent='Your access is view-only: you can look at venues but not change them.';document.body.prepend(b)}}
+// which tool is open, for the admin page's activity list
+function report(){const t=location.hash.slice(1);if(TOOLKEYS.includes(t)&&!(ME_NOW&&ME_NOW.tools&&!ME_NOW.tools.includes(t)))fetch('/api/seen',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({tool:t})}).catch(()=>{})}
+window.addEventListener('hashchange',report);
+const start=()=>{me().then(applyAccess).catch(()=>{});report()};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 
 /* ---------- a page-wide note when sign-in fails ---------- */
 let shown=false;

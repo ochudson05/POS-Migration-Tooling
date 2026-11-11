@@ -65,7 +65,7 @@ const DB={collection:p=>new Query(p),doc:p=>{const i=p.lastIndexOf('/');return n
 /* ---------- who is signed in ---------- */
 const USER={async id(){try{return 'u:'+(await me()).email}catch(e){return null}},
   async me(){try{const m=await me();return{id:'u:'+m.email,name:m.name,email:m.email}}catch(e){return{id:'',name:''}}},
-  isOwner:()=>false,canEdit:()=>true,async can(){return true},
+  isOwner:()=>!!(ME_NOW&&ME_NOW.role==='owner'),canEdit:()=>!ME_NOW||ME_NOW.canEdit!==false,async can(){try{return(await me()).canEdit!==false}catch(e){return false}},
   async profiles(ids){const o={};(ids||[]).forEach(id=>{const e=String(id).replace(/^u:/,'');o[id]={id,name:e.includes('@')?nameOf(e):''}});return o},
   async search(){return[]}};
 
@@ -80,6 +80,23 @@ window.claude={use:async n=>{
   if(n==='user')return USER;
   if(n==='mcp')return MCP;
   return null}};
+
+/* ---------- what this person may use (set on /admin) ---------- */
+// tabs and cards for tools they haven't been given are hidden, and opening one by its address goes back to the start;
+// view-only and Firecrawl limits are also enforced by the website itself. Admins get a link to /admin in the footer.
+let ME_NOW=null;
+const TOOLKEYS=['converter','photos','venue','setup','word'];
+function applyAccess(m){ME_NOW=m;const ok=t=>!m.tools||m.tools.includes(t);
+  document.querySelectorAll('.lx-tab[data-go],.lx-card .lx-open[data-go]').forEach(b=>{const t=b.dataset.go;if(TOOLKEYS.includes(t)&&!ok(t))(b.closest('.lx-card')||b).hidden=true});
+  const guard=()=>{const v=location.hash.slice(1);if(TOOLKEYS.includes(v)&&!ok(v)){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}window.dispatchEvent(new HashChangeEvent('hashchange'))}};
+  window.addEventListener('hashchange',guard);guard();
+  if(m.admin){const f=document.querySelector('.lx-foot .hosted-only');if(f&&!f.querySelector('a[href="/admin"]')){const a=document.createElement('a');a.href='/admin';a.textContent='Admin';f.prepend(a,' · ')}}
+  if(m.canEdit===false){const b=document.createElement('div');b.className='oh-banner';b.style.background='var(--accent)';b.textContent='Your access is view-only: you can look at venues but not change them.';document.body.prepend(b)}}
+// which tool is open, for the admin page's activity list
+function report(){const t=location.hash.slice(1);if(TOOLKEYS.includes(t)&&!(ME_NOW&&ME_NOW.tools&&!ME_NOW.tools.includes(t)))fetch('/api/seen',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({tool:t})}).catch(()=>{})}
+window.addEventListener('hashchange',report);
+const start=()=>{me().then(applyAccess).catch(()=>{});report()};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 
 /* ---------- a page-wide note when sign-in fails ---------- */
 let shown=false;
@@ -812,6 +829,7 @@ Double Shot=60</textarea></div>
 <h2>What we collect</h2>
 <ul>
 <li><b>Your sign-in email.</b> To sign in, you enter your work email and we email you a 6-digit code. We keep your email address, and a scrambled copy of the code until it’s used or expires. We never ask for or store a password.</li>
+<li><b>Your access and activity.</b> Your role and which tools you may use, when you last used the website, when you sign in, and which tools you open. The owner and admins see this on the admin page to manage who has access.</li>
 <li><b>Records you save.</b> Venue and organisation names, addresses, phone numbers, websites, ABNs and legal names, menus and menu versions, setup-tracker progress and notes. Each record also stores the email of the person who last changed it and when.</li>
 <li><b>Files and text you add.</b> Menu files, photos, PDFs, pasted text and web addresses. These are read in your own browser. They are only kept if you save the result to a venue.</li>
 <li><b>Lookups.</b> The venue names, suburbs and web addresses you search for, and the results: public business details, opening hours, and Google reviews, which can include the reviewer’s display name.</li>
@@ -861,6 +879,8 @@ Double Shot=60</textarea></div>
 <tr><td>Venue records, menus and setup progress</td><td>Until a team member deletes the venue. Once a year we review the records and delete venues that are no longer being set up.</td></tr>
 <tr><td>Sign-in codes</td><td>10 minutes, or until used</td></tr>
 <tr><td>Sign-in sessions</td><td>30 days, or until you sign out</td></tr>
+<tr><td>Sign-in and tool-use activity</td><td>180 days</td></tr>
+<tr><td>Your access settings and when you were last seen</td><td>Until an admin removes you, or you ask us to</td></tr>
 <tr><td>Visit logs</td><td>Cloudflare’s standard retention (a few days)</td></tr>
 <tr><td>Saved lookups and page reads in your browser</td><td>7 to 14 days, then refreshed or dropped; you can clear them at any time by clearing this site’s data</td></tr>
 <tr><td>Files you add but don’t save</td><td>Not kept: they’re gone when you close the page</td></tr>

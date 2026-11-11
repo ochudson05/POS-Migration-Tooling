@@ -404,6 +404,12 @@ login = ('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<me
 (HERE / "public" / "login.html").write_bytes(login.replace("\r\n", "\n").encode("utf-8"))
 print("wrote", HERE / "public" / "login.html")
 
+# public/admin.html: people, permissions and activity (admin.html; relay-worker.js serves it at /admin to the owner and admins only)
+adm = (HERE / "admin.html").read_text(encoding="utf-8")
+adm = adm.replace("<style>", FONT + "\n<style>" + THEME, 1)
+(HERE / "public" / "admin.html").write_bytes(adm.replace("\r\n", "\n").encode("utf-8"))
+print("wrote", HERE / "public" / "admin.html")
+
 print("wrote", HERE / "apps.html", len(full), "bytes")
 if len(sys.argv) > 1:
     Path(sys.argv[1]).write_text(page, encoding="utf-8")
