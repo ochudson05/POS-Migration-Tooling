@@ -40,7 +40,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-11.5';
+const VERSION = '2026-11-11.6';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -429,7 +429,8 @@ export default {
     // the admin page (public/admin.html) is for the owner and admins only
     if (/^\/admin(\.html)?\/?$/.test(u.pathname)) {
       if (!isAdmin(viewer)) return new Response('<!DOCTYPE html><meta charset="utf-8"><title>Not allowed · Menu Hauler</title><p style="font:16px system-ui;padding:24px">Only admins can open this page. <a href="/">Back to Menu Hauler</a></p>', { status: 403, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
-      if (env.ASSETS) return env.ASSETS.fetch(new Request(new URL('/admin.html', u), req));
+      // passed through as asked: the asset server serves admin.html at /admin and redirects /admin.html to /admin
+      // (asking it for /admin.html when /admin was opened made a redirect loop)
     }
     if (env.ASSETS) return env.ASSETS.fetch(req);
     return out({ error: 'Unknown address.' }, 404);
