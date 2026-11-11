@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Menu Reader eval</title></head>
+<body><pre id="out">running</pre>
+<iframe id="f" style="display:none"></iframe>
+<script>
+/* Scores the converter's classifier on held-out venues (training/testset.json, made by build_knowledge.py).
+   Serve the repo folder (launch config "tools-static") and open /training/eval.html, or run headless:
+   msedge --headless --virtual-time-budget=60000 --dump-dom http://localhost:PORT/training/eval.html */
+const SPIRITS=['Vodka','Gin','Rum','Whisky','Bourbon','Tequila','Brandy & Cognac','Liqueurs','Aperitifs'];
+const fam=c=>SPIRITS.includes(c)?'Spirits':c;
+document.getElementById('f').src='../'+(new URLSearchParams(location.search).get('page')||'menu-converter.html');
+const out=t=>document.getElementById('out').textContent=t;
+const wait=()=>{const W=document.getElementById('f').contentWindow;if(W&&typeof W.highCat==='function'&&W.document.readyState==='complete')run(W).catch(e=>out('ERROR '+e.stack));else setTimeout(wait,200)};
+setTimeout(wait,200);
+async function run(W){
+  const T=await fetch('testset.json').then(r=>r.json());
+  const train=await fetch('knowledge-train.json').then(r=>r.json());
+  const res={shipped:W.eval('KN&&KN.venues+" venues, "+Object.keys(KN.names).length+" names"')};
+  // "before": the word rules alone; "after": with knowledge learned from the training venues only
+  for(const [label,k] of [['rules only',null],['rules + learned',train]]){W.setKnowledge(k);res[label]=score(W,T)}
+  out('RESULT '+JSON.stringify(res,null,1));
+}
+function score(W,T){
+  const s={items:T.length};
+  const add=(k,ok)=>{s[k]=s[k]||[0,0];s[k][1]++;if(ok)s[k][0]++};
+  const conf={},ex={};
+  for(const t of T){
+    const it={name:t.name,desc:t.desc,variation:t.variation,cat:'',catOrig:''};
+    if(t.cat){const h=fam(W.highCat(it)||'');add('category',h===t.cat);
+      if(h!==t.cat){const k=t.cat+' <- '+(h||'(none)');conf[k]=(conf[k]||0)+1;(ex[k]=ex[k]||[]).length<8&&ex[k].push(t.name)}}
+    if(t.rg){const d=W.eval("isDrink")(it);const g=d===null?W.guessRG(it):d?'Beverage':'Food';add('food_or_drink',g===t.rg)}
+    if(t.pr){const p=W.itemPrinter(it);add('printer',(p==='Coffee'?'Coffee':p==='Bar'?'Bar':'Kitchen')===t.pr)}}
+  for(const k of ['category','food_or_drink','printer'])if(s[k])s[k].push((100*s[k][0]/s[k][1]).toFixed(1)+'%');
+  s.top_misses=Object.entries(conf).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([k,n])=>k+' x'+n+': '+ex[k].join(' | '));
+  return s;
+}
+</script></body></html>

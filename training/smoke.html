@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Menu Reader smoke test</title></head>
+<body><pre id="out">running</pre>
+<iframe id="f" src="../menu-converter.html" style="display:none"></iframe>
+<script>
+/* Checks Menu Reader 2.0's plumbing without Claude: Word files are read, and Claude's "options"
+   (with a stand-in Claude) come back as a modifier table the converter recognises.
+   Put a few .docx menus in training/_test-docs/ named a.docx, b.docx, c.docx, serve the repo
+   folder and open /training/smoke.html. */
+const out=t=>document.getElementById('out').textContent=t;
+const wait=()=>{const W=document.getElementById('f').contentWindow;
+  if(W&&typeof W.docxLines==='function'&&W.document.readyState==='complete')run(W).catch(e=>out('ERROR '+e.stack));else setTimeout(wait,200)};
+setTimeout(wait,200);
+async function run(W){
+  const res={};
+  for(const n of ['a','b','c']){
+    const r=await fetch('_test-docs/'+n+'.docx');if(!r.ok)continue;
+    const lines=W.docxLines(await r.arrayBuffer());
+    const t=W.docTable(n+'.docx',lines,'Word document');
+    res[n]={lines:lines.length,headings:lines.filter(l=>l.tag==='h').length,items:t.rows.length-1,first:t.rows.slice(1,6).map(r=>r.slice(0,4).join(' / '))};}
+  // a stand-in for Claude that answers with one item, one size pair and an add-on group
+  W.eval(`SNS={limits:async()=>({maxPromptBytes:200000}),json:async(prompt)=>{window.__prompt=prompt;return{venue:'Test Cafe',
+    items:[{category:'Breakfast',name:'Eggs on Toast',size:'',price:14,description:'sourdough',dietary:'V'},
+           {category:'Drinks',name:'Milkshake',size:'',price:8,description:'',dietary:''}],
+    options:[{group:'Egg Style',name:'Poached',price:0,required:true,max:1,for:'Eggs on Toast'},
+             {group:'Egg Style',name:'Fried',price:0,required:true,max:1,for:'Eggs on Toast'},
+             {group:'Breakfast Extras',name:'Bacon',price:5,required:false,max:0,for:'Breakfast'},
+             {group:'Milkshake Flavour',name:'Chocolate',price:'',required:'yes',max:1,for:'Milkshake'}],notes:[]}}}`);
+  const t=await W.docRead('test.docx',[{text:'Eggs on Toast 14',h:0,tag:''}],'Word document');
+  const ts=[t,...(t.extra||[])];
+  W.addTables(ts);
+  res.mock={how:t.doc.how,items:t.rows.length-1,extra:(t.extra||[]).length,
+    kinds:ts.map(x=>x.a&&x.a.kind),modRows:t.extra&&t.extra[0]&&t.extra[0].rows,
+    promptHasOptions:/"options"/.test(window.__prompt||W.__prompt||''),promptHasFlavourRule:/Milkshake Flavour/.test(W.__prompt||'')};
+  out('RESULT '+JSON.stringify(res,null,1));
+}
+</script></body></html>

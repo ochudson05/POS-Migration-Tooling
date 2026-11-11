@@ -336,6 +336,7 @@ page = (
     "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + iw_css + THEME + SHELL_CSS + "</style>\n"
     + LAUNCHER_HTML
     + "<script>" + SHELL_JS + "</script>\n"
+    + "<script>" + (HERE / "menu-knowledge.js").read_text(encoding="utf-8") + "</script>\n"
     + "<script>" + conv_js + "</script>\n"
     + "<script>" + rl_js + "</script>\n"
     + "<script>" + st_js + "</script>\n"

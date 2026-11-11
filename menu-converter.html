@@ -6,6 +6,7 @@
 <title>Menu Converter → Oolio One</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="menu-knowledge.js"></script>
 <style>
 :root{box-sizing:border-box;--bg:#f7f6f3;--card:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#e2e0da;--accent:#c4410c;--accent-text:#fff;--ok:#1a7f4b;--warn:#a15c00}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161614;--card:#222220;--text:#f1f0ec;--muted:#9c9b94;--line:#37362f;--accent:#ff7a3d;--accent-text:#1a1a18;--ok:#4cc38a;--warn:#f0b45a;color-scheme:dark}}
@@ -65,15 +66,15 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 <body>
 <main>
 <h1>Menu converter → Oolio One</h1>
-<p class="sub">Upload a Square or Lightspeed export, an Oolio pre-work spreadsheet, any spreadsheet a customer made, a menu PDF, a web page or a photo of a menu. You can add several at once, for example a product list and a modifiers sheet. You get one clean file in the Oolio One product import format. Spreadsheets, PDFs and web pages are read in your browser and never leave it. Menu photos and scanned PDFs are sent to Claude to be read.</p>
+<p class="sub">Upload a Square or Lightspeed export, an Oolio pre-work spreadsheet, any spreadsheet a customer made, a menu PDF or Word document, a web page or a photo of a menu. You can add several at once, for example a product list and a modifiers sheet. You get one clean file in the Oolio One product import format. Spreadsheets are read in your browser and never leave it. Where Claude is available, menu photos, PDFs, Word documents and web pages are sent to Claude to be read; otherwise they are read in your browser.</p>
 
 <div class="card">
 <h2>1. Source files</h2>
-<label for="file">Choose one or more files: spreadsheets (.csv, .xlsx), menu PDFs, saved web pages (.html), text files or photos of a menu (.jpg, .png)</label>
+<label for="file">Choose one or more files: spreadsheets (.csv, .xlsx), menu PDFs, Word documents (.docx), saved web pages (.html), text files or photos of a menu (.jpg, .png)</label>
 <p class="lx-cn" style="margin:0 0 6px">Files are read in your browser and aren’t kept unless you save the result to a venue. Don’t include personal or payment details. <a href="#privacy">Privacy Policy</a> · <a href="#ai">Use of AI</a></p>
-<input type="file" id="file" accept=".csv,.tsv,.txt,.md,.xlsx,.xlsm,.xls,.ods,.pdf,.html,.htm,.png,.jpg,.jpeg,.webp,.gif" multiple>
+<input type="file" id="file" accept=".csv,.tsv,.txt,.md,.docx,.xlsx,.xlsm,.xls,.ods,.pdf,.html,.htm,.png,.jpg,.jpeg,.webp,.gif" multiple>
 <div class="warn hosted-only" style="margin-top:6px">Menu photos and scanned PDFs are read with text recognition (OCR) in your browser, which can take a minute. Check names and prices carefully against the photo. Take photos straight on, in good light, one page at a time.</div>
-<div class="warn claude-only" style="margin-top:6px">Menu photos and scanned PDFs are read by Claude, which uses a little of your own Claude usage. The first time, you’re asked to allow it. Take photos straight on, in good light, one page at a time.</div>
+<div class="warn claude-only" style="margin-top:6px">Menu photos, PDFs and Word documents are read by Claude, which uses a little of your own Claude usage and also picks up add-ons and choices (e.g. “Add bacon +$4”) as modifier groups. The first time, you’re asked to allow it. Take photos straight on, in good light, one page at a time.</div>
 <div class="two" style="margin-top:10px"><input id="url" type="url" placeholder="Or a menu web page, e.g. https://venue.com.au/menu"><button id="urlb" type="button" class="sec" style="margin:0">Read page</button></div>
 <div class="warn hosted-only" style="margin-top:4px">A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too. Pages are read for free by the website; Firecrawl (the team’s account) is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
 <div class="warn claude-only" style="margin-top:4px">On the shared claude.ai page, web pages are read with your Firecrawl connector (add it once in claude.ai Settings → Connectors). A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too, and Claude reads the menu, using a little of your Claude usage. Pages are read for free first (directly, or with the Claude app’s browser when this page is open in the Claude app); Firecrawl is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
@@ -195,6 +196,8 @@ async function readFile(f){
   if(/\.(png|jpe?g|webp|gif)$/i.test(f.name))return[(await getSample())?await claudeRead(f.name,[f],'photo'):docTable(f.name,await ocrLines([f]),'photo (OCR)')];
   if(/\.(html?|txt)$/i.test(f.name)){let t;try{t=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){t=new TextDecoder('windows-1252').decode(buf)}
     return[/\.txt$/i.test(f.name)?docTable(f.name,textLines(t),'text'):htmlTable(f.name,t)];}
+  if(/\.docx$/i.test(f.name))return[await docRead(f.name,docxLines(buf),'Word document')];
+  if(/\.doc$/i.test(f.name))throw new Error('Old Word (.doc) files can\u2019t be read. Save it as .docx or PDF and add it again.');
   if(/\.md$/i.test(f.name)){const t=new TextDecoder('utf-8').decode(buf);return[docTable(f.name,markdownLines(t),'markdown')];}
   if(/\.(xlsx|xlsm|xls|ods)$/i.test(f.name)){
     const wb=XLSX.read(buf,{type:'array'});
@@ -235,8 +238,24 @@ async function pdfLines(buf){
     const canv=[];for(let p=1;p<=doc.numPages;p++){say('Preparing scanned page '+p+' of '+doc.numPages+'…');const page=await doc.getPage(p),vp=page.getViewport({scale:2.2}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;await page.render({canvasContext:c.getContext('2d'),viewport:vp,intent:'print'}).promise;canv.push(c)}
     return{scan:canv};}
   say('');return out;}
+// a menu's text (text PDF, Word file) read by Claude, or by the built-in parser when Claude isn't available or finds nothing
+async function docRead(name,lines,how){
+  if(await sampleNS()){
+    try{const r=await claudeText(name,[{url:name,md:lines.map(l=>(l.tag==='h'?'## ':'')+l.text).join('\n')}]);
+      if(r.count){r.table.file=name;r.table.doc.how=how+' (read by Claude)';return r.table}}
+    catch(e){if(cancelled(e))throw new Error('Stopped.')}}
+  return docTable(name,lines,how);}
+// Word (.docx): paragraphs become lines, heading styles become headings, table cells are spaced apart
+function docxLines(buf){
+  let z;try{z=XLSX.CFB.read(new Uint8Array(buf),{type:'array'})}catch(e){throw new Error('This Word file couldn\u2019t be opened. Save it as .docx or PDF and try again.')}
+  const e=XLSX.CFB.find(z,'word/document.xml')||XLSX.CFB.find(z,'/word/document.xml');
+  if(!e||!e.content)throw new Error('This Word file has no text in it.');
+  const xml=new TextDecoder('utf-8').decode(e.content instanceof Uint8Array?e.content:new Uint8Array(e.content));
+  const ent=t=>t.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
+  return xml.split(/<\/w:p>/).map(p=>({text:ent(p.replace(/<w:tab\/>/g,'   ').replace(/<w:br\/>/g,' ').replace(/<\/w:tc>/g,'   ').replace(/<[^>]+>/g,'')).replace(/\s+$/,''),h:0,
+    tag:/<w:pStyle w:val="(Heading|Title)/i.test(p)?'h':''})).filter(l=>l.text.trim());}
 async function pdfTable(name,buf){const r=await pdfLines(buf);
-  if(!r.scan)return docTable(name,r);
+  if(!r.scan)return docRead(name,r,'PDF');
   if(await getSample())return claudeRead(name,r.scan,'scanned PDF');
   say('This PDF is a scan with no text, so it is being read with OCR. This can take a minute…');
   return docTable(name,await ocrLines(r.scan),'scanned PDF (OCR)');}
@@ -265,7 +284,7 @@ async function imageTiles(src){
     const cv=document.createElement('canvas');cv.width=x1-x0;cv.height=y1-y0;cv.getContext('2d').drawImage(img,x0,y0,x1-x0,y1-y0,0,0,x1-x0,y1-y0);out.push(await toBlob(cv))}
   return out;}
 const MENU_PROMPT=n=>'These '+(n>1?n+' images are overlapping slices of ONE restaurant or cafe menu page, in reading order (left to right, then top to bottom). An item cut off at an edge of one slice appears whole in the next: list it once.':'image is a restaurant or cafe menu.')+
-  '\n\nRead every item that has a price and reply with only this JSON:\n{"items":[{"category":"","name":"","size":"","price":0,"description":"","dietary":""}],"notes":[]}\n\nRules:\n'+MENU_RULES;
+  '\n\nRead every item that has a price, and every add-on or choice, and reply with only this JSON:\n{"items":[{"category":"","name":"","size":"","price":0,"description":"","dietary":""}],"options":[{"group":"","name":"","price":0,"required":false,"max":0,"for":""}],"notes":[]}\n\nRules:\n'+MENU_RULES;
 const MENU_RULES=
   '- category: the section heading the item is printed under, exactly as printed (e.g. "Breakfast", "Hot Drinks"). Use "" if there is none.\n'+
   '- name: the item name only, without the price, size or dietary codes.\n'+
@@ -273,7 +292,13 @@ const MENU_RULES=
   '- price: a number, without "$" or words like "From". Use null if the price is unreadable or "market price".\n'+
   '- description: the ingredients or description line under the item, or "".\n'+
   '- dietary: codes printed next to the item, e.g. "V, GF", or "".\n'+
-  '- Leave out add-ons that are only "+$2" extras, opening hours, addresses, phone numbers and notes about surcharges.\n'+
+  '- options: every add-on, extra, swap or choice the menu prints, e.g. "Add bacon +$4", "Milk: oat, soy, almond +80c", "Choice of sauce: pepper, mushroom, gravy", "Eggs your way: poached, fried or scrambled", "GF bread +$2", "Mixers: coke, lemonade, soda". One entry per option.\n'+
+  '  - group: a short name for the set, e.g. "Breakfast Extras", "Milk", "Coffee Extras", "Sauce", "Egg Style", "Bread Choice", "Pizza Extras", "Burger Extras", "Sides", "Spirit Mixer", "Milkshake Flavour". Use the menu\'s own wording when it gives one.\n'+
+  '  - price: the extra cost as a number, 0 when free. required: true when the guest must pick (choice of, choose, your way, served with your choice of); max: 1 for pick-one, else 0.\n'+
+  '  - for: the item(s) or section the options belong to, as printed (e.g. "Breakfast", "All coffee", "Steaks", "Pizzas").\n'+
+  '- Flavours or types of one item at one price ("Milkshake: chocolate, vanilla, strawberry $8") are ONE item ("Milkshake", 8) plus an options group ("Milkshake Flavour", required, max 1). Only sizes and serves get separate item entries.\n'+
+  '- A set menu, banquet or deal with one price is one item; put the courses in "description".\n'+
+  '- Leave out opening hours, addresses, phone numbers and notes about surcharges.\n'+
   '- Copy names and prices exactly as printed; do not invent or correct anything. If part of the menu is unreadable, say what in "notes".';
 function claudeErr(e){const c=e&&e.code;return({
   not_granted:'Reading menus with Claude needs permission. Reload the page and choose Allow when asked.',
@@ -284,8 +309,14 @@ function claudeErr(e){const c=e&&e.code;return({
   invalid_json:'Claude’s answer couldn’t be read. Try the photo again.',
   refused:'Claude couldn’t read this image.',
   cancelled:'Stopped.'})[c]||'Claude couldn’t read the menu ('+((e&&(e.message||e.code))||'unknown error')+'). Try again.';}
+// add-ons and choices Claude found ("Add bacon +$4", "Milk: oat, soy +80c") become a modifier table next to the items
+function optTable(name,opts){const rows=[],seen=new Set();
+  (opts||[]).forEach(o=>{if(!o||typeof o!=='object')return;const g=clean(o.group),n=clean(o.name);if(!g||!n||n.length>60)return;
+    const k=(g+'|'+n).toLowerCase();if(seen.has(k))return;seen.add(k);
+    rows.push([g,n,o.price==null||o.price===''?'0':String(num(o.price)||'0'),o.required===true||/^(y|yes|true)$/i.test(String(o.required))?'Yes':'No',+o.max>0?String(+o.max):'',clean(o.for)])});
+  return rows.length?[{file:name+' modifiers',sheet:'',rows:[MODHDR,...rows]}]:[]}
 async function claudeRead(name,sources,how){
-  const s=await getSample();const rows=[],notes=[];readCtl=new AbortController();
+  const s=await getSample();const rows=[],notes=[],opts=[];readCtl=new AbortController();
   for(let i=0;i<sources.length;i++){
     const tiles=(await imageTiles(sources[i])).slice(0,IMGMAX);
     sayStop('Claude is reading the '+how+(sources.length>1?' (page '+(i+1)+' of '+sources.length+')':'')+'. This can take up to a minute…');
@@ -294,9 +325,10 @@ async function claudeRead(name,sources,how){
     const items=Array.isArray(data)?data:(data&&Array.isArray(data.items)?data.items:[]);
     items.forEach(it=>{if(!it||typeof it!=='object')return;const nm=clean(it.name);if(!nm)return;
       rows.push([clean(it.category),nm,clean(it.size),it.price==null||it.price===''?'':num(it.price),clean(it.description),clean(it.dietary)])});
+    if(data&&Array.isArray(data.options))opts.push(...data.options);
     if(data&&Array.isArray(data.notes))data.notes.forEach(n=>{if(clean(n))notes.push(clean(n))});}
   say('');readCtl=null;
-  return mkDocTable(name,rows,notes,how+' (read by Claude)');}
+  const t=mkDocTable(name,rows,notes,how+' (read by Claude)');t.extra=optTable(name,opts);return t;}
 function sayStop(t){$('dmsg').innerHTML=esc(t)+' <button type="button" class="sec" id="stopread" style="padding:4px 10px;margin:0 0 0 6px">Stop</button>';
   $('stopread').addEventListener('click',()=>{if(readCtl)readCtl.abort()});}
 // turn positioned text pieces into reading-order lines, keeping menu columns apart
@@ -562,6 +594,32 @@ const DRINK_D=/\b(vodka|gin|rum|tequila|mezcal|whisk(e)?y|bourbon|scotch|brandy|
 const FOOD_D=/\b(served with|chips|fries|salad|toasted|grilled|fried|baked|roasted|crumbed|battered|sauce|aioli|mayo|buns?|bread|sourdough|brioche|wrap|cheese|eggs?|bacon|beef|chicken|pork|lamb|fish|prawns?|rice|noodles|pastry|slaw|jus|gravy|mash|dressing|herbs|rocket|tomato|onion|pickles?|patty|fillet|crispy|plate|bowl)\b/gi;
 const DRINK_CATS=new Set(['Mocktails','Cocktails','Cold Drinks','Iced Drinks','Shakes & Smoothies','Tea','Hot Coffee','Beer & Cider','Wine','Spirits','Premix','Vodka','Gin','Rum','Whisky','Bourbon','Tequila','Brandy & Cognac','Liqueurs','Aperitifs']);
 const words=s=>(s.match(/\p{L}[\p{L}'-]*/gu)||[]);
+/* ---------------- Menu Reader 2.0: what finished pre-work says about an item ----------------
+   MENU_KNOWLEDGE (menu-knowledge.js, built by training/build_knowledge.py from ~220 venues' finished
+   Oolio pre-work) records what onboarding gave each item name: its category, Food or Beverage, and
+   printer (C coffee, B bar, K kitchen). A name several venues agree on outweighs the word rules below;
+   a name never seen before falls back to its last word ("... Spritz", "... Benedict"), then the rules. */
+let KN=typeof MENU_KNOWLEDGE!=='undefined'?MENU_KNOWLEDGE:null;const KNC=new Map();
+function setKnowledge(k){KN=k;KNC.clear()}
+// the same tidy-up as norm_name() in build_knowledge.py: "Flat White (Large) $5.50" → "flat white"
+function knowKey(s){s=String(s||'').toLowerCase()
+  .replace(/\$\s?\d+(\.\d+)?/g,' ').replace(/\(([^)]*)\)/g,(m,g)=>g.length<25?' ':' '+g+' ')
+  .replace(/\b\d+(\.\d+)?\s?(ml|l|lt|oz|g|kg|cl|"|inch|in|pc|pcs|pce|pieces?)\b/g,' ')
+  .replace(/\b(gfo?|vgo?|veo?|vo|dfo?|nfo?|v|gf|df|vg|ve|h|halal)\b\s*$/,' ')
+  .replace(/^\s*(\d+[.)]|[a-z]\d+[.)]?|#\d+)\s+/,' ').replace(/[’']/g,'').replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ')
+  .replace(/\b(sml|small|reg|regular|med|medium|lrg|large|lge|ta|t a|takeaway|take away|dine in|glass|bottle|btl|can|cup|mug|jug|pint|pot|schooner|middy|nip|single|double|dbl)\s*$/,' ');
+  return s.replace(/\s+/g,' ').trim()}
+const knRG=g=>g==='B'?'Beverage':g==='F'?'Food':'';
+// {cat, rg, pr, how:'name'|'word'} or null
+function knowItem(name){if(!KN)return null;const key=knowKey(name);if(!key)return null;if(KNC.has(key))return KNC.get(key);
+  let r=null;const v=KN.names[key];
+  if(v){const[c,g,p]=v.split('|');r={cat:c===''?'':KN.cats[+c],rg:knRG(g),pr:p||'',how:'name'}}
+  else{const w=key.split(' ').pop(),x=w.length>2&&KN.words[w];if(x){const[c,g]=x.split('|');r={cat:c===''?'':KN.cats[+c],rg:knRG(g),pr:'',how:'word'}}}
+  KNC.set(key,r);return r}
+// any word of the name that venues always file the same way ("Barbera d'Asti '15" → Wine); the best-supported word wins
+function knowToken(name){if(!KN||!KN.tokens)return'';let best='',n=0;
+  for(const w of knowKey(name).split(' ')){const x=KN.tokens[w];if(x){const[c,v]=x.split('|');if(+v>n){n=+v;best=KN.cats[+c]}}}
+  return best}
 function drinkScore(o){
   const name=clean(o.name),desc=clean(o.desc||''),cat=clean(o.catOrig||o.cat||''),vari=clean(o.variation||o.vhint||'');
   let s=0;
@@ -575,11 +633,15 @@ function drinkScore(o){
   if(desc&&!COOKED.test(desc)){s+=Math.min(4,(desc.match(DRINK_D)||[]).length);s-=Math.min(4,(desc.match(FOOD_D)||[]).length);}
   if(/\b(glass|bottle|btl|carafe|pot|middy|schooner|pint|jug|pitcher|shot|nip|can)\b|\d+\s?(ml|l|oz|cl)\b/i.test(vari+' '+name))s+=2;
   const pr=clean(o.printer||'');if(/^(bar|barista|coffee|drinks?)$/i.test(pr))s+=1;else if(/^(kitchen|pizza|pans|mains|larder|grill|fryer)$/i.test(pr))s-=1;
+  // what venues' finished pre-work calls this item (Food or Beverage)
+  const k=knowItem(name);if(k&&k.rg&&!COOKED.test(name))s+=(k.how==='name'?8:3)*(k.rg==='Beverage'?1:-1);
   return s;}
 const isDrink=o=>{const s=drinkScore(o);return s>0?true:s<0?false:null};
 // a drink item gets a hot-drinks printer when it's coffee, tea or chocolate, otherwise the bar
 const HOTDRINK=/\b(coffees?|lattes?|cappuc+h?inos?|flat whites?|long blacks?|short blacks?|espresso|doppio|macchiato|piccolo|mochas?|ristretto|americano|cortado|babyc+inos?|chai|hot choc\w*|chocee|matcha|teas?|tisane|affogato)\b/i;
-function itemPrinter(o){const d=isDrink(o);
+function itemPrinter(o){const d=isDrink(o),k=knowItem(o.name);
+  // the printer most venues sent this item to, when it agrees with drink or food
+  if(k&&k.how==='name'&&k.pr){if(k.pr==='C'&&d!==false)return'Coffee';if(k.pr==='B'&&d!==false)return'Bar';if(k.pr==='K'&&d!==true)return foodPrinter(o.name+' '+(o.cat||'')+' '+(o.desc||''))}
   if(d===true)return HOTDRINK.test(o.name+' '+(o.catOrig||o.cat||''))&&!/\b(iced?|cold|frapp\w*|shake|martini|liqueur)\b/i.test(o.name)?'Coffee':'Bar';
   if(d===false)return foodPrinter(o.name+' '+(o.cat||'')+' '+(o.desc||''));
   return guessPrinter(o.cat,o.menu||'');}
@@ -672,7 +734,7 @@ const HIGH=[
  ['Wine',/\bhouse (red|white|ros[eé]|sparkling|bubbles|wine)\b|\b(red|white|ros[eé]|sparkling|dessert) wines?\b/],
  ['Premix',/\b(premix(es)?|rtds?|ready to drink)\b/],
  ['Mocktails',/\b(mocktails?|virgin)\b/],
- ['Cocktails',/\b(cocktails?|martini|spritz|negroni|margarita|mojito|daiquiri|colada|pinacolada|cosmopolitan|bellini|sangria|old fashioned|manhattan|bloody mary|long island|mai tai|caipirinha|(whisk(e)?y|amaretto|pisco|midori|gin|vodka) sour)\b/],
+ ['Cocktails',/\b(cocktails?|martini|\w+tini|spritz|caipi\w*|kir royale?|rusty nail|old fashion|daqu?iris?|godfather|white russian|black russian|b-?52|grasshopper|tom collins|gimlet|sidecar|boulevardier|penicillin|paper plane|clover club|french 75|dark (and|&|n) stormy|cuba libre|tequila sunrise|sex on the beach|porn ?star|negroni|margarita|mojito|daiquiri|colada|pinacolada|cosmopolitan|bellini|sangria|old fashioned|manhattan|bloody mary|long island|mai tai|caipirinha|(whisk(e)?y|amaretto|pisco|midori|gin|vodka) sour)\b/],
  ['Cold Drinks',/\b(ice|iced|cold)\b.*\btea\b|\btea\b.*\b(ice|iced)\b/],
  ['Iced Drinks',/\b(cr[eè]me chill|frapp\w*|cold brew|affogato)\b/],
  ['Iced Drinks',t=>/\b(ice|iced)\b/.test(t)&&COFFEEW.test(t)],
@@ -681,7 +743,7 @@ const HIGH=[
  ['Hot Coffee',COFFEEW],
  ['Cold Drinks',/\b(juices?|aj|oj|root beer|spiders?|floats?|iced chocolate|iced choc\w*|cold[- ]pressed|coconut water|lemonade|sodas?|coke|cola|pepsi|sprite|fanta|solo|ginger (beer|ale)|tonic|kombucha|mineral|sparkling water|spring water|still water|water|soft drinks?|lemon,? lime|bitters|red bull|energy drink|gatorade|powerade|lift|schweppes|san ?pellegrino)\b/],
  ['Beer & Cider',/\b(beers?|lagers?|ales?|ipa|stouts?|ciders?|pilsners?|draught|schooners?|pints?|middy|corona|peroni|asahi|heineken|vb|carlton|coopers|furphy|great northern|xxxx|tooheys|hahn|james squire|little creatures|lil creatures|balter|mountain goat|mt goat|crown lager|pure blonde|boags|cascade|stella|kirin|sapporo|guinness|kilkenny)\b/],
- ['Wine',/\b(wines?|shiraz|merlot|pinot|cabernet|cab sav|cab\/merlot|sauv(ignon)? blanc|chardonnay|riesling|moscato|prosecco|champagne|sparkling|ros[eé]|tempranillo|malbec|grenache|syrah|sangiovese|chianti|gsm|grigio|gris|semillon|verdelho|brut|blanc de blanc)\b/],
+ ['Wine',/\b(wines?|viognier|nebb?iolo|nebb|barbera|montepul\w*|primitivo|nero d'?avola|vermentino|fiano|gr[uü]ner|gew[uü]rz\w*|marsanne|roussanne|mataro|mourv[eè]dre|zinfandel|petit verdot|cab(ernet)? franc|bianco|soave|valpolicella|amarone|barolo|barbaresco|chianti|rioja|cr[eé]mant|crement|cava|lambrusco|gamay|beaujolais|bordeaux|chablis|sancerre|ssb|sav blanc|sauv\/blanc|cuv[eé]e|noble one|tawny|muscat|savagnin|arneis|albari[nñ]o|shiraz|merlot|pinot|cabernet|cab sav|cab\/merlot|sauv(ignon)? blanc|chardonnay|riesling|moscato|prosecco|champagne|sparkling|ros[eé]|tempranillo|malbec|grenache|syrah|sangiovese|chianti|gsm|grigio|gris|semillon|verdelho|brut|blanc de blanc)\b/],
  ['Spirits',/\b(spirits?|vodka|gin|rum|whisk(e)?y|bourbon|scotch|tequila|mezcal|cognac|brandy|liqueurs?|schnapps|baileys|kahlua|jagermeister|sambuca|ouzo|aperol|campari|jameson|jack daniels?|jim beam|johnnie walker|glenfiddich|chivas|bacardi|smirnoff|absolut|grey goose|hendricks|bombay|tanqueray|patron|midori|malibu|cointreau|frangelico|galliano|limoncello|lemoncello|fireball|southern comfort|canadian club|wild turkey|makers mark|chambord|pimms|belvedere|vok)\b/],
  ['Kids Meals',/\b(kids?|kid's|children'?s|junior|little ones?)\b/],
  ['Breakfast',/\b(toast|eggs?|benedict|bene|omelet+e?s?|scrambled|poached|granola|muesli|bircher|porridge|oats|pancakes?|waffles?|french toast|brekky|breaky|breakfast|smashed avo|avo on toast|acai)\b/],
@@ -702,6 +764,9 @@ function highCat(it){
   const d=isDrink(it);
   const texts=[it.name,it.catOrig||it.cat,it.desc||''];
   const fits=c=>d===null||c==='Gift Cards'||DRINK_CATS.has(c)===d;
+  // the category venues agree on for this exact name (spirits still go through the brand list below)
+  const kn=knowItem(it.name);
+  if(kn&&kn.how==='name'&&kn.cat&&kn.cat!=='Spirits'&&fits(kn.cat))return kn.cat;
   if(d!==false){
     // canned and bottled mixed drinks, then a known spirit brand on its own ("Lagavulin 16", "Gordon's & Tonic")
     if(isPremix(it.name))return'Premix';
@@ -719,6 +784,11 @@ function highCat(it){
     // a spirit goes in its type: the file's own spirit category first, then the brand list and type words
     if(c==='Spirits')c=srcSpiritCat(it.catOrig||it.cat)||spiritType(it)||'Spirits';
     if(c)return c}
+  // a name never seen before: where venues file items ending in the same word
+  if(kn&&kn.how==='word'&&kn.cat&&kn.cat!=='Spirits'&&fits(kn.cat))return kn.cat;
+  {const kt=knowToken(it.name);if(kt&&fits(kt)){if(kt!=='Spirits')return kt;const st=srcSpiritCat(it.catOrig||it.cat)||spiritType(it);if(st)return st}}
+  // sold by the glass or carafe and nothing else says what it is: wine
+  if(d===true&&/(glass|carafe|150 ?ml|bottle 750|750 ?ml)/i.test(it.variation||''))return'Wine';
   if(d===true){const t=(it.name+' '+(it.desc||'')).toLowerCase();
     if(/\b(vodka|gin|rum|tequila|mezcal|whisk(e)?y|bourbon|liqueurs?|spirits?|aperol|campari|vermouth|prosecco|cointreau|triple sec)\b/.test(t))return'Cocktails';
     if(HOTDRINK.test(t))return'Hot Coffee';return'Cold Drinks'}
@@ -927,7 +997,7 @@ function mergeSizeCats(){
     g.mem.forEach(it=>{it.variation=cap(sing(it.cat.toLowerCase()));it.name=g.b;it.cat=TAPCAT;it.vhint=''})});}
 
 async function handleFiles(files){
-  for(const f of files){try{say('Reading '+f.name+'…');addTables(await readFile(f))}catch(e){say('');tables.push({file:f.name,sheet:'',rows:[],a:null,on:false,err:e.message,id:tables.length})}}
+  for(const f of files){try{say('Reading '+f.name+'…');addTables((await readFile(f)).flatMap(t=>[t,...(t.extra||[])]))}catch(e){say('');tables.push({file:f.name,sheet:'',rows:[],a:null,on:false,err:e.message,id:tables.length})}}
   say('');renderSources();rebuild();}
 function addTables(ts){ts.forEach(t=>{t.a=analyse(t);if(t.a&&t.doc)t.a.src='document';if(t.doc&&!t.doc.count){t.a=null;t.err='No menu items with prices were found in it.'}t.on=!!t.a;t.id=tables.length;tables.push(t)})}
 /* Reading a website through the viewer's Firecrawl connector (on the shared claude.ai page).
@@ -1016,7 +1086,7 @@ function structuredRows(doc,html){
   while((m=re.exec(html))){try{blobs.push(JSON.parse(m[1]))}catch(e){}}
   blobs.forEach(b=>cands.push(jsonRows(b)));
   let best=[];cands.forEach(rs=>{rs=dedupeRows(rs.filter(r=>r[3]!==''||r[2]));if(rs.length>best.length)best=rs});return best;}
-const PAGE_PROMPT='Below is text from a restaurant, cafe or bar website: one or more pages, each in <page> tags. Find the menu and read every item that has a price. Reply with only this JSON:\n{"venue":"","items":[{"category":"","name":"","size":"","price":0,"description":"","dietary":""}],"notes":[]}\n\nRules:\n- venue: the venue\'s name if shown, else "".\n- Skip navigation, opening hours, events, gift cards, booking text and anything that is not an orderable item. If the same item appears on two pages, list it once.\n';
+const PAGE_PROMPT='Below is text from a restaurant, cafe or bar menu or website: one or more pages, each in <page> tags. Find the menu and read every item that has a price. Reply with only this JSON:\n{"venue":"","items":[{"category":"","name":"","size":"","price":0,"description":"","dietary":""}],"options":[{"group":"","name":"","price":0,"required":false,"max":0,"for":""}],"notes":[]}\n\nRules:\n- venue: the venue\'s name if shown, else "".\n- Skip navigation, opening hours, events, gift cards, booking text and anything that is not an orderable item. If the same item appears on two pages, list it once.\n';
 async function claudeText(name,pages){
   const s=await sampleNS(),lim=await s.limits().catch(()=>null),cap=((lim&&lim.maxPromptBytes)||262144)-8000,enc=new TextEncoder(),notes=[];
   let body='';
@@ -1032,7 +1102,9 @@ async function claudeText(name,pages){
   items.forEach(it=>{if(!it||typeof it!=='object')return;const nm=clean(it.name);if(!nm)return;
     rows.push([clean(it.category),nm,clean(it.size),it.price==null||it.price===''?'':num(it.price),clean(it.description),clean(it.dietary)])});
   if(data&&Array.isArray(data.notes))data.notes.forEach(n=>{if(clean(n))notes.push(clean(n))});
-  return{table:mkDocTable(clean(data&&data.venue)||name,rows,notes,'web page (read by Claude)'),count:rows.length,notes};}
+  const vn=clean(data&&data.venue)||name,table=mkDocTable(vn,rows,notes,'web page (read by Claude)');
+  table.extra=optTable(vn,data&&data.options);
+  return{table,count:rows.length,notes};}
 /* Free first, Firecrawl last. Each page is tried:
      1. direct download (free; works for sites and PDF hosts that allow it, and gives menu data and PDFs)
      2. the Claude desktop app's own browser (free; only when this page is opened in the Claude app)
@@ -1444,18 +1516,21 @@ const SPIRIT='vodka, gin, rum, bourbon, whisky, whiskey, tequila';
 const PRESETS=[
  {name:'Steak Cook',rg:'Food',req:'Yes',max:'1',kw:STEAK,cats:'steak, steaks, grill',opts:'Blue\nRare\nMedium Rare\nMedium\nMedium Well\nWell Done'},
  {name:'Steak Sauce',rg:'Food',req:'Yes',max:'1',kw:STEAK+', schnitzel, schnitty, parmi, parmigiana',cats:'steak, steaks, grill',opts:'Pepper\nMushroom\nDiane\nRed Wine Jus\nBéarnaise\nGarlic Butter\nGravy\nNo Sauce'},
+ {name:'Bread Choice',rg:'Food',req:'Yes',max:'1',kw:'toast, eggs, benedict, smashed avo, avo toast, big breakfast, big brekkie',cats:'',opts:'Sourdough\nWhite\nMultigrain\nWholemeal\nTurkish=1\nGluten Free=1'},
+ {name:'Breakfast Extras',rg:'Food',req:'',max:'',kw:'eggs, benedict, smashed avo, avo toast, big breakfast, big brekkie',cats:'breakfast, brekky, brekkie, brunch, all day breakfast',opts:'Bacon=5\nAvocado=4.50\nEgg=3\nHalloumi=7\nSmoked Salmon=7\nMushrooms=4\nSpinach=3.50\nTomato=2.50\nHash Brown=3\nChorizo=7\nHollandaise=3'},
  {name:'Egg Style',rg:'Food',req:'Yes',max:'1',kw:'eggs, benedict, big breakfast, big brekkie',cats:'',opts:'Poached\nFried\nScrambled'},
  {name:'Burger Extras',rg:'Food',req:'',max:'',kw:'burger, burgers',cats:'burger, burgers',opts:'Add Bacon=3\nAdd Egg=2\nAdd Cheese=1.50\nAdd Avocado=3\nExtra Patty=5'},
  {name:'Side Choice',rg:'Food',req:'Yes',max:'1',kw:STEAK+', schnitzel, schnitty, parmi, parmigiana, fish',cats:'steak, steaks, grill',opts:'Chips\nSalad\nMash\nSeasonal Veg'},
  {name:'Dietary Swaps',rg:'Food',req:'',max:'',kw:'pizza, burger, sandwich, toast, toastie, wrap',cats:'pizza, pizzas, burger, burgers, sandwich, sandwiches',opts:'Gluten Free Bread=2\nGluten Free Base=4\nVegan Cheese=2\nDairy Free'},
  {name:'Dietary Requirements',rg:'Food',req:'',max:'',kw:'',cats:'*',opts:'Gluten Free\nDairy Free\nVegetarian\nVegan\nNut Free\nEgg Free\nShellfish Free\nHalal\nNo Onion or Garlic'},
  {name:'Removals',rg:'Food',req:'',max:'',kw:'burger, sandwich, wrap, salad',cats:'',opts:'No Onion\nNo Tomato\nNo Cheese\nNo Sauce\nNo Lettuce',off:true},
- {name:'Milk',rg:'Beverage',req:'Yes',max:'1',kw:COFFEE,cats:'coffee, hot coffee, iced coffee',opts:'Full Cream\nSkim\nLactose Free\nSoy=0.50\nAlmond=0.50\nOat=0.50'},
- {name:'Coffee Extras',rg:'Beverage',req:'',max:'',kw:COFFEE,cats:'coffee, hot coffee, iced coffee',opts:'Extra Shot=0.50\nDecaf=0.50\nVanilla Syrup=0.50\nCaramel Syrup=0.50\nHazelnut Syrup=0.50\nExtra Hot\nHalf Strength'},
+ {name:'Milk',rg:'Beverage',req:'Yes',max:'1',kw:COFFEE,cats:'coffee, hot coffee, iced coffee',opts:'Full Cream\nSkim\nLactose Free=1\nSoy=1\nAlmond=1\nOat=1'},
+ {name:'Coffee Extras',rg:'Beverage',req:'',max:'',kw:COFFEE,cats:'coffee, hot coffee, iced coffee',opts:'Extra Shot=0.50\nDecaf=0.50\nVanilla Syrup=0.50\nCaramel Syrup=0.50\nHazelnut Syrup=0.50\nHoney\nExtra Hot\nWarm\nWeak\nHalf Strength'},
  {name:'Sweetener',rg:'Beverage',req:'',max:'2',kw:COFFEE,cats:'coffee, hot coffee, iced coffee',opts:'Sugar\nRaw Sugar\nEqual\nStevia'},
- {name:'Spirit Mixer',rg:'Beverage',req:'Yes',max:'1',kw:SPIRIT,cats:'spirit, spirits, '+SPIRIT+', scotch, brandy, cognac, mezcal, liqueur, liqueurs',opts:'Coke\nCoke No Sugar\nLemonade\nSoda\nTonic\nDry Ginger\nGinger Beer\nNeat\nOn Ice\nRed Bull=4'},
+ {name:'Spirit Mixer',rg:'Beverage',req:'Yes',max:'1',kw:SPIRIT,cats:'spirit, spirits, '+SPIRIT+', scotch, brandy, cognac, mezcal, liqueur, liqueurs',opts:'Coke\nCoke No Sugar\nLemonade\nSoda\nTonic\nDry Ginger\nGinger Beer\nOrange Juice\nPineapple Juice\nLemon Lime Bitters\nNeat\nOn Ice\nRed Bull=4'},
  {name:'Spirit Extras',rg:'Beverage',req:'',max:'',kw:SPIRIT,cats:'spirit, spirits, '+SPIRIT+', scotch, brandy, cognac, mezcal, liqueur, liqueurs',opts:'Lime\nLemon\nBitters\nDouble Shot'},
  {name:'Beer Extras',rg:'Beverage',req:'',max:'',kw:'',cats:'beer, beers, draught, tap beer, beer on tap',opts:'Lemon\nLime\nShandy'},
+ {name:'Milkshake Flavour',rg:'Beverage',req:'Yes',max:'1',kw:'milkshake, milkshakes, thickshake, thickshakes, shake, shakes',cats:'',opts:'Chocolate\nVanilla\nStrawberry\nCaramel\nBanana\nHazelnut'},
  {name:'Ice',rg:'Beverage',req:'',max:'',kw:'juice, soft drink, coke, sprite, fanta, lemonade, lemon lime bitters, iced tea',cats:'soft drink, soft drinks, juice, juices, cold drink, cold drinks',opts:'Ice\nNo Ice\nLight Ice'}];
 let pre=PRESETS.map(p=>({...p,on:false,dup:false,ex:new Set()})),preSig='',preInit=false;
 // a keyword of * matches everything (e.g. Dietary Requirements on every food item)

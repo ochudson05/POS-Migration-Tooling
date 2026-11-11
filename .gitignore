@@ -19,3 +19,9 @@ venv/
 Thumbs.db
 desktop.ini
 ~$*
+
+# training corpus holds venue data: keep it local
+training/corpus.json
+training/testset.json
+training/knowledge-train.json
+training/out.txt
