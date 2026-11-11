@@ -59,6 +59,14 @@
         "menu-scraper/app.py"
       ],
       "port": 8787
+    },
+    {
+      "name": "site-viewer",
+      "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+      "runtimeArgs": [
+        "site-viewer/server.js"
+      ],
+      "port": 8790
     }
   ]
 }

@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu Hauler Data</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--ink:#16181d;--muted:#667085;--line:#e4e7ec;--soft:#f0f2f5;--accent:#2f6fed;--accent-soft:#e8effd;
+  --ok:#12805c;--ok-soft:#e3f5ee;--warn:#b54708;--warn-soft:#fdf0e1;--bad:#c4320a;--bad-soft:#fdeceb;--violet:#6941c6;--violet-soft:#f1ecfc}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1115;--card:#171a20;--ink:#e8eaed;--muted:#98a2b3;--line:#2a2f38;--soft:#1f232b;--accent:#6b9bff;--accent-soft:#1c2a45;
+  --ok:#4cc79a;--ok-soft:#14302a;--warn:#f0a35a;--warn-soft:#352616;--bad:#f2857a;--bad-soft:#3a1d1a;--violet:#b39cf5;--violet-soft:#2a2140}}
+:root[data-theme="dark"]{--bg:#0f1115;--card:#171a20;--ink:#e8eaed;--muted:#98a2b3;--line:#2a2f38;--soft:#1f232b;--accent:#6b9bff;--accent-soft:#1c2a45;
+  --ok:#4cc79a;--ok-soft:#14302a;--warn:#f0a35a;--warn-soft:#352616;--bad:#f2857a;--bad-soft:#3a1d1a;--violet:#b39cf5;--violet-soft:#2a2140}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line)}
+.bar{max-width:1280px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+h1{font-size:16px;margin:0;font-weight:650}
+.status{color:var(--muted);font-size:12.5px;margin-right:auto}
+button,select,input{font:inherit;color:inherit}
+.btn{background:var(--soft);border:1px solid var(--line);border-radius:8px;padding:6px 12px;cursor:pointer}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+nav{max-width:1280px;margin:0 auto;padding:0 16px;display:flex;gap:2px;overflow-x:auto}
+nav button{background:none;border:0;border-bottom:2px solid transparent;padding:9px 12px;cursor:pointer;color:var(--muted);white-space:nowrap}
+nav button.on{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+nav .n{font-size:11.5px;background:var(--soft);border-radius:10px;padding:1px 7px;margin-left:5px}
+main{max-width:1280px;margin:0 auto;padding:18px 16px 60px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.tile .k{color:var(--muted);font-size:12.5px}.tile .v{font-size:24px;font-weight:650;margin-top:2px;font-variant-numeric:tabular-nums}
+.tile .s{color:var(--muted);font-size:12px;margin-top:2px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:16px;overflow:hidden}
+.card h2{font-size:14px;margin:0;padding:12px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.card h2 .sub{font-weight:400;color:var(--muted);font-size:12.5px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.grid2{grid-template-columns:1fr}}
+.tools{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.tools input,.tools select{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px}
+.tools input{flex:1;min-width:200px}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:600;background:var(--soft);cursor:pointer;user-select:none;white-space:nowrap;position:sticky;top:0}
+th.sorted::after{content:" ↓"}th.sorted.asc::after{content:" ↑"}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--soft)}
+td.num{text-align:right;font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}.small{font-size:12.5px}
+.nowrap{white-space:nowrap}
+.pill{display:inline-block;padding:1px 8px;border-radius:10px;font-size:12px;background:var(--soft);color:var(--muted);white-space:nowrap;margin:1px 2px 1px 0}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}.pill.acc{background:var(--accent-soft);color:var(--accent)}.pill.vio{background:var(--violet-soft);color:var(--violet)}
+.empty{padding:24px 16px;color:var(--muted);text-align:center}
+.err{background:var(--bad-soft);color:var(--bad);border-radius:12px;padding:14px 16px;margin-bottom:16px;white-space:pre-wrap}
+.org{border-bottom:1px solid var(--line)}.org:last-child{border-bottom:0}
+.org>summary{list-style:none;cursor:pointer;padding:12px 16px;display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+.org>summary::-webkit-details-marker{display:none}
+.org>summary::before{content:"▸";color:var(--muted);width:10px}.org[open]>summary::before{content:"▾"}
+.org .name{font-weight:600}
+.org .body{padding:0 16px 14px 38px}
+.kv{display:grid;grid-template-columns:max-content 1fr;gap:4px 14px;margin:0 0 10px}
+.kv dt{color:var(--muted)}.kv dd{margin:0}
+.stagebar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--soft);margin:14px 16px 8px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;padding:0 16px 14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);max-width:min(860px,94vw);width:100%;padding:0}
+dialog::backdrop{background:#0007}
+dialog header{position:static;display:flex;justify-content:space-between;align-items:center;padding:12px 16px}
+pre{margin:0;padding:16px;overflow:auto;max-height:70vh;font-size:12px;background:var(--soft)}
+a{color:var(--accent)}
+.link{background:none;border:0;padding:0;color:var(--accent);cursor:pointer}
+@media (max-width:600px){th,td{padding:7px 8px}.tile .v{font-size:20px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>Menu Hauler data</h1>
+    <span class="status" id="status">Loading…</span>
+    <button class="btn" id="theme" title="Switch light / dark">◐</button>
+    <button class="btn primary" id="refresh">Refresh</button>
+  </div>
+  <nav id="tabs"></nav>
+</header>
+<main id="main"></main>
+<dialog id="dlg"><header><strong id="dlg-t"></strong><button class="btn" id="dlg-x">Close</button></header><pre id="dlg-b"></pre></dialog>
+<script>
+const STAGES=[['pre','Pre-config','var(--muted)'],['ready','Ready for training','var(--warn)'],['trained','Training done','var(--accent)'],['follow','Follow-ups','var(--violet)'],['done','Complete','var(--ok)']];
+const TABS=[['overview','Overview'],['orgs','Organisations'],['venues','Venues'],['users','Users'],['activity','Activity'],['claude','Claude'],['intake','Intake links'],['usage','Usage']];
+let D=null,TAB=(location.hash||'#overview').slice(1),Q={},SORT={};
+
+const $=s=>document.querySelector(s);
+const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const J=s=>{try{return JSON.parse(s)}catch(e){return{}}};
+const who=e=>String(e||'').replace(/^u:/,'');
+const short=e=>who(e).split('@')[0];
+function when(t){if(t==null||t==='')return'';if(typeof t==='string'&&!/^\d+$/.test(t))return t;const d=new Date(+t);if(isNaN(d))return String(t);
+  return d.toLocaleDateString(undefined,{day:'numeric',month:'short',year:d.getFullYear()===new Date().getFullYear()?undefined:'numeric'})+' '+d.toLocaleTimeString(undefined,{hour:'2-digit',minute:'2-digit'})}
+function ago(t){if(!t)return'never';const s=(Date.now()-t)/1000;if(s<60)return'just now';if(s<3600)return Math.round(s/60)+'m ago';if(s<86400)return Math.round(s/3600)+'h ago';if(s<86400*30)return Math.round(s/86400)+'d ago';return when(t)}
+const usd=v=>'US$'+(+v||0).toFixed((+v||0)<1?3:2);
+const bytes=n=>n>1e6?(n/1e6).toFixed(1)+' MB':n>1e3?Math.round(n/1e3)+' KB':(n||0)+' B';
+const stageOf=k=>STAGES.find(s=>s[0]===k)||STAGES[0];
+const monthStart=()=>{const d=new Date();return new Date(d.getFullYear(),d.getMonth(),1).getTime()};
+
+// derive organisations (groups) and venues (orgs) from the raw docs
+function model(){
+  const groups={},venues={};
+  D.groups.forEach(r=>{groups[r.id]=Object.assign({id:r.id,_raw:J(r.data)},J(r.data),{_upd:r.updated_at})});
+  const menus={};D.menus.forEach(m=>{const vid=m.coll.split('/')[1];(menus[vid]=menus[vid]||[]).push(m)});
+  D.venues.forEach(r=>{const o=J(r.data),st=o.steps||{},g=groups[o.group]||null,gb=(g&&g.biz)||{},v=k=>((st[k]||{}).v)||{};
+    venues[r.id]={id:r.id,_raw:o,name:o.name||'Untitled',group:o.group||'',groupName:g?(g.name||'Untitled'):'',stage:o.stage||'pre',
+      golive:o.golive||'',training:o.training||'',owner:o.owner||'',
+      email:v('biz-contact').email||gb.email||'',phone:v('biz-contact').phone||gb.phone||'',address:v('biz-address').address||gb.address||'',
+      website:v('prep-gmb').website||gb.website||'',tz:v('biz-tz').tz||'',
+      steps:Object.values(st).filter(x=>x&&x.at).length,menus:(menus[r.id]||[]).sort((a,b)=>(b.at||0)-(a.at||0)),
+      upd:o.updatedAt||r.updated_at,updBy:o.updatedBy||r.updated_by,created:o.createdAt,createdBy:o.createdBy}});
+  const spend={};D.claude.forEach(c=>{if(c.at>=monthStart()){const s=spend[c.email]=spend[c.email]||{calls:0,usd:0};s.calls++;s.usd+=c.cost/1e6}});
+  const signed={};D.signedIn.forEach(s=>signed[s.email]=s);
+  return{groups,venues,spend,signed};
+}
+
+// a sortable, searchable table; cols: [key, label, render(row)->html, {num, sort(row)}]
+function table(id,rows,cols,opts={}){
+  const q=(Q[id]||'').toLowerCase(),f=opts.filter;
+  let list=rows.filter(r=>(!q||JSON.stringify(r).toLowerCase().includes(q))&&(!f||f(r)));
+  const s=SORT[id]||opts.sort;if(s){const c=cols.find(c=>c[0]===s.k);if(c){const key=(c[3]&&c[3].sort)||(r=>r[c[0]]);
+    list=list.slice().sort((a,b)=>{const x=key(a),y=key(b);const r=(x==null||x==='')?1:(y==null||y==='')?-1:typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y));return s.asc?r:-r})}}
+  const head=cols.map(c=>'<th data-t="'+id+'" data-k="'+c[0]+'" class="'+(s&&s.k===c[0]?'sorted'+(s.asc?' asc':''):'')+'">'+esc(c[1])+'</th>').join('');
+  const body=list.map(r=>'<tr>'+cols.map(c=>'<td class="'+((c[3]&&c[3].num)?'num':'')+'">'+c[2](r)+'</td>').join('')+'</tr>').join('');
+  return '<div class="scroll"><table><thead><tr>'+head+'</tr></thead><tbody>'+(body||'<tr><td colspan="'+cols.length+'" class="empty">Nothing to show</td></tr>')+'</tbody></table></div>'+
+    (list.length!==rows.length?'<div class="small muted" style="padding:8px 16px">'+list.length+' of '+rows.length+' shown</div>':'');
+}
+const search=(id,ph,extra='')=>'<div class="tools"><input type="search" data-q="'+id+'" placeholder="'+esc(ph)+'" value="'+esc(Q[id]||'')+'">'+extra+'</div>';
+const stagePill=k=>{const s=stageOf(k);return '<span class="pill '+({ready:'warn',trained:'acc',follow:'vio',done:'ok'}[s[0]]||'')+'">'+esc(s[1])+'</span>'};
+const rolePill=r=>'<span class="pill '+(r==='owner'?'vio':r==='admin'?'acc':'')+'">'+esc(r)+'</span>';
+const raw=(kind,id)=>'<button class="link small" data-raw="'+kind+'" data-id="'+esc(id)+'">raw</button>';
+
+const VIEWS={
+overview(M){
+  const V=Object.values(M.venues),now=Date.now(),mon=new Date().toISOString().slice(0,7);
+  const fc=D.usage.filter(u=>u.month===mon&&u.kind==='firecrawl').reduce((a,u)=>a+u.amount,0);
+  const cl=Object.values(M.spend).reduce((a,s)=>a+s.usd,0),act7=D.activity.filter(a=>a.at>now-7*864e5).length;
+  const users=D.users.length,active=D.users.filter(u=>u.last_seen>now-30*864e5).length;
+  const tile=(k,v,s)=>'<div class="tile"><div class="k">'+k+'</div><div class="v">'+v+'</div><div class="s">'+(s||'&nbsp;')+'</div></div>';
+  const counts=STAGES.map(s=>[s,V.filter(v=>v.stage===s[0]).length]);
+  let h='<div class="tiles">'+tile('Organisations',Object.keys(M.groups).length)+tile('Venues',V.length,V.filter(v=>v.stage==='done').length+' complete')+
+    tile('Users',users,active+' seen in 30 days')+tile('Signed in now',Object.keys(M.signed).length,'active sessions')+
+    tile('Claude this month',usd(cl),D.claude.filter(c=>c.at>=monthStart()).length+' calls')+tile('Firecrawl this month',fc,'credits')+tile('Activity, 7 days',act7,'logged actions')+'</div>';
+  h+='<div class="grid2"><div class="card"><h2>Venues by stage</h2>'+(V.length?'<div class="stagebar">'+counts.filter(c=>c[1]).map(([s,n])=>'<span title="'+esc(s[1])+': '+n+'" style="width:'+(100*n/V.length)+'%;background:'+s[2]+'"></span>').join('')+'</div>'+
+    '<div class="legend">'+counts.map(([s,n])=>'<span><i style="background:'+s[2]+'"></i>'+esc(s[1])+' <b>'+n+'</b></span>').join('')+'</div>':'<div class="empty">No venues yet</div>')+
+    table('ov-v',V,[['name','Venue',v=>esc(v.name)],['groupName','Organisation',v=>esc(v.groupName)||'<span class="muted">none</span>'],['stage','Stage',v=>stagePill(v.stage),{sort:v=>STAGES.findIndex(s=>s[0]===v.stage)}],['upd','Updated',v=>'<span class="nowrap">'+ago(v.upd)+'</span>',{sort:v=>v.upd}]],{sort:{k:'upd'}})+'</div>';
+  h+='<div class="card"><h2>Recent activity <button class="link small" data-tab="activity">see all</button></h2>'+
+    table('ov-a',D.activity.slice(0,12),[['at','When',a=>'<span class="nowrap muted">'+ago(a.at)+'</span>'],['email','Who',a=>esc(short(a.email))],['detail','What',a=>esc(a.detail||a.what)]])+'</div></div>';
+  return h;
+},
+orgs(M){
+  const q=(Q.orgs||'').toLowerCase(),V=Object.values(M.venues);
+  const G=Object.values(M.groups).map(g=>Object.assign(g,{vs:V.filter(v=>v.group===g.id)}));
+  const loose=V.filter(v=>!M.groups[v.group]);
+  if(loose.length)G.push({id:'',name:'No organisation',vs:loose,_none:true});
+  const show=G.filter(g=>!q||JSON.stringify([g.name,g.contact,g.notes,g.biz,g.vs.map(v=>[v.name,v.email,v.address])]).toLowerCase().includes(q)).sort((a,b)=>a._none?1:b._none?-1:(a.name||'').localeCompare(b.name||''));
+  let h=search('orgs','Search organisations and their venues…');
+  h+='<div class="card"><h2>Organisations <span class="sub">'+show.length+' shown · a venue belongs to one organisation</span></h2>'+(show.map(g=>{
+    const biz=Object.entries(g.biz||{}).filter(([,v])=>v);
+    return '<details class="org"'+(q?' open':'')+'><summary><span class="name">'+esc(g.name||'Untitled')+'</span><span class="pill">'+g.vs.length+' venue'+(g.vs.length===1?'':'s')+'</span>'+
+      g.vs.map(v=>stagePill(v.stage)).join('')+(g._none?'':'<span class="small muted" style="margin-left:auto">created '+esc(when(g.createdAt))+' by '+esc(short(g.createdBy))+' · '+raw('group',g.id)+'</span>')+'</summary><div class="body">'+
+      ((g.contact||g.notes||biz.length)?'<dl class="kv">'+(g.contact?'<dt>Contact</dt><dd>'+esc(g.contact)+'</dd>':'')+biz.map(([k,v])=>'<dt>'+esc(k)+'</dt><dd>'+esc(typeof v==='object'?JSON.stringify(v):v)+'</dd>').join('')+(g.notes?'<dt>Notes</dt><dd>'+esc(g.notes)+'</dd>':'')+'</dl>':'')+
+      (g.vs.length?'<div class="card" style="margin:0">'+table('og-'+g.id,g.vs,[['name','Venue',v=>esc(v.name)],['stage','Stage',v=>stagePill(v.stage)],['email','Contact',v=>esc(v.email)+(v.phone?'<div class="small muted">'+esc(v.phone)+'</div>':'')],['address','Address',v=>esc(v.address)],['golive','Go-live',v=>esc(when(v.golive))]])+'</div>':'<div class="muted small">No venues in this organisation yet.</div>')+
+      '</div></details>'}).join('')||'<div class="empty">No organisations match</div>')+'</div>';
+  return h;
+},
+venues(M){
+  const V=Object.values(M.venues),st=Q['venues-st']||'';
+  const sel='<select data-q="venues-st"><option value="">All stages</option>'+STAGES.map(s=>'<option value="'+s[0]+'"'+(st===s[0]?' selected':'')+'>'+s[1]+'</option>').join('')+'</select>';
+  return search('venues','Search venues, contacts, addresses…',sel)+'<div class="card">'+table('venues',V,[
+    ['name','Venue',v=>'<b>'+esc(v.name)+'</b>'+(v.website?'<div class="small"><a href="'+esc(v.website)+'" target="_blank" rel="noopener">'+esc(v.website.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,''))+'</a></div>':'')],
+    ['groupName','Organisation',v=>esc(v.groupName)||'<span class="muted">none</span>'],
+    ['stage','Stage',v=>stagePill(v.stage),{sort:v=>STAGES.findIndex(s=>s[0]===v.stage)}],
+    ['email','Contact',v=>esc(v.email)+(v.phone?'<div class="small muted">'+esc(v.phone)+'</div>':'')],
+    ['address','Address',v=>'<span class="small">'+esc(v.address)+'</span>'],
+    ['training','Training',v=>'<span class="nowrap">'+esc(when(v.training))+'</span>'],
+    ['golive','Go-live',v=>'<span class="nowrap">'+esc(when(v.golive))+'</span>'],
+    ['menus','Menus',v=>v.menus.length?v.menus.length+'<div class="small muted">'+esc(v.menus[0].items||0)+' items</div>':'<span class="muted">0</span>',{num:1,sort:v=>v.menus.length}],
+    ['steps','Steps logged',v=>v.steps,{num:1}],
+    ['upd','Updated',v=>'<span class="nowrap">'+ago(v.upd)+'</span><div class="small muted">'+esc(short(v.updBy))+' · '+raw('venue',v.id)+'</div>',{sort:v=>v.upd}],
+  ],{sort:{k:'upd'},filter:v=>!st||v.stage===st})+'</div>';
+},
+users(M){
+  const rows=D.users.map(u=>Object.assign({},u,{spend:(M.spend[u.email]||{}).usd||0,calls:(M.spend[u.email]||{}).calls||0,sessions:(M.signed[u.email]||{}).sessions||0}));
+  return search('users','Search users…')+'<div class="card">'+table('users',rows,[
+    ['email','User',u=>'<b>'+esc(u.name||short(u.email))+'</b><div class="small muted">'+esc(u.email)+'</div>'],
+    ['role','Role',u=>rolePill(u.role)+(u.status==='blocked'?'<span class="pill bad">blocked</span>':'')],
+    ['tools','Tools',u=>{const t=J(u.tools);return Array.isArray(t)?(t.length?t.map(x=>'<span class="pill">'+esc(x)+'</span>').join(''):'<span class="muted">none</span>'):'<span class="muted">all</span>'}],
+    ['can_edit','Access',u=>'<span class="pill '+(u.can_edit?'ok':'')+'">'+(u.can_edit?'can edit':'view only')+'</span>'+(u.firecrawl?'':'<span class="pill warn">no Firecrawl</span>')],
+    ['claude','Claude',u=>u.claude?'<span class="pill vio">on</span><div class="small muted">cap '+(u.claude_cap==null?'default':usd(u.claude_cap))+'</div>':'<span class="muted">off</span>'],
+    ['spend','Claude this month',u=>u.calls?usd(u.spend)+'<div class="small muted">'+u.calls+' calls</div>':'<span class="muted">–</span>',{num:1}],
+    ['sessions','Signed in',u=>u.sessions?'<span class="pill ok">'+u.sessions+' session'+(u.sessions>1?'s':'')+'</span>':'<span class="muted">no</span>',{num:1}],
+    ['last_seen','Last seen',u=>'<span class="nowrap">'+ago(u.last_seen)+'</span>'+(u.last_tool?'<div class="small muted">'+esc(u.last_tool)+'</div>':'')],
+    ['added_at','Added',u=>'<span class="nowrap small">'+esc(when(u.added_at))+'</span>'+(u.added_by?'<div class="small muted">by '+esc(short(u.added_by))+'</div>':'')],
+    ['note','Note',u=>'<span class="small">'+esc(u.note)+'</span>'],
+  ],{sort:{k:'last_seen'}})+'</div>';
+},
+activity(){
+  const people=[...new Set(D.activity.map(a=>a.email))].sort(),kinds=[...new Set(D.activity.map(a=>a.what))].sort(),p=Q['act-p']||'',k=Q['act-k']||'';
+  const sel=(id,cur,list,all)=>'<select data-q="'+id+'"><option value="">'+all+'</option>'+list.map(x=>'<option'+(cur===x?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select>';
+  return search('activity','Search activity…',sel('act-p',p,people,'Everyone')+sel('act-k',k,kinds,'All kinds'))+'<div class="card">'+table('activity',D.activity,[
+    ['at','When',a=>'<span class="nowrap">'+esc(when(a.at))+'</span><div class="small muted">'+ago(a.at)+'</div>'],
+    ['email','Who',a=>esc(a.email)],['what','Kind',a=>'<span class="pill">'+esc(a.what)+'</span>'],['detail','Detail',a=>esc(a.detail)],
+  ],{sort:{k:'at'},filter:a=>(!p||a.email===p)&&(!k||a.what===k)})+'<div class="small muted" style="padding:8px 16px">Latest 1,000 entries</div></div>';
+},
+claude(M){
+  const per=Object.entries(M.spend).map(([email,s])=>({email,calls:s.calls,usd:s.usd}));
+  return '<div class="card"><h2>This month by user</h2>'+table('cl-u',per,[['email','User',r=>esc(r.email)],['calls','Calls',r=>r.calls,{num:1}],['usd','Spend',r=>usd(r.usd),{num:1}]],{sort:{k:'usd'}})+'</div>'+
+    search('claude','Search calls…')+'<div class="card"><h2>Calls <span class="sub">latest 1,000</span></h2>'+table('claude',D.claude,[
+    ['at','When',c=>'<span class="nowrap">'+esc(when(c.at))+'</span>'],['email','User',c=>esc(short(c.email))],['tool','Tool',c=>esc(c.tool)],['model','Model',c=>'<span class="small">'+esc(c.model)+'</span>'],
+    ['in_tokens','In',c=>(c.in_tokens||0).toLocaleString(),{num:1}],['out_tokens','Out',c=>(c.out_tokens||0).toLocaleString(),{num:1}],['cost','Cost',c=>usd(c.cost/1e6),{num:1}],
+    ['state','State',c=>'<span class="pill '+(c.state==='done'||c.state==='ok'?'ok':c.state==='error'?'bad':'warn')+'">'+esc(c.state)+'</span>'],['note','Note',c=>'<span class="small">'+esc(c.note)+'</span>'],
+  ],{sort:{k:'at'}})+'</div>';
+},
+intake(M){
+  const now=Date.now();
+  return search('intake','Search intake links…')+'<div class="card">'+table('intake',D.intake,[
+    ['venue_name','Venue',i=>esc(i.venue_name||(M.venues[i.venue]||{}).name||i.venue)],
+    ['state','State',i=>i.revoked?'<span class="pill">replaced / revoked</span>':i.expires<now?'<span class="pill warn">expired</span>':i.submitted_at?'<span class="pill ok">submitted</span>':'<span class="pill acc">waiting</span>',{sort:i=>i.revoked?3:i.expires<now?2:i.submitted_at?1:0}],
+    ['created_at','Made',i=>'<span class="nowrap">'+esc(when(i.created_at))+'</span><div class="small muted">by '+esc(short(i.created_by))+'</div>'],
+    ['expires','Expires',i=>'<span class="nowrap">'+esc(when(i.expires))+'</span>'],
+    ['submitted_at','Submitted',i=>i.submitted_at?'<span class="nowrap">'+esc(when(i.submitted_at))+'</span><div class="small muted">'+i.submits+' time'+(i.submits===1?'':'s')+'</div>':'<span class="muted">not yet</span>'],
+    ['files','Files',i=>i.files?i.files+'<div class="small muted">'+bytes(i.bytes)+'</div>':'<span class="muted">0</span>',{num:1}],
+  ],{sort:{k:'created_at'}})+'</div>';
+},
+usage(){
+  return '<div class="card"><h2>Monthly usage</h2>'+table('usage',D.usage,[['month','Month',u=>esc(u.month)],['kind','Kind',u=>esc(u.kind)],['amount','Amount',u=>(+u.amount).toLocaleString(),{num:1}]],{sort:{k:'month'}})+'</div>';
+},
+};
+
+let M=null;
+function render(){
+  if(!TABS.some(t=>t[0]===TAB))TAB='overview';
+  const n={orgs:M?Object.keys(M.groups).length:'',venues:M?Object.keys(M.venues).length:'',users:D?D.users.length:''};
+  $('#tabs').innerHTML=TABS.map(([k,t])=>'<button data-tab="'+k+'" class="'+(TAB===k?'on':'')+'">'+t+(n[k]!==undefined&&n[k]!==''?'<span class="n">'+n[k]+'</span>':'')+'</button>').join('');
+  if(!D)return;
+  const a=document.activeElement,qid=a&&a.dataset&&a.dataset.q,pos=a&&a.selectionStart;
+  $('#main').innerHTML=VIEWS[TAB](M);
+  if(qid){const el=document.querySelector('[data-q="'+qid+'"]');if(el){el.focus();if(pos!=null&&el.setSelectionRange)el.setSelectionRange(pos,pos)}}
+}
+async function load(fresh){
+  $('#status').textContent='Fetching from Cloudflare…';$('#refresh').disabled=true;
+  try{const r=await fetch('/api/data'+(fresh?'?fresh':''));const j=await r.json();if(!r.ok)throw new Error(j.error||r.statusText);
+    D=j;M=model();$('#status').textContent='Live data from oolio-tools · fetched '+new Date(j.fetchedAt).toLocaleTimeString();render()}
+  catch(e){$('#status').textContent='Could not load';$('#main').innerHTML='<div class="err">'+esc(e.message)+'</div>'+($('#main').innerHTML.includes('class="err"')?'':'');render()}
+  finally{$('#refresh').disabled=false}
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-tab]');if(t){TAB=t.dataset.tab;location.hash=TAB;render();window.scrollTo(0,0);return}
+  const th=e.target.closest('th[data-k]');if(th){const id=th.dataset.t,k=th.dataset.k,s=SORT[id];SORT[id]={k,asc:s&&s.k===k?!s.asc:false};render();return}
+  const rw=e.target.closest('[data-raw]');if(rw){e.preventDefault();const x=rw.dataset.raw==='group'?M.groups[rw.dataset.id]:M.venues[rw.dataset.id];
+    $('#dlg-t').textContent=(x.name||'Untitled')+' · '+rw.dataset.id;$('#dlg-b').textContent=JSON.stringify(x._raw,null,2);$('#dlg').showModal()}
+});
+document.addEventListener('input',e=>{const q=e.target.dataset&&e.target.dataset.q;if(q){Q[q]=e.target.value;render()}});
+$('#dlg-x').onclick=()=>$('#dlg').close();
+$('#refresh').onclick=()=>load(true);
+$('#theme').onclick=()=>{const r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==='dark':matchMedia('(prefers-color-scheme:dark)').matches;r.dataset.theme=dark?'light':'dark';try{localStorage.setItem('mh-theme',r.dataset.theme)}catch(e){}};
+try{const t=localStorage.getItem('mh-theme');if(t)document.documentElement.dataset.theme=t}catch(e){}
+window.addEventListener('hashchange',()=>{TAB=location.hash.slice(1);render()});
+render();load(false);
+</script>
+</body>
+</html>

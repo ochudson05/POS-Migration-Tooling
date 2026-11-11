@@ -1,0 +1,12 @@
+{
+  "name": "menuhauler-site-viewer",
+  "private": true,
+  "description": "Local, read-only viewer for the Menu Hauler website's data (D1 database oolio-tools)",
+  "scripts": {
+    "start": "node server.js",
+    "login": "wrangler login"
+  },
+  "devDependencies": {
+    "wrangler": "4.153.0"
+  }
+}
