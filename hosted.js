@@ -80,12 +80,14 @@ window.claude={use:async n=>{
 // view-only and Firecrawl limits are also enforced by the website itself. Admins get a link to /admin in the footer.
 let ME_NOW=null;
 const TOOLKEYS=['converter','photos','venue','setup','word'];
-function applyAccess(m){ME_NOW=m;const ok=t=>!m.tools||m.tools.includes(t);
+function applyAccess(m){ME_NOW=m;window.MH_ME=m;const ok=t=>!m.tools||m.tools.includes(t);
   document.querySelectorAll('.lx-tab[data-go],.lx-card .lx-open[data-go]').forEach(b=>{const t=b.dataset.go;if(TOOLKEYS.includes(t)&&!ok(t))(b.closest('.lx-card')||b).hidden=true});
   const guard=()=>{const v=location.hash.slice(1);if(TOOLKEYS.includes(v)&&!ok(v)){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}window.dispatchEvent(new HashChangeEvent('hashchange'))}};
   window.addEventListener('hashchange',guard);guard();
-  if(m.admin){const f=document.querySelector('.lx-foot .hosted-only');if(f&&!f.querySelector('a[href="/admin"]')){const a=document.createElement('a');a.href='/admin';a.textContent='Admin';f.prepend(a,' · ')}}
-  if(m.canEdit===false){const b=document.createElement('div');b.className='oh-banner';b.style.background='var(--accent)';b.textContent='Your access is view-only: you can look at venues but not change them.';document.body.prepend(b)}}
+  if(m.admin){const f=document.querySelector('.lx-foot .hosted-only');if(f&&!f.querySelector('a[href="/admin"]')){const a=document.createElement('a');a.href='/admin';a.innerHTML=(window.mhIcon?window.mhIcon('shield-check'):'')+'Admin';f.prepend(a,' · ')}}
+  if(m.canEdit===false){const b=document.createElement('div');b.className='oh-banner';b.style.background='var(--accent)';b.innerHTML=(window.mhIcon?window.mhIcon('eye'):'')+'<span>Your access is view-only: you can look at venues but not change them.</span>';document.body.prepend(b)}
+  // shell.js redraws the account button and the tab marker
+  window.dispatchEvent(new CustomEvent('mh:me',{detail:m}))}
 // which tool is open, for the admin page's activity list
 function report(){const t=location.hash.slice(1);if(TOOLKEYS.includes(t)&&!(ME_NOW&&ME_NOW.tools&&!ME_NOW.tools.includes(t)))fetch('/api/seen',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({tool:t})}).catch(()=>{})}
 window.addEventListener('hashchange',report);

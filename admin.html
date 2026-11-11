@@ -61,32 +61,50 @@ fieldset{border:0;margin:0;padding:0;display:grid;gap:6px}legend{font-size:.82re
 .opt span small{display:block;color:var(--muted);font-size:.8rem}
 .note{border-left:3px solid var(--warn);background:var(--bg);padding:8px 10px;border-radius:6px;font-size:.86rem}
 @media (max-width:640px){.hide-s{display:none}}
+:root[data-theme="light"]{color-scheme:light}
+.ic{width:1.1em;height:1.1em;flex:none;vertical-align:-.2em}
+button,a,input,select,.ad-kpi,.ad-card,tr{transition:background-color .18s,border-color .18s,color .18s,box-shadow .2s,transform .2s cubic-bezier(.2,.8,.2,1)}
+button{display:inline-flex;align-items:center;gap:6px}button:not(:disabled):active{transform:scale(.97)}
+.ad-top b{display:inline-flex;align-items:center;gap:9px}.ad-logo{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--bar-text);color:var(--bar)}
+.ad-top a{display:inline-flex;align-items:center;gap:6px}
+.ad-ib{display:grid;place-items:center;width:34px;height:34px;padding:0;border-radius:50%;background:var(--bar-hover);border:1px solid var(--bar-line);color:var(--bar-text)}
+.ad-ib:hover{background:var(--bar-line)!important;border-color:var(--bar-line)!important}.ad-ib .ic{transition:transform .5s cubic-bezier(.2,.8,.2,1)}.ad-ib:hover .ic{transform:rotate(40deg)}
+.ad-kpi{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center;animation:ad-in .4s cubic-bezier(.2,.8,.2,1) both}
+.ad-kpi .ki{grid-row:span 2;display:grid;place-items:center;width:38px;height:38px;border-radius:10px;background:var(--accent-soft);color:var(--accent)}
+.ad-kpi:hover{transform:translateY(-2px)}
+.ad-kpi:nth-child(2){animation-delay:.04s}.ad-kpi:nth-child(3){animation-delay:.08s}.ad-kpi:nth-child(4){animation-delay:.12s}.ad-kpi:nth-child(5){animation-delay:.16s}.ad-kpi:nth-child(6){animation-delay:.2s}
+@keyframes ad-in{from{opacity:0;transform:translateY(8px)}}
+h2{display:flex;align-items:center;gap:8px}
+tbody tr:hover{background:var(--bg)}
+.feed li{animation:ad-in .3s both}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+html.mh-still *{animation:none!important;transition:none!important}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 </style>
 </head>
 <body>
-<header class="ad-top"><b>Menu Hauler</b><span class="ad-tag">Admin</span><span class="ad-sp"></span><a href="/">Back to the tools</a><a href="/auth/logout">Sign out</a></header>
+<header class="ad-top"><b><span class="ad-logo"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-utensils"/></svg></span>Menu Hauler</b><span class="ad-tag">Admin</span><span class="ad-sp"></span><a href="/"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-house"/></svg>Back to the tools</a><a href="/auth/logout"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-log-out"/></svg>Sign out</a><button type="button" class="ad-ib" id="theme" aria-label="Switch theme"></button></header>
 <main>
   <div><h1>People and access</h1><p class="ad-sub">Everyone who has signed in or been added, what they may use, and what they’ve been doing. Changes take effect straight away.</p></div>
   <p class="msg" id="msg" role="status" aria-live="polite"></p>
   <section class="ad-kpis" id="kpis" aria-label="Summary"></section>
 
   <section class="ad-card" aria-labelledby="h-people">
-    <div class="row" style="justify-content:space-between;margin-bottom:10px"><h2 id="h-people" style="margin:0">People</h2>
-      <div class="row"><label class="f grow" style="flex-basis:240px">Search<input type="search" id="q" placeholder="Name or email" autocomplete="off"></label>
+    <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:10px"><h2 id="h-people" style="margin:0"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-users"/></svg>People</h2>
+      <div class="row" style="flex:1 1 auto;justify-content:flex-end"><label class="f grow" style="flex:0 1 260px">Search<input type="search" id="q" placeholder="Name or email" autocomplete="off"></label>
       <label class="f">Show<select id="show"><option value="">Everyone</option><option value="live">Signed in now</option><option value="admin">Admins</option><option value="blocked">Blocked</option></select></label>
-      <button type="button" id="add">Add person</button></div></div>
+      <button type="button" id="add"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-user-plus"/></svg>Add person</button></div></div>
     <div class="tw"><table><thead><tr><th scope="col">Person</th><th scope="col">Access</th><th scope="col" class="hide-s">Tools</th><th scope="col">Last seen</th><th scope="col" class="hide-s num">Sign-ins</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody id="people"></tbody></table></div>
   </section>
 
   <div class="ad-two">
     <section class="ad-card" aria-labelledby="h-act">
-      <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 id="h-act" style="margin:0">Recent activity</h2><label class="f">Person<select id="actwho"><option value="">Everyone</option></select></label></div>
+      <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 id="h-act" style="margin:0"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-activity"/></svg>Recent activity</h2><label class="f">Person<select id="actwho"><option value="">Everyone</option></select></label></div>
       <ul class="feed" id="feed"></ul>
       <p class="small muted" id="actnote" style="margin:8px 0 0"></p>
     </section>
     <section class="ad-card" aria-labelledby="h-who">
-      <h2 id="h-who">Who can sign in</h2>
+      <h2 id="h-who"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-mail"/></svg>Who can sign in</h2>
       <p class="small" style="margin:0 0 10px">Anyone with an email at these domains can sign in without being added first. They start as members with every tool. Leave it empty so only people you add can sign in.</p>
       <div class="row"><label class="f grow">Allowed email domains<input type="text" id="domains" placeholder="oolio.com, example.com" autocomplete="off"></label><button type="button" id="savedom">Save</button></div>
       <p class="small muted" id="domnote" style="margin:8px 0 0"></p>
@@ -121,6 +139,8 @@ fieldset{border:0;margin:0;padding:0;display:grid;gap:6px}legend{font-size:.82re
 (()=>{
 const $=id=>document.getElementById(id),esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
 const TOOLNAME={converter:'Menu Converter',photos:'Photo Finder',venue:'Restaurant Lookup',setup:'Setup Tracker',word:'Image to Word'};
+const ic=n=>'<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-'+n+'"/></svg>';
+const nm=u=>u.name||nameOf(u.email);
 const nameOf=e=>e.split('@')[0].split(/[._-]+/).filter(Boolean).map(w=>w[0].toUpperCase()+w.slice(1)).join(' ');
 let D=null,editing=null;
 const msg=(t,k)=>{$('msg').textContent=t||'';$('msg').className='msg'+(k?' '+k:'')};
@@ -128,26 +148,27 @@ async function call(path,body){const r=await fetch('/api/admin/'+path,body===und
   let j={};try{j=await r.json()}catch(e){}if(r.status===401){location.href='/login?next=/admin';throw new Error('Signed out')}if(!r.ok)throw new Error(j.error||('Error '+r.status));return j}
 function ago(t){if(!t)return'Never';const s=(Date.now()-t)/1000;if(s<90)return'Just now';if(s<3600)return Math.round(s/60)+' min ago';if(s<86400)return Math.round(s/3600)+' h ago';if(s<86400*30)return Math.round(s/86400)+' days ago';return new Date(t).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})}
 const when=t=>new Date(t).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
-function line(a){const who=a.email===D.me.email?'You':nameOf(a.email);
+function line(a){const p=D.users.find(u=>u.email===a.email),who=a.email===D.me.email?'You':p?nm(p):nameOf(a.email);
+  if(a.what==='sign-out')return'<b>'+esc(who)+'</b> signed out on every device';
   if(a.what==='sign-in')return'<b>'+esc(who)+'</b> signed in';
   if(a.what==='open')return'<b>'+esc(who)+'</b> opened '+esc(TOOLNAME[a.detail]||a.detail);
   if(a.what==='admin')return'<b>'+esc(who)+'</b>: '+esc(a.detail);return'<b>'+esc(who)+'</b> '+esc(a.what)+' '+esc(a.detail||'')}
 async function load(){try{D=await call('overview')}catch(e){msg(e.message,'err');return}draw();loadFeed()}
 function draw(){const U=D.users,wk=Date.now()-7*864e5;
-  $('kpis').innerHTML=[['People',U.length],['Signed in now',U.filter(u=>u.live).length],['Active in the last 7 days',U.filter(u=>u.lastSeen>wk).length],['Admins',U.filter(u=>u.role!=='member').length],['Blocked',U.filter(u=>u.status==='blocked').length],['Firecrawl this month',D.firecrawl.used+' / '+D.firecrawl.cap]]
-    .map(([k,v])=>'<div class="ad-kpi"><span>'+k+'</span><b>'+v+'</b></div>').join('');
+  $('kpis').innerHTML=[['users','People',U.length],['circle-check','Signed in now',U.filter(u=>u.live).length],['activity','Active in the last 7 days',U.filter(u=>u.lastSeen>wk).length],['shield-check','Admins',U.filter(u=>u.role!=='member').length],['ban','Blocked',U.filter(u=>u.status==='blocked').length],['flame','Firecrawl this month',D.firecrawl.used+' / '+D.firecrawl.cap]]
+    .map(([i,k,v])=>'<div class="ad-kpi"><span class="ki">'+ic(i)+'</span><span>'+k+'</span><b>'+v+'</b></div>').join('');
   const q=$('q').value.trim().toLowerCase(),sh=$('show').value;
-  const rows=U.filter(u=>(!q||u.email.includes(q)||nameOf(u.email).toLowerCase().includes(q))&&(!sh||(sh==='live'?u.live:sh==='admin'?u.role!=='member':u.status==='blocked')));
+  const rows=U.filter(u=>(!q||u.email.includes(q)||nm(u).toLowerCase().includes(q))&&(!sh||(sh==='live'?u.live:sh==='admin'?u.role!=='member':u.status==='blocked')));
   $('people').innerHTML=rows.map(u=>{const fixed=u.role==='owner'||u.email===D.me.email||(D.me.role!=='owner'&&u.role==='admin');
     const tools=u.tools?(u.tools.length?u.tools.map(t=>TOOLNAME[t]).join(', '):'None'):'All tools';
     const perms=[u.canEdit?'':'View only',u.firecrawl?'':'No Firecrawl'].filter(Boolean);
-    return'<tr data-e="'+esc(u.email)+'"><td class="who"><b>'+(u.live?'<span class="dot" title="Signed in"></span>':'')+esc(nameOf(u.email))+(u.email===D.me.email?' (you)':'')+'</b><span>'+esc(u.email)+'</span>'+(u.note?'<span>'+esc(u.note)+'</span>':'')+'</td>'+
+    return'<tr data-e="'+esc(u.email)+'"><td class="who"><b>'+(u.live?'<span class="dot" title="Signed in"></span>':'')+esc(nm(u))+(u.email===D.me.email?' (you)':'')+'</b><span>'+esc(u.email)+'</span>'+(u.note?'<span>'+esc(u.note)+'</span>':'')+'</td>'+
       '<td><span class="pill '+u.role+'">'+(u.role==='owner'?'Owner':u.role==='admin'?'Admin':'Member')+'</span> '+(u.status==='blocked'?'<span class="pill blocked">Blocked</span>':'')+(perms.length?'<div class="small muted">'+perms.join(' · ')+'</div>':'')+'</td>'+
       '<td class="hide-s small">'+esc(tools)+'</td><td class="small">'+ago(u.lastSeen)+(u.lastTool?'<div class="muted">'+esc(TOOLNAME[u.lastTool]||'')+'</div>':'')+'</td><td class="hide-s num">'+u.signIns+'</td>'+
       '<td><div class="acts">'+(fixed?'<span class="small muted">'+(u.role==='owner'?'Always full access':u.email===D.me.email?'':'Owner manages')+'</span>':
-        '<button type="button" class="sm sec" data-a="edit">Edit</button>'+(u.live?'<button type="button" class="sm sec" data-a="signout">Sign out</button>':'')+
-        (u.status==='blocked'?'<button type="button" class="sm sec" data-a="unblock">Unblock</button>':'<button type="button" class="sm bad" data-a="block">Block</button>')+'<button type="button" class="sm bad" data-a="remove">Remove</button>')+'</div></td></tr>'}).join('')||'<tr><td colspan="6" class="muted">Nobody matches.</td></tr>';
-  const sel=$('actwho'),v=sel.value;sel.innerHTML='<option value="">Everyone</option>'+U.map(u=>'<option value="'+esc(u.email)+'">'+esc(nameOf(u.email))+' · '+esc(u.email)+'</option>').join('');sel.value=v;
+        '<button type="button" class="sm sec" data-a="edit">'+ic('pencil')+'Edit</button>'+(u.live?'<button type="button" class="sm sec" data-a="signout">'+ic('log-out')+'Sign out</button>':'')+
+        (u.status==='blocked'?'<button type="button" class="sm sec" data-a="unblock">'+ic('check')+'Unblock</button>':'<button type="button" class="sm bad" data-a="block">'+ic('ban')+'Block</button>')+'<button type="button" class="sm bad" data-a="remove">'+ic('trash-2')+'Remove</button>')+'</div></td></tr>'}).join('')||'<tr><td colspan="6" class="muted">Nobody matches.</td></tr>';
+  const sel=$('actwho'),v=sel.value;sel.innerHTML='<option value="">Everyone</option>'+U.map(u=>'<option value="'+esc(u.email)+'">'+esc(nm(u))+' · '+esc(u.email)+'</option>').join('');sel.value=v;
   $('domains').value=D.domains.join(', ');const own=D.me.role==='owner';$('domains').disabled=!own;$('savedom').hidden=!own;
   $('domnote').textContent=(own?'':'Only the owner can change this. ')+(D.domainsFrom==='cloudflare'?'Currently taken from the ALLOWED_DOMAINS setting in Cloudflare until you save here.':D.domainsFrom==='default'?'Currently the built-in default until you save here.':'')+(D.extraEmails.length?' Also allowed by the ALLOWED_EMAILS setting in Cloudflare: '+D.extraEmails.join(', ')+'.':'');
   $('f-admin').disabled=!own}
@@ -161,7 +182,7 @@ $('savedom').addEventListener('click',async()=>{const v=$('domains').value;
 
 /* ---------- add / edit ---------- */
 $('f-tools').innerHTML=Object.entries(TOOLNAME).map(([k,n])=>'<label><input type="checkbox" value="'+k+'" checked> '+n+'</label>').join('');
-function open(u){editing=u;$('fmsg').textContent='';$('dtitle').textContent=u?'Edit '+nameOf(u.email):'Add person';
+function open(u){editing=u;$('fmsg').textContent='';$('dtitle').textContent=u?'Edit '+nm(u):'Add person';
   $('f-email').value=u?u.email:'';$('f-email').readOnly=!!u;
   document.querySelector('input[name=role][value='+(u&&u.role==='admin'?'admin':'member')+']').checked=true;
   document.querySelector('input[name=status][value='+(u&&u.status==='blocked'?'blocked':'active')+']').checked=true;
@@ -186,6 +207,13 @@ $('people').addEventListener('click',async e=>{const b=e.target.closest('button[
   try{if(a==='signout')await call('signout',{email});else if(a==='remove')await call('remove',{email});
     else await call('user',{email,role:u.role,status:a==='block'?'blocked':'active',tools:u.tools,canEdit:u.canEdit,firecrawl:u.firecrawl,note:u.note});
     msg({signout:'Signed out ',block:'Blocked ',unblock:'Unblocked ',remove:'Removed '}[a]+email+'.','ok');load()}catch(err){msg(err.message,'err');b.disabled=false}});
+// the same light / dark choice as the tools (localStorage mh.settings, applied early by theme-boot.js)
+const root=document.documentElement,mq=matchMedia('(prefers-color-scheme: dark)');
+const eff=()=>{const t=root.getAttribute('data-theme');return t==='dark'||t==='light'?t:(mq.matches?'dark':'light')};
+function drawTheme(){const d=eff()==='dark';$('theme').innerHTML=ic(d?'sun':'moon');$('theme').setAttribute('aria-label',d?'Switch to light mode':'Switch to dark mode')}
+$('theme').addEventListener('click',()=>{const t=eff()==='dark'?'light':'dark';let s={};try{s=JSON.parse(localStorage.getItem('mh.settings')||'{}')||{}}catch(e){}s.theme=t;try{localStorage.setItem('mh.settings',JSON.stringify(s))}catch(e){}
+  const go=()=>{root.setAttribute('data-theme',t);drawTheme()};if(document.startViewTransition&&!matchMedia('(prefers-reduced-motion: reduce)').matches&&!root.classList.contains('mh-still'))document.startViewTransition(go).ready.catch(()=>{});else go()});
+mq.addEventListener('change',drawTheme);drawTheme();
 load();setInterval(()=>{if(!document.hidden&&!$('dlg').open)load()},60000);
 })();
 </script>

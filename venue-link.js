@@ -52,13 +52,16 @@ function newVenue(prefill){const d=g('lx-dlg');
     catch(e){alert('Couldn’t create the venue: '+((e&&(e.message||e.code))||'error'))}}}
 
 /* ---------- home: the venue's progress through the tools ---------- */
+// icons come from shell.js (the Lucide sprite); each step wears its tool's icon and colour
+const IC=n=>window.mhIcon?window.mhIcon(n):'';
+const STEPICON={lookup:'store',menu:'file-spreadsheet',photos:'images',setup:'list-checks'},STEPTOOL={lookup:'venue',menu:'converter',photos:'photos',setup:'setup'};
 function drawHub(){const el=g('lx-hub'),a=OV.active();
   if(!a){const L=OV.list().slice(0,8);
     el.innerHTML='<h1>Menu Hauler</h1><p>Pick the venue you’re setting up. Every tool then works on it: the lookup fills its business details, the converted menu goes to Photo Finder and the checklist, and progress is shared with the team.</p>'+
-      '<div class="lx-card lx-pick">'+(OV.readOnly?'':'<button type="button" data-hub="new">New venue</button>')+
-      (L.length?'<div class="lx-recent">'+L.map(o=>{const p=OV.progress(o.id);return '<div class="lx-vcard"><button type="button" class="lx-sec" data-hub="pick" data-id="'+esc(o.id)+'"><b>'+esc(o.name||'Untitled')+'</b><span>'+(()=>{const gr=OV.groupOf&&OV.groupOf(o.id);return gr&&gr.name!==o.name?esc(gr.name)+' · ':''})()+esc(OV.stage(o.id))+' · '+p.done+'/'+p.total+' steps</span></button>'+
+      '<div class="lx-card lx-pick">'+(OV.readOnly?'':'<button type="button" data-hub="new">'+IC('plus')+'New venue</button>')+
+      (L.length?'<div class="lx-recent">'+L.map(o=>{const p=OV.progress(o.id);return '<div class="lx-vcard"><button type="button" class="lx-sec" data-hub="pick" data-id="'+esc(o.id)+'">'+IC('store')+'<b>'+esc(o.name||'Untitled')+'</b><span>'+(()=>{const gr=OV.groupOf&&OV.groupOf(o.id);return gr&&gr.name!==o.name?esc(gr.name)+' · ':''})()+esc(OV.stage(o.id))+' · '+p.done+'/'+p.total+' steps</span></button>'+
         (OV.readOnly?'':'<button type="button" class="lx-del" data-hub="del" data-id="'+esc(o.id)+'" title="Delete '+esc(o.name||'Untitled')+'" aria-label="Delete '+esc(o.name||'Untitled')+'">Delete</button>')+'</div>'}).join('')+'</div>':
-        (OV.ready?'<p class="lx-muted">No venues yet.</p>':'<p class="lx-muted">Loading venues…</p>'))+'</div>';
+        (OV.ready?'<p class="lx-muted">No venues yet.</p>':'<div class="lx-recent" aria-label="Loading venues"><div class="mh-skel"></div><div class="mh-skel"></div><div class="mh-skel"></div></div>'))+'</div>';
     return}
   const P=OV.lookup(a.id),pre=OV.progress(a.id,'pre'),trn=OV.progress(a.id,'trn'),all=OV.progress(a.id),m=a.menu,f=a.photos;
   const est=!m&&a.lookup?estimate(a):null;
@@ -71,7 +74,7 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
   const gr=OV.groupOf?OV.groupOf(a.id):null;
   el.innerHTML='<div class="lx-vhead"><div>'+(gr?'<p class="lx-org"><button type="button" class="lx-link" data-hub="org" data-id="'+esc(gr.id)+'">'+esc(gr.name||'Organisation')+'</button>'+(gr.venues.length>1?' · '+gr.venues.length+' venues':'')+'</p>':'')+'<h1>'+esc(a.name||'Untitled')+'</h1><p>'+esc([OV.address(a.id),OV.stage(a.id)].filter(Boolean).join(' · '))+'</p></div>'+
     '<div class="lx-prog"><span class="lx-bar2"><i style="width:'+(all.total?Math.round(all.done/all.total*100):0)+'%"></i></span>'+all.done+'/'+all.total+' steps</div></div>'+
-    '<ol class="lx-steps">'+steps.map((s,i)=>'<li class="lx-step'+(s.done?' done':'')+(i===next?' next':'')+'"><span class="lx-num">'+(s.done?'✓':i+1)+'</span><div><h2>'+esc(s.t)+'</h2><p>'+esc(s.s)+'</p></div>'+
+    '<ol class="lx-steps">'+steps.map((s,i)=>'<li class="lx-step t-'+STEPTOOL[s.k]+(s.done?' done':'')+(i===next?' next':'')+'"><span class="lx-num">'+(s.done?IC('check'):IC(STEPICON[s.k]))+'<span class="lx-sr">'+(s.done?'Done: ':'Step '+(i+1)+': ')+'</span></span><div><h2>'+esc(s.t)+'</h2><p>'+esc(s.s)+'</p></div>'+
       '<button type="button"'+(i===next?'':' class="lx-sec"')+' data-hub="'+s.k+'">'+esc(s.b)+'</button></li>').join('')+'</ol>'+
     '<p class="lx-muted lx-small">Working on another venue? Switch at the top, or <button type="button" class="lx-link" data-hub="none">clear the venue</button>.'+
     (OV.readOnly?'':' Finished with it? <button type="button" class="lx-link lx-bad" data-hub="del" data-id="'+esc(a.id)+'">Delete this venue</button>.')+'</p>'}

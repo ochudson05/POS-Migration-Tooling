@@ -4,6 +4,7 @@
    It serves the tools as a website (the files in public/, built by build_apps.py) and the API they use there:
      /login, /auth/start, /auth/verify, /auth/logout   sign-in with a 6-digit code emailed to an allowed address
      /api/me                  who is signed in, and what they may do
+     /api/account             your own account for the settings panel: details, display name, sign out everywhere
      /api/seen                which tool a person opened (for the admin page)
      /api/admin/*             the admin page (/admin): people, permissions, activity; owner and admins only
      /api/db/list|get|set|update|delete   the shared venue records (D1 database "oolio-tools", table docs)
@@ -40,7 +41,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-11.6';
+const VERSION = '2026-11-11.7';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -70,6 +71,8 @@ async function tables(env) {
     env.DB.prepare('CREATE INDEX IF NOT EXISTS activity_at ON activity (at)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT)'),
   ]);
+  // columns added after the table was first made (fails harmlessly once the column exists)
+  await env.DB.prepare('ALTER TABLE users ADD COLUMN name TEXT').run().catch(() => {});
   TABLES = true;
 }
 const list = v => String(v || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
@@ -87,7 +90,7 @@ const userOf = (email, r) => {
   const owner = email === OWNER;
   let tools = null; try { tools = r && r.tools ? JSON.parse(r.tools).filter(t => TOOLS.includes(t)) : null; } catch (e) { }
   return {
-    email, role: owner ? 'owner' : (r && r.role === 'admin' ? 'admin' : 'member'), status: owner ? 'active' : (r && r.status === 'blocked' ? 'blocked' : 'active'),
+    email, name: (r && r.name) || nameOf(email), role: owner ? 'owner' : (r && r.role === 'admin' ? 'admin' : 'member'), status: owner ? 'active' : (r && r.status === 'blocked' ? 'blocked' : 'active'),
     tools: owner ? null : tools, canEdit: owner || !r || r.can_edit !== 0, firecrawl: owner || !r || r.firecrawl !== 0,
   };
 };
@@ -105,7 +108,7 @@ async function sessionUser(req, env) {
   const t = cookieOf(req, 'mh_session');
   if (!/^[a-f0-9]{64}$/.test(t)) return null;
   await tables(env);
-  const r = await env.DB.prepare('SELECT s.email, s.expires, u.email AS known, u.role, u.status, u.tools, u.can_edit, u.firecrawl, u.last_seen FROM sessions s LEFT JOIN users u ON u.email = s.email WHERE s.token_hash = ?1')
+  const r = await env.DB.prepare('SELECT s.email, s.expires, u.email AS known, u.name, u.role, u.status, u.tools, u.can_edit, u.firecrawl, u.last_seen FROM sessions s LEFT JOIN users u ON u.email = s.email WHERE s.token_hash = ?1')
     .bind(await hmac(env, 's:' + t)).first();
   if (!r || r.expires < Date.now()) return null;
   const user = userOf(r.email, r.known ? r : null);
@@ -224,6 +227,32 @@ async function db(path, req, env, user, q) {
   await DB.prepare('INSERT INTO docs (coll, id, data, updated_at, updated_by) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(coll, id) DO UPDATE SET data = ?3, updated_at = ?4, updated_by = ?5')
     .bind(b.coll, b.id, json, Date.now(), user.email).run();
   return api({ ok: true });
+}
+
+/* ---------- your own account (the settings panel, for everyone) ---------- */
+async function account(path, req, env, user) {
+  const DB = env.DB, now = Date.now();
+  if (path === '' && req.method === 'GET') {
+    const r = (await DB.prepare('SELECT added_at, added_by, last_seen FROM users WHERE email = ?1').bind(user.email).first()) || {};
+    const live = ((await DB.prepare('SELECT COUNT(*) AS n FROM sessions WHERE email = ?1 AND expires > ?2').bind(user.email, now).first()) || {}).n || 0;
+    const ins = (await DB.prepare("SELECT at FROM activity WHERE email = ?1 AND what = 'sign-in' ORDER BY at DESC LIMIT 2").bind(user.email).all()).results || [];
+    const count = ((await DB.prepare("SELECT COUNT(*) AS n FROM activity WHERE email = ?1 AND what = 'sign-in'").bind(user.email).first()) || {}).n || 0;
+    return api(Object.assign({}, user, { admin: isAdmin(user), version: VERSION, addedAt: r.added_at || null, addedBy: r.added_by || '', lastSeen: r.last_seen || null,
+      devices: live, signIns: count, lastSignIn: ins[0] ? ins[0].at : null, previousSignIn: ins[1] ? ins[1].at : null, sessionDays: SESSION_DAYS }));
+  }
+  if (req.method !== 'POST') return api({ error: 'Use POST.' }, 405);
+  if (path === '') {
+    const b = await req.json().catch(() => ({}));
+    const name = String(b.name || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+    await DB.prepare("INSERT INTO users (email, role, name, added_by, added_at) VALUES (?1, ?2, ?3, 'signed in', ?4) ON CONFLICT(email) DO UPDATE SET name = ?3")
+      .bind(user.email, user.role, name || null, now).run();
+    return api({ ok: true, name: name || nameOf(user.email) });
+  }
+  if (path === '/signout-all') {
+    await DB.batch([DB.prepare('DELETE FROM sessions WHERE email = ?1').bind(user.email), log(env, user.email, 'sign-out', 'every device')]);
+    return api({ ok: true });
+  }
+  return api({ error: 'Unknown address.' }, 404);
 }
 
 /* ---------- the admin page's API (/admin): owner and admins only ---------- */
@@ -358,8 +387,9 @@ export default {
         const origin = req.headers.get('Origin');
         if (req.method === 'POST' && origin && new URL(origin).host !== u.host) return api({ error: 'Not allowed from another site.' }, 403);
         const route = u.pathname.slice(5);
-        if (route === 'me') return api({ email: user.email, name: nameOf(user.email), version: VERSION, role: user.role, tools: user.tools, canEdit: user.canEdit, firecrawl: user.firecrawl, admin: isAdmin(user) });
+        if (route === 'me') return api({ email: user.email, name: user.name, version: VERSION, role: user.role, tools: user.tools, canEdit: user.canEdit, firecrawl: user.firecrawl, admin: isAdmin(user) });
         if (route === 'seen' && req.method === 'POST') return seen(req, env, user);
+        if (route === 'account' || route.startsWith('account/')) return account(route.slice(8), req, env, user);
         if (route.startsWith('admin/')) return isAdmin(user) ? admin(route.slice(6), req, env, user, p) : api({ error: 'Only admins can do that.' }, 403);
         if (route.startsWith('db/')) return db(route.slice(3), req, env, user, p);
         if (route === 'fc') {

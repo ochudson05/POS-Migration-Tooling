@@ -86,12 +86,14 @@ window.claude={use:async n=>{
 // view-only and Firecrawl limits are also enforced by the website itself. Admins get a link to /admin in the footer.
 let ME_NOW=null;
 const TOOLKEYS=['converter','photos','venue','setup','word'];
-function applyAccess(m){ME_NOW=m;const ok=t=>!m.tools||m.tools.includes(t);
+function applyAccess(m){ME_NOW=m;window.MH_ME=m;const ok=t=>!m.tools||m.tools.includes(t);
   document.querySelectorAll('.lx-tab[data-go],.lx-card .lx-open[data-go]').forEach(b=>{const t=b.dataset.go;if(TOOLKEYS.includes(t)&&!ok(t))(b.closest('.lx-card')||b).hidden=true});
   const guard=()=>{const v=location.hash.slice(1);if(TOOLKEYS.includes(v)&&!ok(v)){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}window.dispatchEvent(new HashChangeEvent('hashchange'))}};
   window.addEventListener('hashchange',guard);guard();
-  if(m.admin){const f=document.querySelector('.lx-foot .hosted-only');if(f&&!f.querySelector('a[href="/admin"]')){const a=document.createElement('a');a.href='/admin';a.textContent='Admin';f.prepend(a,' · ')}}
-  if(m.canEdit===false){const b=document.createElement('div');b.className='oh-banner';b.style.background='var(--accent)';b.textContent='Your access is view-only: you can look at venues but not change them.';document.body.prepend(b)}}
+  if(m.admin){const f=document.querySelector('.lx-foot .hosted-only');if(f&&!f.querySelector('a[href="/admin"]')){const a=document.createElement('a');a.href='/admin';a.innerHTML=(window.mhIcon?window.mhIcon('shield-check'):'')+'Admin';f.prepend(a,' · ')}}
+  if(m.canEdit===false){const b=document.createElement('div');b.className='oh-banner';b.style.background='var(--accent)';b.innerHTML=(window.mhIcon?window.mhIcon('eye'):'')+'<span>Your access is view-only: you can look at venues but not change them.</span>';document.body.prepend(b)}
+  // shell.js redraws the account button and the tab marker
+  window.dispatchEvent(new CustomEvent('mh:me',{detail:m}))}
 // which tool is open, for the admin page's activity list
 function report(){const t=location.hash.slice(1);if(TOOLKEYS.includes(t)&&!(ME_NOW&&ME_NOW.tools&&!ME_NOW.tools.includes(t)))fetch('/api/seen',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({tool:t})}).catch(()=>{})}
 window.addEventListener('hashchange',report);
@@ -103,6 +105,18 @@ let shown=false;
 function signinBanner(msg){if(shown)return;shown=true;const go=()=>{const b=document.createElement('div');b.className='oh-banner';b.setAttribute('role','alert');
   b.innerHTML='<b>Not signed in.</b> <span></span> <button type="button">Sign in</button>';b.querySelector('span').textContent=msg||'';b.querySelector('button').onclick=()=>{location.href='/login?next='+encodeURIComponent(location.pathname+location.hash)};document.body.prepend(b)};
   if(document.body)go();else document.addEventListener('DOMContentLoaded',go)}
+})();
+</script>
+<script>/* Menu Hauler: applies this device's appearance settings before the page draws, so it never flashes the wrong theme.
+   build_apps.py puts it in the <head> of the launcher and the admin page. Settings are saved by shell.js in localStorage
+   "mh.settings": {theme: system|light|dark, size: 0.9|1|1.1, motion: system|reduce, start: home|last|<tool>}. */
+(()=>{let s={};try{s=JSON.parse(localStorage.getItem('mh.settings')||'{}')||{}}catch(e){}
+const r=document.documentElement;
+// claude.ai may set its own data-theme; keep it so "System" can go back to it
+if(!r.hasAttribute('data-mh-host'))r.setAttribute('data-mh-host',r.getAttribute('data-theme')||'');
+if(s.theme==='light'||s.theme==='dark')r.setAttribute('data-theme',s.theme);
+if(s.motion==='reduce')r.classList.add('mh-still');
+if(+s.size&&+s.size!==1)r.style.setProperty('--mh-zoom',String(+s.size));
 })();
 </script>
 <meta name="claude:viewport-fit-sides" content="cover">
@@ -559,55 +573,249 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px soli
 .lx-toolsh,.st-phase,.rf .rf-card h3{color:var(--muted)}
 th{font-weight:600}
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
-</style>
+/* Menu Hauler shell: icons, tool colours, the app bar, home cards, motion, the settings panel and toasts.
+   build_apps.py puts this after oolio-theme.css in the launcher, so it has the last word on the shared look. */
+:root[data-theme="light"]{color-scheme:light}
+body{zoom:var(--mh-zoom,1)}
+.ic{width:1.15em;height:1.15em;flex:none;vertical-align:-.2em;display:inline-block}
+/* one colour per tool, used for its icon tile */
+:root{--t-converter:#673ab6;--t-photos:#c2185b;--t-venue:#1e6fd9;--t-setup:#2e7d32;--t-word:#d35400;--ease:cubic-bezier(.2,.8,.2,1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--t-converter:#b39ddb;--t-photos:#f48fb1;--t-venue:#90caf9;--t-setup:#81c784;--t-word:#ffb74d}}
+:root[data-theme="dark"]{--t-converter:#b39ddb;--t-photos:#f48fb1;--t-venue:#90caf9;--t-setup:#81c784;--t-word:#ffb74d}
+.t-converter{--tint:var(--t-converter)}.t-photos{--tint:var(--t-photos)}.t-venue{--tint:var(--t-venue)}.t-setup{--tint:var(--t-setup)}.t-word{--tint:var(--t-word)}
 
+/* everything that can be pressed or typed into eases between states */
+button,.btn,a,input,select,textarea,.lx-card,.card,.st-card,.rf-card{transition:background-color .18s,border-color .18s,color .18s,box-shadow .2s,transform .2s var(--ease),opacity .18s}
+button:not(:disabled):active{transform:scale(.97)}
+input:focus-visible,select:focus-visible,textarea:focus-visible{box-shadow:0 0 0 3px var(--accent-soft)}
+
+/* ---------- app bar ---------- */
+.lx-bar{position:sticky;top:0;z-index:20;gap:6px 14px;box-shadow:0 1px 0 rgb(0 0 0/.06),0 6px 18px rgb(30 10 70/.12)}
+.lx-brand{display:inline-flex;align-items:center;gap:9px}
+.lx-logo{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--bar-text);color:var(--bar)}
+.lx-logo .ic{width:17px;height:17px}
+.lx-tabs{position:relative;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%;min-width:0;flex:1 1 auto}
+.lx-tabs::-webkit-scrollbar{display:none}
+.lx-tab{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;background:none!important;border-color:transparent!important;transition:color .25s}
+.lx-tab .ic{opacity:.85}
+.lx-tab[aria-current="page"]{color:var(--bar)!important}
+.lx-ind{position:absolute;left:0;top:0;z-index:0;border-radius:var(--r);background:var(--bar-text);pointer-events:none;opacity:0;transition:transform .35s var(--ease),width .35s var(--ease),opacity .2s}
+.lx-venue{margin-left:0}
+.lx-acts{display:flex;gap:6px;align-items:center;margin-left:auto}
+.lx-ib{display:grid;place-items:center;width:36px;height:36px;padding:0!important;margin:0;border-radius:50%!important;background:var(--bar-hover)!important;border:1px solid var(--bar-line)!important;color:var(--bar-text)!important;cursor:pointer}
+.lx-ib:hover{background:var(--bar-line)!important}
+.lx-ib .ic{width:18px;height:18px;transition:transform .5s var(--ease)}
+#mh-theme:hover .ic{transform:rotate(40deg)}
+.mh-av{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;font-size:.8rem;font-weight:700;letter-spacing:.02em;background:linear-gradient(135deg,#9575cd,#5e35b1);color:#fff}
+.mh-av.big{width:52px;height:52px;font-size:1.1rem;flex:none}
+/* phones: brand and buttons on the first row, the venue picker under them, then the tools */
+@media (max-width:760px){.lx-bar{padding-block:8px}.lx-acts{order:2}.lx-venue{order:3;flex-basis:100%}.lx-venue select{max-width:none;flex:1}.lx-venue>span{display:none}.lx-tabs{order:4;flex-basis:100%}}
+
+/* ---------- views come in gently ---------- */
+@keyframes mh-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.mh-enter{animation:mh-in .32s var(--ease)}
+.mh-hico{display:inline-grid;place-items:center;width:1.6em;height:1.6em;border-radius:.45em;margin-right:.45em;vertical-align:-.3em;color:var(--tint);background:color-mix(in srgb,var(--tint) 14%,transparent)}
+.mh-hico .ic{width:.95em;height:.95em}
+
+/* ---------- home ---------- */
+.lx-toolsh{display:flex;align-items:center;gap:8px}
+.lx-cards{gap:14px}
+.lx-card{position:relative;overflow:hidden}
+.lx-cards .lx-card{animation:mh-in .45s var(--ease) both}
+.lx-cards .lx-card:nth-child(2){animation-delay:.05s}.lx-cards .lx-card:nth-child(3){animation-delay:.1s}.lx-cards .lx-card:nth-child(4){animation-delay:.15s}.lx-cards .lx-card:nth-child(5){animation-delay:.2s}
+.lx-cards .lx-card::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--tint);transform:scaleX(0);transform-origin:left;transition:transform .35s var(--ease)}
+.lx-cards .lx-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgb(40 22 80/.14);border-color:color-mix(in srgb,var(--tint) 40%,var(--line))}
+.lx-cards .lx-card:hover::before{transform:scaleX(1)}
+.lx-cico{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;color:var(--tint);background:color-mix(in srgb,var(--tint) 13%,transparent);transition:transform .35s var(--ease)}
+.lx-cico .ic{width:22px;height:22px}
+.lx-card:hover .lx-cico{transform:scale(1.08) rotate(-4deg)}
+.lx-open{display:inline-flex;align-items:center;gap:6px}
+.lx-open .ic{transition:transform .25s var(--ease)}
+.lx-card:hover .lx-open .ic{transform:translateX(4px)}
+/* the venue hub */
+.lx-step{transition:border-color .2s,box-shadow .2s,transform .2s var(--ease)}
+.lx-step:hover{transform:translateX(3px)}
+.lx-num{width:38px;height:38px;color:var(--tint,var(--muted))}
+.lx-num .ic{width:18px;height:18px}
+.lx-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.lx-step.next .lx-num{color:var(--accent)}
+.lx-step.done .lx-num{animation:mh-pop .4s var(--ease)}
+@keyframes mh-pop{0%{transform:scale(.6)}70%{transform:scale(1.12)}100%{transform:scale(1)}}
+.lx-bar2 i{transition:width .8s var(--ease)}
+.lx-pick>button,.lx-recent button{display:inline-flex;align-items:center;gap:8px}
+.lx-recent button{display:grid;grid-template-columns:auto 1fr;column-gap:10px;align-items:center}
+.lx-recent button .ic{grid-row:span 2;width:20px;height:20px;color:var(--accent)}
+.lx-recent button:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.mh-skel{height:58px;border-radius:10px;background:linear-gradient(90deg,var(--tile) 25%,var(--accent-soft) 50%,var(--tile) 75%);background-size:300% 100%;animation:mh-shim 1.4s linear infinite}
+@keyframes mh-shim{from{background-position:100% 0}to{background-position:0 0}}
+.lx-foot a{display:inline-flex;align-items:center;gap:4px}
+.oh-banner{display:flex;align-items:center;gap:8px}
+
+/* ---------- settings panel: a sheet from the right (from the bottom on phones) ---------- */
+.mh-sheet{position:fixed;inset:0 0 0 auto;margin:0;height:100dvh;max-height:none;width:min(440px,100vw);padding:0;border:0;border-left:1px solid var(--line);background:var(--card);color:var(--text);box-shadow:-12px 0 40px rgb(0 0 0/.18);overflow:hidden;font-size:15px}
+.mh-sheet[open]{display:flex;flex-direction:column;animation:mh-sheet-in .3s var(--ease)}
+.mh-sheet.closing{animation:mh-sheet-out .22s ease-in forwards}
+.mh-sheet::backdrop{background:rgb(10 5 25/.45);backdrop-filter:blur(2px);animation:mh-fade .3s}
+@keyframes mh-sheet-in{from{transform:translateX(100%)}to{transform:none}}
+@keyframes mh-sheet-out{to{transform:translateX(100%)}}
+@keyframes mh-fade{from{opacity:0}}
+@media (max-width:560px){.mh-sheet{inset:auto 0 0 0;width:100vw;height:auto;max-height:88dvh;border-left:0;border-top:1px solid var(--line);border-radius:18px 18px 0 0}
+  @keyframes mh-sheet-in{from{transform:translateY(100%)}to{transform:none}}@keyframes mh-sheet-out{to{transform:translateY(100%)}}}
+.mh-sh-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line)}
+.mh-sh-head h2{margin:0;font-size:1.15rem;display:flex;align-items:center;gap:8px}
+.mh-x{display:grid;place-items:center;width:34px;height:34px;padding:0!important;border-radius:50%!important;background:transparent!important;border:1px solid var(--line)!important;color:var(--text)!important;cursor:pointer;margin:0}
+.mh-x:hover{background:var(--bg)!important}
+.mh-sh-body{overflow-y:auto;padding:6px 18px 28px;overscroll-behavior:contain}
+.mh-sh-body section{padding:16px 0;border-bottom:1px solid var(--line);display:grid;gap:12px;animation:mh-in .35s var(--ease) both}
+.mh-sh-body section:nth-child(2){animation-delay:.04s}.mh-sh-body section:nth-child(3){animation-delay:.08s}.mh-sh-body section:nth-child(4){animation-delay:.12s}.mh-sh-body section:nth-child(5){animation-delay:.16s}
+.mh-sh-body section:last-child{border-bottom:0}
+.mh-sh-body h3{margin:0;font-size:.78rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);display:flex;align-items:center;gap:7px}
+.mh-who{display:flex;gap:12px;align-items:center}
+.mh-who b{display:block;font-size:1.05rem}.mh-who span:not(.mh-av):not(.mh-pill){display:block;color:var(--muted);font-size:.86rem;overflow-wrap:anywhere}
+.mh-pill{display:inline-flex;align-items:center;gap:4px;margin-top:4px;font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--accent-soft);color:var(--accent)}
+.mh-name{display:grid;gap:4px}.mh-name label,.mh-lbl{font-size:.82rem;color:var(--muted);font-weight:600}
+.mh-name small,.mh-field small,.mh-line small,.mh-sw small,.mh-dl small{display:block;color:var(--muted);font-size:.8rem;font-weight:400}
+.mh-row{display:flex;gap:8px}.mh-row input{flex:1;min-width:0}
+.mh-sheet input:not([type=radio]):not([type=checkbox]),.mh-sheet select{font:inherit;font-size:.92rem;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;width:100%;margin:0}
+.mh-sheet button:not(.mh-x),.mh-btn{font:inherit;font-size:.88rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:8px 13px;border-radius:var(--r);border:1px solid var(--accent);background:var(--accent);color:var(--accent-text);cursor:pointer;text-decoration:none;margin:0;white-space:nowrap}
+.mh-btn.sec{background:transparent!important;color:var(--text)!important;border-color:var(--line)!important}
+.mh-btn.sec:not(:disabled):hover{border-color:var(--accent)!important;color:var(--accent)!important}
+.mh-sheet button:disabled{opacity:.5;cursor:default}
+.mh-btns{display:flex;flex-wrap:wrap;gap:8px}
+.mh-dl{display:grid;grid-template-columns:auto 1fr;gap:9px 14px;margin:0;font-size:.9rem}
+.mh-dl dt{color:var(--muted);display:flex;align-items:center;gap:7px}.mh-dl dd{margin:0}
+.mh-note{margin:0;color:var(--muted);font-size:.86rem;line-height:1.5}
+.mh-field{display:grid;gap:6px}
+.mh-seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:4px;padding:4px;border-radius:calc(var(--r) + 4px);background:var(--bg);border:1px solid var(--line)}
+.mh-seg label{display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 6px;border-radius:var(--r);cursor:pointer;font-size:.86rem;font-weight:600;color:var(--muted);transition:background-color .2s,color .2s,box-shadow .2s}
+.mh-seg label.on{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgb(0 0 0/.12)}
+.mh-seg label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:1px}
+.mh-seg input{position:absolute;opacity:0;width:1px;height:1px}
+.mh-sw{display:flex;align-items:flex-start;gap:12px;cursor:pointer;font-size:.92rem}
+.mh-sw input{position:absolute;opacity:0;width:1px;height:1px}
+.mh-track{flex:none;width:40px;height:22px;border-radius:99px;background:var(--line);position:relative;margin-top:1px;transition:background-color .2s}
+.mh-track::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgb(0 0 0/.3);transition:transform .25s var(--ease)}
+.mh-sw input:checked+.mh-track{background:var(--accent)}.mh-sw input:checked+.mh-track::after{transform:translateX(18px)}
+.mh-sw input:focus-visible+.mh-track{outline:2px solid var(--accent);outline-offset:2px}
+.mh-line{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.mh-links{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:.86rem}.mh-links a{color:var(--accent);text-decoration:none}.mh-links a:hover{text-decoration:underline}
+kbd{font:inherit;font-size:.78rem;padding:1px 6px;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;background:var(--bg)}
+
+/* ---------- toasts ---------- */
+.mh-toasts{position:fixed;left:50%;bottom:max(18px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:1000;display:grid;gap:8px;justify-items:center;pointer-events:none;width:max-content;max-width:calc(100vw - 32px)}
+.mh-toast{display:flex;align-items:center;gap:9px;padding:10px 16px;border-radius:12px;background:var(--text);color:var(--card);font-size:.9rem;font-weight:500;box-shadow:0 10px 30px rgb(0 0 0/.25);animation:mh-toast-in .35s var(--ease)}
+.mh-toast .ic{color:var(--ok)}.mh-toast.err .ic{color:var(--bad)}
+.mh-toast.out{animation:mh-toast-out .35s ease-in forwards}
+@keyframes mh-toast-in{from{opacity:0;transform:translateY(14px) scale(.96)}}
+@keyframes mh-toast-out{to{opacity:0;transform:translateY(10px)}}
+
+/* ---------- less motion when asked (the setting, or the device) ---------- */
+html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!important;transition:none!important}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+</style>
 </head>
 <body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+<symbol id="i-utensils" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2" /> <path d="M7 2v20" /> <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7" /></symbol>
+<symbol id="i-file-spreadsheet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /> <path d="M14 2v4a2 2 0 0 0 2 2h4" /> <path d="M8 13h2" /> <path d="M14 13h2" /> <path d="M8 17h2" /> <path d="M14 17h2" /></symbol>
+<symbol id="i-images" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 22H4a2 2 0 0 1-2-2V6" /> <path d="m22 13-1.296-1.296a2.41 2.41 0 0 0-3.408 0L11 18" /> <circle cx="12" cy="8" r="2" /> <rect width="16" height="16" x="6" y="2" rx="2" /></symbol>
+<symbol id="i-store" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7" /> <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /> <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4" /> <path d="M2 7h20" /> <path d="M22 7v3a2 2 0 0 1-2 2a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 16 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 12 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 8 12a2.7 2.7 0 0 1-1.59-.63.7.7 0 0 0-.82 0A2.7 2.7 0 0 1 4 12a2 2 0 0 1-2-2V7" /></symbol>
+<symbol id="i-list-checks" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 17 2 2 4-4" /> <path d="m3 7 2 2 4-4" /> <path d="M13 6h8" /> <path d="M13 12h8" /> <path d="M13 18h8" /></symbol>
+<symbol id="i-scan-text" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2" /> <path d="M17 3h2a2 2 0 0 1 2 2v2" /> <path d="M21 17v2a2 2 0 0 1-2 2h-2" /> <path d="M7 21H5a2 2 0 0 1-2-2v-2" /> <path d="M7 8h8" /> <path d="M7 12h10" /> <path d="M7 16h6" /></symbol>
+<symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" /> <circle cx="12" cy="12" r="3" /></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /> <path d="M12 2v2" /> <path d="M12 20v2" /> <path d="m4.93 4.93 1.41 1.41" /> <path d="m17.66 17.66 1.41 1.41" /> <path d="M2 12h2" /> <path d="M20 12h2" /> <path d="m6.34 17.66-1.41 1.41" /> <path d="m19.07 4.93-1.41 1.41" /></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></symbol>
+<symbol id="i-monitor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2" /> <line x1="8" x2="16" y1="21" y2="21" /> <line x1="12" x2="12" y1="17" y2="21" /></symbol>
+<symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /></symbol>
+<symbol id="i-log-out" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /> <polyline points="16 17 21 12 16 7" /> <line x1="21" x2="9" y1="12" y2="12" /></symbol>
+<symbol id="i-shield-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" /> <path d="m9 12 2 2 4-4" /></symbol>
+<symbol id="i-house" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8" /> <path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></symbol>
+<symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></symbol>
+<symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18" /> <path d="m6 6 12 12" /></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /> <path d="M12 5v14" /></symbol>
+<symbol id="i-trash-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18" /> <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /> <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" /> <line x1="10" x2="10" y1="11" y2="17" /> <line x1="14" x2="14" y1="11" y2="17" /></symbol>
+<symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8" /> <path d="m21 21-4.3-4.3" /></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6" /></symbol>
+<symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14" /> <path d="m12 5 7 7-7 7" /></symbol>
+<symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <path d="M22 21v-2a4 4 0 0 0-3-3.87" /> <path d="M16 3.13a4 4 0 0 1 0 7.75" /></symbol>
+<symbol id="i-activity" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2" /></symbol>
+<symbol id="i-ban" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="m4.9 4.9 14.2 14.2" /></symbol>
+<symbol id="i-rotate-ccw" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /></symbol>
+<symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="M12 16v-4" /> <path d="M12 8h.01" /></symbol>
+<symbol id="i-external-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6" /> <path d="M10 14 21 3" /> <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></symbol>
+<symbol id="i-building-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" /> <path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" /> <path d="M18 9h2a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-2" /> <path d="M10 6h4" /> <path d="M10 10h4" /> <path d="M10 14h4" /> <path d="M10 18h4" /></symbol>
+<symbol id="i-map-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" /> <circle cx="12" cy="10" r="3" /></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <polyline points="12 6 12 12 16 14" /></symbol>
+<symbol id="i-type" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7" /> <line x1="9" x2="15" y1="20" y2="20" /> <line x1="12" x2="12" y1="4" y2="20" /></symbol>
+<symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z" /> <path d="M20 3v4" /> <path d="M22 5h-4" /> <path d="M4 17v2" /> <path d="M5 18H3" /></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" /> <circle cx="12" cy="12" r="3" /></symbol>
+<symbol id="i-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" /></symbol>
+<symbol id="i-layout-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1" /> <rect width="7" height="7" x="14" y="3" rx="1" /> <rect width="7" height="7" x="14" y="14" rx="1" /> <rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
+<symbol id="i-hard-drive" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" x2="2" y1="12" y2="12" /> <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" /> <line x1="6" x2="6.01" y1="16" y2="16" /> <line x1="10" x2="10.01" y1="16" y2="16" /></symbol>
+<symbol id="i-scale" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" /> <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z" /> <path d="M7 21h10" /> <path d="M12 3v18" /> <path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2" /></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="16" x="2" y="4" rx="2" /> <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" /></symbol>
+<symbol id="i-pencil" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" /> <path d="m15 5 4 4" /></symbol>
+<symbol id="i-circle-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="m9 12 2 2 4-4" /></symbol>
+<symbol id="i-laptop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 16V7a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v9m16 0H4m16 0 1.28 2.55a1 1 0 0 1-.9 1.45H3.62a1 1 0 0 1-.9-1.45L4 16" /></symbol>
+<symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" /></symbol>
+<symbol id="i-sliders-horizontal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="21" x2="14" y1="4" y2="4" /> <line x1="10" x2="3" y1="4" y2="4" /> <line x1="21" x2="12" y1="12" y2="12" /> <line x1="8" x2="3" y1="12" y2="12" /> <line x1="21" x2="16" y1="20" y2="20" /> <line x1="12" x2="3" y1="20" y2="20" /> <line x1="14" x2="14" y1="2" y2="6" /> <line x1="8" x2="8" y1="10" y2="14" /> <line x1="16" x2="16" y1="18" y2="22" /></symbol>
+<symbol id="i-log-in" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" /> <polyline points="10 17 15 12 10 7" /> <line x1="15" x2="3" y1="12" y2="12" /></symbol>
+<symbol id="i-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <line x1="19" x2="19" y1="8" y2="14" /> <line x1="22" x2="16" y1="11" y2="11" /></symbol>
+<symbol id="i-user-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <line x1="17" x2="22" y1="8" y2="13" /> <line x1="22" x2="17" y1="8" y2="13" /></symbol>
+<symbol id="i-circle-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <circle cx="12" cy="10" r="3" /> <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" /></symbol>
+</svg>
 <header class="lx-bar">
-  <button type="button" class="lx-brand" data-go="">Menu Hauler</button>
+  <button type="button" class="lx-brand" data-go=""><span class="lx-logo"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-utensils"/></svg></span>Menu Hauler</button>
   <nav class="lx-tabs" aria-label="Tools">
-    <button type="button" class="lx-tab" data-go="converter">Menu Converter</button>
-    <button type="button" class="lx-tab" data-go="photos">Photo Finder</button>
-    <button type="button" class="lx-tab" data-go="venue">Restaurant Lookup</button>
-    <button type="button" class="lx-tab" data-go="setup">Setup Tracker</button>
-    <button type="button" class="lx-tab" data-go="word">Image to Word</button>
+    <button type="button" class="lx-tab" data-go="converter"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-file-spreadsheet"/></svg><span>Menu Converter</span></button>
+    <button type="button" class="lx-tab" data-go="photos"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-images"/></svg><span>Photo Finder</span></button>
+    <button type="button" class="lx-tab" data-go="venue"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-store"/></svg><span>Restaurant Lookup</span></button>
+    <button type="button" class="lx-tab" data-go="setup"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-list-checks"/></svg><span>Setup Tracker</span></button>
+    <button type="button" class="lx-tab" data-go="word"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-scan-text"/></svg><span>Image to Word</span></button>
   </nav>
   <label class="lx-venue"><span>Venue</span><select id="lx-venue" aria-label="Venue you are working on"><option value="">Loading venues…</option></select></label>
+  <div class="lx-acts"><button type="button" class="lx-ib" id="mh-theme" aria-label="Switch theme"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg></button><button type="button" class="lx-ib" id="mh-open" aria-label="Settings and account" aria-haspopup="dialog"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-settings"/></svg></button></div>
 </header>
 <dialog class="lx-dlg" id="lx-dlg"></dialog>
 <section class="lx-home" id="lx-home">
   <div id="lx-hub"></div>
-  <h2 class="lx-toolsh">All tools</h2>
+  <h2 class="lx-toolsh"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-layout-grid"/></svg>All tools</h2>
   <div class="lx-cards">
-    <article class="lx-card">
+    <article class="lx-card t-converter">
+      <div class="lx-cico"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-file-spreadsheet"/></svg></div>
       <h2>Menu Converter</h2>
       <p>Turns a customer’s menu into a file the Oolio One setup wizard accepts, with categories, size variants and modifier groups worked out.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>Square or Lightspeed exports, spreadsheets, menu PDFs, web pages, menu photos</dd><dt>Gives</dt><dd>Oolio One product import (.csv or .xlsx) and modifier groups</dd></dl>
-      <button type="button" class="lx-open" data-go="converter">Open Menu Converter</button>
+      <button type="button" class="lx-open" data-go="converter">Open Menu Converter<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-arrow-right"/></svg></button>
     </article>
-    <article class="lx-card">
+    <article class="lx-card t-photos">
+      <div class="lx-cico"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-images"/></svg></div>
       <h2>Photo Finder</h2>
       <p>Finds a free photo for every product and saves them in a folder named after the venue, each image named exactly like its product.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>Product export from Oolio One (.csv or .xlsx)</dd><dt>Gives</dt><dd>A venue folder of JPEGs plus a photo credits list</dd></dl>
-      <button type="button" class="lx-open" data-go="photos">Open Photo Finder</button>
+      <button type="button" class="lx-open" data-go="photos">Open Photo Finder<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-arrow-right"/></svg></button>
     </article>
-    <article class="lx-card">
+    <article class="lx-card t-venue">
+      <div class="lx-cico"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-store"/></svg></div>
       <h2>Restaurant Lookup</h2>
       <p>One page on any venue: address, legal name and ABN, services, reviews and popular dishes, and its delivery, booking and ordering links.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>The venue’s name and suburb</dd><dt>Gives</dt><dd>A venue profile, usually free in the Claude app with the Google relay, saved for 14 days</dd></dl>
-      <button type="button" class="lx-open" data-go="venue">Open Restaurant Lookup</button>
+      <button type="button" class="lx-open" data-go="venue">Open Restaurant Lookup<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-arrow-right"/></svg></button>
     </article>
-    <article class="lx-card">
+    <article class="lx-card t-setup">
+      <div class="lx-cico"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-list-checks"/></svg></div>
       <h2>Setup Tracker</h2>
       <p>Tracks each organisation’s setup against the Config Recap Checklist, shared with the team, with the matching help.oolio.com guide on every step.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>The venue, or a Restaurant Lookup result</dd><dt>Gives</dt><dd>Progress for each step, devices and printers checked against the rules, and a recap to paste into HubSpot</dd></dl>
-      <button type="button" class="lx-open" data-go="setup">Open Setup Tracker</button>
+      <button type="button" class="lx-open" data-go="setup">Open Setup Tracker<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-arrow-right"/></svg></button>
     </article>
-    <article class="lx-card">
+    <article class="lx-card t-word">
+      <div class="lx-cico"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-scan-text"/></svg></div>
       <h2>Image to Word</h2>
       <p>Takes the text out of photos, screenshots and scans and lays it out as a properly formatted Word document you can check and edit first.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>One or more pictures (JPG, PNG, screenshots)</dd><dt>Gives</dt><dd>A .docx with headings, paragraphs, lists and tables</dd></dl>
-      <button type="button" class="lx-open" data-go="word">Open Image to Word</button>
+      <button type="button" class="lx-open" data-go="word">Open Image to Word<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-arrow-right"/></svg></button>
     </article>
   </div>
 </section>
@@ -971,7 +1179,7 @@ Double Shot=60</textarea></div>
 <tbody>
 <tr><td>mh_session</td><td>Cookie</td><td>Keeps you signed in to the website. Strictly necessary.</td><td>30 days, or until you sign out</td></tr>
 <tr><td>Saved lookups and page reads</td><td>Browser storage</td><td>Avoids paying for the same lookup twice</td><td>7 to 14 days</td></tr>
-<tr><td>Your settings (venue picked, spirit brands, photo keys)</td><td>Browser storage</td><td>Remembers your choices on this device</td><td>Until you clear them</td></tr>
+<tr><td>Your settings (theme, text size, motion, start page, last tool used, venue picked, spirit brands, photo keys)</td><td>Browser storage</td><td>Remembers your choices on this device</td><td>Until you clear them</td></tr>
 </tbody></table></div>
 <p>Browser storage never leaves your device. You can clear it, and the cookie, in your browser’s settings for this site; you’ll need to sign in again.</p>
 <p>When the page loads, your browser fetches its font from Google Fonts and code libraries from cdnjs and jsDelivr. These services receive your IP address and browser details but don’t set cookies for us.</p>
@@ -1045,6 +1253,8 @@ Double Shot=60</textarea></div>
 <tr><td>PDF.js 3.11.174 (Mozilla)</td><td>Reading menu PDFs</td><td>Apache 2.0</td></tr>
 <tr><td>Tesseract.js 5.1.1</td><td>Text recognition on the website</td><td>Apache 2.0</td></tr>
 <tr><td>JSZip 3.10.1</td><td>Saving photo folders</td><td>MIT (or GPL 3.0)</td></tr>
+<tr><td>docx 8.5.0 (Dolan Miu)</td><td>Making Word files in Image to Word</td><td>MIT</td></tr>
+<tr><td>Lucide icons 0.460.0</td><td>The icons</td><td>ISC (parts from Feather, MIT)</td></tr>
 <tr><td>Inter typeface (Rasmus Andersson)</td><td>The page font</td><td>SIL Open Font License 1.1</td></tr>
 </tbody></table></div>
 <p>Full licence texts are in the THIRD_PARTY_NOTICES.md file that comes with the tools’ code.</p>
@@ -1061,7 +1271,159 @@ Double Shot=60</textarea></div>
 <p>We reply to emails within 2 business days. For privacy, accessibility, content or security matters, the response times in those policies apply.</p>
 </article></div>
 </div>
-<footer class="lx-foot"><p>© 2026 Oscar Hudson · ABN 60 219 896 086</p><nav aria-label="Legal and policies"><a href="#privacy">Privacy Policy</a><a href="#terms">Terms of Use</a><a href="#use">Acceptable Use Policy</a><a href="#cookies">Cookies and Browser Storage</a><a href="#disclaimer">Disclaimer</a><a href="#ai">Use of AI</a><a href="#accessibility">Accessibility</a><a href="#security">Security</a><a href="#credits">Credits and Licences</a><a href="#contact">Contact and Business Details</a></nav><p class="hosted-only" style="margin:0"><a href="/auth/logout">Sign out</a></p></footer>
+<footer class="lx-foot"><p>© 2026 Oscar Hudson · ABN 60 219 896 086</p><nav aria-label="Legal and policies"><a href="#privacy">Privacy Policy</a><a href="#terms">Terms of Use</a><a href="#use">Acceptable Use Policy</a><a href="#cookies">Cookies and Browser Storage</a><a href="#disclaimer">Disclaimer</a><a href="#ai">Use of AI</a><a href="#accessibility">Accessibility</a><a href="#security">Security</a><a href="#credits">Credits and Licences</a><a href="#contact">Contact and Business Details</a></nav><p class="hosted-only" style="margin:0"><a href="/auth/logout"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-log-out"/></svg>Sign out</a></p></footer>
+<script>/* Menu Hauler shell: the parts every view shares. Icons, light/dark theme, the settings panel (account details and
+   this device's settings, open to everyone), toasts, the sliding tab marker, view animations and the start page.
+   build_apps.py runs it in the launcher before the launcher's own script; theme-boot.js has already applied the theme.
+   Settings live in localStorage "mh.settings" on this device (see theme-boot.js). Account details come from
+   /api/account on the website, from claude.ai's user capability on claude.ai, and there are none in a local file. */
+(()=>{
+const g=id=>document.getElementById(id),esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+const ic=(n,c)=>'<svg class="ic'+(c?' '+c:'')+'" aria-hidden="true" focusable="false"><use href="#i-'+n+'"/></svg>';
+window.mhIcon=ic;
+const TOOLS=[{k:'converter',n:'Menu Converter',i:'file-spreadsheet'},{k:'photos',n:'Photo Finder',i:'images'},{k:'venue',n:'Restaurant Lookup',i:'store'},
+  {k:'setup',n:'Setup Tracker',i:'list-checks'},{k:'word',n:'Image to Word',i:'scan-text'}];
+window.mhTools=TOOLS;
+const KEY='mh.settings';let S={};try{S=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const root=document.documentElement,HOST=root.getAttribute('data-mh-host')||'',mq=matchMedia('(prefers-color-scheme: dark)');
+const HOSTED=!!window.OOLIO_HOSTED,ONCLAUDE=!HOSTED&&!!(window.claude&&window.claude.use);
+const still=()=>root.classList.contains('mh-still')||matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------- toasts ---------- */
+let tw=null;
+function toast(text,kind){if(!tw){tw=document.createElement('div');tw.className='mh-toasts';tw.setAttribute('role','status');tw.setAttribute('aria-live','polite');document.body.appendChild(tw)}
+  const el=document.createElement('div');el.className='mh-toast'+(kind?' '+kind:'');el.innerHTML=ic(kind==='err'?'info':'circle-check')+'<span></span>';el.querySelector('span').textContent=text;
+  tw.appendChild(el);setTimeout(()=>{el.classList.add('out');setTimeout(()=>el.remove(),400)},3400)}
+window.mhToast=toast;
+
+/* ---------- theme ---------- */
+const effective=()=>{const t=root.getAttribute('data-theme');return t==='dark'||t==='light'?t:(mq.matches?'dark':'light')};
+function applyTheme(){const t=S.theme;
+  if(t==='light'||t==='dark')root.setAttribute('data-theme',t);else if(HOST)root.setAttribute('data-theme',HOST);else root.removeAttribute('data-theme');
+  syncFrame();drawQuick()}
+// the Photo Finder runs in its own frame; give it the same theme
+function syncFrame(){const f=g('lx-pfframe');try{const d=f&&f.contentDocument;if(d&&d.documentElement){const t=root.getAttribute('data-theme');if(t)d.documentElement.setAttribute('data-theme',t);else d.documentElement.removeAttribute('data-theme');d.documentElement.classList.toggle('mh-still',root.classList.contains('mh-still'))}}catch(e){}}
+// switching themes grows the new one out of the button that was pressed (where the browser can animate it)
+// t is a theme, or a function that picks one when the change actually happens (so quick repeated toggles stay in step)
+let vtBusy=false;
+function setTheme(t,from){const run=()=>{S.theme=typeof t==='function'?t():t;save();applyTheme();drawSettings()};
+  if(!document.startViewTransition||still()||vtBusy||document.hidden){run();return}
+  vtBusy=true;setTimeout(()=>{vtBusy=false},700);
+  const r=from&&from.getBoundingClientRect?from.getBoundingClientRect():null,x=r?r.left+r.width/2:innerWidth-40,y=r?r.top+r.height/2:30;
+  const rad=Math.hypot(Math.max(x,innerWidth-x),Math.max(y,innerHeight-y));
+  document.startViewTransition(run).ready.then(()=>{document.documentElement.animate({clipPath:['circle(0 at '+x+'px '+y+'px)','circle('+rad+'px at '+x+'px '+y+'px)']},{duration:450,easing:'cubic-bezier(.2,.8,.2,1)',pseudoElement:'::view-transition-new(root)'})}).catch(()=>{})}
+function drawQuick(){const b=g('mh-theme');if(!b)return;const d=effective()==='dark';b.innerHTML=ic(d?'sun':'moon');b.setAttribute('aria-label',d?'Switch to light mode':'Switch to dark mode');b.title=d?'Light mode':'Dark mode'}
+mq.addEventListener('change',()=>{if(!S.theme||S.theme==='system'){drawQuick();drawSettings()}});
+function applySize(){const z=+S.size||1;if(z===1)root.style.removeProperty('--mh-zoom');else root.style.setProperty('--mh-zoom',String(z));requestAnimationFrame(moveInd)}
+function applyMotion(){root.classList.toggle('mh-still',S.motion==='reduce');syncFrame()}
+
+/* ---------- start page, tab marker and view animation (the launcher calls mhAfterShow after each view change) ---------- */
+const allowed=k=>{const m=window.MH_ME;return!(m&&m.tools&&!m.tools.includes(k))};
+if(!location.hash){const st=S.start||'home',t=st==='last'?S.last:st;if(t&&t!=='home'&&TOOLS.some(x=>x.k===t)&&allowed(t)){try{history.replaceState(null,'','#'+t)}catch(e){}}}
+function moveInd(){const tabs=document.querySelector('.lx-tabs');if(!tabs)return;let ind=tabs.querySelector('.lx-ind');
+  if(!ind){ind=document.createElement('span');ind.className='lx-ind';ind.setAttribute('aria-hidden','true');tabs.prepend(ind)}
+  const a=tabs.querySelector('.lx-tab[aria-current="page"]');if(!a||a.hidden||!a.offsetWidth){ind.style.opacity='0';return}
+  ind.style.opacity='1';ind.style.width=a.offsetWidth+'px';ind.style.height=a.offsetHeight+'px';ind.style.transform='translate('+a.offsetLeft+'px,'+a.offsetTop+'px)';
+  if(tabs.scrollWidth>tabs.clientWidth)tabs.scrollTo({left:a.offsetLeft-tabs.clientWidth/2+a.offsetWidth/2,behavior:still()?'auto':'smooth'})}
+window.mhAfterShow=(v,el)=>{moveInd();
+  if(TOOLS.some(x=>x.k===v)){S.last=v;save()}
+  if(el&&!still()){el.classList.remove('mh-enter');void el.offsetWidth;el.classList.add('mh-enter')}};
+addEventListener('resize',()=>requestAnimationFrame(moveInd));
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(moveInd);
+// each tool's own heading gets its icon (again whenever a tool redraws its page)
+const HEADS=[['lx-conv','file-spreadsheet','converter'],['lx-rf','store','venue'],['lx-st','list-checks','setup'],['lx-iw','scan-text','word']];
+function heads(){HEADS.forEach(([id,i,k])=>{const h=g(id)&&g(id).querySelector('h1');if(h&&!h.querySelector('.mh-hico'))h.insertAdjacentHTML('afterbegin','<span class="mh-hico t-'+k+'">'+ic(i)+'</span>')})}
+heads();let headQ=false;
+const mo=new MutationObserver(()=>{if(!headQ){headQ=true;requestAnimationFrame(()=>{headQ=false;heads()})}});
+HEADS.forEach(([id])=>{if(g(id))mo.observe(g(id),{childList:true,subtree:true})});
+
+/* ---------- the person (website: /api/me via hosted.js; claude.ai: the user capability, when settings open) ---------- */
+let ACC=null;
+const initials=n=>String(n||'').split(/[\s@._-]+/).filter(Boolean).slice(0,2).map(w=>w[0].toUpperCase()).join('')||'?';
+function drawMe(){const b=g('mh-open');if(!b)return;const m=window.MH_ME||ACC;
+  b.innerHTML=m&&m.name?'<span class="mh-av" aria-hidden="true">'+esc(initials(m.name))+'</span>':ic('settings');
+  b.setAttribute('aria-label','Settings and account'+(m&&m.name?' ('+m.name+')':''))}
+addEventListener('mh:me',()=>{drawMe();moveInd()});
+
+/* ---------- settings panel ---------- */
+let open=false;
+function sheet(){let d=g('mh-set');if(d)return d;d=document.createElement('dialog');d.id='mh-set';d.className='mh-sheet';d.setAttribute('aria-labelledby','mh-set-h');
+  d.innerHTML='<div class="mh-sh-head"><h2 id="mh-set-h">'+ic('settings')+' Settings</h2><button type="button" class="mh-x" data-s="close" aria-label="Close settings">'+ic('x')+'</button></div><div class="mh-sh-body" id="mh-set-body"></div>';
+  document.body.appendChild(d);
+  d.addEventListener('click',e=>{if(e.target===d){close();return}const b=e.target.closest('[data-s]');if(b)act(b.dataset.s,b)});
+  d.addEventListener('change',e=>{const t=e.target;
+    if(t.name==='mh-theme')setTheme(t.value,t.closest('label'));
+    else if(t.name==='mh-size'){S.size=+t.value;save();applySize()}
+    else if(t.id==='mh-motion'){S.motion=t.checked?'reduce':'system';save();applyMotion()}
+    else if(t.id==='mh-start'){S.start=t.value;save();toast('Start page saved.')}});
+  d.addEventListener('cancel',e=>{e.preventDefault();close()});
+  return d}
+function openSettings(){const d=sheet();drawSettings();if(!d.open)d.showModal();open=true;d.classList.remove('closing');loadAccount()}
+function close(){const d=g('mh-set');if(!d||!d.open)return;open=false;if(still()){d.close();return}d.classList.add('closing');setTimeout(()=>{d.classList.remove('closing');d.close()},220)}
+window.mhSettings=openSettings;
+async function loadAccount(){
+  try{if(HOSTED){const r=await fetch('/api/account',{credentials:'same-origin'});if(r.ok)ACC=await r.json()}
+    else if(ONCLAUDE){const u=await window.claude.use('user');const m=u&&await u.me();if(m)ACC={name:m.name||'',claude:true}}}catch(e){}
+  drawMe();if(open)drawSettings()}
+const when=t=>t?new Date(t).toLocaleString('en-AU',{day:'numeric',month:'short',year:'numeric',hour:'numeric',minute:'2-digit'}):'—';
+const day=t=>t?new Date(t).toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}):'—';
+function cacheKeys(){const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^(menuRead:|rf1:|mpf1:)/.test(k))out.push(k)}}catch(e){}return out}
+function seg(name,cur,opts){return'<div class="mh-seg" role="radiogroup">'+opts.map(([v,l,i])=>'<label class="'+(String(cur)===String(v)?'on':'')+'"><input type="radio" name="'+name+'" value="'+v+'"'+(String(cur)===String(v)?' checked':'')+'>'+(i?ic(i):'')+'<span>'+l+'</span></label>').join('')+'</div>'}
+function drawSettings(){const body=g('mh-set-body');if(!body)return;const m=Object.assign({},window.MH_ME||{},ACC||{});
+  let acct;
+  if(HOSTED){const tools=m.tools?TOOLS.filter(t=>m.tools.includes(t.k)):TOOLS;
+    acct='<div class="mh-who"><span class="mh-av big" aria-hidden="true">'+esc(initials(m.name||m.email))+'</span><div><b>'+esc(m.name||'Loading…')+'</b><span>'+esc(m.email||'')+'</span>'+
+      (m.role?'<span class="mh-pill '+m.role+'">'+ic(m.role==='member'?'user':'shield-check')+(m.role==='owner'?'Owner':m.role==='admin'?'Admin':'Member')+'</span>':'')+'</div></div>'+
+      '<form class="mh-name" data-form="name"><label for="mh-name">Display name</label><div class="mh-row"><input id="mh-name" maxlength="60" autocomplete="name" value="'+esc(m.name||'')+'"><button type="submit">Save</button></div><small>Shown to your team on the admin page and the records you change.</small></form>'+
+      '<dl class="mh-dl">'+
+        '<dt>'+ic('layout-grid')+'Tools</dt><dd>'+(tools.length===TOOLS.length?'All tools':tools.map(t=>t.n).join(', ')||'None')+'</dd>'+
+        '<dt>'+ic(m.canEdit===false?'eye':'pencil')+'Venues</dt><dd>'+(m.canEdit===false?'View only':'Can add and change')+'</dd>'+
+        '<dt>'+ic('flame')+'Firecrawl</dt><dd>'+(m.firecrawl===false?'Off for your account':'On (team credits)')+'</dd>'+
+        '<dt>'+ic('log-in')+'Last sign-in</dt><dd>'+when(m.lastSignIn)+(m.previousSignIn?'<small>Before that: '+when(m.previousSignIn)+'</small>':'')+'</dd>'+
+        '<dt>'+ic('laptop')+'Signed in on</dt><dd>'+(m.devices!=null?m.devices+' device'+(m.devices===1?'':'s')+'<small>Each sign-in lasts '+(m.sessionDays||30)+' days</small>':'—')+'</dd>'+
+        '<dt>'+ic('clock')+'Member since</dt><dd>'+day(m.addedAt)+'</dd></dl>'+
+      '<div class="mh-btns">'+(m.admin?'<a class="mh-btn" href="/admin">'+ic('shield-check')+'Admin page</a>':'')+
+        '<a class="mh-btn sec" href="/auth/logout">'+ic('log-out')+'Sign out</a><button type="button" class="mh-btn sec" data-s="signout-all">'+ic('laptop')+'Sign out everywhere</button></div>'+
+      '<p class="mh-note">Need more access? Ask an admin. Your access is set by the team, not here.</p>'}
+  else if(ONCLAUDE)acct='<div class="mh-who"><span class="mh-av big" aria-hidden="true">'+esc(initials(m.name))+'</span><div><b>'+esc(m.name||'Your claude.ai account')+'</b><span>Using Menu Hauler on claude.ai</span></div></div><p class="mh-note">You’re signed in through claude.ai. Who can open this page is set by whoever shared it with you.</p>';
+  else acct='<div class="mh-who"><span class="mh-av big" aria-hidden="true">'+ic('laptop')+'</span><div><b>Opened from this computer</b><span>Not signed in</span></div></div><p class="mh-note">Nothing you do here is shared with the team. Use menuhauler.com to work on shared venues.</p>';
+  const theme=S.theme==='light'||S.theme==='dark'?S.theme:'system',ck=cacheKeys();
+  const legal=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>'<a href="#'+a.id.slice(3)+'" data-s="close">'+esc(a.dataset.title)+'</a>').join('');
+  const avail=TOOLS.filter(t=>allowed(t.k));
+  body.innerHTML=
+    '<section><h3>'+ic('circle-user')+'Account</h3>'+acct+'</section>'+
+    '<section><h3>'+ic('sun')+'Appearance</h3>'+
+      '<div class="mh-field"><span class="mh-lbl">Theme</span>'+seg('mh-theme',theme,[['light','Light','sun'],['dark','Dark','moon'],['system','System','monitor']])+
+        '<small>'+(theme==='system'?'Following your device: '+effective()+' right now.':'Always '+theme+' on this device.')+'</small></div>'+
+      '<div class="mh-field"><span class="mh-lbl">Text size</span>'+seg('mh-size',+S.size||1,[[0.9,'Smaller'],[1,'Default'],[1.1,'Larger']])+'</div>'+
+      '<label class="mh-sw"><input type="checkbox" id="mh-motion" role="switch"'+(S.motion==='reduce'?' checked':'')+'><span class="mh-track" aria-hidden="true"></span><span>Reduce animations<small>Turns off slides, fades and the theme reveal.</small></span></label></section>'+
+    '<section><h3>'+ic('layout-grid')+'Start page</h3><div class="mh-field"><label class="mh-lbl" for="mh-start">When I open Menu Hauler, show</label><select id="mh-start">'+
+      [['home','Home (my venues)'],['last','The last tool I used']].concat(avail.map(t=>[t.k,t.n])).map(([v,l])=>'<option value="'+v+'"'+((S.start||'home')===v?' selected':'')+'>'+esc(l)+'</option>').join('')+'</select></div></section>'+
+    '<section><h3>'+ic('hard-drive')+'Data on this device</h3><div class="mh-line"><div><b>Saved lookups and page reads</b><small>'+(ck.length?ck.length+' saved, so repeat lookups are free. Clearing them doesn’t touch shared venues.':'Nothing saved yet.')+'</small></div><button type="button" class="mh-btn sec" data-s="clear"'+(ck.length?'':' disabled')+'>'+ic('trash-2')+'Clear</button></div>'+
+      '<div class="mh-line"><div><b>These settings</b><small>Theme, text size, motion and start page are kept in this browser only.</small></div><button type="button" class="mh-btn sec" data-s="reset">'+ic('rotate-ccw')+'Reset</button></div></section>'+
+    '<section><h3>'+ic('info')+'About</h3><p class="mh-note">Menu Hauler'+(m.version?' · version '+esc(m.version):'')+'. Press <kbd>Ctrl</kbd> + <kbd>,</kbd> to open these settings.</p><nav class="mh-links" aria-label="Policies">'+legal+'</nav></section>';
+  body.querySelectorAll('.mh-seg input').forEach(i=>i.addEventListener('change',()=>i.closest('.mh-seg').querySelectorAll('label').forEach(l=>l.classList.toggle('on',l.contains(i)))));
+  const f=body.querySelector('[data-form=name]');if(f)f.addEventListener('submit',saveName)}
+async function saveName(e){e.preventDefault();const v=g('mh-name').value.trim(),b=e.target.querySelector('button');b.disabled=true;
+  try{const r=await fetch('/api/account',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({name:v})});const j=await r.json();if(!r.ok)throw new Error(j.error||'error');
+    if(ACC)ACC.name=j.name;if(window.MH_ME)window.MH_ME.name=j.name;drawMe();drawSettings();toast('Display name saved.')}
+  catch(err){toast('Couldn’t save your name ('+err.message+').','err')}b.disabled=false}
+async function act(a,b){
+  if(a==='close')return close();
+  if(a==='clear'){const ks=cacheKeys();ks.forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});toast('Cleared '+ks.length+' saved lookups and page reads.');drawSettings();return}
+  if(a==='reset'){const last=S.last;S={last};save();applyTheme();applySize();applyMotion();drawSettings();toast('Settings reset to the defaults.');return}
+  if(a==='signout-all'){if(!confirm('Sign out on every device, including this one?'))return;b.disabled=true;
+    try{await fetch('/api/account/signout-all',{method:'POST',credentials:'same-origin'});location.href='/login'}catch(e){toast('Couldn’t sign out everywhere. Try again.','err');b.disabled=false}}}
+
+/* ---------- the bar's buttons ---------- */
+document.addEventListener('click',e=>{const t=e.target.closest('#mh-theme,#mh-open');if(!t)return;
+  if(t.id==='mh-theme')setTheme(()=>effective()==='dark'?'light':'dark',t);else openSettings()});
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key===','){e.preventDefault();open?close():openSettings()}});
+const fr=g('lx-pfframe');if(fr)fr.addEventListener('load',syncFrame);
+drawQuick();drawMe();
+})();
+</script>
 <script>
 const OUT=['Product ID','Product Name*','Product Type*','Product Group*','Reporting Group*','Category*','Variant Group','Variant Name','Measured By*','Default Value','Unit','POS Name','Kitchen Name','Printer Profiles','Description','Is Selling?','Print On Receipt?','Dietary Tags','Allergens','Available Location','Barcode','SKU','PLU','GTIN','Sell Price*','Sell Tax*','Recipe','Variable Pricing?','Min Pricing','Max Pricing','Image URL'];
 const $=id=>document.getElementById(id);
@@ -4010,7 +4372,7 @@ const PF_HTML="<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-
     const cur=views[v];new Set(Object.values(views)).forEach(el=>{el.hidden=el!==cur});
     if(LEGAL.includes(v)){document.querySelectorAll('#lx-legal .lg-doc').forEach(a=>{a.hidden=a.id!=='lg-'+v});document.querySelectorAll('.lx-lnav a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});document.title=g('lg-'+v).dataset.title+' · Menu Hauler'}else document.title='Menu Hauler';
     document.querySelectorAll('.lx-tab').forEach(b=>{if(b.dataset.go===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
-    if(v==='photos')openPF();window.scrollTo(0,0)}
+    if(v==='photos')openPF();window.scrollTo(0,0);if(window.mhAfterShow)window.mhAfterShow(v,cur)}
   document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;const v=b.dataset.go;
     if(location.hash.slice(1)===v)return;if(v)location.hash=v;else{history.pushState?history.pushState(null,'',location.pathname+location.search):location.hash='';show()}});
   window.addEventListener('hashchange',show);window.addEventListener('popstate',show);
@@ -4076,13 +4438,16 @@ function newVenue(prefill){const d=g('lx-dlg');
     catch(e){alert('Couldn’t create the venue: '+((e&&(e.message||e.code))||'error'))}}}
 
 /* ---------- home: the venue's progress through the tools ---------- */
+// icons come from shell.js (the Lucide sprite); each step wears its tool's icon and colour
+const IC=n=>window.mhIcon?window.mhIcon(n):'';
+const STEPICON={lookup:'store',menu:'file-spreadsheet',photos:'images',setup:'list-checks'},STEPTOOL={lookup:'venue',menu:'converter',photos:'photos',setup:'setup'};
 function drawHub(){const el=g('lx-hub'),a=OV.active();
   if(!a){const L=OV.list().slice(0,8);
     el.innerHTML='<h1>Menu Hauler</h1><p>Pick the venue you’re setting up. Every tool then works on it: the lookup fills its business details, the converted menu goes to Photo Finder and the checklist, and progress is shared with the team.</p>'+
-      '<div class="lx-card lx-pick">'+(OV.readOnly?'':'<button type="button" data-hub="new">New venue</button>')+
-      (L.length?'<div class="lx-recent">'+L.map(o=>{const p=OV.progress(o.id);return '<div class="lx-vcard"><button type="button" class="lx-sec" data-hub="pick" data-id="'+esc(o.id)+'"><b>'+esc(o.name||'Untitled')+'</b><span>'+(()=>{const gr=OV.groupOf&&OV.groupOf(o.id);return gr&&gr.name!==o.name?esc(gr.name)+' · ':''})()+esc(OV.stage(o.id))+' · '+p.done+'/'+p.total+' steps</span></button>'+
+      '<div class="lx-card lx-pick">'+(OV.readOnly?'':'<button type="button" data-hub="new">'+IC('plus')+'New venue</button>')+
+      (L.length?'<div class="lx-recent">'+L.map(o=>{const p=OV.progress(o.id);return '<div class="lx-vcard"><button type="button" class="lx-sec" data-hub="pick" data-id="'+esc(o.id)+'">'+IC('store')+'<b>'+esc(o.name||'Untitled')+'</b><span>'+(()=>{const gr=OV.groupOf&&OV.groupOf(o.id);return gr&&gr.name!==o.name?esc(gr.name)+' · ':''})()+esc(OV.stage(o.id))+' · '+p.done+'/'+p.total+' steps</span></button>'+
         (OV.readOnly?'':'<button type="button" class="lx-del" data-hub="del" data-id="'+esc(o.id)+'" title="Delete '+esc(o.name||'Untitled')+'" aria-label="Delete '+esc(o.name||'Untitled')+'">Delete</button>')+'</div>'}).join('')+'</div>':
-        (OV.ready?'<p class="lx-muted">No venues yet.</p>':'<p class="lx-muted">Loading venues…</p>'))+'</div>';
+        (OV.ready?'<p class="lx-muted">No venues yet.</p>':'<div class="lx-recent" aria-label="Loading venues"><div class="mh-skel"></div><div class="mh-skel"></div><div class="mh-skel"></div></div>'))+'</div>';
     return}
   const P=OV.lookup(a.id),pre=OV.progress(a.id,'pre'),trn=OV.progress(a.id,'trn'),all=OV.progress(a.id),m=a.menu,f=a.photos;
   const est=!m&&a.lookup?estimate(a):null;
@@ -4095,7 +4460,7 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
   const gr=OV.groupOf?OV.groupOf(a.id):null;
   el.innerHTML='<div class="lx-vhead"><div>'+(gr?'<p class="lx-org"><button type="button" class="lx-link" data-hub="org" data-id="'+esc(gr.id)+'">'+esc(gr.name||'Organisation')+'</button>'+(gr.venues.length>1?' · '+gr.venues.length+' venues':'')+'</p>':'')+'<h1>'+esc(a.name||'Untitled')+'</h1><p>'+esc([OV.address(a.id),OV.stage(a.id)].filter(Boolean).join(' · '))+'</p></div>'+
     '<div class="lx-prog"><span class="lx-bar2"><i style="width:'+(all.total?Math.round(all.done/all.total*100):0)+'%"></i></span>'+all.done+'/'+all.total+' steps</div></div>'+
-    '<ol class="lx-steps">'+steps.map((s,i)=>'<li class="lx-step'+(s.done?' done':'')+(i===next?' next':'')+'"><span class="lx-num">'+(s.done?'✓':i+1)+'</span><div><h2>'+esc(s.t)+'</h2><p>'+esc(s.s)+'</p></div>'+
+    '<ol class="lx-steps">'+steps.map((s,i)=>'<li class="lx-step t-'+STEPTOOL[s.k]+(s.done?' done':'')+(i===next?' next':'')+'"><span class="lx-num">'+(s.done?IC('check'):IC(STEPICON[s.k]))+'<span class="lx-sr">'+(s.done?'Done: ':'Step '+(i+1)+': ')+'</span></span><div><h2>'+esc(s.t)+'</h2><p>'+esc(s.s)+'</p></div>'+
       '<button type="button"'+(i===next?'':' class="lx-sec"')+' data-hub="'+s.k+'">'+esc(s.b)+'</button></li>').join('')+'</ol>'+
     '<p class="lx-muted lx-small">Working on another venue? Switch at the top, or <button type="button" class="lx-link" data-hub="none">clear the venue</button>.'+
     (OV.readOnly?'':' Finished with it? <button type="button" class="lx-link lx-bad" data-hub="del" data-id="'+esc(a.id)+'">Delete this venue</button>.')+'</p>'}

@@ -65,6 +65,13 @@ iw_js = iwp[iw_script + len("<script>"):iwp.rindex("</script>")]
 # the Photo Finder's page as a JS string; "</" is written "<\/" so it can't close this page's <script>
 # the Oolio One look (oolio-theme.css) goes after every tool's own CSS, and into the Photo Finder frame too
 THEME = (HERE / "oolio-theme.css").read_text(encoding="utf-8")
+# the shared look on top of it: icons (Lucide sprite, icons.svg), light/dark switching, the settings panel (shell.css / shell.js)
+SPRITE = (HERE / "icons.svg").read_text(encoding="utf-8").split("-->", 1)[1].strip()
+SHELL_CSS = (HERE / "shell.css").read_text(encoding="utf-8")
+SHELL_JS = (HERE / "shell.js").read_text(encoding="utf-8")
+BOOT = "<script>" + (HERE / "theme-boot.js").read_text(encoding="utf-8") + "</script>"
+def ic(name, cls=""):
+    return '<svg class="ic' + (" " + cls if cls else "") + '" aria-hidden="true" focusable="false"><use href="#i-' + name + '"/></svg>'
 FONT = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">'
 pf = pf.replace("</head>", FONT + "\n<style>" + THEME + "</style>\n</head>", 1)
 pf_js = json.dumps(pf, ensure_ascii=False).replace("</", "<\\/")
@@ -106,7 +113,7 @@ LEGAL_PAGES = re.findall(r'<article class="lg-doc" id="lg-([a-z]+)" data-title="
 LEGAL_NAV = "".join('<a href="#' + k + '">' + t + "</a>" for k, t in LEGAL_PAGES)
 FOOTER = ('<footer class="lx-foot"><p>© ' + B["year"] + " " + who + " · ABN " + esc(B["abn"]) +
           (" · ACN " + esc(B["acn"]) if B["acn"] else "") + '</p><nav aria-label="Legal and policies">' + LEGAL_NAV + "</nav></footer>")
-SIGNOUT = '<p class="hosted-only" style="margin:0"><a href="/auth/logout">Sign out</a></p>'
+SIGNOUT = '<p class="hosted-only" style="margin:0"><a href="/auth/logout">' + ic("log-out") + 'Sign out</a></p>'
 
 LEGAL_CSS = r"""
 /* legal pages (legal.html) and the footer on every view */
@@ -208,52 +215,58 @@ html.oolio-hosted .claude-only,html.oolio-hosted #rf-setbox{display:none!importa
 #lx-pfframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
 """
 
-LAUNCHER_HTML = """
+LAUNCHER_HTML = SPRITE + """
 <header class="lx-bar">
-  <button type="button" class="lx-brand" data-go="">Menu Hauler</button>
+  <button type="button" class="lx-brand" data-go=""><span class="lx-logo">""" + ic("utensils") + """</span>Menu Hauler</button>
   <nav class="lx-tabs" aria-label="Tools">
-    <button type="button" class="lx-tab" data-go="converter">Menu Converter</button>
-    <button type="button" class="lx-tab" data-go="photos">Photo Finder</button>
-    <button type="button" class="lx-tab" data-go="venue">Restaurant Lookup</button>
-    <button type="button" class="lx-tab" data-go="setup">Setup Tracker</button>
-    <button type="button" class="lx-tab" data-go="word">Image to Word</button>
+    <button type="button" class="lx-tab" data-go="converter">""" + ic("file-spreadsheet") + """<span>Menu Converter</span></button>
+    <button type="button" class="lx-tab" data-go="photos">""" + ic("images") + """<span>Photo Finder</span></button>
+    <button type="button" class="lx-tab" data-go="venue">""" + ic("store") + """<span>Restaurant Lookup</span></button>
+    <button type="button" class="lx-tab" data-go="setup">""" + ic("list-checks") + """<span>Setup Tracker</span></button>
+    <button type="button" class="lx-tab" data-go="word">""" + ic("scan-text") + """<span>Image to Word</span></button>
   </nav>
   <label class="lx-venue"><span>Venue</span><select id="lx-venue" aria-label="Venue you are working on"><option value="">Loading venues…</option></select></label>
+  <div class="lx-acts"><button type="button" class="lx-ib" id="mh-theme" aria-label="Switch theme">""" + ic("moon") + """</button><button type="button" class="lx-ib" id="mh-open" aria-label="Settings and account" aria-haspopup="dialog">""" + ic("settings") + """</button></div>
 </header>
 <dialog class="lx-dlg" id="lx-dlg"></dialog>
 <section class="lx-home" id="lx-home">
   <div id="lx-hub"></div>
-  <h2 class="lx-toolsh">All tools</h2>
+  <h2 class="lx-toolsh">""" + ic("layout-grid") + """All tools</h2>
   <div class="lx-cards">
-    <article class="lx-card">
+    <article class="lx-card t-converter">
+      <div class="lx-cico">""" + ic("file-spreadsheet") + """</div>
       <h2>Menu Converter</h2>
       <p>Turns a customer’s menu into a file the Oolio One setup wizard accepts, with categories, size variants and modifier groups worked out.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>Square or Lightspeed exports, spreadsheets, menu PDFs, web pages, menu photos</dd><dt>Gives</dt><dd>Oolio One product import (.csv or .xlsx) and modifier groups</dd></dl>
-      <button type="button" class="lx-open" data-go="converter">Open Menu Converter</button>
+      <button type="button" class="lx-open" data-go="converter">Open Menu Converter""" + ic("arrow-right") + """</button>
     </article>
-    <article class="lx-card">
+    <article class="lx-card t-photos">
+      <div class="lx-cico">""" + ic("images") + """</div>
       <h2>Photo Finder</h2>
       <p>Finds a free photo for every product and saves them in a folder named after the venue, each image named exactly like its product.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>Product export from Oolio One (.csv or .xlsx)</dd><dt>Gives</dt><dd>A venue folder of JPEGs plus a photo credits list</dd></dl>
-      <button type="button" class="lx-open" data-go="photos">Open Photo Finder</button>
+      <button type="button" class="lx-open" data-go="photos">Open Photo Finder""" + ic("arrow-right") + """</button>
     </article>
-    <article class="lx-card">
+    <article class="lx-card t-venue">
+      <div class="lx-cico">""" + ic("store") + """</div>
       <h2>Restaurant Lookup</h2>
       <p>One page on any venue: address, legal name and ABN, services, reviews and popular dishes, and its delivery, booking and ordering links.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>The venue’s name and suburb</dd><dt>Gives</dt><dd>A venue profile, usually free in the Claude app with the Google relay, saved for 14 days</dd></dl>
-      <button type="button" class="lx-open" data-go="venue">Open Restaurant Lookup</button>
+      <button type="button" class="lx-open" data-go="venue">Open Restaurant Lookup""" + ic("arrow-right") + """</button>
     </article>
-    <article class="lx-card">
+    <article class="lx-card t-setup">
+      <div class="lx-cico">""" + ic("list-checks") + """</div>
       <h2>Setup Tracker</h2>
       <p>Tracks each organisation’s setup against the Config Recap Checklist, shared with the team, with the matching help.oolio.com guide on every step.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>The venue, or a Restaurant Lookup result</dd><dt>Gives</dt><dd>Progress for each step, devices and printers checked against the rules, and a recap to paste into HubSpot</dd></dl>
-      <button type="button" class="lx-open" data-go="setup">Open Setup Tracker</button>
+      <button type="button" class="lx-open" data-go="setup">Open Setup Tracker""" + ic("arrow-right") + """</button>
     </article>
-    <article class="lx-card">
+    <article class="lx-card t-word">
+      <div class="lx-cico">""" + ic("scan-text") + """</div>
       <h2>Image to Word</h2>
       <p>Takes the text out of photos, screenshots and scans and lays it out as a properly formatted Word document you can check and edit first.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>One or more pictures (JPG, PNG, screenshots)</dd><dt>Gives</dt><dd>A .docx with headings, paragraphs, lists and tables</dd></dl>
-      <button type="button" class="lx-open" data-go="word">Open Image to Word</button>
+      <button type="button" class="lx-open" data-go="word">Open Image to Word""" + ic("arrow-right") + """</button>
     </article>
   </div>
 </section>
@@ -301,7 +314,7 @@ LAUNCHER_JS = r"""
     const cur=views[v];new Set(Object.values(views)).forEach(el=>{el.hidden=el!==cur});
     if(LEGAL.includes(v)){document.querySelectorAll('#lx-legal .lg-doc').forEach(a=>{a.hidden=a.id!=='lg-'+v});document.querySelectorAll('.lx-lnav a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});document.title=g('lg-'+v).dataset.title+' · Menu Hauler'}else document.title='Menu Hauler';
     document.querySelectorAll('.lx-tab').forEach(b=>{if(b.dataset.go===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
-    if(v==='photos')openPF();window.scrollTo(0,0)}
+    if(v==='photos')openPF();window.scrollTo(0,0);if(window.mhAfterShow)window.mhAfterShow(v,cur)}
   document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;const v=b.dataset.go;
     if(location.hash.slice(1)===v)return;if(v)location.hash=v;else{history.pushState?history.pushState(null,'',location.pathname+location.search):location.hash='';show()}});
   window.addEventListener('hashchange',show);window.addEventListener('popstate',show);
@@ -316,11 +329,13 @@ LAUNCHER_JS = r"""
 
 page = (
     "<title>Menu Hauler</title>\n"
+    + BOOT + "\n"
     '<meta name="claude:viewport-fit-sides" content="cover">\n'
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>\n'
     + FONT + "\n"
-    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + iw_css + THEME + "</style>\n"
+    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + iw_css + THEME + SHELL_CSS + "</style>\n"
     + LAUNCHER_HTML
+    + "<script>" + SHELL_JS + "</script>\n"
     + "<script>" + conv_js + "</script>\n"
     + "<script>" + rl_js + "</script>\n"
     + "<script>" + st_js + "</script>\n"
@@ -332,7 +347,7 @@ page = (
 full = (
     '<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
     '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
-    + page.replace("\n<header", "\n</head>\n<body>\n<header", 1)
+    + page.replace(SPRITE, "</head>\n<body>\n" + SPRITE, 1)
     + "</body>\n</html>\n"
 )
 (HERE / "apps.html").write_text(full, encoding="utf-8")
@@ -406,7 +421,7 @@ print("wrote", HERE / "public" / "login.html")
 
 # public/admin.html: people, permissions and activity (admin.html; relay-worker.js serves it at /admin to the owner and admins only)
 adm = (HERE / "admin.html").read_text(encoding="utf-8")
-adm = adm.replace("<style>", FONT + "\n<style>" + THEME, 1)
+adm = adm.replace("<style>", FONT + "\n" + BOOT + "\n<style>" + THEME, 1).replace("<body>", "<body>\n" + SPRITE, 1)
 (HERE / "public" / "admin.html").write_bytes(adm.replace("\r\n", "\n").encode("utf-8"))
 print("wrote", HERE / "public" / "admin.html")
 
