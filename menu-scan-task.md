@@ -1,7 +1,7 @@
 Monthly menu scan for Menu Hauler. Check a handful of venues for menu changes, record what changed in the tools' shared database, and send the user one notification summarising it.
 
 ## Where the data is
-- Menu Hauler is a website (https://menurunner.ochudson05.workers.dev). Its records are in the Cloudflare D1 database "oolio-tools", database_id `c3c0e022-71b9-4ac5-b838-dc4862e4eeb4`.
+- Menu Hauler is a website (https://menuhauler.com). Its records are in the Cloudflare D1 database "oolio-tools", database_id `c3c0e022-71b9-4ac5-b838-dc4862e4eeb4`.
 - Query it with the Cloudflare Developer Platform connector's `d1_database_query` tool (load it with ToolSearch "d1_database_query" if it isn't loaded). Pass values through `params`, never pasted into the SQL.
 - Table `docs (coll, id, data, updated_at, updated_by)`. `data` is a JSON string. Venues have `coll = 'orgs'`. Their menu versions have `coll = 'orgs/<venueId>/menus'`.
 - Venue fields used here:

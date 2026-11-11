@@ -1,6 +1,6 @@
 # Website legal and compliance: status
 
-How Menu Hauler (the website at menurunner.ochudson05.workers.dev and the claude.ai copy) covers each item on the
+How Menu Hauler (the website at menuhauler.com and the claude.ai copy) covers each item on the
 *Website Legal and Compliance Checklist* (11 Nov 2026). The public pages are in `legal.html`. The business details are in
 `BUSINESS` in `build_apps.py`. Run `python build_apps.py` after changing either.
 
@@ -17,7 +17,7 @@ A lawyer should review the final set before you rely on it. The checklist says t
 2. **ABN Lookup has no record of ABN 60 219 896 086 yet** (checked 11 Nov 2026). The number is valid (it passes the checksum), so it may not be active yet.
    The owner confirmed the name "Oscar Hudson" on 11 Nov 2026. Once ABN Lookup shows the record, check that `operator` matches it exactly. Add `trading_name` if you use a registered business name, and `acn` if it's a company.
 3. **Governing law state.** Queensland (confirmed 11 Nov 2026).
-4. **Make the policies readable without signing in.** In Cloudflare Zero Trust → Access → Applications → menurunner,
+4. **Make the policies readable without signing in.** In Cloudflare Zero Trust → Access → Applications → menurunner (with menuhauler.com added as a domain),
    add a policy with action **Bypass**, include **Everyone**, for the paths `/legal/*` and `/.well-known/*`.
    Also add a link to `/legal/#privacy` in the Access login page's custom text. That is the collection notice at the sign-in form.
 5. **GST.** Register when GST turnover reaches $75,000. If you register, add "GST registered" next to the ABN in the footer.
@@ -56,7 +56,7 @@ A lawyer should review the final set before you rely on it. The checklist says t
 | **Privacy and data** | | |
 | Consent/notice at collection; marketing opt-in | Notices added; no marketing | |
 | Data breach response plan (NDB) | Done | below |
-| HTTPS, hashed passwords, access control, encryption at rest | HTTPS (workers.dev); no passwords (one-time codes); every /api call checks the Access JWT; D1 is encrypted at rest by Cloudflare | `relay-worker.js` |
+| HTTPS, hashed passwords, access control, encryption at rest | HTTPS (Cloudflare certificates for menuhauler.com); no passwords (one-time codes); every /api call checks the Access JWT; D1 is encrypted at rest by Cloudflare | `relay-worker.js` |
 | Overseas disclosure list | Done (table of every service and its country) | `#privacy` |
 | Retention and deletion schedule | Done | `#privacy`, below |
 | Access and correction (response time) | 30 days | `#privacy` |

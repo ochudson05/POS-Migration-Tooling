@@ -1,4 +1,4 @@
-/* Menu Hauler on its own website (menurunner.workers.dev behind Cloudflare Access).
+/* Menu Hauler on its own website (menuhauler.com, the menurunner Worker, behind Cloudflare Access).
    The tools were written for claude.ai, where they reach shared data, sign-in and Firecrawl through window.claude.use(name).
    This file provides the same interface from the website's own API (relay-worker.js), so the tools run unchanged:
      db    -> /api/db/*  (D1), with changes from teammates picked up every 10 seconds

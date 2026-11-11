@@ -8,6 +8,15 @@ compatibility_date = "2026-11-01"
 # keep variables set in the Cloudflare dashboard when deploying
 keep_vars = true
 
+# the website's own domain (menuhauler.com, on Cloudflare DNS in the same account). Cloudflare creates the DNS records
+# and certificates on deploy. www redirects to the bare domain (relay-worker.js). The workers.dev address stays on,
+# because the claude.ai copy's Google relay setting points at it.
+workers_dev = true
+routes = [
+  { pattern = "menuhauler.com", custom_domain = true },
+  { pattern = "www.menuhauler.com", custom_domain = true },
+]
+
 # the website itself: public/index.html, built by build_apps.py
 [assets]
 directory = "./public"

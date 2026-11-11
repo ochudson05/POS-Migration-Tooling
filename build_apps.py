@@ -71,7 +71,7 @@ BUSINESS = {
     "phone": "0408 941 151",
     "address": "",                     # business or postal address
     "state": "Queensland",             # governing law in the Terms of Use
-    "site": "https://menurunner.ochudson05.workers.dev",
+    "site": "https://menuhauler.com",
     "updated": "11 November 2026",
     "year": "2026",
 }

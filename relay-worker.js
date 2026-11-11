@@ -1,4 +1,5 @@
-/* Menu Hauler website and relay: the Cloudflare Worker "menurunner" (free plan).
+/* Menu Hauler website and relay: the Cloudflare Worker "menurunner" (free plan), at https://menuhauler.com
+   (also menurunner.ochudson05.workers.dev, which the claude.ai copy's relay setting uses).
 
    It serves the tools as a website (the files in public/, built by build_apps.py) and the API they use there:
      /api/me                  who is signed in (from Cloudflare Access)
@@ -31,7 +32,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-11.1';
+const VERSION = '2026-11-11.2';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -147,6 +148,8 @@ async function fetchFor(q, env) {
 export default {
   async fetch(req, env) {
     const u = new URL(req.url), p = u.searchParams;
+    // www.menuhauler.com -> menuhauler.com
+    if (u.hostname.startsWith('www.')) { u.hostname = u.hostname.slice(4); return Response.redirect(u.href, 301); }
     try {
       /* ----- the website's API: signed-in people only ----- */
       if (u.pathname.startsWith('/api/')) {
