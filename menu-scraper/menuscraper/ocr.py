@@ -1,6 +1,6 @@
 """Text recognition for menu photos and scanned pages: RapidOCR (PaddleOCR's models on ONNX Runtime, CPU only).
 
-The website uses it two ways (relay-worker.js /api/oracle/ocr):
+The website uses it two ways (relay-worker.js /api/server/ocr):
   - a second opinion on Claude's reading: prices Claude listed that OCR didn't see are flagged for a human check;
   - the reader itself when Claude isn't on, in place of the browser's Tesseract (better on photos and columns).
 

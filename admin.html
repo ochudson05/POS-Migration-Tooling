@@ -204,8 +204,9 @@ const money=v=>'US$'+(+v||0).toFixed(2);
 function drawClaude(){const C=D.claude;if(!C)return;const s=C.settings,own=D.me.role==='owner';
   const opts=C.models.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.id)+' ($'+m.inUsd+' in / $'+m.outUsd+' out per million tokens)</option>').join('');
   $('cl-model').innerHTML=opts;
-  // small jobs: review summaries, staff lists, the converter's check. "local" is the free model on the Oracle server
-  $('cl-light').innerHTML=opts+(C.localOn?'<option value="local">Local model on the Oracle server (free; Haiku steps in if it can’t answer)</option>':'');
+  // small jobs: review summaries, staff lists, the converter's check. "local" is the free model on the Menu Hauler server
+  // "gemini" is Google's model (GEMINI_KEY in Cloudflare), priced and limited like Claude; Haiku steps in if it fails
+  $('cl-light').innerHTML=opts+(C.gemini?'<option value="gemini">Gemini ('+esc(C.gemini)+', Google; Haiku steps in if it fails)</option>':'')+(C.localOn?'<option value="local">Local model on the Menu Hauler server (free; Haiku steps in if it can’t answer)</option>':'');
   $('cl-on').checked=s.enabled;$('cl-model').value=s.model;$('cl-light').value=s.lightModel;$('cl-effort').value=s.effort;$('cl-site').value=s.siteMonthUsd;$('cl-user').value=s.userMonthUsd;$('cl-day').value=s.userDayCalls;$('cl-min').value=s.userMinuteCalls;
   ['cl-on','cl-model','cl-light','cl-effort','cl-site','cl-user','cl-day','cl-min'].forEach(id=>$(id).disabled=!own);$('cl-save').hidden=!own;
   const allowed=D.users.filter(u=>u.claude&&u.status!=='blocked');

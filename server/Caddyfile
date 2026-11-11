@@ -1,4 +1,4 @@
-# The Oracle server's front door (see docker-compose.yml). Cloudflare Tunnel brings requests here.
+# The Menu Hauler server's front door (see docker-compose.yml). Cloudflare Tunnel brings requests here.
 # Every request needs the header X-MH-Key with MH_KEY; only the paths the website uses are let through.
 {
 	admin off
@@ -24,7 +24,8 @@
 		}
 	}
 
-	# the local model: answering only (no pulling or deleting models from outside)
+	# the local model (only with the local-model profile; otherwise this answers 502 and the website uses Haiku):
+	# answering only, no pulling or deleting models from outside
 	@ai {
 		method POST
 		path /ai/api/chat

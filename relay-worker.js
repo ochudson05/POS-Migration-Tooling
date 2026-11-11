@@ -35,10 +35,15 @@
      FIRECRAWL_MONTHLY_CAP  text (optional)  Firecrawl credits the site may use per month, default 500
      ANTHROPIC_API_KEY secret (optional)  Claude API key (sk-ant-...). Without it Claude is simply off on the website.
      CLAUDE_OFF      text (optional)  "1" turns Claude off for everyone, whatever /admin says (an emergency stop)
-     ORACLE_URL      text (optional)  the Oracle server's address through its Cloudflare Tunnel, e.g. https://oracle.menuhauler.com
-     ORACLE_KEY      secret (optional) the key that server's gateway expects (MH_KEY in oracle/.env). Both set = the menu
-                     scraper (/api/oracle/scrape), OCR second opinion (/api/oracle/ocr) and the small local model are on.
-     LOCAL_MODEL     text (optional)  the local model's name on that server, default "qwen3:4b" (LOCAL_MODEL in oracle/.env)
+     SERVER_URL      text (optional)  the Menu Hauler server's address through its Cloudflare Tunnel, e.g. https://server.menuhauler.com
+                     (server/README.md: any Linux VM with Docker; Google Cloud for now)
+     SERVER_KEY      secret (optional) the key that server's gateway expects (MH_KEY in server/.env). Both set = the menu
+                     scraper (/api/server/scrape) and OCR second opinion (/api/server/ocr) are on, and the small local
+                     model too if the server runs it (LOCAL_MODEL_ON = "1").
+     LOCAL_MODEL_ON  text (optional)  "1" when the server runs the local model (the "local-model" profile in server/)
+     LOCAL_MODEL     text (optional)  the local model's name on that server, default "qwen3:4b" (LOCAL_MODEL in server/.env)
+     GEMINI_KEY      secret (optional) a Gemini API key (Google AI Studio or Google Cloud). Set = /admin offers Gemini for small jobs.
+     GEMINI_MODEL    text (optional)  which Gemini model, default "gemini-2.5-flash-lite"
 
    Claude on the website (/api/claude) is off until the owner turns it on at /admin, and then only for people the
    owner has ticked one by one. Every call is checked against per-minute, per-day and monthly limits, a site-wide
@@ -53,7 +58,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-11.10';
+const VERSION = '2026-11-12.1';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -304,7 +309,7 @@ async function admin(path, req, env, user, q) {
     const cached = ((await DB.prepare("SELECT COUNT(*) AS n FROM claude_calls WHERE at >= ?1 AND state = 'cached'").bind(monthStart()).first()) || {}).n || 0;
     const claudeInfo = { settings: cs, hard: CLAUDE_HARD, models: Object.entries(CLAUDE_PRICES).map(([id, p]) => ({ id, inUsd: p[0], outUsd: p[1] })), efforts: CLAUDE_EFFORTS,
       keySet: !!env.ANTHROPIC_API_KEY, stopped: env.CLAUDE_OFF === '1', spend, monthUsd: Object.values(spend).reduce((a, x) => a + x.usd, 0),
-      localOn: oracleOn(env), cachedThisMonth: cached };
+      localOn: localOn(env), gemini: env.GEMINI_KEY ? geminiModel(env) : null, cachedThisMonth: cached };
     return api({ me: user, owner: OWNER, users, tools: TOOLS, domains: await domainsOf(env), domainsFrom: set ? 'admin' : (env.ALLOWED_DOMAINS ? 'cloudflare' : 'default'),
       extraEmails: list(env.ALLOWED_EMAILS), activityDays: ACTIVITY_DAYS, firecrawl: { used: fc, cap: +env.FIRECRAWL_MONTHLY_CAP || 500 }, claude: claudeInfo });
   }
@@ -333,7 +338,7 @@ async function admin(path, req, env, user, q) {
     const cur = await claudeSettings(env), has = k => b[k] !== undefined;
     const next = {
       enabled: has('enabled') ? b.enabled === true : cur.enabled, model: has('model') && CLAUDE_PRICES[b.model] ? b.model : cur.model,
-      lightModel: has('lightModel') && (CLAUDE_PRICES[b.lightModel] || b.lightModel === LOCAL_MODEL) ? b.lightModel : cur.lightModel,
+      lightModel: has('lightModel') && (CLAUDE_PRICES[b.lightModel] || b.lightModel === LOCAL_MODEL || b.lightModel === GEMINI) ? b.lightModel : cur.lightModel,
       effort: has('effort') && CLAUDE_EFFORTS.includes(b.effort) ? b.effort : cur.effort,
       siteMonthUsd: has('siteMonthUsd') ? b.siteMonthUsd : cur.siteMonthUsd, userMonthUsd: has('userMonthUsd') ? b.userMonthUsd : cur.userMonthUsd,
       userDayCalls: has('userDayCalls') ? b.userDayCalls : cur.userDayCalls, userMinuteCalls: has('userMinuteCalls') ? b.userMinuteCalls : cur.userMinuteCalls,
@@ -423,12 +428,18 @@ async function firecrawl(req, env) {
    Before each call the worst-case cost is written down, so the limits hold even when several calls run at once.
    Two models, both chosen on /admin: "model" reads menus, pictures and documents; "lightModel" does the small jobs a
    page marks task: "light" (review summaries, staff lists, the converter's check). lightModel can be "local", the small
-   model on the Oracle server, which costs nothing and hands over to Haiku when it can't answer.
+   model on the Menu Hauler server, which costs nothing and hands over to Haiku when it can't answer, or "gemini"
+   (GEMINI_KEY), Google's model, which is priced and limited exactly like Claude and also hands over to Haiku if it fails.
    Answers are saved by a hash of exactly what was asked (claude_cache), so the same file read twice is paid for once.
    A page may send fixed reference text as "context": it goes first, marked for Anthropic's prompt cache. */
 const CLAUDE_PRICES = { 'claude-haiku-5-5': [0.10, 0.50], 'claude-sonnet-5-5': [2, 10], 'claude-opus-5-5': [4, 20] }; // US$ per million tokens: in, out
 const CLAUDE_PRICE_MAX = [10, 50];            // for any model not listed (a fallback model), assume the dearest
 const LOCAL_MODEL = 'local', LOCAL_FALLBACK = 'claude-haiku-5-5';
+// Gemini (paid tier, so Google doesn't train on what's sent): US$ per million tokens, in and out (thinking counts as out)
+const GEMINI = 'gemini', GEMINI_DEFAULT = 'gemini-2.5-flash-lite';
+const GEMINI_PRICES = { 'gemini-2.5-flash-lite': [0.10, 0.40], 'gemini-3.1-flash-lite': [0.25, 1.50], 'gemini-3.5-flash-lite': [0.30, 2.50] };
+const geminiModel = env => String(env.GEMINI_MODEL || GEMINI_DEFAULT).trim();
+const localOn = env => serverOn(env) && env.LOCAL_MODEL_ON === '1';
 const CLAUDE_CACHE_DAYS = 30;
 const CLAUDE_DEFAULTS = { enabled: false, model: 'claude-opus-5-5', lightModel: 'claude-haiku-5-5', effort: 'medium', siteMonthUsd: 10, userMonthUsd: 2, userDayCalls: 25, userMinuteCalls: 4 };
 // ceilings the admin page can't go past
@@ -442,7 +453,7 @@ async function claudeSettings(env) {
   const d = CLAUDE_DEFAULTS, h = CLAUDE_HARD;
   return {
     enabled: s.enabled === true, model: CLAUDE_PRICES[s.model] ? s.model : d.model, effort: CLAUDE_EFFORTS.includes(s.effort) ? s.effort : d.effort,
-    lightModel: CLAUDE_PRICES[s.lightModel] || (s.lightModel === LOCAL_MODEL && oracleOn(env)) ? s.lightModel : d.lightModel,
+    lightModel: CLAUDE_PRICES[s.lightModel] || (s.lightModel === LOCAL_MODEL && localOn(env)) || (s.lightModel === GEMINI && env.GEMINI_KEY) ? s.lightModel : d.lightModel,
     siteMonthUsd: num0(s.siteMonthUsd, d.siteMonthUsd, 0, h.siteMonthUsd), userMonthUsd: num0(s.userMonthUsd, d.userMonthUsd, 0, h.userMonthUsd),
     userDayCalls: Math.round(num0(s.userDayCalls, d.userDayCalls, 0, h.userDayCalls)), userMinuteCalls: Math.round(num0(s.userMinuteCalls, d.userMinuteCalls, 1, h.userMinuteCalls)),
   };
@@ -456,7 +467,7 @@ function claudeState(env, s, user) {
   return { ok: true };
 }
 const monthStart = () => { const d = new Date(); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1); };
-const priceOf = m => CLAUDE_PRICES[m] || CLAUDE_PRICE_MAX;
+const priceOf = m => CLAUDE_PRICES[m] || GEMINI_PRICES[m] || CLAUDE_PRICE_MAX;
 // US$ in millionths for some tokens; Haiku 5.5 costs more past 100K input tokens.
 // Prompt-cache writes cost 1.25× the input price and cache reads 0.1×.
 function costOf(model, inTok, outTok, cacheWrite = 0, cacheRead = 0) {
@@ -471,11 +482,11 @@ async function askKey(parts) {
   for (const p of parts) hs.push(hex(await crypto.subtle.digest('SHA-256', enc.encode(p))));
   return hex(await crypto.subtle.digest('SHA-256', enc.encode(hs.join('|'))));
 }
-// the small model on the Oracle server (Ollama behind the gateway); text only. Returns the answer's text, or null.
+// the small model on the Menu Hauler server (Ollama behind the gateway); text only. Returns the answer's text, or null.
 async function askLocal(env, context, prompt) {
   try {
-    const r = await fetch(env.ORACLE_URL.replace(/\/+$/, '') + '/ai/api/chat', {
-      method: 'POST', signal: AbortSignal.timeout(120e3), headers: { 'Content-Type': 'application/json', 'X-MH-Key': env.ORACLE_KEY },
+    const r = await fetch(env.SERVER_URL.replace(/\/+$/, '') + '/ai/api/chat', {
+      method: 'POST', signal: AbortSignal.timeout(120e3), headers: { 'Content-Type': 'application/json', 'X-MH-Key': env.SERVER_KEY },
       body: JSON.stringify({ model: env.LOCAL_MODEL || 'qwen3:4b', stream: false, think: false, format: 'json', options: { temperature: 0, num_ctx: 16384 },
         messages: [...(context ? [{ role: 'system', content: context }] : []), { role: 'user', content: prompt }] }),
     });
@@ -483,6 +494,28 @@ async function askLocal(env, context, prompt) {
     const j = await r.json(), t = j && j.message && j.message.content;
     return typeof t === 'string' && t.trim() ? t : null;
   } catch (e) { return null; }
+}
+// Gemini (Google's Generative Language API) for small jobs; pictures allowed. Small jobs ask for JSON, as with the local model.
+// Returns { text, inT, outT, cached, cut } on an answer, { refused } when Google blocks it, or { error } when it fails.
+async function askGemini(env, model, context, prompt, imgs) {
+  const parts = imgs.map(i => ({ inline_data: { mime_type: i.type, data: i.data } }));
+  parts.push({ text: prompt });
+  const body = { contents: [{ role: 'user', parts }], generationConfig: { temperature: 0, maxOutputTokens: CLAUDE_HARD.maxTokens, responseMimeType: 'application/json' } };
+  if (context) body.systemInstruction = { parts: [{ text: context }] };
+  let r, j;
+  try {
+    r = await fetch('https://generativelanguage.googleapis.com/v1beta/models/' + encodeURIComponent(model) + ':generateContent', {
+      method: 'POST', signal: AbortSignal.timeout(120e3), headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY }, body: JSON.stringify(body) });
+    j = await r.json().catch(() => ({}));
+  } catch (e) { return { error: 'network: ' + (e && e.message) }; }
+  if (!r.ok) return { error: r.status + ' ' + ((j.error && j.error.message) || '').slice(0, 150) };
+  const u = j.usageMetadata || {}, cached = u.cachedContentTokenCount || 0;
+  const inT = Math.max(0, (u.promptTokenCount || 0) - cached), outT = (u.candidatesTokenCount || 0) + (u.thoughtsTokenCount || 0);
+  const c = (j.candidates || [])[0], why = (j.promptFeedback && j.promptFeedback.blockReason) || (c && /SAFETY|PROHIBITED|BLOCKLIST|SPII|RECITATION/.test(c.finishReason || '') && c.finishReason);
+  if (why) return { refused: 'Gemini: ' + why, inT, outT, cached };
+  const text = c && c.content ? (c.content.parts || []).filter(p => typeof p.text === 'string' && !p.thought).map(p => p.text).join('') : '';
+  if (!text.trim()) return { error: 'empty answer (' + ((c && c.finishReason) || 'no candidates') + ')' };
+  return { text, inT, outT, cached, cut: c.finishReason === 'MAX_TOKENS' };
 }
 const usd = micro => Math.round(micro / 1e4) / 100;
 async function claude(req, env, user) {
@@ -504,10 +537,12 @@ async function claude(req, env, user) {
   const light = b.task === 'light';
   let model = light ? s.lightModel : s.model;
   const effort = light ? 'low' : s.effort;
-  if (model === LOCAL_MODEL && (imgs.length || !oracleOn(env))) model = LOCAL_FALLBACK;
+  if (model === LOCAL_MODEL && (imgs.length || !localOn(env))) model = LOCAL_FALLBACK;
+  if (model === GEMINI) model = env.GEMINI_KEY ? geminiModel(env) : LOCAL_FALLBACK;
+  const gemini = model.startsWith('gemini');
 
   // the same question asked before (by anyone, within CLAUDE_CACHE_DAYS) is answered from the saved reading, free
-  const key = await askKey([light ? 'light:' + s.lightModel : model, effort, context, b.prompt, ...imgs.map(i => i.type + ':' + i.data)]);
+  const key = await askKey([light ? 'light:' + model : model, effort, context, b.prompt, ...imgs.map(i => i.type + ':' + i.data)]);
   if (b.fresh !== true) {
     const hit = await DB.prepare('SELECT text, model FROM claude_cache WHERE key = ?1 AND at > ?2').bind(key, now - CLAUDE_CACHE_DAYS * 864e5).first();
     if (hit) {
@@ -524,7 +559,7 @@ async function claude(req, env, user) {
   if (model === LOCAL_MODEL) {
     const text = await askLocal(env, context, b.prompt);
     if (text) {
-      await DB.prepare("INSERT INTO claude_calls (at, email, tool, model, in_tokens, out_tokens, cost, state, note) VALUES (?1, ?2, ?3, ?4, 0, 0, 0, 'ok', 'Oracle server')")
+      await DB.prepare("INSERT INTO claude_calls (at, email, tool, model, in_tokens, out_tokens, cost, state, note) VALUES (?1, ?2, ?3, ?4, 0, 0, 0, 'ok', 'Menu Hauler server')")
         .bind(now, user.email, tool, LOCAL_MODEL).run();
       await remember(text, LOCAL_MODEL);
       return api({ text, model: LOCAL_MODEL, truncated: false, costUsd: 0 });
@@ -533,7 +568,9 @@ async function claude(req, env, user) {
   }
 
   // the worst this call could cost: about 1 token per 3 characters, ~1,600 per picture, and the longest allowed answer
-  const worst = costOf(model, Math.ceil((b.prompt.length + context.length * 1.25) / 3) + imgs.length * 1600, CLAUDE_HARD.maxTokens);
+  // (for Gemini, the dearer of it and Haiku, which answers instead if Gemini fails)
+  const tokIn = Math.ceil((b.prompt.length + context.length * 1.25) / 3) + imgs.length * 1600;
+  const worst = Math.max(costOf(model, tokIn, CLAUDE_HARD.maxTokens), gemini ? costOf(LOCAL_FALLBACK, tokIn, CLAUDE_HARD.maxTokens) : 0);
   // free answers (saved readings, the local model) don't count towards the per-minute and per-day limits
   const [minute, day, mine, site] = await DB.batch([
     DB.prepare("SELECT COUNT(*) AS n FROM claude_calls WHERE email = ?1 AND at > ?2 AND state != 'cached' AND model != 'local'").bind(user.email, now - 60e3),
@@ -553,6 +590,20 @@ async function claude(req, env, user) {
   if (!held) return api({ error: 'The Claude budget for this month is used up.', code: 'rate_limited' }, 429);
   const settle = (cost, state, m, inT, outT, note) => DB.prepare('UPDATE claude_calls SET cost = ?2, state = ?3, model = ?4, in_tokens = ?5, out_tokens = ?6, note = ?7 WHERE id = ?1')
     .bind(held.id, cost, state, m, inT || 0, outT || 0, note ? String(note).slice(0, 300) : null).run();
+  // Gemini for small jobs, when the owner picked it; if it fails, Haiku answers under the same hold
+  let gemNote = '';
+  if (gemini) {
+    const g = await askGemini(env, model, context, b.prompt, imgs);
+    if (g.text != null || g.refused) {
+      const cost = costOf(model, g.inT, g.outT, 0, g.cached);
+      if (g.refused) { await settle(cost, 'refused', model, g.inT + g.cached, g.outT, g.refused); return api({ error: 'Gemini declined to read this.', code: 'refused' }, 422); }
+      await settle(cost, 'ok', model, g.inT + g.cached, g.outT, g.cut ? 'answer cut off at the length limit' : g.cached ? g.cached + ' tokens from Gemini’s cache' : null);
+      if (!g.cut && g.text) await remember(g.text, model);
+      return api({ text: g.text, model, truncated: g.cut, costUsd: cost / 1e6 });
+    }
+    gemNote = 'Gemini failed (' + g.error + '), Haiku answered. ';
+    model = LOCAL_FALLBACK;
+  }
   const content = imgs.map(i => ({ type: 'image', source: { type: 'base64', media_type: i.type, data: i.data } }));
   content.push({ type: 'text', text: b.prompt });
   const body = { model, max_tokens: CLAUDE_HARD.maxTokens, output_config: { effort }, messages: [{ role: 'user', content }] };
@@ -563,10 +614,10 @@ async function claude(req, env, user) {
   if (model !== 'claude-haiku-5-5') { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
   let r, j;
   try { r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body) }); j = await r.json().catch(() => ({})); }
-  catch (e) { await settle(0, 'failed', model, 0, 0, 'network: ' + (e && e.message)); return api({ error: 'Claude couldn’t be reached. Try again in a minute.', code: 'unavailable' }, 502); }
+  catch (e) { await settle(0, 'failed', model, 0, 0, gemNote + 'network: ' + (e && e.message)); return api({ error: 'Claude couldn’t be reached. Try again in a minute.', code: 'unavailable' }, 502); }
   if (!r.ok) {
     const m = (j.error && j.error.message) || ('error ' + r.status);
-    await settle(0, 'failed', model, 0, 0, r.status + ' ' + m);
+    await settle(0, 'failed', model, 0, 0, gemNote + r.status + ' ' + m);
     if (r.status === 429 || r.status === 529) return api({ error: 'Claude is busy right now. Try again in a minute.', code: 'rate_limited' }, 429);
     if (r.status === 400 && /image/i.test(m)) return api({ error: 'Claude couldn’t use that picture. Try a JPG or PNG.', code: 'image_rejected' }, 400);
     if (r.status === 401 || r.status === 403) return api({ error: 'The website’s Claude key was refused. Tell the owner.', code: 'unavailable' }, 502);
@@ -579,7 +630,7 @@ async function claude(req, env, user) {
   if (j.stop_reason === 'refusal') { await settle(cost, 'refused', used, inT, outT, j.stop_details && j.stop_details.category); return api({ error: 'Claude declined to read this.', code: 'refused' }, 422); }
   const text = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
   const cut = j.stop_reason === 'max_tokens';
-  await settle(cost, 'ok', used, inT, outT, cut ? 'answer cut off at the length limit' : cr ? cr + ' tokens from the prompt cache' : null);
+  await settle(cost, 'ok', used, inT, outT, (gemNote + (cut ? 'answer cut off at the length limit' : cr ? cr + ' tokens from the prompt cache' : '')) || null);
   if (!cut && text) await remember(text, used);
   // keep the call log as long as the activity log, and saved readings CLAUDE_CACHE_DAYS
   if (Math.random() < 0.05) await DB.batch([DB.prepare('DELETE FROM claude_calls WHERE at < ?1').bind(now - ACTIVITY_DAYS * 864e5),
@@ -733,17 +784,17 @@ async function fetchFor(q, env) {
   return new Response(r.body, { status: r.ok ? 200 : 502, headers: h });
 }
 
-/* ---------- the Oracle server (oracle/README.md), reached through its Cloudflare Tunnel ----------
-   Its gateway only answers requests carrying ORACLE_KEY, so the pages go through here and never see the key.
-     /api/oracle/scrape  {url}            the menu scraper (menu-scraper/), without its own Claude: the page sends what it
+/* ---------- the Menu Hauler server (server/README.md), reached through its Cloudflare Tunnel ----------
+   Its gateway only answers requests carrying SERVER_KEY, so the pages go through here and never see the key.
+     /api/server/scrape  {url}            the menu scraper (menu-scraper/), without its own Claude: the page sends what it
                                           finds to /api/claude, so the website's limits, cache and log still apply
-     /api/oracle/ocr     picture bytes    text and positions from RapidOCR, for the converter's second opinion */
-function oracleOn(env) { return !!(env.ORACLE_URL && env.ORACLE_KEY); }
+     /api/server/ocr     picture bytes    text and positions from RapidOCR, for the converter's second opinion */
+function serverOn(env) { return !!(env.SERVER_URL && env.SERVER_KEY); }
 const OCR_MAX = 12e6;
-async function oracle(path, req, env) {
-  if (!oracleOn(env)) return api({ error: 'The Oracle server isn’t set up on the website.', code: 'server_not_connected' }, 503);
+async function server(path, req, env) {
+  if (!serverOn(env)) return api({ error: 'The Menu Hauler server isn’t set up on the website.', code: 'server_not_connected' }, 503);
   if (req.method !== 'POST') return api({ error: 'Use POST.' }, 405);
-  const base = env.ORACLE_URL.replace(/\/+$/, ''), key = { 'X-MH-Key': env.ORACLE_KEY };
+  const base = env.SERVER_URL.replace(/\/+$/, ''), key = { 'X-MH-Key': env.SERVER_KEY };
   let r;
   try {
     if (path === 'scrape') {
@@ -757,13 +808,13 @@ async function oracle(path, req, env) {
       if (+(req.headers.get('Content-Length') || 0) > OCR_MAX) return api({ error: 'That picture is too big for OCR.' }, 413);
       r = await fetch(base + '/v1/ocr', { method: 'POST', signal: AbortSignal.timeout(120e3), headers: Object.assign({ 'Content-Type': type }, key), body: req.body });
     } else return api({ error: 'Unknown address.' }, 404);
-  } catch (e) { return api({ error: 'The Oracle server didn’t answer in time.', code: 'unavailable' }, 504); }
+  } catch (e) { return api({ error: 'The Menu Hauler server didn’t answer in time.', code: 'unavailable' }, 504); }
   const j = await r.json().catch(() => ({}));
   if (r.ok) {
     const month = new Date().toISOString().slice(0, 7);
-    await env.DB.prepare('INSERT INTO usage (month, kind, amount) VALUES (?1, ?2, 1) ON CONFLICT(month, kind) DO UPDATE SET amount = amount + 1').bind(month, 'oracle-' + path).run().catch(() => {});
+    await env.DB.prepare('INSERT INTO usage (month, kind, amount) VALUES (?1, ?2, 1) ON CONFLICT(month, kind) DO UPDATE SET amount = amount + 1').bind(month, 'server-' + path).run().catch(() => {});
   }
-  return api(r.ok ? j : { error: (j && (j.message || (typeof j.detail === 'string' && j.detail))) || 'The Oracle server answered ' + r.status + '.', code: r.status === 401 ? 'unavailable' : 'tool_error' }, r.ok ? 200 : 502);
+  return api(r.ok ? j : { error: (j && (j.message || (typeof j.detail === 'string' && j.detail))) || 'The Menu Hauler server answered ' + r.status + '.', code: r.status === 401 ? 'unavailable' : 'tool_error' }, r.ok ? 200 : 502);
 }
 
 export default {
@@ -795,9 +846,9 @@ export default {
           const cs = claudeState(env, await claudeSettings(env), user);
           return api({ email: user.email, name: user.name, version: VERSION, role: user.role, tools: user.tools, canEdit: user.canEdit, firecrawl: user.firecrawl, admin: isAdmin(user),
             claude: cs.ok, claudeLimits: cs.ok ? { maxImages: CLAUDE_HARD.maxImages, maxPromptChars: CLAUDE_HARD.maxPromptChars } : null,
-            scraper: oracleOn(env), ocr: oracleOn(env) });
+            scraper: serverOn(env), ocr: serverOn(env) });
         }
-        if (route.startsWith('oracle/')) return oracle(route.slice(7), req, env);
+        if (route.startsWith('server/')) return server(route.slice(7), req, env);
         if (route === 'claude') return req.method === 'POST' ? claude(req, env, user) : api({ error: 'Use POST.' }, 405);
         if (route === 'seen' && req.method === 'POST') return seen(req, env, user);
         if (route === 'account' || route.startsWith('account/')) return account(route.slice(8), req, env, user);

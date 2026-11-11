@@ -90,8 +90,8 @@ to the sites allowed to call it.
   reading of menu photos, and as the reader when Claude is off. `ENABLE_OCR=0` turns it off.
 - `GET /health`
 
-On the Oracle server (`oracle/`), this service runs behind a gateway and Cloudflare Tunnel, and the
-website calls it through `/api/oracle/*`. There it runs without `ANTHROPIC_API_KEY`: the website sends
+On the Menu Hauler server (`server/`), this service runs behind a gateway and Cloudflare Tunnel, and the
+website calls it through `/api/server/*`. There it runs without `ANTHROPIC_API_KEY`: the website sends
 what it finds to Claude itself, so the website's limits, saved readings and log still apply.
 
 Request options for `/v1/menu`: `follow_links` (default true), `use_ai` (null = only when needed,

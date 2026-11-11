@@ -9,7 +9,7 @@
                json(prompt, {task:'light'}) asks for the cheaper model the owner picked for small jobs; {context} is
                fixed reference text sent first (Anthropic's prompt cache); a repeated question is answered from a
                saved reading unless {fresh:true}. On claude.ai these options are simply ignored.
-     window.MH_ORACLE -> the Oracle server through /api/oracle/* (menu scraper, OCR), when the website has one
+     window.MH_SERVER -> the Menu Hauler server through /api/server/* (menu scraper, OCR), when the website has one
      downloads -> not available: normal downloads
    build_apps.py puts this first in public/index.html. */
 (()=>{
@@ -99,13 +99,13 @@ const SAMPLE={
     const v=parseJSON(j.text);if(v===undefined)throw err(j.truncated?'Claude’s answer was too long and got cut off. Try a smaller part of the menu.':'Claude’s answer couldn’t be read. Try again.','invalid_json');
     return v}};
 
-/* ---------- the Oracle server: menu scraper and OCR (null when the website has none) ---------- */
-window.MH_ORACLE={
+/* ---------- the Menu Hauler server: menu scraper and OCR (null when the website has none) ---------- */
+window.MH_SERVER={
   async on(){try{const m=await me();return{scraper:!!m.scraper,ocr:!!m.ocr}}catch(e){return{scraper:false,ocr:false}}},
-  scrape(url,signal){return fetch('/api/oracle/scrape',{method:'POST',credentials:'same-origin',signal,headers:{'content-type':'application/json'},body:JSON.stringify({url})})
-    .then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw err(j.error||('The Oracle server answered '+r.status+'.'),j.code||'unavailable');return j})},
-  ocr(blob,signal){return fetch('/api/oracle/ocr',{method:'POST',credentials:'same-origin',signal,headers:{'content-type':blob.type||'image/jpeg'},body:blob})
-    .then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw err(j.error||('The Oracle server answered '+r.status+'.'),j.code||'unavailable');return j})}};
+  scrape(url,signal){return fetch('/api/server/scrape',{method:'POST',credentials:'same-origin',signal,headers:{'content-type':'application/json'},body:JSON.stringify({url})})
+    .then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw err(j.error||('The Menu Hauler server answered '+r.status+'.'),j.code||'unavailable');return j})},
+  ocr(blob,signal){return fetch('/api/server/ocr',{method:'POST',credentials:'same-origin',signal,headers:{'content-type':blob.type||'image/jpeg'},body:blob})
+    .then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw err(j.error||('The Menu Hauler server answered '+r.status+'.'),j.code||'unavailable');return j})}};
 
 window.claude={use:async n=>{
   if(n==='db'){try{await me();return DB}catch(e){signinBanner(e.message);return null}}

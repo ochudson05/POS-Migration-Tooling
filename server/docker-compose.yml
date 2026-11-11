@@ -1,10 +1,14 @@
-# The Menu Hauler Oracle server: one Ampere A1 VM (Always Free: 2 OCPUs, 12 GB). See README.md.
-# Nothing listens on the internet: Cloudflare Tunnel carries https://oracle.menuhauler.com to the gateway, and the
-# gateway only answers requests with the key (MH_KEY), which only the website's Worker has (ORACLE_KEY there).
+# The Menu Hauler server: any Linux VM with Docker (Google Compute Engine e2-small for now). See README.md.
+# Nothing here is tied to one cloud: the same files run on Google Cloud, Oracle, AWS, Hetzner or a box in the office.
+# Nothing listens on the internet: Cloudflare Tunnel carries https://server.menuhauler.com to the gateway, and the
+# gateway only answers requests with the key (MH_KEY), which only the website's Worker has (SERVER_KEY there).
 #
 #   tunnel  -> gateway:8080 (Caddy: key check, and only these paths)
 #                /v1/menu /v1/scrape /v1/ocr /health -> scraper:8787 (menu-scraper/, with RapidOCR)
-#                /ai/api/chat                         -> ollama:11434 (the small local model)
+#                /ai/api/chat                         -> ollama:11434 (optional: the "local-model" profile)
+#
+# The small local model needs a bigger VM (8 GB or more). To turn it on, set COMPOSE_PROFILES=local-model in .env,
+# run setup.sh again, and set LOCAL_MODEL_ON=1 on the Worker.
 name: menuhauler
 
 services:
@@ -15,7 +19,8 @@ services:
       MH_KEY: ${MH_KEY:?run setup.sh, it makes MH_KEY}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
-    depends_on: [scraper, ollama]
+    depends_on: [scraper]
+    mem_limit: 128m
 
   scraper:
     build: ../menu-scraper
@@ -29,19 +34,21 @@ services:
       # so its limits, saved readings and call log apply
       FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
       LOG_LEVEL: INFO
-    mem_limit: 5g
-    shm_size: 512m     # headless Chromium needs more shared memory than Docker's 64 MB default
+    # sized for a 2 GB VM (with the swap setup.sh adds); raise SCRAPER_MEM in .env on a bigger one
+    mem_limit: ${SCRAPER_MEM:-1400m}
+    shm_size: 256m     # headless Chromium needs more shared memory than Docker's 64 MB default
 
   ollama:
+    profiles: [local-model]
     image: ollama/ollama:0.40.12
     restart: unless-stopped
     environment:
       OLLAMA_KEEP_ALIVE: 24h      # keep the model loaded between requests
-      OLLAMA_NUM_PARALLEL: "1"    # two CPU cores: one answer at a time
+      OLLAMA_NUM_PARALLEL: "1"    # one answer at a time on a small CPU VM
       OLLAMA_MAX_LOADED_MODELS: "1"
     volumes:
       - ollama:/root/.ollama
-    mem_limit: 6g
+    mem_limit: ${OLLAMA_MEM:-6g}
 
   tunnel:
     image: cloudflare/cloudflared:2026.10.4
@@ -50,6 +57,7 @@ services:
     environment:
       TUNNEL_TOKEN: ${TUNNEL_TOKEN:?put the Cloudflare tunnel token in .env}
     depends_on: [gateway]
+    mem_limit: 128m
 
 volumes:
   ollama:
