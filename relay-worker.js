@@ -33,6 +33,12 @@
      FIRECRAWL_KEY   secret  Firecrawl API key (fc-...)
      ABR_GUID        secret  ABN Lookup GUID, shared by the team
      FIRECRAWL_MONTHLY_CAP  text (optional)  Firecrawl credits the site may use per month, default 500
+     ANTHROPIC_API_KEY secret (optional)  Claude API key (sk-ant-...). Without it Claude is simply off on the website.
+     CLAUDE_OFF      text (optional)  "1" turns Claude off for everyone, whatever /admin says (an emergency stop)
+
+   Claude on the website (/api/claude) is off until the owner turns it on at /admin, and then only for people the
+   owner has ticked one by one. Every call is checked against per-minute, per-day and monthly limits, a site-wide
+   monthly spending cap, and size limits; the model and its settings are chosen here, never by the page.
 */
 const FIELDS = [
   'id', 'displayName', 'formattedAddress', 'nationalPhoneNumber', 'websiteUri', 'googleMapsUri', 'location',
@@ -43,7 +49,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-11.8';
+const VERSION = '2026-11-11.9';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -75,6 +81,15 @@ async function tables(env) {
   ]);
   // columns added after the table was first made (fails harmlessly once the column exists)
   await env.DB.prepare('ALTER TABLE users ADD COLUMN name TEXT').run().catch(() => {});
+  // Claude: off for everyone until the owner ticks them; claude_cap is their own monthly limit in US$ (NULL = the default)
+  await env.DB.prepare('ALTER TABLE users ADD COLUMN claude INTEGER NOT NULL DEFAULT 0').run().catch(() => {});
+  await env.DB.prepare('ALTER TABLE users ADD COLUMN claude_cap REAL').run().catch(() => {});
+  // one row per Claude call; cost is in millionths of a US$, written as the worst case before the call and corrected after
+  await env.DB.batch([
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS claude_calls (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, email TEXT NOT NULL, tool TEXT, model TEXT, in_tokens INTEGER, out_tokens INTEGER, cost INTEGER NOT NULL, state TEXT NOT NULL, note TEXT)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS claude_calls_at ON claude_calls (at)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS claude_calls_email ON claude_calls (email, at)'),
+  ]);
   TABLES = true;
 }
 const list = v => String(v || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
@@ -94,6 +109,8 @@ const userOf = (email, r) => {
   return {
     email, name: (r && r.name) || nameOf(email), role: owner ? 'owner' : (r && r.role === 'admin' ? 'admin' : 'member'), status: owner ? 'active' : (r && r.status === 'blocked' ? 'blocked' : 'active'),
     tools: owner ? null : tools, canEdit: owner || !r || r.can_edit !== 0, firecrawl: owner || !r || r.firecrawl !== 0,
+    // Claude is opt-in per person (the owner is always ticked, but still bound by the limits)
+    claude: owner || !!(r && r.claude === 1), claudeCap: r && r.claude_cap != null ? +r.claude_cap : null,
   };
 };
 // may this email sign in? Added people (not blocked), the owner, ALLOWED_EMAILS, or an allowed domain
@@ -110,7 +127,7 @@ async function sessionUser(req, env) {
   const t = cookieOf(req, 'mh_session');
   if (!/^[a-f0-9]{64}$/.test(t)) return null;
   await tables(env);
-  const r = await env.DB.prepare('SELECT s.email, s.expires, u.email AS known, u.name, u.role, u.status, u.tools, u.can_edit, u.firecrawl, u.last_seen FROM sessions s LEFT JOIN users u ON u.email = s.email WHERE s.token_hash = ?1')
+  const r = await env.DB.prepare('SELECT s.email, s.expires, u.email AS known, u.name, u.role, u.status, u.tools, u.can_edit, u.firecrawl, u.claude, u.claude_cap, u.last_seen FROM sessions s LEFT JOIN users u ON u.email = s.email WHERE s.token_hash = ?1')
     .bind(await hmac(env, 's:' + t)).first();
   if (!r || r.expires < Date.now()) return null;
   const user = userOf(r.email, r.known ? r : null);
@@ -273,8 +290,18 @@ async function admin(path, req, env, user, q) {
     const set = await DB.prepare("SELECT value FROM settings WHERE key = 'domains'").first();
     const month = new Date().toISOString().slice(0, 7);
     const fc = ((await DB.prepare("SELECT amount FROM usage WHERE month = ?1 AND kind = 'firecrawl'").bind(month).first().catch(() => null)) || {}).amount || 0;
+    // Claude: settings, whether the key is there, and this month's spend per person
+    const cs = await claudeSettings(env), spend = {};
+    ((await DB.prepare("SELECT email, COUNT(*) AS calls, COALESCE(SUM(cost), 0) AS cost FROM claude_calls WHERE at >= ?1 GROUP BY email").bind(monthStart()).all()).results || [])
+      .forEach(r => { spend[r.email] = { calls: r.calls, usd: r.cost / 1e6 }; });
+    const claudeInfo = { settings: cs, hard: CLAUDE_HARD, models: Object.entries(CLAUDE_PRICES).map(([id, p]) => ({ id, inUsd: p[0], outUsd: p[1] })), efforts: CLAUDE_EFFORTS,
+      keySet: !!env.ANTHROPIC_API_KEY, stopped: env.CLAUDE_OFF === '1', spend, monthUsd: Object.values(spend).reduce((a, x) => a + x.usd, 0) };
     return api({ me: user, owner: OWNER, users, tools: TOOLS, domains: await domainsOf(env), domainsFrom: set ? 'admin' : (env.ALLOWED_DOMAINS ? 'cloudflare' : 'default'),
-      extraEmails: list(env.ALLOWED_EMAILS), activityDays: ACTIVITY_DAYS, firecrawl: { used: fc, cap: +env.FIRECRAWL_MONTHLY_CAP || 500 } });
+      extraEmails: list(env.ALLOWED_EMAILS), activityDays: ACTIVITY_DAYS, firecrawl: { used: fc, cap: +env.FIRECRAWL_MONTHLY_CAP || 500 }, claude: claudeInfo });
+  }
+  if (path === 'claude-calls') {
+    const items = (await DB.prepare('SELECT at, email, tool, model, in_tokens, out_tokens, cost, state, note FROM claude_calls ORDER BY at DESC LIMIT 100').all()).results || [];
+    return api({ items: items.map(i => Object.assign(i, { usd: i.cost / 1e6 })) });
   }
   if (path === 'activity') {
     const email = (q.get('email') || '').toLowerCase(), limit = Math.min(500, +q.get('limit') || 150);
@@ -291,8 +318,33 @@ async function admin(path, req, env, user, q) {
       log(env, user.email, 'admin', 'Allowed domains set to: ' + (domains.join(', ') || 'none (only people added by hand)'))]);
     return api({ ok: true, domains });
   }
+  // Claude settings and who may use Claude: the owner only
+  if (path === 'claude-settings') {
+    if (user.role !== 'owner') return api({ error: 'Only the owner can change the Claude settings.' }, 403);
+    const cur = await claudeSettings(env), has = k => b[k] !== undefined;
+    const next = {
+      enabled: has('enabled') ? b.enabled === true : cur.enabled, model: has('model') && CLAUDE_PRICES[b.model] ? b.model : cur.model,
+      effort: has('effort') && CLAUDE_EFFORTS.includes(b.effort) ? b.effort : cur.effort,
+      siteMonthUsd: has('siteMonthUsd') ? b.siteMonthUsd : cur.siteMonthUsd, userMonthUsd: has('userMonthUsd') ? b.userMonthUsd : cur.userMonthUsd,
+      userDayCalls: has('userDayCalls') ? b.userDayCalls : cur.userDayCalls, userMinuteCalls: has('userMinuteCalls') ? b.userMinuteCalls : cur.userMinuteCalls,
+    };
+    await DB.prepare("INSERT INTO settings (key, value) VALUES ('claude', ?1) ON CONFLICT(key) DO UPDATE SET value = ?1").bind(JSON.stringify(next)).run();
+    const s = await claudeSettings(env);   // read back, clamped to the ceilings
+    await log(env, user.email, 'admin', 'Claude ' + (s.enabled ? 'on' : 'off') + ': ' + s.model + ', effort ' + s.effort + ', site US$' + s.siteMonthUsd + '/month, US$' + s.userMonthUsd +
+      '/person/month, ' + s.userDayCalls + ' calls/person/day, ' + s.userMinuteCalls + '/minute').run();
+    return api({ ok: true, settings: s });
+  }
   const email = String(b.email || '').trim().toLowerCase();
   if (!EMAIL.test(email) || email.length > 200) return api({ error: 'Enter a valid email address.' }, 400);
+  if (path === 'claude-user') {
+    if (user.role !== 'owner') return api({ error: 'Only the owner can choose who uses Claude.' }, 403);
+    if (email === OWNER) return api({ error: 'The owner always has Claude; change the limits instead.' }, 400);
+    const on = b.claude === true ? 1 : 0, cap = b.cap === null || b.cap === '' || b.cap === undefined ? null : num0(b.cap, null, 0, CLAUDE_HARD.userMonthUsd);
+    const r = await DB.prepare('UPDATE users SET claude = ?2, claude_cap = ?3 WHERE email = ?1').bind(email, on, cap).run();
+    if (!r.meta || !r.meta.changes) return api({ error: 'Add the person first, then switch Claude on for them.' }, 404);
+    await log(env, user.email, 'admin', (on ? 'Claude on for ' : 'Claude off for ') + email + (on ? ' (limit ' + (cap == null ? 'default' : 'US$' + cap) + '/month)' : '')).run();
+    return api({ ok: true });
+  }
   if (email === OWNER) return api({ error: 'The owner’s access can’t be changed.' }, 403);
   if (email === user.email) return api({ error: 'You can’t change your own access. Ask the owner.' }, 403);
   const cur = await DB.prepare('SELECT * FROM users WHERE email = ?1').bind(email).first();
@@ -354,6 +406,106 @@ async function firecrawl(req, env) {
   if (r.ok) await env.DB.prepare("INSERT INTO usage (month, kind, amount) VALUES (?1, 'firecrawl', ?2) ON CONFLICT(month, kind) DO UPDATE SET amount = amount + ?2").bind(month, cost).run();
   if (!r.ok) return api({ error: 'Firecrawl: ' + (j.error || ('error ' + r.status)), code: r.status === 429 ? 'rate_limited' : 'tool_error' }, 502);
   return api({ payload: j, used: used + cost, cap });
+}
+
+/* ---------- Claude with the team's Anthropic key: off until the owner turns it on ----------
+   The page sends a prompt and up to a few pictures; everything else (model, effort, output length) is decided here.
+   Before each call the worst-case cost is written down, so the limits hold even when several calls run at once. */
+const CLAUDE_PRICES = { 'claude-haiku-5-5': [0.10, 0.50], 'claude-sonnet-5-5': [2, 10], 'claude-opus-5-5': [4, 20] }; // US$ per million tokens: in, out
+const CLAUDE_PRICE_MAX = [10, 50];            // for any model not listed (a fallback model), assume the dearest
+const CLAUDE_DEFAULTS = { enabled: false, model: 'claude-opus-5-5', effort: 'medium', siteMonthUsd: 10, userMonthUsd: 2, userDayCalls: 25, userMinuteCalls: 4 };
+// ceilings the admin page can't go past
+const CLAUDE_HARD = { maxTokens: 16000, maxPromptChars: 200000, maxImages: 4, maxImageBytes: 5e6, siteMonthUsd: 200, userMonthUsd: 50, userDayCalls: 200, userMinuteCalls: 10 };
+const CLAUDE_EFFORTS = ['low', 'medium', 'high'];
+const CLAUDE_IMG = /^image\/(jpeg|png|webp|gif)$/;
+const num0 = (v, d, lo, hi) => { const n = +v; return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+async function claudeSettings(env) {
+  const r = await env.DB.prepare("SELECT value FROM settings WHERE key = 'claude'").first();
+  let s = {}; try { s = r ? JSON.parse(r.value) || {} : {}; } catch (e) { }
+  const d = CLAUDE_DEFAULTS, h = CLAUDE_HARD;
+  return {
+    enabled: s.enabled === true, model: CLAUDE_PRICES[s.model] ? s.model : d.model, effort: CLAUDE_EFFORTS.includes(s.effort) ? s.effort : d.effort,
+    siteMonthUsd: num0(s.siteMonthUsd, d.siteMonthUsd, 0, h.siteMonthUsd), userMonthUsd: num0(s.userMonthUsd, d.userMonthUsd, 0, h.userMonthUsd),
+    userDayCalls: Math.round(num0(s.userDayCalls, d.userDayCalls, 0, h.userDayCalls)), userMinuteCalls: Math.round(num0(s.userMinuteCalls, d.userMinuteCalls, 1, h.userMinuteCalls)),
+  };
+}
+// can this person use Claude right now? (limits are checked per call)
+function claudeState(env, s, user) {
+  if (!env.ANTHROPIC_API_KEY) return { ok: false, why: 'Claude isn’t set up on the website (no API key).' };
+  if (env.CLAUDE_OFF === '1') return { ok: false, why: 'Claude has been switched off for the website in Cloudflare.' };
+  if (!s.enabled) return { ok: false, why: 'Claude is turned off for the website. The owner can turn it on at /admin.' };
+  if (!user.claude) return { ok: false, why: 'Claude isn’t switched on for your account. Ask the owner if you need it.' };
+  return { ok: true };
+}
+const monthStart = () => { const d = new Date(); return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1); };
+const priceOf = m => CLAUDE_PRICES[m] || CLAUDE_PRICE_MAX;
+// US$ in millionths for some tokens; Haiku 5.5 costs more past 100K input tokens
+function costOf(model, inTok, outTok) {
+  let [pi, po] = priceOf(model);
+  if (model === 'claude-haiku-5-5' && inTok > 100000) { pi = 0.5; po = 2.5; }
+  return Math.ceil(inTok * pi + outTok * po);
+}
+const usd = micro => Math.round(micro / 1e4) / 100;
+async function claude(req, env, user) {
+  const s = await claudeSettings(env), st = claudeState(env, s, user);
+  if (!st.ok) return api({ error: st.why, code: 'sampling_disabled' }, 403);
+  if (+(req.headers.get('Content-Length') || 0) > 30e6) return api({ error: 'That’s too much to send to Claude at once.', code: 'image_rejected' }, 413);
+  const b = await req.json().catch(() => null);
+  if (!b || typeof b.prompt !== 'string' || !b.prompt.trim()) return api({ error: 'Nothing to send to Claude.', code: 'invalid_argument' }, 400);
+  if (b.prompt.length > CLAUDE_HARD.maxPromptChars) return api({ error: 'The text is too long for Claude here (' + CLAUDE_HARD.maxPromptChars + ' characters at most). Split the menu into parts.', code: 'invalid_argument' }, 413);
+  const imgs = Array.isArray(b.images) ? b.images : [];
+  if (imgs.length > CLAUDE_HARD.maxImages) return api({ error: 'Claude takes at most ' + CLAUDE_HARD.maxImages + ' pictures at a time here.', code: 'image_rejected' }, 413);
+  for (const i of imgs) {
+    if (!i || !CLAUDE_IMG.test(i.type) || typeof i.data !== 'string' || !/^[A-Za-z0-9+/=]+$/.test(i.data)) return api({ error: 'Claude takes JPG, PNG, WebP or GIF pictures.', code: 'image_rejected' }, 400);
+    if (i.data.length * 0.75 > CLAUDE_HARD.maxImageBytes) return api({ error: 'A picture is too big for Claude (5 MB at most).', code: 'image_rejected' }, 413);
+  }
+  const tool = TOOLS.includes(b.tool) ? b.tool : '', now = Date.now(), DB = env.DB;
+  // the worst this call could cost: about 1 token per 3 characters, ~1,600 per picture, and the longest allowed answer
+  const worst = costOf(s.model, Math.ceil(b.prompt.length / 3) + imgs.length * 1600, CLAUDE_HARD.maxTokens);
+  const [minute, day, mine, site] = await DB.batch([
+    DB.prepare('SELECT COUNT(*) AS n FROM claude_calls WHERE email = ?1 AND at > ?2').bind(user.email, now - 60e3),
+    DB.prepare('SELECT COUNT(*) AS n FROM claude_calls WHERE email = ?1 AND at > ?2').bind(user.email, now - 864e5),
+    DB.prepare('SELECT COALESCE(SUM(cost), 0) AS c FROM claude_calls WHERE email = ?1 AND at >= ?2').bind(user.email, monthStart()),
+    DB.prepare('SELECT COALESCE(SUM(cost), 0) AS c FROM claude_calls WHERE at >= ?1').bind(monthStart()),
+  ]);
+  const n = x => (x.results && x.results[0]) || {}, myCap = (user.claudeCap != null ? user.claudeCap : s.userMonthUsd) * 1e6;
+  if (n(minute).n >= s.userMinuteCalls) return api({ error: 'Too many Claude requests in a minute. Wait a moment and try again.', code: 'rate_limited' }, 429);
+  if (n(day).n >= s.userDayCalls) return api({ error: 'You’ve reached today’s Claude limit (' + s.userDayCalls + ' requests in 24 hours).', code: 'rate_limited' }, 429);
+  if (n(mine).c + worst > myCap) return api({ error: 'You’ve reached your Claude spending limit for this month (US$' + usd(myCap).toFixed(2) + ').', code: 'rate_limited' }, 429);
+  if (n(site).c + worst > s.siteMonthUsd * 1e6) return api({ error: 'The website’s Claude budget for this month is used up.', code: 'rate_limited' }, 429);
+  // hold the worst-case cost while the call runs; the insert re-checks both budgets itself, so two calls at once can't both slip under
+  const held = await DB.prepare("INSERT INTO claude_calls (at, email, tool, model, cost, state) SELECT ?1, ?2, ?3, ?4, ?5, 'running' " +
+    'WHERE (SELECT COALESCE(SUM(cost), 0) FROM claude_calls WHERE email = ?2 AND at >= ?6) + ?5 <= ?7 AND (SELECT COALESCE(SUM(cost), 0) FROM claude_calls WHERE at >= ?6) + ?5 <= ?8 RETURNING id')
+    .bind(now, user.email, tool, s.model, worst, monthStart(), myCap, s.siteMonthUsd * 1e6).first();
+  if (!held) return api({ error: 'The Claude budget for this month is used up.', code: 'rate_limited' }, 429);
+  const settle = (cost, state, model, inT, outT, note) => DB.prepare('UPDATE claude_calls SET cost = ?2, state = ?3, model = ?4, in_tokens = ?5, out_tokens = ?6, note = ?7 WHERE id = ?1')
+    .bind(held.id, cost, state, model, inT || 0, outT || 0, note ? String(note).slice(0, 300) : null).run();
+  const content = imgs.map(i => ({ type: 'image', source: { type: 'base64', media_type: i.type, data: i.data } }));
+  content.push({ type: 'text', text: b.prompt });
+  const body = { model: s.model, max_tokens: CLAUDE_HARD.maxTokens, output_config: { effort: s.effort }, messages: [{ role: 'user', content }] };
+  const headers = { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2026-10-21' };
+  // if Claude declines a request on safety grounds, the API retries it on a suitable model (Opus and Sonnet only)
+  if (s.model !== 'claude-haiku-5-5') { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
+  let r, j;
+  try { r = await fetch('https://api.anthropic.com/v1/messages', { method: 'POST', headers, body: JSON.stringify(body) }); j = await r.json().catch(() => ({})); }
+  catch (e) { await settle(0, 'failed', s.model, 0, 0, 'network: ' + (e && e.message)); return api({ error: 'Claude couldn’t be reached. Try again in a minute.', code: 'unavailable' }, 502); }
+  if (!r.ok) {
+    const m = (j.error && j.error.message) || ('error ' + r.status);
+    await settle(0, 'failed', s.model, 0, 0, r.status + ' ' + m);
+    if (r.status === 429 || r.status === 529) return api({ error: 'Claude is busy right now. Try again in a minute.', code: 'rate_limited' }, 429);
+    if (r.status === 400 && /image/i.test(m)) return api({ error: 'Claude couldn’t use that picture. Try a JPG or PNG.', code: 'image_rejected' }, 400);
+    if (r.status === 401 || r.status === 403) return api({ error: 'The website’s Claude key was refused. Tell the owner.', code: 'unavailable' }, 502);
+    return api({ error: 'Claude couldn’t answer (' + m + ').', code: 'unavailable' }, 502);
+  }
+  const u = j.usage || {}, inT = (u.input_tokens || 0) + (u.cache_creation_input_tokens || 0) + (u.cache_read_input_tokens || 0), outT = u.output_tokens || 0;
+  // price at the dearer of the model asked for and the model that answered (a fallback may have run)
+  const model = j.model || s.model, cost = Math.max(costOf(s.model, inT, outT), costOf(model, inT, outT));
+  if (j.stop_reason === 'refusal') { await settle(cost, 'refused', model, inT, outT, j.stop_details && j.stop_details.category); return api({ error: 'Claude declined to read this.', code: 'refused' }, 422); }
+  const text = (j.content || []).filter(c => c.type === 'text').map(c => c.text).join('');
+  await settle(cost, 'ok', model, inT, outT, j.stop_reason === 'max_tokens' ? 'answer cut off at the length limit' : null);
+  // keep the call log as long as the activity log
+  if (Math.random() < 0.05) await DB.prepare('DELETE FROM claude_calls WHERE at < ?1').bind(now - ACTIVITY_DAYS * 864e5).run();
+  return api({ text, model, truncated: j.stop_reason === 'max_tokens', costUsd: cost / 1e6 });
 }
 
 /* ---------- customer intake: a link the team sends a venue, so the owner can give us what setup needs ----------
@@ -527,7 +679,12 @@ export default {
         const origin = req.headers.get('Origin');
         if (req.method === 'POST' && origin && new URL(origin).host !== u.host) return api({ error: 'Not allowed from another site.' }, 403);
         const route = u.pathname.slice(5);
-        if (route === 'me') return api({ email: user.email, name: user.name, version: VERSION, role: user.role, tools: user.tools, canEdit: user.canEdit, firecrawl: user.firecrawl, admin: isAdmin(user) });
+        if (route === 'me') {
+          const cs = claudeState(env, await claudeSettings(env), user);
+          return api({ email: user.email, name: user.name, version: VERSION, role: user.role, tools: user.tools, canEdit: user.canEdit, firecrawl: user.firecrawl, admin: isAdmin(user),
+            claude: cs.ok, claudeLimits: cs.ok ? { maxImages: CLAUDE_HARD.maxImages, maxPromptChars: CLAUDE_HARD.maxPromptChars } : null });
+        }
+        if (route === 'claude') return req.method === 'POST' ? claude(req, env, user) : api({ error: 'Use POST.' }, 405);
         if (route === 'seen' && req.method === 'POST') return seen(req, env, user);
         if (route === 'account' || route.startsWith('account/')) return account(route.slice(8), req, env, user);
         if (route.startsWith('admin/')) return isAdmin(user) ? admin(route.slice(6), req, env, user, p) : api({ error: 'Only admins can do that.' }, 403);

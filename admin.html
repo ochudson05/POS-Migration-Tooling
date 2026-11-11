@@ -97,6 +97,28 @@ html.mh-still *{animation:none!important;transition:none!important}
     <div class="tw"><table><thead><tr><th scope="col">Person</th><th scope="col">Access</th><th scope="col" class="hide-s">Tools</th><th scope="col">Last seen</th><th scope="col" class="hide-s num">Sign-ins</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody id="people"></tbody></table></div>
   </section>
 
+  <section class="ad-card" aria-labelledby="h-claude">
+    <h2 id="h-claude"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-sparkles"/></svg>Claude (AI reading)</h2>
+    <p class="small" style="margin:0 0 10px">When on, people you tick below can have Claude read menu photos, PDFs, Word files and web pages on the website, paid from the team’s Anthropic API key. Everyone else keeps the built-in readers. Only the owner can change anything here.</p>
+    <p class="note" id="cl-status"></p>
+    <div class="row" style="margin-top:12px">
+      <label class="opt" style="flex:1 1 100%"><input type="checkbox" id="cl-on"><span>Claude is on for the website<small>Off stops every Claude call straight away. The Cloudflare setting CLAUDE_OFF=1 also stops it, whatever this says.</small></span></label>
+      <label class="f">Model<select id="cl-model"></select></label>
+      <label class="f">Effort<select id="cl-effort"><option value="low">Low (cheapest)</option><option value="medium">Medium</option><option value="high">High</option></select></label>
+      <label class="f">Site budget, US$ a month<input type="number" id="cl-site" min="0" step="1" style="width:120px"></label>
+      <label class="f">Per person, US$ a month<input type="number" id="cl-user" min="0" step="0.5" style="width:120px"></label>
+      <label class="f">Requests per person a day<input type="number" id="cl-day" min="0" step="1" style="width:110px"></label>
+      <label class="f">Requests per person a minute<input type="number" id="cl-min" min="1" step="1" style="width:110px"></label>
+      <button type="button" id="cl-save">Save</button>
+    </div>
+    <p class="small muted" id="cl-hard" style="margin:8px 0 0"></p>
+    <div class="ad-two" style="margin-top:14px">
+      <div><h3 style="font-size:.9rem;margin:0 0 6px">Who can use Claude</h3><div class="tw"><table><thead><tr><th scope="col">Person</th><th scope="col" class="num">This month</th><th scope="col" class="num">Limit</th></tr></thead><tbody id="cl-people"></tbody></table></div>
+        <p class="small muted" style="margin:6px 0 0">Tick people in their Edit window (owner only).</p></div>
+      <div><h3 style="font-size:.9rem;margin:0 0 6px">Recent Claude requests</h3><ul class="feed" id="cl-feed" style="max-height:300px"></ul></div>
+    </div>
+  </section>
+
   <div class="ad-two">
     <section class="ad-card" aria-labelledby="h-act">
       <div class="row" style="justify-content:space-between;margin-bottom:8px"><h2 id="h-act" style="margin:0"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-activity"/></svg>Recent activity</h2><label class="f">Person<select id="actwho"><option value="">Everyone</option></select></label></div>
@@ -129,6 +151,10 @@ html.mh-still *{animation:none!important;transition:none!important}
     <label class="opt"><input type="checkbox" id="f-edit" checked><span>Can add, change and delete venues<small>Off: they can see venues but not change them.</small></span></label>
     <label class="opt"><input type="checkbox" id="f-fc" checked><span>Can use the team’s Firecrawl credits<small>Off: web pages are read without Firecrawl.</small></span></label>
   </fieldset>
+  <fieldset id="f-cl" hidden><legend>Claude (owner only)</legend>
+    <label class="opt"><input type="checkbox" id="f-claude"><span>Can use Claude on the website<small>Paid from the team’s API key, within the limits on the admin page.</small></span></label>
+    <label class="f">Their monthly limit, US$ (blank = the default)<input type="number" id="f-cap" min="0" step="0.5" style="width:160px"></label>
+  </fieldset>
   <label class="f">Note (only admins see it)<textarea id="f-note" rows="2" maxlength="300"></textarea></label>
   <div id="f-hist" hidden><h3 style="font-size:.9rem;margin:0 0 6px">Their recent activity</h3><ul class="feed" id="f-feed" style="max-height:180px"></ul></div>
   <p class="msg" id="fmsg" role="status"></p>
@@ -153,15 +179,15 @@ function line(a){const p=D.users.find(u=>u.email===a.email),who=a.email===D.me.e
   if(a.what==='sign-in')return'<b>'+esc(who)+'</b> signed in';
   if(a.what==='open')return'<b>'+esc(who)+'</b> opened '+esc(TOOLNAME[a.detail]||a.detail);
   if(a.what==='admin')return'<b>'+esc(who)+'</b>: '+esc(a.detail);return'<b>'+esc(who)+'</b> '+esc(a.what)+' '+esc(a.detail||'')}
-async function load(){try{D=await call('overview')}catch(e){msg(e.message,'err');return}draw();loadFeed()}
+async function load(){try{D=await call('overview')}catch(e){msg(e.message,'err');return}draw();loadFeed();loadClaudeFeed()}
 function draw(){const U=D.users,wk=Date.now()-7*864e5;
-  $('kpis').innerHTML=[['users','People',U.length],['circle-check','Signed in now',U.filter(u=>u.live).length],['activity','Active in the last 7 days',U.filter(u=>u.lastSeen>wk).length],['shield-check','Admins',U.filter(u=>u.role!=='member').length],['ban','Blocked',U.filter(u=>u.status==='blocked').length],['flame','Firecrawl this month',D.firecrawl.used+' / '+D.firecrawl.cap]]
+  $('kpis').innerHTML=[['users','People',U.length],['circle-check','Signed in now',U.filter(u=>u.live).length],['activity','Active in the last 7 days',U.filter(u=>u.lastSeen>wk).length],['shield-check','Admins',U.filter(u=>u.role!=='member').length],['ban','Blocked',U.filter(u=>u.status==='blocked').length],['flame','Firecrawl this month',D.firecrawl.used+' / '+D.firecrawl.cap],['sparkles','Claude this month (US$)',D.claude?(+D.claude.monthUsd).toFixed(2)+' / '+D.claude.settings.siteMonthUsd:'–']]
     .map(([i,k,v])=>'<div class="ad-kpi"><span class="ki">'+ic(i)+'</span><span>'+k+'</span><b>'+v+'</b></div>').join('');
   const q=$('q').value.trim().toLowerCase(),sh=$('show').value;
   const rows=U.filter(u=>(!q||u.email.includes(q)||nm(u).toLowerCase().includes(q))&&(!sh||(sh==='live'?u.live:sh==='admin'?u.role!=='member':u.status==='blocked')));
   $('people').innerHTML=rows.map(u=>{const fixed=u.role==='owner'||u.email===D.me.email||(D.me.role!=='owner'&&u.role==='admin');
     const tools=u.tools?(u.tools.length?u.tools.map(t=>TOOLNAME[t]).join(', '):'None'):'All tools';
-    const perms=[u.canEdit?'':'View only',u.firecrawl?'':'No Firecrawl'].filter(Boolean);
+    const perms=[u.canEdit?'':'View only',u.firecrawl?'':'No Firecrawl',u.claude&&u.role!=='owner'?'Claude':''].filter(Boolean);
     return'<tr data-e="'+esc(u.email)+'"><td class="who"><b>'+(u.live?'<span class="dot" title="Signed in"></span>':'')+esc(nm(u))+(u.email===D.me.email?' (you)':'')+'</b><span>'+esc(u.email)+'</span>'+(u.note?'<span>'+esc(u.note)+'</span>':'')+'</td>'+
       '<td><span class="pill '+u.role+'">'+(u.role==='owner'?'Owner':u.role==='admin'?'Admin':'Member')+'</span> '+(u.status==='blocked'?'<span class="pill blocked">Blocked</span>':'')+(perms.length?'<div class="small muted">'+perms.join(' · ')+'</div>':'')+'</td>'+
       '<td class="hide-s small">'+esc(tools)+'</td><td class="small">'+ago(u.lastSeen)+(u.lastTool?'<div class="muted">'+esc(TOOLNAME[u.lastTool]||'')+'</div>':'')+'</td><td class="hide-s num">'+u.signIns+'</td>'+
@@ -171,7 +197,25 @@ function draw(){const U=D.users,wk=Date.now()-7*864e5;
   const sel=$('actwho'),v=sel.value;sel.innerHTML='<option value="">Everyone</option>'+U.map(u=>'<option value="'+esc(u.email)+'">'+esc(nm(u))+' · '+esc(u.email)+'</option>').join('');sel.value=v;
   $('domains').value=D.domains.join(', ');const own=D.me.role==='owner';$('domains').disabled=!own;$('savedom').hidden=!own;
   $('domnote').textContent=(own?'':'Only the owner can change this. ')+(D.domainsFrom==='cloudflare'?'Currently taken from the ALLOWED_DOMAINS setting in Cloudflare until you save here.':D.domainsFrom==='default'?'Currently the built-in default until you save here.':'')+(D.extraEmails.length?' Also allowed by the ALLOWED_EMAILS setting in Cloudflare: '+D.extraEmails.join(', ')+'.':'');
-  $('f-admin').disabled=!own}
+  $('f-admin').disabled=!own;drawClaude()}
+/* ---------- Claude ---------- */
+const money=v=>'US$'+(+v||0).toFixed(2);
+function drawClaude(){const C=D.claude;if(!C)return;const s=C.settings,own=D.me.role==='owner';
+  $('cl-model').innerHTML=C.models.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.id)+' ($'+m.inUsd+' in / $'+m.outUsd+' out per million tokens)</option>').join('');
+  $('cl-on').checked=s.enabled;$('cl-model').value=s.model;$('cl-effort').value=s.effort;$('cl-site').value=s.siteMonthUsd;$('cl-user').value=s.userMonthUsd;$('cl-day').value=s.userDayCalls;$('cl-min').value=s.userMinuteCalls;
+  ['cl-on','cl-model','cl-effort','cl-site','cl-user','cl-day','cl-min'].forEach(id=>$(id).disabled=!own);$('cl-save').hidden=!own;
+  const allowed=D.users.filter(u=>u.claude&&u.status!=='blocked');
+  $('cl-status').innerHTML=!C.keySet?'<b>Not set up:</b> there’s no Claude API key on the website yet (ANTHROPIC_API_KEY in Cloudflare), so Claude is off for everyone whatever these settings say.':
+    C.stopped?'<b>Stopped in Cloudflare</b> (CLAUDE_OFF=1): Claude is off for everyone.':
+    !s.enabled?'<b>Off.</b> Nobody can use Claude on the website.':'<b>On</b> for '+allowed.length+' '+(allowed.length===1?'person':'people')+'. Spent '+money(C.monthUsd)+' of '+money(s.siteMonthUsd)+' this month.';
+  $('cl-hard').textContent='Fixed limits: answers up to '+C.hard.maxTokens.toLocaleString()+' tokens, '+C.hard.maxImages+' pictures of 5 MB per request, budgets up to US$'+C.hard.siteMonthUsd+' a month for the site and US$'+C.hard.userMonthUsd+' a person. Spending is checked against the worst case before each request.';
+  $('cl-people').innerHTML=allowed.map(u=>{const sp=C.spend[u.email]||{calls:0,usd:0},cap=u.claudeCap!=null?u.claudeCap:s.userMonthUsd;
+    return'<tr><td class="who"><b>'+esc(nm(u))+'</b><span>'+esc(u.email)+'</span></td><td class="num">'+money(sp.usd)+'<div class="small muted">'+sp.calls+(sp.calls===1?' request':' requests')+'</div></td><td class="num">'+money(cap)+(u.claudeCap!=null?'':'<div class="small muted">default</div>')+'</td></tr>'}).join('')||'<tr><td colspan="3" class="muted">Nobody yet.</td></tr>'}
+async function loadClaudeFeed(){try{const r=await call('claude-calls');const st={ok:'',failed:' · failed',refused:' · declined',running:' · running'};
+  $('cl-feed').innerHTML=r.items.map(i=>{const p=D.users.find(u=>u.email===i.email);return'<li><time>'+when(i.at)+'</time><span><b>'+esc(p?nm(p):nameOf(i.email))+'</b> '+esc(TOOLNAME[i.tool]||'')+' · '+money(i.usd)+' · '+esc(i.model||'')+esc(st[i.state]||'')+(i.note?'<div class="small muted">'+esc(i.note)+'</div>':'')+'</span></li>'}).join('')||'<li><span></span><span class="muted">None yet.</span></li>'}catch(e){}}
+$('cl-save').addEventListener('click',async()=>{const body={enabled:$('cl-on').checked,model:$('cl-model').value,effort:$('cl-effort').value,siteMonthUsd:+$('cl-site').value,userMonthUsd:+$('cl-user').value,userDayCalls:+$('cl-day').value,userMinuteCalls:+$('cl-min').value};
+  if(body.enabled&&!D.claude.settings.enabled&&!confirm('Turn Claude on? People you’ve ticked can then spend up to '+money(body.siteMonthUsd)+' a month in total on the team’s API key.'))return;
+  $('cl-save').disabled=true;try{const r=await call('claude-settings',body);msg('Claude settings saved'+(r.settings.siteMonthUsd!==body.siteMonthUsd||r.settings.userMonthUsd!==body.userMonthUsd?' (some values were lowered to the fixed limits)':'')+'.','ok');load()}catch(e){msg(e.message,'err')}$('cl-save').disabled=false});
 async function loadFeed(){const e=$('actwho').value;try{const r=await call('activity?'+new URLSearchParams({email:e,limit:150}));
   $('feed').innerHTML=r.items.map(a=>'<li><time datetime="'+new Date(a.at).toISOString()+'">'+when(a.at)+'</time><span>'+line(a)+'</span></li>').join('')||'<li><span></span><span class="muted">Nothing yet.</span></li>';
   $('actnote').textContent='Sign-ins, tools opened (once per person and tool every 30 minutes) and admin changes, kept for '+D.activityDays+' days. Venue changes are recorded on each venue.'}catch(err){msg(err.message,'err')}}
@@ -188,6 +232,7 @@ function open(u){editing=u;$('fmsg').textContent='';$('dtitle').textContent=u?'E
   document.querySelector('input[name=status][value='+(u&&u.status==='blocked'?'blocked':'active')+']').checked=true;
   $('f-tools').querySelectorAll('input').forEach(c=>{c.checked=!u||!u.tools||u.tools.includes(c.value)});
   $('f-edit').checked=!u||u.canEdit;$('f-fc').checked=!u||u.firecrawl;$('f-note').value=u?u.note:'';
+  $('f-cl').hidden=D.me.role!=='owner';$('f-claude').checked=!!(u&&u.claude);$('f-cap').value=u&&u.claudeCap!=null?u.claudeCap:'';
   $('f-hist').hidden=!u;if(u){$('f-feed').innerHTML='<li><span></span><span class="muted">Loading…</span></li>';
     call('activity?'+new URLSearchParams({email:u.email,limit:30})).then(r=>{$('f-feed').innerHTML=r.items.map(a=>'<li><time>'+when(a.at)+'</time><span>'+line(a)+'</span></li>').join('')||'<li><span></span><span class="muted">Nothing yet.</span></li>'}).catch(()=>{})}
   $('dlg').showModal();(u?$('f-edit'):$('f-email')).focus()}
@@ -197,7 +242,11 @@ $('form').addEventListener('submit',async e=>{e.preventDefault();const email=$('
   const tools=[...$('f-tools').querySelectorAll('input:checked')].map(c=>c.value);
   const body={email,role:document.querySelector('input[name=role]:checked').value,status:document.querySelector('input[name=status]:checked').value,
     tools:tools.length===Object.keys(TOOLNAME).length?null:tools,canEdit:$('f-edit').checked,firecrawl:$('f-fc').checked,note:$('f-note').value.trim()};
-  $('save').disabled=true;try{await call('user',body);$('dlg').close();msg((editing?'Saved changes for ':'Added ')+email+'.'+(!editing?' They can now sign in at menuhauler.com with that email.':''),'ok');load()}
+  $('save').disabled=true;try{await call('user',body);
+    // Claude is saved separately and only by the owner, and only when it changed
+    if(D.me.role==='owner'){const on=$('f-claude').checked,cap=$('f-cap').value===''?null:+$('f-cap').value;
+      if(on!==!!(editing&&editing.claude)||cap!==(editing&&editing.claudeCap!=null?editing.claudeCap:null))await call('claude-user',{email,claude:on,cap})}
+    $('dlg').close();msg((editing?'Saved changes for ':'Added ')+email+'.'+(!editing?' They can now sign in at menuhauler.com with that email.':''),'ok');load()}
   catch(err){$('fmsg').textContent=err.message;$('fmsg').className='msg err'}$('save').disabled=false});
 $('people').addEventListener('click',async e=>{const b=e.target.closest('button[data-a]');if(!b)return;const email=b.closest('tr').dataset.e,u=D.users.find(x=>x.email===email),a=b.dataset.a;
   if(a==='edit')return open(u);

@@ -543,7 +543,7 @@ async function diagramImages(f,max){if(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.na
   const bm=await createImageBitmap(f),sc=Math.min(1,2600/Math.max(bm.width,bm.height));if(sc===1&&f.size<4e6)return[f];
   const c=document.createElement('canvas');c.width=Math.round(bm.width*sc);c.height=Math.round(bm.height*sc);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return[await toJpeg(c)]}
 async function readDiagram(f){const m=g('st-dmsg'),say=x=>{if(g('st-dmsg'))g('st-dmsg').textContent=x},id=VIEW.org;
-  const s=await use('sample');if(!s){say(window.OOLIO_HOSTED?'Reading diagrams needs Claude, which isn’t switched on for the website yet. Add the devices and printers below by hand for now.':'Reading diagrams needs Claude, which is only available when this page is open on claude.ai.');return}
+  const s=await use('sample');if(!s){say(window.OOLIO_HOSTED?'Reading diagrams needs Claude, which isn’t switched on for your account (the site owner can turn it on). Add the devices and printers below by hand for now.':'Reading diagrams needs Claude, which is only available when this page is open on claude.ai.');return}
   let max=1;try{const l=await s.limits();if(!l||!l.images){say('Claude can’t read images in this view.');return}max=Math.max(1,l.images.maxCount||1)}catch(e){}
   try{say('Preparing '+f.name+'…');const imgs=(await diagramImages(f,Math.min(max,4)));
     say('Claude is reading the diagram. This can take up to a minute…');

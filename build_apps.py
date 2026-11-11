@@ -210,6 +210,8 @@ LAUNCHER_CSS = r"""
 .hosted-only{display:none!important}
 html.oolio-hosted .hosted-only{display:block!important}
 html.oolio-hosted .claude-only,html.oolio-hosted #rf-setbox{display:none!important}
+/* on the website, Claude notes show only for people the owner has switched Claude on for (hosted.js adds .oolio-claude) */
+html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude .ocr-note{display:none!important}
 .oh-banner{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px));background:var(--warn);color:var(--card);font-size:.92rem}
 .oh-banner button{font:inherit;font-weight:600;background:var(--card);color:var(--text);border:0;border-radius:6px;padding:4px 12px;cursor:pointer;margin:0}
 #lx-pfframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}

@@ -4,7 +4,9 @@
      db    -> /api/db/*  (D1), with changes from teammates picked up every 10 seconds
      user  -> /api/me    (the signed-in email)
      mcp   -> /api/fc    (Firecrawl with the team key; the Claude app's browser isn't needed, see /api/fetch)
-     sample, downloads -> not available: each tool falls back (built-in readers and OCR, normal downloads)
+     sample -> /api/claude, but only for people the owner has switched Claude on for (see /admin); everyone else gets
+               nothing, so each tool falls back to its built-in readers and OCR exactly as before
+     downloads -> not available: normal downloads
    build_apps.py puts this first in public/index.html. */
 (()=>{
 window.OOLIO_HOSTED=true;
@@ -69,10 +71,35 @@ const MCP={async callTool(server,tool,input){
     const r=await call('fc',{tool,input});return{payload:r.payload}},
   async watchTool(){return()=>{}}};
 
+/* ---------- Claude through the website (the same shape the tools use on claude.ai: limits() and json()) ---------- */
+const b64=blob=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]||'');r.onerror=()=>rej(r.error);r.readAsDataURL(blob)});
+const err=(m,code)=>{const x=new Error(m);x.code=code;return x};
+// Claude is asked for "only JSON"; take the JSON out of the answer even if it comes wrapped in a code block or a sentence
+function parseJSON(t){t=String(t||'').trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
+  try{return JSON.parse(t)}catch(e){}
+  const a=t.search(/[{[]/),z=Math.max(t.lastIndexOf('}'),t.lastIndexOf(']'));
+  if(a>=0&&z>a){try{return JSON.parse(t.slice(a,z+1))}catch(e){}}
+  return undefined}
+const SAMPLE={
+  async limits(){const m=await me(),l=m.claudeLimits||{};return{maxPromptBytes:Math.floor((l.maxPromptChars||200000)*0.9),images:{maxCount:l.maxImages||4}}},
+  async json(prompt,o){o=o||{};const list=o.images?(Array.isArray(o.images)?o.images:[o.images]):[],images=[];
+    for(const x of list){const blob=x instanceof Blob?x:await new Promise(r=>x.toBlob(r,'image/jpeg',0.9));
+      images.push({type:blob.type==='image/jpg'?'image/jpeg':(blob.type||'image/jpeg'),data:await b64(blob)})}
+    let r;try{r=await fetch('/api/claude',{method:'POST',credentials:'same-origin',redirect:'manual',signal:o.signal,headers:{'content-type':'application/json'},
+      body:JSON.stringify({prompt:String(prompt),images,tool:location.hash.slice(1)})})}
+    catch(e){if(o.signal&&o.signal.aborted)throw err('Stopped.','cancelled');throw err('The website couldn’t be reached. Check the connection.','unavailable')}
+    if(r.type==='opaqueredirect'||r.status===401){signinBanner('Your sign-in session has ended. Reload the page to sign in again.');throw err('Your sign-in session has ended.','session_expired')}
+    let j={};try{j=await r.json()}catch(e){}
+    if(!r.ok)throw err(j.error||('The website answered '+r.status+'.'),j.code||'unavailable');
+    const v=parseJSON(j.text);if(v===undefined)throw err(j.truncated?'Claude’s answer was too long and got cut off. Try a smaller part of the menu.':'Claude’s answer couldn’t be read. Try again.','invalid_json');
+    return v}};
+
 window.claude={use:async n=>{
   if(n==='db'){try{await me();return DB}catch(e){signinBanner(e.message);return null}}
   if(n==='user')return USER;
   if(n==='mcp')return MCP;
+  // only offered when the website says this person may use Claude now; otherwise the tools carry on without it
+  if(n==='sample'){try{return(await me()).claude?SAMPLE:null}catch(e){return null}}
   return null}};
 
 /* ---------- what this person may use (set on /admin) ---------- */
@@ -81,6 +108,8 @@ window.claude={use:async n=>{
 let ME_NOW=null;
 const TOOLKEYS=['converter','photos','venue','setup','word'];
 function applyAccess(m){ME_NOW=m;window.MH_ME=m;const ok=t=>!m.tools||m.tools.includes(t);
+  // pages show their "read by Claude" notes instead of the OCR ones
+  document.documentElement.classList.toggle('oolio-claude',!!m.claude);
   document.querySelectorAll('.lx-tab[data-go],.lx-card .lx-open[data-go]').forEach(b=>{const t=b.dataset.go;if(TOOLKEYS.includes(t)&&!ok(t))(b.closest('.lx-card')||b).hidden=true});
   const guard=()=>{const v=location.hash.slice(1);if(TOOLKEYS.includes(v)&&!ok(v)){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}window.dispatchEvent(new HashChangeEvent('hashchange'))}};
   window.addEventListener('hashchange',guard);guard();

@@ -144,6 +144,8 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .hosted-only{display:none!important}
 html.oolio-hosted .hosted-only{display:block!important}
 html.oolio-hosted .claude-only,html.oolio-hosted #rf-setbox{display:none!important}
+/* on the website, Claude notes show only for people the owner has switched Claude on for (hosted.js adds .oolio-claude) */
+html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude .ocr-note{display:none!important}
 .oh-banner{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px));background:var(--warn);color:var(--card);font-size:.92rem}
 .oh-banner button{font:inherit;font-weight:600;background:var(--card);color:var(--text);border:0;border-radius:6px;padding:4px 12px;cursor:pointer;margin:0}
 #lx-pfframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
@@ -767,7 +769,8 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 <label for="file">Choose one or more files: spreadsheets (.csv, .xlsx), menu PDFs, Word documents (.docx), saved web pages (.html), text files or photos of a menu (.jpg, .png)</label>
 <p class="lx-cn" style="margin:0 0 6px">Files are read in your browser and aren’t kept unless you save the result to a venue. Don’t include personal or payment details. <a href="#privacy">Privacy Policy</a> · <a href="#ai">Use of AI</a></p>
 <input type="file" id="file" accept=".csv,.tsv,.txt,.md,.docx,.xlsx,.xlsm,.xls,.ods,.pdf,.html,.htm,.png,.jpg,.jpeg,.webp,.gif" multiple>
-<div class="warn hosted-only" style="margin-top:6px">Menu photos and scanned PDFs are read with text recognition (OCR) in your browser, which can take a minute. Check names and prices carefully against the photo. Take photos straight on, in good light, one page at a time.</div>
+<div class="warn hosted-only site-claude" style="margin-top:6px">Menu photos, PDFs and Word documents are read by Claude, which the site owner has switched on for your account. Check names and prices against the menu. Take photos straight on, in good light, one page at a time.</div>
+<div class="warn hosted-only ocr-note" style="margin-top:6px">Menu photos and scanned PDFs are read with text recognition (OCR) in your browser, which can take a minute. Check names and prices carefully against the photo. Take photos straight on, in good light, one page at a time.</div>
 <div class="warn claude-only" style="margin-top:6px">Menu photos, PDFs and Word documents are read by Claude, which uses a little of your own Claude usage and also picks up add-ons and choices (e.g. “Add bacon +$4”) as modifier groups. The first time, you’re asked to allow it. Take photos straight on, in good light, one page at a time.</div>
 <div class="two" style="margin-top:10px"><input id="url" type="url" placeholder="Or a menu web page, e.g. https://venue.com.au/menu"><button id="urlb" type="button" class="sec" style="margin:0">Read page</button></div>
 <div class="warn hosted-only" style="margin-top:4px">A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too. Pages are read for free by the website; Firecrawl (the team’s account) is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
@@ -1011,7 +1014,7 @@ Double Shot=60</textarea></div>
 <tr><td>Pexels, Pixabay, Openverse, Wikimedia Commons, wsrv.nl</td><td>Free product photos in Photo Finder</td><td>Product names; your browser contacts them directly</td><td>Germany, USA, Netherlands</td></tr>
 <tr><td>Menu feeds (me&amp;u / Mr Yum, Hungry Hungry)</td><td>Reading a venue’s online ordering menu</td><td>The venue’s menu address</td><td>Australia</td></tr>
 <tr><td>Google Fonts, cdnjs, jsDelivr</td><td>The page’s font and code libraries</td><td>Your IP address and browser, when the page loads</td><td>Global</td></tr>
-<tr><td>Anthropic (claude.ai copy only)</td><td>Hosting the claude.ai copy; reading menus with Claude when you allow it</td><td>The menu text or picture, under your own Claude account</td><td>USA</td></tr>
+<tr><td>Anthropic</td><td>Hosting the claude.ai copy and reading menus with Claude there when you allow it; on the website, reading menus with Claude only for people the site owner has switched it on for</td><td>The menu text or picture: under your own Claude account on claude.ai, under the team’s API account on the website</td><td>USA</td></tr>
 </tbody></table></div>
 <p>We may also disclose information when the law requires it, or to deal with a security incident.</p>
 
@@ -1149,7 +1152,7 @@ Double Shot=60</textarea></div>
 <p>We want you to know when a result was produced by AI.</p>
 <ul>
 <li><b>On claude.ai and in the Claude app,</b> the Menu Converter can ask Claude (an AI model made by Anthropic) to read menu photos, PDFs, Word documents and web pages. It only does this after you allow it, using your own Claude account. Menus read this way are AI-generated and must be checked.</li>
-<li><b>On the website,</b> no AI model is used. Photos and scans are read with text recognition (OCR) in your browser, and categories, printers and size variants are worked out by fixed rules.</li>
+<li><b>On the website,</b> Claude is off unless the site owner has switched it on for your account. When it is on, the Menu Converter, Image to Word and Setup Tracker send the menu text or picture you give them to Claude through the team’s Anthropic API account, and you’ll see notes saying the result was read by Claude. Otherwise no AI model is used: photos and scans are read with text recognition (OCR) in your browser. Either way, categories, printers and size variants are worked out by fixed rules and patterns learned from past menu setups.</li>
 <li>Firecrawl, used to read some web pages, may use automated extraction. Its results are treated as unchecked like any other.</li>
 <li>You are never talking to a chatbot in the tools, and none of this text was written to look like it came from a person when it didn’t.</li>
 </ul>
@@ -3806,7 +3809,7 @@ async function diagramImages(f,max){if(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.na
   const bm=await createImageBitmap(f),sc=Math.min(1,2600/Math.max(bm.width,bm.height));if(sc===1&&f.size<4e6)return[f];
   const c=document.createElement('canvas');c.width=Math.round(bm.width*sc);c.height=Math.round(bm.height*sc);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return[await toJpeg(c)]}
 async function readDiagram(f){const m=g('st-dmsg'),say=x=>{if(g('st-dmsg'))g('st-dmsg').textContent=x},id=VIEW.org;
-  const s=await use('sample');if(!s){say(window.OOLIO_HOSTED?'Reading diagrams needs Claude, which isn’t switched on for the website yet. Add the devices and printers below by hand for now.':'Reading diagrams needs Claude, which is only available when this page is open on claude.ai.');return}
+  const s=await use('sample');if(!s){say(window.OOLIO_HOSTED?'Reading diagrams needs Claude, which isn’t switched on for your account (the site owner can turn it on). Add the devices and printers below by hand for now.':'Reading diagrams needs Claude, which is only available when this page is open on claude.ai.');return}
   let max=1;try{const l=await s.limits();if(!l||!l.images){say('Claude can’t read images in this view.');return}max=Math.max(1,l.images.maxCount||1)}catch(e){}
   try{say('Preparing '+f.name+'…');const imgs=(await diagramImages(f,Math.min(max,4)));
     say('Claude is reading the diagram. This can take up to a minute…');
