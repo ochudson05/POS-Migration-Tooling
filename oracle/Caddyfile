@@ -1,0 +1,44 @@
+# The Oracle server's front door (see docker-compose.yml). Cloudflare Tunnel brings requests here.
+# Every request needs the header X-MH-Key with MH_KEY; only the paths the website uses are let through.
+{
+	admin off
+}
+
+:8080 {
+	request_body {
+		max_size 15MB
+	}
+
+	@nokey not header X-MH-Key {$MH_KEY}
+	handle @nokey {
+		respond "Missing or wrong key" 401
+	}
+
+	# the menu scraper and OCR (menu-scraper/app.py); scrapes can take a couple of minutes
+	@scraper path /v1/menu /v1/scrape /v1/ocr /health
+	handle @scraper {
+		reverse_proxy scraper:8787 {
+			transport http {
+				read_timeout 180s
+			}
+		}
+	}
+
+	# the local model: answering only (no pulling or deleting models from outside)
+	@ai {
+		method POST
+		path /ai/api/chat
+	}
+	handle @ai {
+		uri strip_prefix /ai
+		reverse_proxy ollama:11434 {
+			transport http {
+				read_timeout 180s
+			}
+		}
+	}
+
+	handle {
+		respond "Not found" 404
+	}
+}

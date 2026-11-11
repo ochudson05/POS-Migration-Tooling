@@ -907,7 +907,7 @@ function addStaff(list){const id=VIEW.org,o=ORGS[id];if(!o||!list.length)return 
 async function staffFile(f){const say=t=>{const m=g('st-smsg');if(m)m.textContent=t};say('Reading '+f.name+'…');
   try{let list=[];
     if(/^image\//.test(f.type)){const s=await use('sample');let lim=null;try{lim=s&&await s.limits()}catch(e){}
-      if(s&&lim&&lim.images){const j=await s.json('This image is a list of staff for a hospitality venue. Reply with only this JSON: {"staff":[{"name":"","role":"","email":"","mobile":""}]}. Copy names exactly; leave unknown fields "". Leave out anything that is not a person.',{images:f});
+      if(s&&lim&&lim.images){const j=await s.json('This image is a list of staff for a hospitality venue. Reply with only this JSON: {"staff":[{"name":"","role":"","email":"","mobile":""}]}. Copy names exactly; leave unknown fields "". Leave out anything that is not a person.',{images:f,task:'light'});
         list=((j&&j.staff)||[]).map(x=>({name:clean(x.name),role:clean(x.role),contact:[clean(x.email),clean(x.mobile)].filter(Boolean).join(', '),done:false})).filter(x=>x.name)}
       else if(typeof window.ocrLines==='function'||typeof ocrLines==='function'){const L=await (window.ocrLines||ocrLines)([f]);list=parseStaffText(L.map(x=>x.text).join('\n'))}
       else{say('Reading photos needs Claude (on claude.ai) or the website’s text recognition. Paste the list instead.');return}}

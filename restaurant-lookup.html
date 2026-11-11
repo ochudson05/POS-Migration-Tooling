@@ -376,7 +376,7 @@ async function profile(i){
   const sm=await getSample();
   if(sm&&((P.reviews&&P.reviews.list.length)||P.site)){
     step('Claude is reading the reviews and website…');
-    try{const ctl2=RUN.signal;P.ai=await sm.json(aiPrompt(P),{signal:ctl2});}
+    try{const ctl2=RUN.signal;P.ai=await sm.json(aiPrompt(P),{signal:ctl2,task:'light'});}
     catch(e){if(RUN.signal.aborted)throw new Error('Stopped.');P.notes.push('Claude couldn’t read the reviews ('+(e.code||e.message)+'), so popular items and services are missing.')}}
   else if(!sm)P.notes.push('Claude isn’t available in this view, so popular items and services were not worked out.');
   P.credits=(P.credits||0)+RUN.credits;RUN.credits=0;
@@ -392,7 +392,7 @@ async function moreReviews(){const P=CUR,pl=P.place;if(RUN||!P)return;
     say('Reading the latest 60 reviews…'+stopBtn());
     const rv=await alex('firecrawl-maps','businesses/reviews',{feature_id:fid,count:60,sort:'newest',language:'en'});
     P.reviews={summary:rv.summary||null,list:(rv.reviews||[]).map(r=>({rating:r.rating,text:r.text||'',when:r.relative_time||'',reply:!!r.owner_response})),src:'Google via Firecrawl'};
-    const sm=await getSample();if(sm){say('Claude is reading the reviews…'+stopBtn());try{P.ai=await sm.json(aiPrompt(P),{signal:RUN.signal})}catch(e){if(RUN.signal.aborted)throw new Error('Stopped.')}}
+    const sm=await getSample();if(sm){say('Claude is reading the reviews…'+stopBtn());try{P.ai=await sm.json(aiPrompt(P),{signal:RUN.signal,task:'light'})}catch(e){if(RUN.signal.aborted)throw new Error('Stopped.')}}
     P.credits=(P.credits||0)+RUN.credits;cachePut(P.key,P);say('Done. Reading the reviews used '+RUN.credits+' Firecrawl credits.')}
   catch(e){if(RUN.credits){P.credits=(P.credits||0)+RUN.credits;cachePut(P.key,P)}say(esc(e.nofc?'Firecrawl is only available on claude.ai.':e.message),true)}
   finally{RUN=null;render()}}

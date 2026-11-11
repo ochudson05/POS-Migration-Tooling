@@ -11,7 +11,11 @@
      user  -> /api/me    (the signed-in email)
      mcp   -> /api/fc    (Firecrawl with the team key; the Claude app's browser isn't needed, see /api/fetch)
      sample -> /api/claude, but only for people the owner has switched Claude on for (see /admin); everyone else gets
-               nothing, so each tool falls back to its built-in readers and OCR exactly as before
+               nothing, so each tool falls back to its built-in readers and OCR exactly as before.
+               json(prompt, {task:'light'}) asks for the cheaper model the owner picked for small jobs; {context} is
+               fixed reference text sent first (Anthropic's prompt cache); a repeated question is answered from a
+               saved reading unless {fresh:true}. On claude.ai these options are simply ignored.
+     window.MH_ORACLE -> the Oracle server through /api/oracle/* (menu scraper, OCR), when the website has one
      downloads -> not available: normal downloads
    build_apps.py puts this first in public/index.html. */
 (()=>{
@@ -92,13 +96,22 @@ const SAMPLE={
     for(const x of list){const blob=x instanceof Blob?x:await new Promise(r=>x.toBlob(r,'image/jpeg',0.9));
       images.push({type:blob.type==='image/jpg'?'image/jpeg':(blob.type||'image/jpeg'),data:await b64(blob)})}
     let r;try{r=await fetch('/api/claude',{method:'POST',credentials:'same-origin',redirect:'manual',signal:o.signal,headers:{'content-type':'application/json'},
-      body:JSON.stringify({prompt:String(prompt),images,tool:location.hash.slice(1)})})}
+      // task "light" = a small job for the cheaper model; context = fixed reference text (prompt-cached); fresh = skip saved readings
+      body:JSON.stringify({prompt:String(prompt),images,tool:location.hash.slice(1),task:o.task==='light'?'light':undefined,context:typeof o.context==='string'?o.context:undefined,fresh:o.fresh===true||undefined})})}
     catch(e){if(o.signal&&o.signal.aborted)throw err('Stopped.','cancelled');throw err('The website couldn’t be reached. Check the connection.','unavailable')}
     if(r.type==='opaqueredirect'||r.status===401){signinBanner('Your sign-in session has ended. Reload the page to sign in again.');throw err('Your sign-in session has ended.','session_expired')}
     let j={};try{j=await r.json()}catch(e){}
     if(!r.ok)throw err(j.error||('The website answered '+r.status+'.'),j.code||'unavailable');
     const v=parseJSON(j.text);if(v===undefined)throw err(j.truncated?'Claude’s answer was too long and got cut off. Try a smaller part of the menu.':'Claude’s answer couldn’t be read. Try again.','invalid_json');
     return v}};
+
+/* ---------- the Oracle server: menu scraper and OCR (null when the website has none) ---------- */
+window.MH_ORACLE={
+  async on(){try{const m=await me();return{scraper:!!m.scraper,ocr:!!m.ocr}}catch(e){return{scraper:false,ocr:false}}},
+  scrape(url,signal){return fetch('/api/oracle/scrape',{method:'POST',credentials:'same-origin',signal,headers:{'content-type':'application/json'},body:JSON.stringify({url})})
+    .then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw err(j.error||('The Oracle server answered '+r.status+'.'),j.code||'unavailable');return j})},
+  ocr(blob,signal){return fetch('/api/oracle/ocr',{method:'POST',credentials:'same-origin',signal,headers:{'content-type':blob.type||'image/jpeg'},body:blob})
+    .then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw err(j.error||('The Oracle server answered '+r.status+'.'),j.code||'unavailable');return j})}};
 
 window.claude={use:async n=>{
   if(n==='db'){try{await me();return DB}catch(e){signinBanner(e.message);return null}}
@@ -983,6 +996,7 @@ Double Shot=60</textarea></div>
 <div class="card" id="kcard" style="display:none">
 <h2>6. Checks</h2>
 <div id="checks"></div>
+<div id="aichk"></div>
 </div>
 
 <div class="card">
@@ -1658,19 +1672,45 @@ function optTable(name,opts){const rows=[],seen=new Set();
     rows.push([g,n,o.price==null||o.price===''?'0':String(num(o.price)||'0'),o.required===true||/^(y|yes|true)$/i.test(String(o.required))?'Yes':'No',+o.max>0?String(+o.max):'',clean(o.for)])});
   return rows.length?[{file:name+' modifiers',sheet:'',rows:[MODHDR,...rows]}]:[]}
 async function claudeRead(name,sources,how){
-  const s=await getSample();const rows=[],notes=[],opts=[];readCtl=new AbortController();
+  const s=await getSample();const rows=[],notes=[],opts=[],ocrs=[],O=await oracle();readCtl=new AbortController();
   for(let i=0;i<sources.length;i++){
     const tiles=(await imageTiles(sources[i])).slice(0,IMGMAX);
     sayStop('Claude is reading the '+how+(sources.length>1?' (page '+(i+1)+' of '+sources.length+')':'')+'. This can take up to a minute…');
+    // the Oracle server's OCR reads the same page meanwhile, for a second opinion on the prices
+    const second=O.ocr?ocrServer(sources[i],readCtl.signal).catch(()=>null):null;
     let data;try{data=await s.json(MENU_PROMPT(tiles.length),{images:tiles.length===1?tiles[0]:tiles,signal:readCtl.signal})}
     catch(e){say('');throw new Error(claudeErr(e))}
     const items=Array.isArray(data)?data:(data&&Array.isArray(data.items)?data.items:[]);
     items.forEach(it=>{if(!it||typeof it!=='object')return;const nm=clean(it.name);if(!nm)return;
       rows.push([clean(it.category),nm,clean(it.size),it.price==null||it.price===''?'':num(it.price),clean(it.description),clean(it.dietary)])});
     if(data&&Array.isArray(data.options))opts.push(...data.options);
-    if(data&&Array.isArray(data.notes))data.notes.forEach(n=>{if(clean(n))notes.push(clean(n))});}
+    if(data&&Array.isArray(data.notes))data.notes.forEach(n=>{if(clean(n))notes.push(clean(n))});
+    if(second){sayStop('Checking Claude’s prices against OCR…');const o=await second;if(o)ocrs.push(o)}}
+  if(O.ocr)notes.push(...(ocrs.length?secondOpinion(rows,ocrs):['The OCR second opinion wasn’t available this time, so check prices against the original as usual.']));
   say('');readCtl=null;
   const t=mkDocTable(name,rows,notes,how+' (read by Claude)');t.extra=optTable(name,opts);return t;}
+/* ---------------- the Oracle server (website only): OCR second opinion ----------------
+   While Claude reads a photo or scanned page, the server's OCR (RapidOCR) reads it too. Prices Claude listed that
+   OCR never saw, and lines with a price that no item has, are listed in Checks for a look at the original.
+   When Claude isn't on, the same OCR reads the menu in place of the browser's Tesseract (see ocrLines). */
+let ORC;
+async function oracle(){if(ORC===undefined){ORC=null;try{if(window.MH_ORACLE)ORC=await window.MH_ORACLE.on()}catch(e){}}return ORC||{}}
+async function ocrServer(src,signal){return window.MH_ORACLE.ocr(src instanceof HTMLCanvasElement?await toBlob(src):src,signal)}
+// amounts that could be prices in a line of OCR text: "$12.50", "12.5", "24" (not "250ml" or "2024")
+const ocrPrices=t=>(String(t).match(/\$?\b\d{1,3}(?:\.\d{1,2})?\b(?![%\w])/g)||[]).map(x=>+x.replace('$','')).filter(n=>n>0&&n<1000);
+const p2=n=>(+n).toFixed(2);
+function secondOpinion(rows,ocrs){
+  const lines=ocrs.flatMap(o=>o.lines||[]),seen=new Set(lines.flatMap(l=>ocrPrices(l.text).map(p2)));
+  if(!seen.size)return['The OCR second opinion found no prices on the page, so it couldn’t check Claude’s.'];
+  const priced=rows.filter(r=>r[3]!==''),mine=new Set(priced.map(r=>p2(r[3])));
+  const miss=priced.filter(r=>!seen.has(p2(r[3]))).map(r=>r[1]+(r[2]?' ('+r[2]+')':'')+' $'+r[3]);
+  // only lines that clearly carry a price ($ sign or cents) count as a possibly missed item
+  const extra=lines.filter(l=>/\$\s?\d|\b\d{1,3}\.\d\d\b/.test(l.text)&&ocrPrices(l.text).some(n=>!mine.has(p2(n)))).map(l=>l.text);
+  const out=[],few=(a,n)=>a.slice(0,n).join('; ')+(a.length>n?' …':'');
+  if(miss.length)out.push('Second opinion (OCR): '+miss.length+' price'+(miss.length>1?'s':'')+' Claude read '+(miss.length>1?'weren’t':'wasn’t')+' seen by OCR. Check against the original: '+few(miss,25));
+  if(extra.length)out.push('Second opinion (OCR): '+extra.length+' line'+(extra.length>1?'s':'')+' with a price that no item has, so Claude may have missed '+(extra.length>1?'them':'it')+': '+few(extra,15));
+  if(!out.length)out.push('Second opinion (OCR): every price Claude read was also seen by OCR.');
+  return out}
 function sayStop(t){$('dmsg').innerHTML=esc(t)+' <button type="button" class="sec" id="stopread" style="padding:4px 10px;margin:0 0 0 6px">Stop</button>';
   $('stopread').addEventListener('click',()=>{if(readCtl)readCtl.abort()});}
 // turn positioned text pieces into reading-order lines, keeping menu columns apart
@@ -1701,6 +1741,14 @@ function layoutLines(its,W){
 const HOSTED=!/^(file:|https?:\/\/(localhost|127\.0\.0\.1)[:/])/.test(location.href);
 async function ocrLines(srcs){
   if(HOSTED&&!window.OOLIO_HOSTED)throw new Error('Photos and scanned PDFs are read by Claude on this page, but Claude isn’t available in this view. Open the page on claude.ai while signed in, or send the photo to Claude in chat.');
+  // the Oracle server's OCR when the website has it (better on photos and columns); the browser's Tesseract otherwise
+  if((await oracle()).ocr){try{const out=[];
+      for(let i=0;i<srcs.length;i++){say('Reading the menu with OCR on the Oracle server'+(srcs.length>1?' (page '+(i+1)+' of '+srcs.length+')':'')+'…');
+        const o=await ocrServer(srcs[i]);
+        // image rows grow downwards; layoutLines wants page rows that grow upwards, like a PDF
+        out.push(...layoutLines((o.lines||[]).map(l=>({s:l.text,x:l.box[0],y:o.height-l.box[1],w:l.box[2]-l.box[0],h:l.box[3]-l.box[1]})),o.width))}
+      say('');return out}
+    catch(e){say('The Oracle server’s OCR didn’t answer, so the menu is read in this browser instead…')}}
   await loadScript(TESS);const out=[];
   const w=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text')say('Reading the menu with OCR… '+Math.round(m.progress*100)+'%')}});
   for(const s of srcs){const {data}=await w.recognize(s);(data.lines||[]).forEach(l=>out.push({text:l.text,h:l.bbox?l.bbox.y1-l.bbox.y0:0,tag:''}))}
@@ -2689,17 +2737,34 @@ async function scraperTable(u,c){
     return mkDocTable(name,j.items.map(i=>[i.category||'',i.name,i.variation||'',i.price==null?'':num(i.price),i.description||'',i.dietary||'']),j.warnings||[],'web page ('+(SVCHOW[j.method]||'menu scraper')+')');
   if(j.markdown&&j.markdown.trim())return docTable(name,markdownLines(j.markdown),'web page (menu scraper)');
   throw new Error('No menu was found at '+u+'. Check the link opens the menu itself, or save or paste the page instead.');}
+// the website's menu scraper on the Oracle server (/api/oracle/scrape). It never calls Claude itself: when it finds no
+// menu data, the page text it returns goes to Claude here, under the website's limits. null = no menu found.
+async function oracleTable(u){
+  readCtl=new AbortController();sayStop('The menu scraper on the Oracle server is reading '+u+'. This can take up to a minute…');
+  let j;try{j=await window.MH_ORACLE.scrape(u,readCtl.signal)}finally{readCtl=null}
+  const name=clean(j.venue)||u.replace(/^https?:\/\//,'').replace(/[?#].*$/,''),how=SVCHOW[j.method]||'menu scraper';
+  const warn=(j.warnings||[]).map(clean).filter(Boolean);
+  if(j.items&&j.items.length>=5){const t=mkDocTable(name,j.items.map(i=>[i.category||'',i.name,i.variation||'',i.price==null?'':num(i.price),i.description||'',i.dietary||'']),warn,'web page ('+how+', Oracle server)');
+    t.note='Read by the menu scraper on the Oracle server ('+how+'). No Firecrawl credits used.';return t}
+  const md=String(j.markdown||'');if(priceLines(md)<5)return null;
+  if(await sampleNS()){const r=await claudeText(name,[{url:j.url||u,md}]);if(r.count){r.table.note='Loaded by the Oracle server, read by Claude. No Firecrawl credits used.';return r.table}}
+  const t=docTable(name,markdownLines(md),'web page (Oracle server)');t.note='Loaded by the Oracle server. No Firecrawl credits used.';return t}
 async function addUrl(force){
   let u=clean($('url').value)||(force===true&&addUrl.last)||'';if(!u)return;if(!/^https?:\/\//i.test(u))u='https://'+u;addUrl.last=u;force=force===true;
   const svc=svcCfg();
   if(svc.url){try{addTables([await scraperTable(u,svc)]);say('');$('url').value='';renderSources();rebuild();return}
     catch(e){if(!e.unreachable){$('dmsg').textContent=e.message;return}}}
+  // on the website: the menu scraper on the Oracle server first (free, and it can run JavaScript sites and read
+  // ordering platforms); if it finds no menu, the usual free reading and Firecrawl below carry on
+  let via='';
+  if((await oracle()).scraper){try{const t=await oracleTable(u);if(t){addTables([t]);say(t.note||'');$('url').value='';renderSources();rebuild();return}via='The Oracle server’s scraper found no menu there, so it was read the usual way. '}
+    catch(e){if(cancelled(e)||e.name==='AbortError'){$('dmsg').textContent='Stopped.';return}via='The Oracle server’s scraper didn’t work ('+e.message+'), so it was read the usual way. '}}
   const mcp=await getMcp();
   if(mcp){try{const t=await readSite(u,mcp,force);addTables([t,...(t.extra||[])]);$('url').value='';renderSources();rebuild();
       if(t.cachedAt){$('dmsg').innerHTML='Used the result saved on '+esc(new Date(t.cachedAt).toLocaleDateString())+', so no Firecrawl credits were used. <button type="button" class="sec" id="reread" style="padding:4px 10px;margin:0 0 0 6px">Read the site again</button>';
         $('reread').addEventListener('click',()=>{tables=tables.filter(x=>x!==t&&!(t.extra||[]).includes(x));tables.forEach((x,j)=>x.id=j);addUrl(true)})}
-      else say(t.note||'')}
-    catch(e){$('dmsg').textContent=e.message}return}
+      else say(via+(t.note||''))}
+    catch(e){$('dmsg').textContent=via+e.message}return}
   say('Reading '+u+'…');
   try{const r=await fetch(u);if(!r.ok)throw new Error('HTTP '+r.status);const ct=r.headers.get('content-type')||'';
     const name=u.replace(/^https?:\/\//,'').replace(/[?#].*$/,'');
@@ -2999,7 +3064,61 @@ function run(){
   $('q').style.display='block';renderPrev();
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
   const hasM=mods.length||res.genMods.length||res.preMods.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
-  drawPreflight();drawChanges();}
+  drawPreflight();drawChanges();drawAIC();}
+
+/* ---------------- Claude's check (step 6) ----------------
+   The finished list goes to the cheaper "small jobs" model (chosen on /admin), item by item, with what ~220 venues'
+   finished pre-work usually does with each name (menu-knowledge.js) wherever that disagrees with the list. It points
+   out items that look filed wrong (a beer in Cocktails, a dessert sent to the bar), prices that don't fit, and names
+   that are really modifiers. It only advises: fix things in the source or the settings above. The fixed rules go as
+   "context", so the website's prompt cache can reuse them between checks. */
+const AIC_CHUNK=350;
+const AIC_RULES=()=>'You review a menu that is about to be imported into Oolio POS (Australian venues). Each item has a category, '+
+  'a reporting group (Food or Beverage), a printer profile and a price in AUD including GST.\n\nConventions:\n'+
+  '- Reporting group: anything you drink is Beverage (coffee, tea, juice, shakes, soft drinks, beer, wine, spirits, cocktails); everything you eat is Food, even when cooked with alcohol (beer-battered fish, vodka pasta).\n'+
+  '- Printers: hot coffee, tea and hot chocolate go to the Coffee printer; other drinks to the Bar; food to a kitchen printer (Mains, Pans, Larder, Pizza and so on), never Bar or Coffee.\n'+
+  '- Categories should be broad and match what the item is: a beer belongs with beer, not in Cocktails or Desserts. Where "venues usually" is given, it is what most of about 220 venues did with that item name; prefer it unless the item clearly differs.\n'+
+  '- Add-ons and choices ("Extra shot", "Add bacon", "Oat milk", "Gluten free bread") are modifiers, not products.\n'+
+  '- Prices: flag a price that is clearly implausible for the item next to similar items (a coffee at $45, a bottle of wine at $4, a main at $0), or a size that costs less than a smaller size of the same item.\n'+
+  '- Names: flag obvious OCR or typing mistakes in names (e.g. "Flat Wh1te", "Capuccino").\n\n'+
+  (KN&&KN.cats?'Categories venues commonly use: '+KN.cats.filter(Boolean).join(', ')+'.\n\n':'')+
+  'Only list real problems that a person setting up the venue should fix; say nothing about items that are fine. Reply with only this JSON:\n'+
+  '{"issues":[{"row":0,"field":"category|reporting|printer|price|name|modifier|other","now":"","suggest":"","why":""}]}\n'+
+  'row is the number at the start of the item\'s line. Keep "why" under 15 words. At most 60 issues.';
+let AIC=null,AICBUSY=false;
+// one line per sellable row: [row, name, size, category, reporting group, printer, price, description, venues usually].
+// "venues usually" is filled only where the knowledge really disagrees, so the model isn't nudged about items that are fine
+const catWords=s=>String(s||'').toLowerCase().split(/[^a-z]+/).filter(w=>w.length>2).map(w=>w.replace(/s$/,''));
+const sameCat=(a,b)=>{const x=catWords(a);return!x.length||catWords(b).some(w=>x.includes(w))};
+// what kind of printer a profile is: Coffee, Bar, or a kitchen printer (anything else)
+const prKind=p=>/coffee|barista/i.test(p||'')?'C':/\bbar\b|drinks?/i.test(p||'')?'B':p?'K':'';
+function aicRows(){if(!res||!res.rows.length)return[];const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'),t:ix('Product Type*'),c:ix('Category*'),rg:ix('Reporting Group*'),
+    pp:ix('Printer Profiles'),vn:ix('Variant Name'),p:ix('Sell Price*'),d:ix('Description')},prn={C:'Coffee printer',B:'Bar printer',K:'a kitchen printer'};
+  return res.rows.map((r,i)=>[i,r]).filter(([,r])=>r[I.t]!=='Modifier'&&!(r[I.t]==='Variant'&&!r[I.p])).map(([i,r])=>{
+    const k=knowItem(r[I.n]),hint=k&&k.how==='name'?[k.cat&&!sameCat(k.cat,r[I.c])?k.cat:'',k.rg&&k.rg!==r[I.rg]?k.rg:'',k.pr&&prn[k.pr]&&r[I.pp]&&prKind(r[I.pp])!==k.pr?prn[k.pr]:''].filter(Boolean).join(', '):'';
+    return[i,r[I.n],r[I.vn]||'',r[I.c],r[I.rg],r[I.pp],r[I.p],String(r[I.d]||'').slice(0,80),hint]})}
+const aicSig=rs=>rs.map(r=>r.slice(1,7).join('|')).join('\n');
+async function drawAIC(){const el=$('aichk');if(!el)return;
+  const rs=aicRows();if(!rs.length||!(await getSample())){el.innerHTML='';return}
+  const sig=aicSig(rs),fresh=AIC&&AIC.sig===sig;
+  let h='<div class="chk i"><b>Claude’s check</b> <span class="muted" style="font-size:.85rem">Claude looks over the finished list for items filed under the wrong category, reporting group or printer, prices that don’t fit and names that are really add-ons. It uses the cheaper model and only advises.</span><div style="margin-top:6px">'+
+    '<button type="button" class="sec" id="aicgo"'+(AICBUSY?' disabled':'')+'>'+(AICBUSY?'Checking…':fresh?'Check again':'Ask Claude to check the list')+'</button></div>';
+  if(AIC&&!fresh&&!AICBUSY)h+='<p class="pf-how" style="margin-left:0">The list has changed since Claude checked it.</p>';
+  if(AIC&&AIC.err)h+='<p class="pf-how" style="margin-left:0">'+esc(AIC.err)+'</p>';
+  else if(AIC&&fresh){const L={category:'Category',reporting:'Reporting group',printer:'Printer',price:'Price',name:'Name',modifier:'Add-on, not a product',other:'Check'};
+    h+=AIC.issues.length?'<details open><summary><b>'+AIC.issues.length+'</b> thing'+(AIC.issues.length>1?'s':'')+' to look at</summary><ul>'+AIC.issues.map(x=>{const r=AIC.byRow.get(+x.row);
+      return'<li><b>'+esc(r?r[1]+(r[2]?' ('+r[2]+')':''):'Row '+x.row)+'</b> · '+esc(L[x.field]||'Check')+(x.now||x.suggest?': '+esc(clean(x.now))+(x.suggest?' → '+esc(clean(x.suggest)):''):'')+(x.why?' <span class="muted">('+esc(clean(x.why))+')</span>':'')+'</li>'}).join('')+'</ul></details>'
+      :'<p class="pf-how" style="margin-left:0">Claude found nothing to change.</p>'}
+  el.innerHTML=h+'</div>';$('aicgo').addEventListener('click',()=>runAIC(fresh))}
+async function runAIC(again){const rs=aicRows(),s=await getSample();if(!rs.length||!s||AICBUSY)return;
+  AICBUSY=true;drawAIC();const sig=aicSig(rs),issues=[],ctx=AIC_RULES();let err='';
+  try{for(let i=0;i<rs.length;i+=AIC_CHUNK){const part=rs.slice(i,i+AIC_CHUNK);
+      const prompt=(rs.length>AIC_CHUNK?'Part '+(i/AIC_CHUNK+1)+' of '+Math.ceil(rs.length/AIC_CHUNK)+' of the menu. ':'')+
+        'Items, one per line as JSON: [row, name, size, category, reporting group, printer, price, description, venues usually]\n'+part.map(r=>JSON.stringify(r)).join('\n');
+      const d=await s.json(prompt,{task:'light',context:ctx,fresh:again===true});
+      if(d&&Array.isArray(d.issues))issues.push(...d.issues.filter(x=>x&&typeof x==='object'&&part.some(r=>r[0]===+x.row)))}}
+  catch(e){err=claudeErr(e)}
+  AIC={sig,issues,err,byRow:new Map(rs.map(r=>[r[0],r]))};AICBUSY=false;drawAIC()}
 
 function tplPresets(){const OV=window.OolioVenues,a=OV&&OV.active?OV.active():null,T=window.OOLIO_TEMPLATES;return a&&a.vtype&&T&&T[a.vtype]?T[a.vtype].presets:[]}
 
@@ -3413,7 +3532,7 @@ async function profile(i){
   const sm=await getSample();
   if(sm&&((P.reviews&&P.reviews.list.length)||P.site)){
     step('Claude is reading the reviews and website…');
-    try{const ctl2=RUN.signal;P.ai=await sm.json(aiPrompt(P),{signal:ctl2});}
+    try{const ctl2=RUN.signal;P.ai=await sm.json(aiPrompt(P),{signal:ctl2,task:'light'});}
     catch(e){if(RUN.signal.aborted)throw new Error('Stopped.');P.notes.push('Claude couldn’t read the reviews ('+(e.code||e.message)+'), so popular items and services are missing.')}}
   else if(!sm)P.notes.push('Claude isn’t available in this view, so popular items and services were not worked out.');
   P.credits=(P.credits||0)+RUN.credits;RUN.credits=0;
@@ -3429,7 +3548,7 @@ async function moreReviews(){const P=CUR,pl=P.place;if(RUN||!P)return;
     say('Reading the latest 60 reviews…'+stopBtn());
     const rv=await alex('firecrawl-maps','businesses/reviews',{feature_id:fid,count:60,sort:'newest',language:'en'});
     P.reviews={summary:rv.summary||null,list:(rv.reviews||[]).map(r=>({rating:r.rating,text:r.text||'',when:r.relative_time||'',reply:!!r.owner_response})),src:'Google via Firecrawl'};
-    const sm=await getSample();if(sm){say('Claude is reading the reviews…'+stopBtn());try{P.ai=await sm.json(aiPrompt(P),{signal:RUN.signal})}catch(e){if(RUN.signal.aborted)throw new Error('Stopped.')}}
+    const sm=await getSample();if(sm){say('Claude is reading the reviews…'+stopBtn());try{P.ai=await sm.json(aiPrompt(P),{signal:RUN.signal,task:'light'})}catch(e){if(RUN.signal.aborted)throw new Error('Stopped.')}}
     P.credits=(P.credits||0)+RUN.credits;cachePut(P.key,P);say('Done. Reading the reviews used '+RUN.credits+' Firecrawl credits.')}
   catch(e){if(RUN.credits){P.credits=(P.credits||0)+RUN.credits;cachePut(P.key,P)}say(esc(e.nofc?'Firecrawl is only available on claude.ai.':e.message),true)}
   finally{RUN=null;render()}}
@@ -4305,7 +4424,7 @@ function addStaff(list){const id=VIEW.org,o=ORGS[id];if(!o||!list.length)return 
 async function staffFile(f){const say=t=>{const m=g('st-smsg');if(m)m.textContent=t};say('Reading '+f.name+'…');
   try{let list=[];
     if(/^image\//.test(f.type)){const s=await use('sample');let lim=null;try{lim=s&&await s.limits()}catch(e){}
-      if(s&&lim&&lim.images){const j=await s.json('This image is a list of staff for a hospitality venue. Reply with only this JSON: {"staff":[{"name":"","role":"","email":"","mobile":""}]}. Copy names exactly; leave unknown fields "". Leave out anything that is not a person.',{images:f});
+      if(s&&lim&&lim.images){const j=await s.json('This image is a list of staff for a hospitality venue. Reply with only this JSON: {"staff":[{"name":"","role":"","email":"","mobile":""}]}. Copy names exactly; leave unknown fields "". Leave out anything that is not a person.',{images:f,task:'light'});
         list=((j&&j.staff)||[]).map(x=>({name:clean(x.name),role:clean(x.role),contact:[clean(x.email),clean(x.mobile)].filter(Boolean).join(', '),done:false})).filter(x=>x.name)}
       else if(typeof window.ocrLines==='function'||typeof ocrLines==='function'){const L=await (window.ocrLines||ocrLines)([f]);list=parseStaffText(L.map(x=>x.text).join('\n'))}
       else{say('Reading photos needs Claude (on claude.ai) or the website’s text recognition. Paste the list instead.');return}}

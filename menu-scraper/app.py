@@ -2,6 +2,7 @@
 
     POST /v1/menu    {"url": "https://venue.com.au"}  -> menu items
     POST /v1/scrape  {"url": "..."}                    -> page markdown/html/links
+    POST /v1/ocr     picture bytes (Content-Type image/*) -> text lines with their boxes
     GET  /health
 
 Run:  uvicorn app:app --port 8787
@@ -17,12 +18,13 @@ from dotenv import load_dotenv
 
 load_dotenv(Path(__file__).with_name(".env"))
 
-from fastapi import Depends, FastAPI, Header, HTTPException  # noqa: E402
+from fastapi import Depends, FastAPI, Header, HTTPException, Request  # noqa: E402
+from fastapi.concurrency import run_in_threadpool  # noqa: E402
 from fastapi.middleware.cors import CORSMiddleware  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 from pydantic import BaseModel, Field  # noqa: E402
 
-from menuscraper import extract_ai  # noqa: E402
+from menuscraper import extract_ai, ocr  # noqa: E402
 from menuscraper.fetch import browser_available, close_browser  # noqa: E402
 from menuscraper.pipeline import scrape_menu, scrape_page  # noqa: E402
 
@@ -89,11 +91,33 @@ async def scrape(req: PageRequest):
         raise HTTPException(400, str(e))
 
 
+OCR_MAX_BYTES = 12_000_000
+
+
+@app.post("/v1/ocr", dependencies=[Depends(check_key)])
+async def read_text(request: Request):
+    if not ocr.available():
+        raise HTTPException(503, "OCR isn't installed or is turned off (ENABLE_OCR=0)")
+    if not request.headers.get("content-type", "").lower().startswith("image/"):
+        raise HTTPException(415, "Send a picture (Content-Type image/...)")
+    data = await request.body()
+    if not data:
+        raise HTTPException(400, "The picture is empty")
+    if len(data) > OCR_MAX_BYTES:
+        raise HTTPException(413, "The picture is too big")
+    try:
+        # the recognition itself is CPU work: keep it off the event loop so scrapes carry on meanwhile
+        return await run_in_threadpool(ocr.read, data)
+    except Exception as e:  # a file that isn't really a picture
+        logging.getLogger(__name__).warning("ocr failed: %s", e)
+        raise HTTPException(400, "That picture couldn't be read")
+
+
 @app.get("/health")
 async def health():
     return {"ok": True, "browser": browser_available(), "claude": extract_ai.available(),
             "model": extract_ai.MODEL, "firecrawl": bool(os.getenv("FIRECRAWL_API_KEY")),
-            "auth": bool(os.getenv("API_KEY"))}
+            "ocr": ocr.available(), "auth": bool(os.getenv("API_KEY"))}
 
 
 if __name__ == "__main__":

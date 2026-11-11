@@ -1,0 +1,55 @@
+# The Menu Hauler Oracle server: one Ampere A1 VM (Always Free: 2 OCPUs, 12 GB). See README.md.
+# Nothing listens on the internet: Cloudflare Tunnel carries https://oracle.menuhauler.com to the gateway, and the
+# gateway only answers requests with the key (MH_KEY), which only the website's Worker has (ORACLE_KEY there).
+#
+#   tunnel  -> gateway:8080 (Caddy: key check, and only these paths)
+#                /v1/menu /v1/scrape /v1/ocr /health -> scraper:8787 (menu-scraper/, with RapidOCR)
+#                /ai/api/chat                         -> ollama:11434 (the small local model)
+name: menuhauler
+
+services:
+  gateway:
+    image: caddy:2.11.6-alpine
+    restart: unless-stopped
+    environment:
+      MH_KEY: ${MH_KEY:?run setup.sh, it makes MH_KEY}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+    depends_on: [scraper, ollama]
+
+  scraper:
+    build: ../menu-scraper
+    restart: unless-stopped
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8787"
+      ENABLE_BROWSER: "1"
+      ENABLE_OCR: "1"
+      # no ANTHROPIC_API_KEY on purpose: the website sends what the scraper finds to Claude itself,
+      # so its limits, saved readings and call log apply
+      FIRECRAWL_API_KEY: ${FIRECRAWL_API_KEY:-}
+      LOG_LEVEL: INFO
+    mem_limit: 5g
+    shm_size: 512m     # headless Chromium needs more shared memory than Docker's 64 MB default
+
+  ollama:
+    image: ollama/ollama:0.40.12
+    restart: unless-stopped
+    environment:
+      OLLAMA_KEEP_ALIVE: 24h      # keep the model loaded between requests
+      OLLAMA_NUM_PARALLEL: "1"    # two CPU cores: one answer at a time
+      OLLAMA_MAX_LOADED_MODELS: "1"
+    volumes:
+      - ollama:/root/.ollama
+    mem_limit: 6g
+
+  tunnel:
+    image: cloudflare/cloudflared:2026.10.4
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?put the Cloudflare tunnel token in .env}
+    depends_on: [gateway]
+
+volumes:
+  ollama:

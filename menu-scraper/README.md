@@ -85,7 +85,14 @@ to the sites allowed to call it.
 ## Other endpoints
 
 - `POST /v1/scrape {"url": ...}`: one page as markdown + HTML + menu links (no menu reading).
+- `POST /v1/ocr` with a picture as the body (`Content-Type: image/jpeg` etc.): every text line with its box,
+  from RapidOCR (PaddleOCR's models, CPU only). The website uses it as a second opinion on Claude's
+  reading of menu photos, and as the reader when Claude is off. `ENABLE_OCR=0` turns it off.
 - `GET /health`
+
+On the Oracle server (`oracle/`), this service runs behind a gateway and Cloudflare Tunnel, and the
+website calls it through `/api/oracle/*`. There it runs without `ANTHROPIC_API_KEY`: the website sends
+what it finds to Claude itself, so the website's limits, saved readings and log still apply.
 
 Request options for `/v1/menu`: `follow_links` (default true), `use_ai` (null = only when needed,
 true = always, false = never), `max_pages` (default 4), `include_markdown` (default true),

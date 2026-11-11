@@ -10,3 +10,8 @@ python-dotenv>=1.0
 # Headless browser tier. patchright is a drop-in Playwright build with automation fingerprints removed;
 # plain playwright is used if patchright is not installed.
 patchright>=1.48
+# Text recognition for menu photos (POST /v1/ocr): PaddleOCR's models on ONNX Runtime, CPU only (x86 and Arm)
+rapidocr>=3.4,<4
+onnxruntime>=1.20
+pillow>=10.0
+numpy>=1.26

@@ -103,7 +103,8 @@ html.mh-still *{animation:none!important;transition:none!important}
     <p class="note" id="cl-status"></p>
     <div class="row" style="margin-top:12px">
       <label class="opt" style="flex:1 1 100%"><input type="checkbox" id="cl-on"><span>Claude is on for the website<small>Off stops every Claude call straight away. The Cloudflare setting CLAUDE_OFF=1 also stops it, whatever this says.</small></span></label>
-      <label class="f">Model<select id="cl-model"></select></label>
+      <label class="f">Model for reading menus<select id="cl-model"></select></label>
+      <label class="f">Model for small jobs<select id="cl-light"></select></label>
       <label class="f">Effort<select id="cl-effort"><option value="low">Low (cheapest)</option><option value="medium">Medium</option><option value="high">High</option></select></label>
       <label class="f">Site budget, US$ a month<input type="number" id="cl-site" min="0" step="1" style="width:120px"></label>
       <label class="f">Per person, US$ a month<input type="number" id="cl-user" min="0" step="0.5" style="width:120px"></label>
@@ -201,19 +202,22 @@ function draw(){const U=D.users,wk=Date.now()-7*864e5;
 /* ---------- Claude ---------- */
 const money=v=>'US$'+(+v||0).toFixed(2);
 function drawClaude(){const C=D.claude;if(!C)return;const s=C.settings,own=D.me.role==='owner';
-  $('cl-model').innerHTML=C.models.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.id)+' ($'+m.inUsd+' in / $'+m.outUsd+' out per million tokens)</option>').join('');
-  $('cl-on').checked=s.enabled;$('cl-model').value=s.model;$('cl-effort').value=s.effort;$('cl-site').value=s.siteMonthUsd;$('cl-user').value=s.userMonthUsd;$('cl-day').value=s.userDayCalls;$('cl-min').value=s.userMinuteCalls;
-  ['cl-on','cl-model','cl-effort','cl-site','cl-user','cl-day','cl-min'].forEach(id=>$(id).disabled=!own);$('cl-save').hidden=!own;
+  const opts=C.models.map(m=>'<option value="'+esc(m.id)+'">'+esc(m.id)+' ($'+m.inUsd+' in / $'+m.outUsd+' out per million tokens)</option>').join('');
+  $('cl-model').innerHTML=opts;
+  // small jobs: review summaries, staff lists, the converter's check. "local" is the free model on the Oracle server
+  $('cl-light').innerHTML=opts+(C.localOn?'<option value="local">Local model on the Oracle server (free; Haiku steps in if it can’t answer)</option>':'');
+  $('cl-on').checked=s.enabled;$('cl-model').value=s.model;$('cl-light').value=s.lightModel;$('cl-effort').value=s.effort;$('cl-site').value=s.siteMonthUsd;$('cl-user').value=s.userMonthUsd;$('cl-day').value=s.userDayCalls;$('cl-min').value=s.userMinuteCalls;
+  ['cl-on','cl-model','cl-light','cl-effort','cl-site','cl-user','cl-day','cl-min'].forEach(id=>$(id).disabled=!own);$('cl-save').hidden=!own;
   const allowed=D.users.filter(u=>u.claude&&u.status!=='blocked');
   $('cl-status').innerHTML=!C.keySet?'<b>Not set up:</b> there’s no Claude API key on the website yet (ANTHROPIC_API_KEY in Cloudflare), so Claude is off for everyone whatever these settings say.':
     C.stopped?'<b>Stopped in Cloudflare</b> (CLAUDE_OFF=1): Claude is off for everyone.':
-    !s.enabled?'<b>Off.</b> Nobody can use Claude on the website.':'<b>On</b> for '+allowed.length+' '+(allowed.length===1?'person':'people')+'. Spent '+money(C.monthUsd)+' of '+money(s.siteMonthUsd)+' this month.';
-  $('cl-hard').textContent='Fixed limits: answers up to '+C.hard.maxTokens.toLocaleString()+' tokens, '+C.hard.maxImages+' pictures of 5 MB per request, budgets up to US$'+C.hard.siteMonthUsd+' a month for the site and US$'+C.hard.userMonthUsd+' a person. Spending is checked against the worst case before each request.';
+    !s.enabled?'<b>Off.</b> Nobody can use Claude on the website.':'<b>On</b> for '+allowed.length+' '+(allowed.length===1?'person':'people')+'. Spent '+money(C.monthUsd)+' of '+money(s.siteMonthUsd)+' this month'+(C.cachedThisMonth?', and '+C.cachedThisMonth+' '+(C.cachedThisMonth===1?'request was':'requests were')+' answered free from saved readings':'')+'.';
+  $('cl-hard').textContent='Fixed limits: answers up to '+C.hard.maxTokens.toLocaleString()+' tokens, '+C.hard.maxImages+' pictures of 5 MB per request, budgets up to US$'+C.hard.siteMonthUsd+' a month for the site and US$'+C.hard.userMonthUsd+' a person. Spending is checked against the worst case before each request. Small jobs always run at low effort. The same file or page asked about again within 30 days is answered from the saved reading for free.';
   $('cl-people').innerHTML=allowed.map(u=>{const sp=C.spend[u.email]||{calls:0,usd:0},cap=u.claudeCap!=null?u.claudeCap:s.userMonthUsd;
     return'<tr><td class="who"><b>'+esc(nm(u))+'</b><span>'+esc(u.email)+'</span></td><td class="num">'+money(sp.usd)+'<div class="small muted">'+sp.calls+(sp.calls===1?' request':' requests')+'</div></td><td class="num">'+money(cap)+(u.claudeCap!=null?'':'<div class="small muted">default</div>')+'</td></tr>'}).join('')||'<tr><td colspan="3" class="muted">Nobody yet.</td></tr>'}
-async function loadClaudeFeed(){try{const r=await call('claude-calls');const st={ok:'',failed:' · failed',refused:' · declined',running:' · running'};
+async function loadClaudeFeed(){try{const r=await call('claude-calls');const st={ok:'',failed:' · failed',refused:' · declined',running:' · running',cached:' · saved reading'};
   $('cl-feed').innerHTML=r.items.map(i=>{const p=D.users.find(u=>u.email===i.email);return'<li><time>'+when(i.at)+'</time><span><b>'+esc(p?nm(p):nameOf(i.email))+'</b> '+esc(TOOLNAME[i.tool]||'')+' · '+money(i.usd)+' · '+esc(i.model||'')+esc(st[i.state]||'')+(i.note?'<div class="small muted">'+esc(i.note)+'</div>':'')+'</span></li>'}).join('')||'<li><span></span><span class="muted">None yet.</span></li>'}catch(e){}}
-$('cl-save').addEventListener('click',async()=>{const body={enabled:$('cl-on').checked,model:$('cl-model').value,effort:$('cl-effort').value,siteMonthUsd:+$('cl-site').value,userMonthUsd:+$('cl-user').value,userDayCalls:+$('cl-day').value,userMinuteCalls:+$('cl-min').value};
+$('cl-save').addEventListener('click',async()=>{const body={enabled:$('cl-on').checked,model:$('cl-model').value,lightModel:$('cl-light').value,effort:$('cl-effort').value,siteMonthUsd:+$('cl-site').value,userMonthUsd:+$('cl-user').value,userDayCalls:+$('cl-day').value,userMinuteCalls:+$('cl-min').value};
   if(body.enabled&&!D.claude.settings.enabled&&!confirm('Turn Claude on? People you’ve ticked can then spend up to '+money(body.siteMonthUsd)+' a month in total on the team’s API key.'))return;
   $('cl-save').disabled=true;try{const r=await call('claude-settings',body);msg('Claude settings saved'+(r.settings.siteMonthUsd!==body.siteMonthUsd||r.settings.userMonthUsd!==body.userMonthUsd?' (some values were lowered to the fixed limits)':'')+'.','ok');load()}catch(e){msg(e.message,'err')}$('cl-save').disabled=false});
 async function loadFeed(){const e=$('actwho').value;try{const r=await call('activity?'+new URLSearchParams({email:e,limit:150}));
