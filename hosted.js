@@ -1,8 +1,8 @@
-/* Menu Hauler on its own website (menuhauler.com, the menurunner Worker, behind Cloudflare Access).
+/* Menu Hauler on its own website (menuhauler.com, the menurunner Worker, behind its own email-code sign-in).
    The tools were written for claude.ai, where they reach shared data, sign-in and Firecrawl through window.claude.use(name).
    This file provides the same interface from the website's own API (relay-worker.js), so the tools run unchanged:
      db    -> /api/db/*  (D1), with changes from teammates picked up every 10 seconds
-     user  -> /api/me    (the Cloudflare Access email)
+     user  -> /api/me    (the signed-in email)
      mcp   -> /api/fc    (Firecrawl with the team key; the Claude app's browser isn't needed, see /api/fetch)
      sample, downloads -> not available: each tool falls back (built-in readers and OCR, normal downloads)
    build_apps.py puts this first in public/index.html. */
@@ -13,7 +13,7 @@ const qs=o=>new URLSearchParams(Object.entries(o).filter(([,v])=>v!==''&&v!=null
 async function call(path,body){
   let r;try{r=await fetch('/api/'+path,body===undefined?{credentials:'same-origin',redirect:'manual'}:{method:'POST',credentials:'same-origin',redirect:'manual',headers:{'content-type':'application/json'},body:JSON.stringify(body)})}
   catch(e){const x=new Error('The website couldn’t be reached. Check the connection.');x.code='unavailable';throw x}
-  // Cloudflare Access answers with a redirect to its sign-in page when the sign-in session has run out
+  // a redirect means the sign-in has run out
   if(r.type==='opaqueredirect'||(r.status>=300&&r.status<400)){const x=new Error('Your sign-in session has ended. Reload the page to sign in again.');x.code='not_granted';signinBanner(x.message);throw x}
   let j={};try{j=await r.json()}catch(e){}
   if(!r.ok){const x=new Error(j.error||('The website answered '+r.status+'.'));x.code=j.code||(r.status===401?'not_granted':r.status>=500?'unavailable':'invalid_argument');if(x.code==='not_granted')signinBanner(x.message);throw x}
@@ -78,6 +78,6 @@ window.claude={use:async n=>{
 /* ---------- a page-wide note when sign-in fails ---------- */
 let shown=false;
 function signinBanner(msg){if(shown)return;shown=true;const go=()=>{const b=document.createElement('div');b.className='oh-banner';b.setAttribute('role','alert');
-  b.innerHTML='<b>Not signed in.</b> <span></span> <button type="button">Reload</button>';b.querySelector('span').textContent=msg||'';b.querySelector('button').onclick=()=>location.reload();document.body.prepend(b)};
+  b.innerHTML='<b>Not signed in.</b> <span></span> <button type="button">Sign in</button>';b.querySelector('span').textContent=msg||'';b.querySelector('button').onclick=()=>{location.href='/login?next='+encodeURIComponent(location.pathname+location.hash)};document.body.prepend(b)};
   if(document.body)go();else document.addEventListener('DOMContentLoaded',go)}
 })();

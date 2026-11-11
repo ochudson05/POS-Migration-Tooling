@@ -2,25 +2,31 @@
    (also menurunner.ochudson05.workers.dev, which the claude.ai copy's relay setting uses).
 
    It serves the tools as a website (the files in public/, built by build_apps.py) and the API they use there:
-     /api/me                  who is signed in (from Cloudflare Access)
+     /login, /auth/start, /auth/verify, /auth/logout   sign-in with a 6-digit code emailed to an allowed address
+     /api/me                  who is signed in
      /api/db/list|get|set|update|delete   the shared venue records (D1 database "oolio-tools", table docs)
      /api/fc                  Firecrawl scrape / search with the team's key, capped per month
      /api/fetch?url=...       downloads a web page, PDF, menu feed or picture for the page (free; the browser can't)
    and the original relay endpoints, which the claude.ai version still uses:
      /ping  /place?q=  /page?url=  /search?q=
 
-   Who can use it: the site sits behind Cloudflare Access (a one-time code sent to an allowed work email).
-   Every /api call checks the Access sign-in token, so the API stays closed even if Access is switched off.
-   The relay endpoints also accept the old ?t=RELAY_TOKEN.
+   Who can use it: everything except /login, /auth/*, /legal/* and /.well-known/* needs a signed-in session
+   (cookie mh_session, 30 days; D1 table sessions). Codes go only to emails ending in ALLOWED_DOMAINS or listed in
+   ALLOWED_EMAILS. The relay endpoints also accept the old ?t=RELAY_TOKEN.
+   wrangler.toml sets run_worker_first, so the page files themselves are behind the sign-in too.
 
    Deploying: Cloudflare deploys this automatically when it's pushed to the main branch on GitHub (Workers Builds,
    settings in wrangler.toml), so don't edit it in the dashboard.
    Set in Cloudflare (menurunner → Settings → Variables and Secrets):
+     RESEND_KEY      secret  Resend API key (re_...), sends the sign-in codes
+     AUTH_SECRET     secret  any long random text; scrambles stored codes and sessions
+     ALLOWED_DOMAINS text (optional)  email domains that may sign in, comma-separated, default "oolio.com"
+     ALLOWED_EMAILS  text (optional)  extra single addresses, comma-separated (the owner's is built in)
+     MAIL_FROM       text (optional)  sender, default "Menu Hauler <login@menuhauler.com>" (verify the domain in Resend)
      GOOGLE_KEY      secret  Google Maps Platform key (Places API (New))
      RELAY_TOKEN     secret  password for the old relay endpoints
      FIRECRAWL_KEY   secret  Firecrawl API key (fc-...)
      ABR_GUID        secret  ABN Lookup GUID, shared by the team
-     ACCESS_TEAM / ACCESS_AUD  optional: built in below (dawn-star-10db and the menurunner Access app)
      FIRECRAWL_MONTHLY_CAP  text (optional)  Firecrawl credits the site may use per month, default 500
 */
 const FIELDS = [
@@ -32,7 +38,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-11.3';
+const VERSION = '2026-11-11.4';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -40,34 +46,93 @@ const out = (o, status = 200) => new Response(JSON.stringify(o), { status, heade
 const api = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: API_HEAD });
 const RELAY = new Set(['/ping', '/place', '/page', '/search']);
 
-/* ---------- Cloudflare Access sign-in ----------
-   Which sign-in to trust: the Zero Trust team and the Access app's Audience tag. Neither is secret (both appear in every
-   sign-in link), so they're built in here; ACCESS_TEAM / ACCESS_AUD set in the dashboard override them. */
-const TEAM = env => env.ACCESS_TEAM || 'dawn-star-10db';
-const AUD = env => env.ACCESS_AUD || '64a99e246fcfc30de5b899a9ec7d84010dec1a06ef42257f1580a00716aa0e8e';
-const b64u = s => Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/') + '==='.slice((s.length + 3) % 4)), c => c.charCodeAt(0));
-let CERTS = null, CERTS_AT = 0;
-async function accessUser(req, env) {
-  const cookie = (req.headers.get('Cookie') || '').match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
-  const token = req.headers.get('Cf-Access-Jwt-Assertion') || (cookie && cookie[1]);
-  if (!token) return { why: 'no sign-in token reached the site' };
-  const [h, p, s] = token.split('.');
-  if (!h || !p || !s) return { why: 'the sign-in token is malformed' };
-  let head, body;
-  try { head = JSON.parse(new TextDecoder().decode(b64u(h))); body = JSON.parse(new TextDecoder().decode(b64u(p))); } catch (e) { return { why: 'the sign-in token can’t be read' }; }
-  const iss = 'https://' + TEAM(env) + '.cloudflareaccess.com';
-  const aud = Array.isArray(body.aud) ? body.aud : [body.aud];
-  if (body.iss !== iss) return { why: 'the sign-in came from ' + body.iss + ', not ' + iss };
-  if (!aud.includes(AUD(env))) return { why: 'the sign-in is for Access app ' + aud.join(', ') + ', not ' + AUD(env) };
-  if (!(body.exp > Date.now() / 1000)) return { why: 'the sign-in has expired' };
-  if (!CERTS || Date.now() - CERTS_AT > 3600e3) { CERTS = (await (await fetch(iss + '/cdn-cgi/access/certs')).json()).keys || []; CERTS_AT = Date.now(); }
-  const jwk = CERTS.find(k => k.kid === head.kid);
-  if (!jwk) return { why: 'the sign-in key ' + head.kid + ' isn’t one of the team’s keys' };
-  const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
-  const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64u(s), new TextEncoder().encode(h + '.' + p));
-  if (!ok) return { why: 'the sign-in signature doesn’t check out' };
-  return body.email ? { email: String(body.email).toLowerCase() } : { why: 'the sign-in has no email address' };
+/* ---------- sign-in: a 6-digit code by email, then a 30-day session cookie ---------- */
+const OWNER = 'ochudson05@gmail.com';
+const CODE_MIN = 10, SESSION_DAYS = 30, MAX_TRIES = 5, MAX_SENDS_PER_HOUR = 5;
+const enc = new TextEncoder();
+const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
+async function hmac(env, text) {
+  const key = await crypto.subtle.importKey('raw', enc.encode(env.AUTH_SECRET || 'menu-hauler'), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return hex(await crypto.subtle.sign('HMAC', key, enc.encode(text)));
 }
+let TABLES = false;
+async function tables(env) {
+  if (TABLES) return;
+  await env.DB.batch([
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS login_codes (email TEXT PRIMARY KEY, code_hash TEXT, expires INTEGER, tries INTEGER, sends INTEGER, window_start INTEGER)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, email TEXT NOT NULL, expires INTEGER NOT NULL, created INTEGER NOT NULL)'),
+  ]);
+  TABLES = true;
+}
+const list = v => String(v || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean);
+function allowed(env, email) {
+  const domains = list(env.ALLOWED_DOMAINS || 'oolio.com'), emails = list(env.ALLOWED_EMAILS).concat(OWNER);
+  return emails.includes(email) || domains.some(d => email.endsWith('@' + d));
+}
+const cookieOf = (req, name) => { const m = (req.headers.get('Cookie') || '').match(new RegExp('(?:^|;\\s*)' + name + '=([^;]+)')); return m ? m[1] : ''; };
+async function sessionUser(req, env) {
+  const t = cookieOf(req, 'mh_session');
+  if (!/^[a-f0-9]{64}$/.test(t)) return null;
+  await tables(env);
+  const r = await env.DB.prepare('SELECT email, expires FROM sessions WHERE token_hash = ?1').bind(await hmac(env, 's:' + t)).first();
+  return r && r.expires > Date.now() ? { email: r.email } : null;
+}
+// a page may only send people back to a path on this site
+const safeNext = n => (typeof n === 'string' && /^\/(?!\/)[^\s\\]*$/.test(n) ? n : '/');
+async function authStart(req, env) {
+  const b = await req.json().catch(() => ({}));
+  const email = String(b.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) return api({ error: 'Enter a valid email address.' }, 400);
+  if (!allowed(env, email)) return api({ error: 'That email can’t sign in to Menu Hauler. Use your work email, or ask the owner to add it.' }, 403);
+  if (!env.RESEND_KEY) return api({ error: 'Sign-in emails aren’t set up yet (RESEND_KEY is missing).' }, 503);
+  await tables(env);
+  const now = Date.now(), row = await env.DB.prepare('SELECT sends, window_start FROM login_codes WHERE email = ?1').bind(email).first();
+  const fresh = !row || now - row.window_start > 3600e3, sends = fresh ? 0 : row.sends;
+  if (sends >= MAX_SENDS_PER_HOUR) return api({ error: 'Too many codes asked for. Try again in an hour.' }, 429);
+  const n = new Uint32Array(1); crypto.getRandomValues(n);
+  const code = String(n[0] % 1000000).padStart(6, '0');
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + env.RESEND_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      from: env.MAIL_FROM || 'Menu Hauler <login@menuhauler.com>', to: [email],
+      subject: 'Your Menu Hauler sign-in code: ' + code,
+      text: 'Your Menu Hauler sign-in code is ' + code + '.\n\nIt works for ' + CODE_MIN + ' minutes. If you didn’t ask for it, ignore this email.\n\nMenu Hauler · https://menuhauler.com',
+      html: '<p>Your Menu Hauler sign-in code is</p><p style="font-size:28px;font-weight:700;letter-spacing:4px">' + code + '</p><p>It works for ' + CODE_MIN + ' minutes. If you didn’t ask for it, ignore this email.</p><p style="color:#777">Menu Hauler · <a href="https://menuhauler.com">menuhauler.com</a></p>',
+    }),
+  });
+  if (!r.ok) { const j = await r.json().catch(() => ({})); return api({ error: 'The code couldn’t be emailed (' + (j.message || 'error ' + r.status) + ').' }, 502); }
+  await env.DB.prepare('INSERT INTO login_codes (email, code_hash, expires, tries, sends, window_start) VALUES (?1, ?2, ?3, 0, ?4, ?5) ON CONFLICT(email) DO UPDATE SET code_hash = ?2, expires = ?3, tries = 0, sends = ?4, window_start = ?5')
+    .bind(email, await hmac(env, 'c:' + email + ':' + code), now + CODE_MIN * 60e3, sends + 1, fresh ? now : row.window_start).run();
+  return api({ ok: true });
+}
+async function authVerify(req, env, u) {
+  const b = await req.json().catch(() => ({}));
+  const email = String(b.email || '').trim().toLowerCase(), code = String(b.code || '').replace(/\D/g, '');
+  await tables(env);
+  const row = await env.DB.prepare('SELECT code_hash, expires, tries FROM login_codes WHERE email = ?1').bind(email).first();
+  if (!row || !row.code_hash || row.expires < Date.now()) return api({ error: 'That code has expired. Ask for a new one.' }, 400);
+  if (row.tries >= MAX_TRIES) return api({ error: 'Too many wrong codes. Ask for a new one.' }, 429);
+  if (code.length !== 6 || (await hmac(env, 'c:' + email + ':' + code)) !== row.code_hash) {
+    await env.DB.prepare('UPDATE login_codes SET tries = tries + 1 WHERE email = ?1').bind(email).run();
+    return api({ error: 'That code isn’t right. Check the email and try again.' }, 400);
+  }
+  const t = hex(crypto.getRandomValues(new Uint8Array(32))), now = Date.now();
+  await env.DB.batch([
+    env.DB.prepare('UPDATE login_codes SET code_hash = NULL WHERE email = ?1').bind(email),
+    env.DB.prepare('DELETE FROM sessions WHERE expires < ?1').bind(now),
+    env.DB.prepare('INSERT INTO sessions (token_hash, email, expires, created) VALUES (?1, ?2, ?3, ?4)').bind(await hmac(env, 's:' + t), email, now + SESSION_DAYS * 864e5, now),
+  ]);
+  const h = new Headers(API_HEAD);
+  h.append('Set-Cookie', 'mh_session=' + t + '; Path=/; Max-Age=' + SESSION_DAYS * 86400 + '; HttpOnly; Secure; SameSite=Lax');
+  return new Response(JSON.stringify({ ok: true, next: safeNext(b.next) }), { headers: h });
+}
+async function authLogout(req, env, u) {
+  const t = cookieOf(req, 'mh_session');
+  if (/^[a-f0-9]{64}$/.test(t)) { await tables(env); await env.DB.prepare('DELETE FROM sessions WHERE token_hash = ?1').bind(await hmac(env, 's:' + t)).run(); }
+  return new Response(null, { status: 303, headers: { Location: '/login', 'Set-Cookie': 'mh_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax', 'Cache-Control': 'no-store' } });
+}
+// pages anyone can open: the sign-in itself, the policies and security.txt
+const PUBLIC = path => path === '/login' || path === '/login.html' || path.startsWith('/legal') || path.startsWith('/.well-known/') || path === '/favicon.ico' || path === '/robots.txt';
 const nameOf = email => email.split('@')[0].split(/[._-]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
 
 /* ---------- shared records (D1) ---------- */
@@ -154,10 +219,19 @@ export default {
     // www.menuhauler.com -> menuhauler.com
     if (u.hostname.startsWith('www.')) { u.hostname = u.hostname.slice(4); return Response.redirect(u.href, 301); }
     try {
+      /* ----- sign-in ----- */
+      if (u.pathname === '/auth/start' && req.method === 'POST') return authStart(req, env);
+      if (u.pathname === '/auth/verify' && req.method === 'POST') return authVerify(req, env, u);
+      if (u.pathname === '/auth/logout') return authLogout(req, env, u);
+      if (u.pathname === '/login' && (await sessionUser(req, env))) return Response.redirect(new URL(safeNext(p.get('next')), u).href, 302);
+
       /* ----- the website's API: signed-in people only ----- */
       if (u.pathname.startsWith('/api/')) {
-        const user = await accessUser(req, env);
-        if (!user.email) return api({ error: 'Please sign in again (reload the page). The website says ' + user.why + '.', code: 'not_granted', why: user.why }, 401);
+        const user = await sessionUser(req, env);
+        if (!user) return api({ error: 'You’re signed out. Reload the page to sign in again.', code: 'not_granted' }, 401);
+        // only this site's own pages may change records
+        const origin = req.headers.get('Origin');
+        if (req.method === 'POST' && origin && new URL(origin).host !== u.host) return api({ error: 'Not allowed from another site.' }, 403);
         const route = u.pathname.slice(5);
         if (route === 'me') return api({ email: user.email, name: nameOf(user.email), version: VERSION });
         if (route.startsWith('db/')) return db(route.slice(3), req, env, user, p);
@@ -168,7 +242,7 @@ export default {
 
       /* ----- the original relay: the token, or a signed-in person ----- */
       if (RELAY.has(u.pathname)) {
-        if (!(env.RELAY_TOKEN && p.get('t') === env.RELAY_TOKEN) && !(await accessUser(req, env)).email) return out({ error: 'Wrong or missing relay token.' }, 403);
+        if (!(env.RELAY_TOKEN && p.get('t') === env.RELAY_TOKEN) && !(await sessionUser(req, env))) return out({ error: 'Wrong or missing relay token.' }, 403);
         if (u.pathname === '/ping') return out({ ok: true, google: !!env.GOOGLE_KEY, version: VERSION });
 
         if (u.pathname === '/place') {
@@ -216,7 +290,11 @@ export default {
     } catch (e) {
       return (u.pathname.startsWith('/api/') ? api : out)({ error: String((e && e.message) || e) }, 500);
     }
-    /* ----- everything else: the website's files ----- */
+    /* ----- everything else: the website's files, behind the sign-in except the public pages ----- */
+    if (!PUBLIC(u.pathname) && !(await sessionUser(req, env).catch(() => null))) {
+      if ((req.headers.get('Accept') || '').includes('text/html')) return Response.redirect(new URL('/login?next=' + encodeURIComponent(u.pathname + u.search), u).href, 302);
+      return new Response('Sign in first.', { status: 401, headers: { 'Cache-Control': 'no-store' } });
+    }
     if (env.ASSETS) return env.ASSETS.fetch(req);
     return out({ error: 'Unknown address.' }, 404);
   },

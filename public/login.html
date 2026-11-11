@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · Menu Hauler</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>/* Oolio One look for Menu Hauler.
+   build_apps.py adds this after every tool's own CSS (and inside the Photo Finder frame), so it only has to restate
+   the shared colour tokens and a few shapes. Colours follow oolio.com: purple #673ab6 / #5e35b1, light purple #c1afde,
+   charcoal #222, Material green / orange / red for state; type is Inter; buttons have 6px corners.
+   Layout: a deep purple app bar with the tool tabs, then each tool's own page on a faintly purple-tinted ground. */
+:root{
+  --bg:#f5f3f9;--card:#ffffff;--text:#222222;--muted:#5f586d;--line:#e3dded;--tile:#ece7f5;
+  --accent:#673ab6;--accent-strong:#5e35b1;--accent-soft:#efe8f9;--accent-text:#ffffff;
+  --ok:#2e7d32;--warn:#b45f00;--bad:#c62828;
+  --bar:#4a2a96;--bar-text:#ffffff;--bar-muted:rgb(255 255 255 / .76);--bar-line:rgb(255 255 255 / .22);--bar-hover:rgb(255 255 255 / .1);
+  --shadow:0 1px 2px rgb(40 22 80 / .06),0 2px 8px rgb(40 22 80 / .05);
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;--f-mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+  --r:6px;--r-card:12px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141119;--card:#1e1a26;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;--tile:#272033;
+  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2238;--accent-text:#1a1424;
+  --ok:#81c784;--warn:#ffb74d;--bad:#ef9a9a;
+  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247 / .72);--bar-line:rgb(242 239 247 / .18);--bar-hover:rgb(242 239 247 / .08);
+  --shadow:0 1px 2px rgb(0 0 0 / .3);color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141119;--card:#1e1a26;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;--tile:#272033;
+  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2238;--accent-text:#1a1424;
+  --ok:#81c784;--warn:#ffb74d;--bad:#ef9a9a;
+  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247 / .72);--bar-line:rgb(242 239 247 / .18);--bar-hover:rgb(242 239 247 / .08);
+  --shadow:0 1px 2px rgb(0 0 0 / .3);color-scheme:dark}
+
+body{background:var(--bg);color:var(--text);font-family:var(--f-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3{letter-spacing:-.01em}
+h1{font-weight:700}
+a{color:var(--accent)}
+
+/* app bar */
+.lx-bar{background:var(--bar);border-bottom:0;color:var(--bar-text);padding-block:8px}
+.lx-brand{color:var(--bar-text);font-weight:700;letter-spacing:-.01em}
+.lx-tab{color:var(--bar-muted);font-weight:600;border-radius:var(--r)}
+.lx-tab:hover{color:var(--bar-text);background:var(--bar-hover)}
+.lx-tab[aria-current="page"]{color:var(--bar);background:var(--bar-text);border-color:transparent}
+.lx-venue{color:var(--bar-muted)}
+.lx-venue select{background:var(--bar-hover);color:var(--bar-text);border-color:var(--bar-line);border-radius:var(--r)}
+.lx-venue select option{color:var(--text);background:var(--card)}
+.lx-bar :focus-visible{outline:2px solid var(--bar-text)!important;outline-offset:2px}
+
+/* buttons, fields and focus */
+button,.btn,.rf button,.st button,.lx-strip button,.lx-row button{border-radius:var(--r)}
+button:not(:disabled):not(.sec):not(.rf-sec):not(.st-sec):not(.lx-sec):not(.lx-tab):not(.lx-brand):not(.st-link):not(.lx-link):not(.st-x):not(.st-box):not(.st-org):not(.opt):hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+.sec:not(:disabled):hover,.rf-sec:not(:disabled):hover,.st-sec:not(:disabled):hover,.lx-sec:not(:disabled):hover{border-color:var(--accent)!important;color:var(--accent)!important}
+input,select,textarea,.rf input,.st input,.st select,.st textarea{border-radius:var(--r)}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+:focus-visible{outline-color:var(--accent)}
+
+/* surfaces */
+.card,.lx-card,.st-card,.rf-card,.rf-kpi,.lx-step,.lx-strip{border-radius:var(--r-card);box-shadow:var(--shadow)}
+.lx-strip{border-left-color:var(--accent)}
+.lx-step.next{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow)}
+.lx-step.next .lx-num{background:var(--accent-soft)}
+.lx-step.done .lx-num,.st .st-step.is-done .st-box{color:var(--card)!important}
+.st-chip.a,.badge{background:var(--accent-soft);border-color:transparent}
+.st-chip.a{color:var(--accent)}
+.st-org{box-shadow:var(--shadow)}
+.st-org:hover{border-color:var(--accent)!important}
+.st-bar i,.lx-bar2 i{background:var(--accent)}
+.st-nav a:hover{background:var(--accent-soft)}
+.lx-toolsh,.st-phase,.rf .rf-card h3{color:var(--muted)}
+th{font-weight:600}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+[hidden]{display:none!important}
+/* legal pages (legal.html) and the footer on every view */
+.lx-legal{max-width:1000px;margin:0 auto;padding-block:24px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;grid-template-columns:210px minmax(0,1fr);gap:24px;align-items:start}
+.lx-lnav{display:grid;gap:2px;position:sticky;top:12px;font-size:.9rem}
+.lx-lnav a,.lx-foot a{color:var(--accent);text-decoration:none}.lx-lnav a{padding:5px 8px;border-radius:6px}
+.lx-lnav a[aria-current="page"]{background:var(--accent-soft);font-weight:600}
+.lx-lnav a:hover,.lx-foot a:hover{text-decoration:underline}
+.lx-lnav a:focus-visible,.lx-foot a:focus-visible,.lg-doc a:focus-visible,.lx-cn a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lg-doc{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px 24px;min-width:0;line-height:1.55;max-width:78ch}
+.lg-doc h1{font-size:1.5rem;margin:0 0 4px;text-wrap:balance}.lg-doc h2{font-size:1.08rem;margin:22px 0 6px}
+.lg-doc p,.lg-doc li{font-size:.95rem}.lg-doc ul{padding-left:1.2em}.lg-doc li{margin:4px 0}
+.lg-doc a{color:var(--accent)}
+.lg-upd{color:var(--muted);font-size:.85rem!important;margin:0 0 14px}
+.lg-tw{overflow-x:auto;margin:8px 0}
+.lg-t{border-collapse:collapse;width:100%;font-size:.86rem}
+.lg-t th,.lg-t td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+.lg-t th{background:var(--bg);font-weight:600}
+.lg-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:8px 0 14px}.lg-dl dt{color:var(--muted)}.lg-dl dd{margin:0}
+.lx-foot{border-top:1px solid var(--line);background:var(--card);color:var(--muted);font-size:.82rem;padding-block:14px 18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:6px;justify-items:center;text-align:center}
+.lx-foot p{margin:0}.lx-foot nav{display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:center}
+.lx-cn{font-size:.82rem;color:var(--muted);margin:6px 0 0;line-height:1.4}.lx-cn a{color:var(--accent)}
+@media (max-width:720px){.lx-legal{grid-template-columns:1fr}.lx-lnav{position:static;display:flex;flex-wrap:wrap;gap:4px}.lg-doc{padding:16px}}
+
+body{margin:0;min-height:100vh;display:grid;grid-template-rows:1fr auto;background:var(--bg);color:var(--text)}
+.lg-wrap{display:grid;place-items:center;padding:32px 16px}
+.lg-box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px 24px;width:min(400px,100%);display:grid;gap:14px}
+.lg-box h1{font-size:1.4rem;margin:0}.lg-box p{margin:0;color:var(--muted);font-size:.93rem;line-height:1.5}
+.lg-box form{display:grid;gap:10px}.lg-box label{display:grid;gap:4px;font-size:.88rem;color:var(--muted)}
+.lg-box input{font:inherit;font-size:1rem;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%;box-sizing:border-box}
+.lg-box input#lg-code{letter-spacing:.3em;font-size:1.3rem;text-align:center}
+.lg-box input:focus-visible,.lg-box button:focus-visible,.lg-box a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lg-box button{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-text);border:0;border-radius:8px;padding:10px 14px;cursor:pointer;margin:0}
+.lg-box button:disabled{opacity:.6;cursor:wait}
+.lg-box .lg-alt{background:none;color:var(--accent);padding:0;justify-self:start;font-weight:600}
+.lg-msg{min-height:1.2em;font-size:.9rem;color:var(--bad)}.lg-msg.ok{color:var(--ok)}
+.lg-cn{font-size:.8rem!important}.lg-cn a{color:var(--accent)}
+</style>
+</head>
+<body>
+<main class="lg-wrap"><div class="lg-box">
+<h1>Sign in to Menu Hauler</h1>
+<form id="lg-f1"><p>Enter your work email. We’ll email you a 6-digit code. No password needed.</p><label for="lg-email">Email<input id="lg-email" type="email" autocomplete="email" required autofocus></label><button type="submit" id="lg-b1">Email me a code</button></form>
+<form id="lg-f2" hidden><p id="lg-sent"></p><label for="lg-code">Code<input id="lg-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required></label><button type="submit" id="lg-b2">Sign in</button><button type="button" class="lg-alt" id="lg-back">Use a different email or send a new code</button></form>
+<div class="lg-msg" id="lg-msg" role="status" aria-live="polite"></div>
+<p class="lg-cn">We use your email to sign you in and to show the team who changed a record. The code is sent by our email provider, Resend (USA). You stay signed in on this device for 30 days. <a href="/legal/#privacy">Privacy Policy</a> · <a href="/legal/#terms">Terms of Use</a></p>
+</div></main>
+<footer class="lx-foot"><p>© 2026 Oscar Hudson · ABN 60 219 896 086</p><nav aria-label="Legal and policies"><a href="/legal/#privacy">Privacy Policy</a><a href="/legal/#terms">Terms of Use</a><a href="/legal/#use">Acceptable Use Policy</a><a href="/legal/#cookies">Cookies and Browser Storage</a><a href="/legal/#disclaimer">Disclaimer</a><a href="/legal/#ai">Use of AI</a><a href="/legal/#accessibility">Accessibility</a><a href="/legal/#security">Security</a><a href="/legal/#credits">Credits and Licences</a><a href="/legal/#contact">Contact and Business Details</a></nav></footer>
+<script>(()=>{const g=id=>document.getElementById(id),msg=(t,ok)=>{g('lg-msg').textContent=t||'';g('lg-msg').className='lg-msg'+(ok?' ok':'')};const next=new URLSearchParams(location.search).get('next')||'/';let email='';async function post(path,body){const r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});let j={};try{j=await r.json()}catch(e){}if(!r.ok)throw new Error(j.error||('Error '+r.status));return j}g('lg-f1').onsubmit=async e=>{e.preventDefault();email=g('lg-email').value.trim();g('lg-b1').disabled=true;msg('');try{await post('/auth/start',{email});g('lg-f1').hidden=true;g('lg-f2').hidden=false;g('lg-sent').textContent='We emailed a code to '+email+'. It works for 10 minutes. Check your junk folder if it isn’t there.';g('lg-code').value='';g('lg-code').focus()}catch(err){msg(err.message)}g('lg-b1').disabled=false};g('lg-f2').onsubmit=async e=>{e.preventDefault();g('lg-b2').disabled=true;msg('');try{const j=await post('/auth/verify',{email,code:g('lg-code').value,next});msg('Signed in.',true);location.replace(j.next||'/')}catch(err){msg(err.message);g('lg-b2').disabled=false}};g('lg-back').onclick=()=>{g('lg-f2').hidden=true;g('lg-f1').hidden=false;msg('');g('lg-email').focus()};})();</script>
+</body>
+</html>

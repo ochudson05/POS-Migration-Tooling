@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Menu Hauler</title>
-<script>/* Menu Hauler on its own website (menuhauler.com, the menurunner Worker, behind Cloudflare Access).
+<script>/* Menu Hauler on its own website (menuhauler.com, the menurunner Worker, behind its own email-code sign-in).
    The tools were written for claude.ai, where they reach shared data, sign-in and Firecrawl through window.claude.use(name).
    This file provides the same interface from the website's own API (relay-worker.js), so the tools run unchanged:
      db    -> /api/db/*  (D1), with changes from teammates picked up every 10 seconds
-     user  -> /api/me    (the Cloudflare Access email)
+     user  -> /api/me    (the signed-in email)
      mcp   -> /api/fc    (Firecrawl with the team key; the Claude app's browser isn't needed, see /api/fetch)
      sample, downloads -> not available: each tool falls back (built-in readers and OCR, normal downloads)
    build_apps.py puts this first in public/index.html. */
@@ -19,7 +19,7 @@ const qs=o=>new URLSearchParams(Object.entries(o).filter(([,v])=>v!==''&&v!=null
 async function call(path,body){
   let r;try{r=await fetch('/api/'+path,body===undefined?{credentials:'same-origin',redirect:'manual'}:{method:'POST',credentials:'same-origin',redirect:'manual',headers:{'content-type':'application/json'},body:JSON.stringify(body)})}
   catch(e){const x=new Error('The website couldn’t be reached. Check the connection.');x.code='unavailable';throw x}
-  // Cloudflare Access answers with a redirect to its sign-in page when the sign-in session has run out
+  // a redirect means the sign-in has run out
   if(r.type==='opaqueredirect'||(r.status>=300&&r.status<400)){const x=new Error('Your sign-in session has ended. Reload the page to sign in again.');x.code='not_granted';signinBanner(x.message);throw x}
   let j={};try{j=await r.json()}catch(e){}
   if(!r.ok){const x=new Error(j.error||('The website answered '+r.status+'.'));x.code=j.code||(r.status===401?'not_granted':r.status>=500?'unavailable':'invalid_argument');if(x.code==='not_granted')signinBanner(x.message);throw x}
@@ -84,7 +84,7 @@ window.claude={use:async n=>{
 /* ---------- a page-wide note when sign-in fails ---------- */
 let shown=false;
 function signinBanner(msg){if(shown)return;shown=true;const go=()=>{const b=document.createElement('div');b.className='oh-banner';b.setAttribute('role','alert');
-  b.innerHTML='<b>Not signed in.</b> <span></span> <button type="button">Reload</button>';b.querySelector('span').textContent=msg||'';b.querySelector('button').onclick=()=>location.reload();document.body.prepend(b)};
+  b.innerHTML='<b>Not signed in.</b> <span></span> <button type="button">Sign in</button>';b.querySelector('span').textContent=msg||'';b.querySelector('button').onclick=()=>{location.href='/login?next='+encodeURIComponent(location.pathname+location.hash)};document.body.prepend(b)};
   if(document.body)go();else document.addEventListener('DOMContentLoaded',go)}
 })();
 </script>
@@ -691,7 +691,7 @@ Double Shot=60</textarea></div>
 
 <h2>What we collect</h2>
 <ul>
-<li><b>Your sign-in email.</b> The website is protected by Cloudflare Access, which emails a one-time code to an approved work address. We receive your email address when you sign in. We never see or store a password.</li>
+<li><b>Your sign-in email.</b> To sign in, you enter your work email and we email you a 6-digit code. We keep your email address, and a scrambled copy of the code until it’s used or expires. We never ask for or store a password.</li>
 <li><b>Records you save.</b> Venue and organisation names, addresses, phone numbers, websites, ABNs and legal names, menus and menu versions, setup-tracker progress and notes. Each record also stores the email of the person who last changed it and when.</li>
 <li><b>Files and text you add.</b> Menu files, photos, PDFs, pasted text and web addresses. These are read in your own browser. They are only kept if you save the result to a venue.</li>
 <li><b>Lookups.</b> The venue names, suburbs and web addresses you search for, and the results: public business details, opening hours, and Google reviews, which can include the reviewer’s display name.</li>
@@ -713,7 +713,8 @@ Double Shot=60</textarea></div>
 <div class="lg-tw"><table class="lg-t">
 <thead><tr><th scope="col">Service</th><th scope="col">What it’s used for</th><th scope="col">What it receives</th><th scope="col">Where</th></tr></thead>
 <tbody>
-<tr><td>Cloudflare (Workers, D1, Access)</td><td>Hosting the website, sign-in, the shared records</td><td>Sign-in email, saved records, visit logs</td><td>Global network; company in the USA</td></tr>
+<tr><td>Cloudflare (Workers, D1)</td><td>Hosting the website, sign-in sessions, the shared records</td><td>Sign-in email, saved records, visit logs</td><td>Global network; company in the USA</td></tr>
+<tr><td>Resend</td><td>Emailing sign-in codes</td><td>Your email address and the code</td><td>USA</td></tr>
 <tr><td>Google (Places API)</td><td>Venue details, hours and reviews in Restaurant Lookup</td><td>Venue names and suburbs you search for</td><td>USA</td></tr>
 <tr><td>Firecrawl</td><td>Reading web pages that can’t be read for free</td><td>The web addresses and searches involved</td><td>USA</td></tr>
 <tr><td>Australian Business Register (ABN Lookup)</td><td>Legal names and ABNs</td><td>Business names and ABNs</td><td>Australia</td></tr>
@@ -727,7 +728,7 @@ Double Shot=60</textarea></div>
 
 <h2>How we keep it safe</h2>
 <ul>
-<li>The whole website uses HTTPS. Every request to the shared records checks a signed Cloudflare Access sign-in, so only approved staff can read or change them.</li>
+<li>The whole website uses HTTPS. Every page and every request to the shared records checks your sign-in, so only approved staff can read or change them. Codes expire after 10 minutes and stop working after 5 wrong tries.</li>
 <li>There are no passwords to steal: sign-in uses one-time email codes. Service keys are kept as encrypted secrets in Cloudflare, never in the page.</li>
 <li>Cloudflare encrypts the shared records at rest.</li>
 <li>Keys you type into the tools yourself (for example a Pexels key) stay only in your browser.</li>
@@ -738,7 +739,8 @@ Double Shot=60</textarea></div>
 <thead><tr><th scope="col">Information</th><th scope="col">Kept for</th></tr></thead>
 <tbody>
 <tr><td>Venue records, menus and setup progress</td><td>Until a team member deletes the venue. Once a year we review the records and delete venues that are no longer being set up.</td></tr>
-<tr><td>Sign-in records (Cloudflare Access)</td><td>As set by Cloudflare’s log retention for our plan</td></tr>
+<tr><td>Sign-in codes</td><td>10 minutes, or until used</td></tr>
+<tr><td>Sign-in sessions</td><td>30 days, or until you sign out</td></tr>
 <tr><td>Visit logs</td><td>Cloudflare’s standard retention (a few days)</td></tr>
 <tr><td>Saved lookups and page reads in your browser</td><td>7 to 14 days, then refreshed or dropped; you can clear them at any time by clearing this site’s data</td></tr>
 <tr><td>Files you add but don’t save</td><td>Not kept: they’re gone when you close the page</td></tr>
@@ -827,7 +829,7 @@ Double Shot=60</textarea></div>
 <div class="lg-tw"><table class="lg-t">
 <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Purpose</th><th scope="col">How long</th></tr></thead>
 <tbody>
-<tr><td>CF_Authorization</td><td>Cookie (Cloudflare Access)</td><td>Keeps you signed in to the website. Strictly necessary.</td><td>The sign-in session length set in Cloudflare Access (24 hours by default)</td></tr>
+<tr><td>mh_session</td><td>Cookie</td><td>Keeps you signed in to the website. Strictly necessary.</td><td>30 days, or until you sign out</td></tr>
 <tr><td>Saved lookups and page reads</td><td>Browser storage</td><td>Avoids paying for the same lookup twice</td><td>7 to 14 days</td></tr>
 <tr><td>Your settings (venue picked, spirit brands, photo keys)</td><td>Browser storage</td><td>Remembers your choices on this device</td><td>Until you clear them</td></tr>
 </tbody></table></div>
@@ -919,7 +921,7 @@ Double Shot=60</textarea></div>
 <p>We reply to emails within 2 business days. For privacy, accessibility, content or security matters, the response times in those policies apply.</p>
 </article></div>
 </div>
-<footer class="lx-foot"><p>© 2026 Oscar Hudson · ABN 60 219 896 086</p><nav aria-label="Legal and policies"><a href="#privacy">Privacy Policy</a><a href="#terms">Terms of Use</a><a href="#use">Acceptable Use Policy</a><a href="#cookies">Cookies and Browser Storage</a><a href="#disclaimer">Disclaimer</a><a href="#ai">Use of AI</a><a href="#accessibility">Accessibility</a><a href="#security">Security</a><a href="#credits">Credits and Licences</a><a href="#contact">Contact and Business Details</a></nav></footer>
+<footer class="lx-foot"><p>© 2026 Oscar Hudson · ABN 60 219 896 086</p><nav aria-label="Legal and policies"><a href="#privacy">Privacy Policy</a><a href="#terms">Terms of Use</a><a href="#use">Acceptable Use Policy</a><a href="#cookies">Cookies and Browser Storage</a><a href="#disclaimer">Disclaimer</a><a href="#ai">Use of AI</a><a href="#accessibility">Accessibility</a><a href="#security">Security</a><a href="#credits">Credits and Licences</a><a href="#contact">Contact and Business Details</a></nav><p class="hosted-only" style="margin:0"><a href="/auth/logout">Sign out</a></p></footer>
 <script>
 const OUT=['Product ID','Product Name*','Product Type*','Product Group*','Reporting Group*','Category*','Variant Group','Variant Name','Measured By*','Default Value','Unit','POS Name','Kitchen Name','Printer Profiles','Description','Is Selling?','Print On Receipt?','Dietary Tags','Allergens','Available Location','Barcode','SKU','PLU','GTIN','Sell Price*','Sell Tax*','Recipe','Variable Pricing?','Min Pricing','Max Pricing','Image URL'];
 const $=id=>document.getElementById(id);

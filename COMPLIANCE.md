@@ -4,7 +4,7 @@ How Menu Hauler (the website at menuhauler.com and the claude.ai copy) covers ea
 *Website Legal and Compliance Checklist* (11 Nov 2026). The public pages are in `legal.html`. The business details are in
 `BUSINESS` in `build_apps.py`. Run `python build_apps.py` after changing either.
 
-What the site is matters here: an internal tool for approved staff, behind Cloudflare Access sign-in. It's free, so there
+What the site is matters here: an internal tool for approved staff, behind its own email-code sign-in (`/login`, in `relay-worker.js`). It's free, so there
 are no sales, payments, subscriptions, deliveries, marketing, public user content or social features. Many items below are
 "not applicable" for that reason. **If any of that changes, look at those items again.**
 
@@ -17,9 +17,7 @@ A lawyer should review the final set before you rely on it. The checklist says t
 2. **ABN Lookup has no record of ABN 60 219 896 086 yet** (checked 11 Nov 2026). The number is valid (it passes the checksum), so it may not be active yet.
    The owner confirmed the name "Oscar Hudson" on 11 Nov 2026. Once ABN Lookup shows the record, check that `operator` matches it exactly. Add `trading_name` if you use a registered business name, and `acn` if it's a company.
 3. **Governing law state.** Queensland (confirmed 11 Nov 2026).
-4. **Make the policies readable without signing in.** In Cloudflare Zero Trust → Access → Applications → menurunner (with menuhauler.com added as a domain),
-   add a policy with action **Bypass**, include **Everyone**, for the paths `/legal/*` and `/.well-known/*`.
-   Also add a link to `/legal/#privacy` in the Access login page's custom text. That is the collection notice at the sign-in form.
+4. **Sign-in setup** (done once): Resend account with menuhauler.com verified, `RESEND_KEY` and `AUTH_SECRET` secrets on the Worker, and Cloudflare Access turned off. The policies at `/legal/` and `/.well-known/security.txt` are public without any extra rule.
 5. **GST.** Register when GST turnover reaches $75,000. If you register, add "GST registered" next to the ABN in the footer.
 6. **Trade mark.** The site was renamed "Menu Hauler" on 11 Nov 2026. Search ATMOSS (IP Australia) for "Menu Hauler" before
    using it widely. The tools still mention "Oolio" and "Oolio One" only to describe the products they work with.
@@ -32,7 +30,7 @@ A lawyer should review the final set before you rely on it. The checklist says t
 |---|---|---|
 | **Legal pages** | | |
 | Privacy Policy (APP 1 and 5) | Done | `#privacy`, `/legal/#privacy` |
-| Collection notice at every form | Done for the venue form, Restaurant Lookup and file upload. The sign-in form needs owner step 4 | `venue-link.js`, `restaurant-lookup.html`, `menu-converter.html` |
+| Collection notice at every form | Done: sign-in page, venue form, Restaurant Lookup and file upload | `venue-link.js`, `restaurant-lookup.html`, `menu-converter.html` |
 | Terms of Use | Done | `#terms` |
 | Acceptable Use Policy (accounts exist) | Done | `#use` |
 | Cookie notice / consent banner | Done. Only a strictly necessary sign-in cookie and local storage, so no banner is needed | `#cookies` |
@@ -56,7 +54,7 @@ A lawyer should review the final set before you rely on it. The checklist says t
 | **Privacy and data** | | |
 | Consent/notice at collection; marketing opt-in | Notices added; no marketing | |
 | Data breach response plan (NDB) | Done | below |
-| HTTPS, hashed passwords, access control, encryption at rest | HTTPS (Cloudflare certificates for menuhauler.com); no passwords (one-time codes); every /api call checks the Access JWT; D1 is encrypted at rest by Cloudflare | `relay-worker.js` |
+| HTTPS, hashed passwords, access control, encryption at rest | HTTPS (Cloudflare certificates for menuhauler.com); no passwords (one-time codes); every page and /api call checks the session (codes and session tokens are stored only as HMAC hashes); D1 is encrypted at rest by Cloudflare | `relay-worker.js` |
 | Overseas disclosure list | Done (table of every service and its country) | `#privacy` |
 | Retention and deletion schedule | Done | `#privacy`, below |
 | Access and correction (response time) | 30 days | `#privacy` |
@@ -87,7 +85,7 @@ A lawyer should review the final set before you rely on it. The checklist says t
 
 ## Data breach response plan (Notifiable Data Breaches scheme)
 
-1. **Contain** (same day): in Cloudflare, revoke Access sessions (Zero Trust → Users → Revoke), rotate the affected secrets
+1. **Contain** (same day): sign everyone out (D1: `DELETE FROM sessions`), rotate the affected secrets
    (`FIRECRAWL_KEY`, `GOOGLE_KEY`, `RELAY_TOKEN`, `ABR_GUID`), and remove any account that shouldn't have access.
 2. **Assess** (within 30 days, sooner if possible): what was exposed, whose information it was, and whether serious harm is likely.
    D1 Time Travel can show what changed and when: `wrangler d1 time-travel info oolio-tools`.
@@ -101,5 +99,6 @@ A lawyer should review the final set before you rely on it. The checklist says t
 |---|---|---|
 | Venue records (D1 `docs`) | Until deleted; reviewed yearly | Delete the venue in the tools, or run D1 SQL |
 | Firecrawl usage counts (D1 `usage`) | 24 months | `DELETE FROM usage WHERE month < '<yyyy-mm>'` |
-| Access sign-in logs | Cloudflare plan default | Automatic |
+| Sign-in codes (D1 `login_codes`) | 10 minutes | Expire; overwritten on the next request |
+| Sessions (D1 `sessions`) | 30 days | Expired ones are deleted at each sign-in |
 | Browser caches | 7 to 14 days | Automatic, or clear the site's data |

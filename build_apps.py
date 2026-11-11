@@ -97,6 +97,7 @@ LEGAL_PAGES = re.findall(r'<article class="lg-doc" id="lg-([a-z]+)" data-title="
 LEGAL_NAV = "".join('<a href="#' + k + '">' + t + "</a>" for k, t in LEGAL_PAGES)
 FOOTER = ('<footer class="lx-foot"><p>© ' + B["year"] + " " + who + " · ABN " + esc(B["abn"]) +
           (" · ACN " + esc(B["acn"]) if B["acn"] else "") + '</p><nav aria-label="Legal and policies">' + LEGAL_NAV + "</nav></footer>")
+SIGNOUT = '<p class="hosted-only" style="margin:0"><a href="/auth/logout">Sign out</a></p>'
 
 LEGAL_CSS = r"""
 /* legal pages (legal.html) and the footer on every view */
@@ -261,7 +262,7 @@ LAUNCHER_HTML = """
 <nav class="lx-lnav" aria-label="Policies">""" + LEGAL_NAV + """</nav>
 <div>""" + legal + """</div>
 </div>
-""" + FOOTER + "\n"
+""" + FOOTER.replace("</footer>", SIGNOUT + "</footer>") + "\n"
 
 LAUNCHER_JS = r"""
 (()=>{
@@ -338,6 +339,50 @@ sec = ("# Security contact for Menu Hauler (RFC 9116)\n" + ("Contact: mailto:" +
        "Canonical: " + B["site"] + "/.well-known/security.txt\nExpires: 2027-11-11T00:00:00.000Z\n")
 (HERE / "public" / ".well-known" / "security.txt").write_bytes(sec.encode("utf-8"))
 print("wrote", HERE / "public" / "legal" / "index.html", "and public/.well-known/security.txt")
+
+# public/login.html: the website's sign-in page (relay-worker.js sends signed-out visitors here; it emails a 6-digit code)
+LOGIN_CSS = r"""
+body{margin:0;min-height:100vh;display:grid;grid-template-rows:1fr auto;background:var(--bg);color:var(--text)}
+.lg-wrap{display:grid;place-items:center;padding:32px 16px}
+.lg-box{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px 24px;width:min(400px,100%);display:grid;gap:14px}
+.lg-box h1{font-size:1.4rem;margin:0}.lg-box p{margin:0;color:var(--muted);font-size:.93rem;line-height:1.5}
+.lg-box form{display:grid;gap:10px}.lg-box label{display:grid;gap:4px;font-size:.88rem;color:var(--muted)}
+.lg-box input{font:inherit;font-size:1rem;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;width:100%;box-sizing:border-box}
+.lg-box input#lg-code{letter-spacing:.3em;font-size:1.3rem;text-align:center}
+.lg-box input:focus-visible,.lg-box button:focus-visible,.lg-box a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.lg-box button{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-text);border:0;border-radius:8px;padding:10px 14px;cursor:pointer;margin:0}
+.lg-box button:disabled{opacity:.6;cursor:wait}
+.lg-box .lg-alt{background:none;color:var(--accent);padding:0;justify-self:start;font-weight:600}
+.lg-msg{min-height:1.2em;font-size:.9rem;color:var(--bad)}.lg-msg.ok{color:var(--ok)}
+.lg-cn{font-size:.8rem!important}.lg-cn a{color:var(--accent)}
+"""
+login = ('<!DOCTYPE html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n'
+    "<title>Sign in · Menu Hauler</title>\n" + FONT + "\n<style>" + THEME + "[hidden]{display:none!important}" + LEGAL_CSS + LOGIN_CSS + "</style>\n</head>\n<body>\n"
+    '<main class="lg-wrap"><div class="lg-box">\n'
+    '<h1>Sign in to Menu Hauler</h1>\n'
+    '<form id="lg-f1"><p>Enter your work email. We’ll email you a 6-digit code. No password needed.</p>'
+    '<label for="lg-email">Email<input id="lg-email" type="email" autocomplete="email" required autofocus></label>'
+    '<button type="submit" id="lg-b1">Email me a code</button></form>\n'
+    '<form id="lg-f2" hidden><p id="lg-sent"></p>'
+    '<label for="lg-code">Code<input id="lg-code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9 ]{6,7}" maxlength="7" required></label>'
+    '<button type="submit" id="lg-b2">Sign in</button><button type="button" class="lg-alt" id="lg-back">Use a different email or send a new code</button></form>\n'
+    '<div class="lg-msg" id="lg-msg" role="status" aria-live="polite"></div>\n'
+    '<p class="lg-cn">We use your email to sign you in and to show the team who changed a record. The code is sent by our email provider, Resend (USA). You stay signed in on this device for 30 days. '
+    '<a href="/legal/#privacy">Privacy Policy</a> · <a href="/legal/#terms">Terms of Use</a></p>\n'
+    "</div></main>\n" + FOOTER.replace('href="#', 'href="/legal/#') + "\n"
+    "<script>(()=>{const g=id=>document.getElementById(id),msg=(t,ok)=>{g('lg-msg').textContent=t||'';g('lg-msg').className='lg-msg'+(ok?' ok':'')};"
+    "const next=new URLSearchParams(location.search).get('next')||'/';let email='';"
+    "async function post(path,body){const r=await fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});let j={};try{j=await r.json()}catch(e){}if(!r.ok)throw new Error(j.error||('Error '+r.status));return j}"
+    "g('lg-f1').onsubmit=async e=>{e.preventDefault();email=g('lg-email').value.trim();g('lg-b1').disabled=true;msg('');"
+    "try{await post('/auth/start',{email});g('lg-f1').hidden=true;g('lg-f2').hidden=false;g('lg-sent').textContent='We emailed a code to '+email+'. It works for 10 minutes. Check your junk folder if it isn’t there.';g('lg-code').value='';g('lg-code').focus()}"
+    "catch(err){msg(err.message)}g('lg-b1').disabled=false};"
+    "g('lg-f2').onsubmit=async e=>{e.preventDefault();g('lg-b2').disabled=true;msg('');"
+    "try{const j=await post('/auth/verify',{email,code:g('lg-code').value,next});msg('Signed in.',true);location.replace(j.next||'/')}"
+    "catch(err){msg(err.message);g('lg-b2').disabled=false}};"
+    "g('lg-back').onclick=()=>{g('lg-f2').hidden=true;g('lg-f1').hidden=false;msg('');g('lg-email').focus()};"
+    "})();</script>\n</body>\n</html>\n")
+(HERE / "public" / "login.html").write_bytes(login.replace("\r\n", "\n").encode("utf-8"))
+print("wrote", HERE / "public" / "login.html")
 
 print("wrote", HERE / "apps.html", len(full), "bytes")
 if len(sys.argv) > 1:
