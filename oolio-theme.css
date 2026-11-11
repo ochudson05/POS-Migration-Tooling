@@ -42,14 +42,14 @@ a{color:var(--accent)}
 
 /* buttons, fields and focus */
 button,.btn,.rf button,.st button,.lx-strip button,.lx-row button{border-radius:var(--r)}
-button:not(:disabled):not(.sec):not(.rf-sec):not(.st-sec):not(.lx-sec):not(.lx-tab):not(.lx-brand):not(.st-link):not(.lx-link):not(.st-x):not(.st-box):not(.st-org):not(.opt):hover{background:var(--accent-strong);border-color:var(--accent-strong)}
-.sec:not(:disabled):hover,.rf-sec:not(:disabled):hover,.st-sec:not(:disabled):hover,.lx-sec:not(:disabled):hover{border-color:var(--accent)!important;color:var(--accent)!important}
+button:not(:disabled):not(.sec):not(.rf-sec):not(.st-sec):not(.iw-sec):not(.iw-tb):not(.iw-ic):not(.lx-sec):not(.lx-tab):not(.lx-brand):not(.st-link):not(.lx-link):not(.st-x):not(.st-box):not(.st-org):not(.opt):hover{background:var(--accent-strong);border-color:var(--accent-strong)}
+.sec:not(:disabled):hover,.rf-sec:not(:disabled):hover,.st-sec:not(:disabled):hover,.lx-sec:not(:disabled):hover,.iw-sec:not(:disabled):hover{border-color:var(--accent)!important;color:var(--accent)!important}
 input,select,textarea,.rf input,.st input,.st select,.st textarea{border-radius:var(--r)}
 input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
 :focus-visible{outline-color:var(--accent)}
 
 /* surfaces */
-.card,.lx-card,.st-card,.rf-card,.rf-kpi,.lx-step,.lx-strip{border-radius:var(--r-card);box-shadow:var(--shadow)}
+.card,.lx-card,.st-card,.rf-card,.rf-kpi,.lx-step,.lx-strip,.iw-card{border-radius:var(--r-card);box-shadow:var(--shadow)}
 .lx-strip{border-left-color:var(--accent)}
 .lx-step.next{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent),var(--shadow)}
 .lx-step.next .lx-num{background:var(--accent-soft)}

@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Image to Word</title>
+<style>
+/*BASE: only used when this file is opened on its own; the launcher has the same tokens*/
+:root{box-sizing:border-box;--bg:#f7f6f3;--card:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#e2e0da;--accent:#c4410c;--accent-text:#fff;--ok:#1a7f4b;--warn:#a15c00}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161614;--card:#222220;--text:#f1f0ec;--muted:#9c9b94;--line:#37362f;--accent:#ff7a3d;--accent-text:#1a1a18;--ok:#4cc38a;--warn:#f0b45a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161614;--card:#222220;--text:#f1f0ec;--muted:#9c9b94;--line:#37362f;--accent:#ff7a3d;--accent-text:#1a1a18;--ok:#4cc38a;--warn:#f0b45a;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+/*END BASE*/
+.iw *,.iw *::before,.iw *::after{box-sizing:border-box}
+.iw{max-width:1180px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.iw h1{font-size:1.5rem;margin:0 0 4px;text-wrap:balance}
+.iw .iw-sub{color:var(--muted);margin:0 0 18px;max-width:75ch}
+.iw button{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-text);border:0;border-radius:8px;padding:9px 14px;cursor:pointer;margin:0}
+.iw button.iw-sec{background:transparent;color:var(--text);border:1px solid var(--line)}
+.iw button:disabled{opacity:.5;cursor:default}
+.iw button:focus-visible,.iw input:focus-visible,.iw label.iw-drop:focus-within,.iw .iw-page:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.iw input[type=text]{font:inherit;font-size:.92rem;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+.iw-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.iw-row{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center}
+.iw-muted{color:var(--muted)}.iw-small{font-size:.85rem}
+.iw-grid{display:grid;grid-template-columns:minmax(0,320px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:820px){.iw-grid{grid-template-columns:minmax(0,1fr)}}
+.iw-drop{display:grid;place-items:center;text-align:center;gap:4px;border:2px dashed var(--line);border-radius:12px;padding:22px 14px;cursor:pointer;color:var(--muted);font-size:.9rem}
+.iw-drop strong{color:var(--text);font-size:1rem}
+.iw-drop.over{border-color:var(--accent);background:var(--bg)}
+.iw-drop input{position:absolute;width:1px;height:1px;opacity:0}
+.iw-list{list-style:none;margin:12px 0 0;padding:0;display:grid;gap:8px}
+.iw-list li{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:6px;background:var(--bg)}
+.iw-list img{width:56px;height:56px;object-fit:cover;border-radius:6px;cursor:zoom-in;display:block}
+.iw-list .iw-nm{font-size:.85rem;overflow-wrap:anywhere;line-height:1.3}
+.iw-list .iw-st{font-size:.78rem;color:var(--muted)}.iw-list .iw-st.ok{color:var(--ok)}.iw-list .iw-st.err{color:var(--warn)}
+.iw-list .iw-acts{display:flex;gap:2px}
+.iw .iw-ic{background:none;border:0;color:var(--muted);padding:4px 6px;font-size:.95rem;line-height:1;border-radius:6px}
+.iw .iw-ic:hover{color:var(--text);background:var(--line)}
+.iw-opts{display:grid;gap:8px;margin:12px 0;font-size:.88rem}
+.iw-opts label{display:flex;gap:8px;align-items:flex-start;text-align:left;font-size:.88rem;color:var(--text);margin:0}.iw .iw-opts input[type=checkbox],.iw .iw-opts input[type=radio]{width:auto;flex:none;margin:4px 0 0;padding:0}
+.iw-opts fieldset{border:0;margin:0;padding:0;display:grid;gap:4px}.iw-opts legend{font-weight:600;padding:0;margin-bottom:2px}
+.iw-msg{font-size:.88rem;color:var(--muted);margin:10px 0 0;min-height:1.3em}.iw-msg.err{color:var(--warn)}
+.iw-bar{display:block;height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}.iw-bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.iw-tools{display:flex;flex-wrap:wrap;gap:4px;padding:8px;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:var(--card);position:sticky;top:0;z-index:2}
+.iw-tools .iw-sep{width:1px;background:var(--line);margin:2px 4px}
+.iw .iw-tb{background:transparent;color:var(--text);border:1px solid transparent;padding:5px 9px;font-size:.85rem;border-radius:6px;min-width:32px}
+.iw .iw-tb:hover{border-color:var(--line);background:var(--bg)}
+.iw-paper{border:1px solid var(--line);border-radius:0 0 12px 12px;background:var(--bg);padding:20px;overflow-x:auto}
+/* the page is always paper-white, like Word, in both themes */
+.iw-page{background:#fff;color:#111;max-width:794px;min-height:560px;margin:0 auto;padding:56px 64px;box-shadow:0 1px 4px rgb(0 0 0/.15);font:11pt/1.45 Calibri,Carlito,"Segoe UI",sans-serif;outline:none;overflow-wrap:break-word}
+@media (max-width:620px){.iw-paper{padding:8px}.iw-page{padding:24px 18px}}
+.iw-page h1{font-size:20pt;font-weight:600;margin:0 0 10pt;color:#1f3864}
+.iw-page h2{font-size:15pt;font-weight:600;margin:14pt 0 6pt;color:#2f5496}
+.iw-page h3{font-size:12.5pt;font-weight:600;margin:12pt 0 4pt;color:#2f5496}
+.iw-page p{margin:0 0 8pt}.iw-page ul,.iw-page ol{margin:0 0 8pt;padding-left:26pt}.iw-page li{margin:0 0 3pt}
+.iw-page table{border-collapse:collapse;width:100%;margin:0 0 10pt}.iw-page td,.iw-page th{border:1px solid #999;padding:4pt 6pt;vertical-align:top;text-align:left}.iw-page th{background:#f2f2f2;font-weight:600}
+.iw-page hr.iw-pb{border:0;border-top:1px dashed #aaa;margin:18pt -64px;position:relative;overflow:visible}
+.iw-page hr.iw-pb::after{content:"Page break";position:absolute;left:50%;top:-8pt;transform:translateX(-50%);background:#fff;color:#888;font-size:8pt;padding:0 6px}
+.iw-page .iw-ph{color:#999}
+.iw-dlg{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:10px;max-width:min(96vw,1100px);max-height:94vh}
+.iw-dlg::backdrop{background:rgb(0 0 0/.55)}.iw-dlg img{max-width:100%;max-height:84vh;display:block;margin:0 auto}
+.iw-dlg form{text-align:right;margin-top:8px}
+.iw-out{display:grid;gap:10px;margin-top:14px}
+.iw-out label{display:grid;gap:4px;font-size:.82rem;color:var(--muted)}
+</style>
+</head>
+<body>
+<main class="iw" id="iw">
+  <h1>Image to Word</h1>
+  <p class="iw-sub">Takes the text out of photos, screenshots and scans and lays it out as a Word document, with its headings, paragraphs, lists and tables. Check it against the picture and fix anything here before you download it.</p>
+  <div class="iw-grid">
+    <section class="iw-card" aria-labelledby="iw-h-in">
+      <h2 id="iw-h-in" style="font-size:1.05rem;margin:0 0 10px">1. Add pictures</h2>
+      <label class="iw-drop" id="iw-drop">
+        <strong>Drop pictures here</strong>
+        <span>or click to choose. You can also paste a screenshot (Ctrl+V).</span>
+        <span class="iw-small">JPG, PNG, WebP, GIF or BMP. Several pictures become one document, in the order shown.</span>
+        <input type="file" id="iw-file" accept="image/*" multiple>
+      </label>
+      <ul class="iw-list" id="iw-list"></ul>
+      <div class="iw-opts">
+        <fieldset id="iw-how"><legend>Read with</legend>
+          <label><input type="radio" name="iw-how" value="auto" checked><span>Best available <span class="iw-muted" id="iw-howhint"></span></span></label>
+          <label><input type="radio" name="iw-how" value="ocr"><span>Text recognition in this browser (free, works offline once loaded, plainer layout)</span></label>
+        </fieldset>
+        <label><input type="checkbox" id="iw-pb" checked><span>Start each picture on a new page</span></label>
+      </div>
+      <div class="iw-row"><button type="button" id="iw-go" disabled>Read text</button><button type="button" class="iw-sec" id="iw-stop" hidden>Stop</button><button type="button" class="iw-sec" id="iw-clear" hidden>Remove all</button></div>
+      <p class="iw-msg" id="iw-msg" role="status" aria-live="polite"></p>
+      <span class="iw-bar" id="iw-barw" hidden><i id="iw-bar"></i></span>
+      <div class="iw-out">
+        <h2 style="font-size:1.05rem;margin:6px 0 0">3. Download</h2>
+        <label for="iw-name">File name<input type="text" id="iw-name" placeholder="Document" autocomplete="off"></label>
+        <div class="iw-row"><button type="button" id="iw-dl" disabled>Download Word file</button><button type="button" class="iw-sec" id="iw-copy" disabled>Copy text</button></div>
+        <p class="iw-small iw-muted" style="margin:0">Opens in Word, Google Docs, Pages and LibreOffice. Headings use Word’s own heading styles, so the navigation pane and table of contents work.</p>
+      </div>
+    </section>
+    <section aria-labelledby="iw-h-doc" style="min-width:0">
+      <h2 id="iw-h-doc" style="font-size:1.05rem;margin:0 0 10px">2. Check and edit</h2>
+      <div class="iw-tools" role="toolbar" aria-label="Formatting" id="iw-tools">
+        <button type="button" class="iw-tb" data-blk="h1" title="Title">Title</button>
+        <button type="button" class="iw-tb" data-blk="h2" title="Heading">Heading</button>
+        <button type="button" class="iw-tb" data-blk="h3" title="Subheading">Subheading</button>
+        <button type="button" class="iw-tb" data-blk="p" title="Normal text">Normal</button>
+        <span class="iw-sep"></span>
+        <button type="button" class="iw-tb" data-cmd="bold" title="Bold (Ctrl+B)" aria-label="Bold"><b>B</b></button>
+        <button type="button" class="iw-tb" data-cmd="italic" title="Italic (Ctrl+I)" aria-label="Italic"><i>I</i></button>
+        <button type="button" class="iw-tb" data-cmd="underline" title="Underline (Ctrl+U)" aria-label="Underline"><u>U</u></button>
+        <span class="iw-sep"></span>
+        <button type="button" class="iw-tb" data-cmd="insertUnorderedList" title="Bulleted list">• List</button>
+        <button type="button" class="iw-tb" data-cmd="insertOrderedList" title="Numbered list">1. List</button>
+        <span class="iw-sep"></span>
+        <button type="button" class="iw-tb" data-cmd="justifyLeft" title="Align left">Left</button>
+        <button type="button" class="iw-tb" data-cmd="justifyCenter" title="Centre">Centre</button>
+        <button type="button" class="iw-tb" data-cmd="justifyRight" title="Align right">Right</button>
+        <span class="iw-sep"></span>
+        <button type="button" class="iw-tb" data-cmd="undo" title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+        <button type="button" class="iw-tb" data-cmd="redo" title="Redo (Ctrl+Y)" aria-label="Redo">↷</button>
+      </div>
+      <div class="iw-paper"><div class="iw-page" id="iw-page" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" aria-label="Document text"><p class="iw-ph">The text from your pictures appears here.</p></div></div>
+    </section>
+  </div>
+  <dialog class="iw-dlg" id="iw-dlg"><img id="iw-big" alt=""><form method="dialog"><button type="submit" class="iw-sec">Close</button></form></dialog>
+</main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const TESS='https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const DOCX='https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js';
+const libs={};
+function load(src){return libs[src]||(libs[src]=new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>{delete libs[src];rej(new Error('Could not load '+src.split('/').pop()+'. Check the internet connection.'))};document.head.appendChild(s)}))}
+const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+let pics=[],uid=0,busy=false,ctl=null,hasDoc=false;
+const msg=(t,err)=>{$('iw-msg').textContent=t||'';$('iw-msg').className='iw-msg'+(err?' err':'')};
+const prog=f=>{$('iw-barw').hidden=f==null;if(f!=null)$('iw-bar').style.width=Math.round(f*100)+'%'};
+
+/* ---------- pictures ---------- */
+function add(files){[...files].forEach(f=>{if(!f||!/^image\//.test(f.type))return;
+  pics.push({id:++uid,file:f,name:f.name||('Pasted picture '+uid+'.png'),url:URL.createObjectURL(f),st:'',err:false})});draw()}
+function draw(){
+  $('iw-list').innerHTML=pics.map((p,i)=>'<li data-id="'+p.id+'"><img src="'+p.url+'" alt="'+esc(p.name)+'" data-big="'+p.id+'"><div><div class="iw-nm">'+esc(p.name)+'</div><div class="iw-st'+(p.err?' err':p.st==='Done'?' ok':'')+'">'+esc(p.st||'Ready')+'</div></div>'+
+    '<div class="iw-acts"><button type="button" class="iw-ic" data-mv="-1" aria-label="Move up"'+(i?'':' disabled')+'>↑</button><button type="button" class="iw-ic" data-mv="1" aria-label="Move down"'+(i<pics.length-1?'':' disabled')+'>↓</button><button type="button" class="iw-ic" data-rm aria-label="Remove '+esc(p.name)+'">✕</button></div></li>').join('');
+  $('iw-go').disabled=busy||!pics.length;$('iw-clear').hidden=busy||!pics.length;
+  if(!$('iw-name').value&&pics.length)$('iw-name').placeholder=pics[0].name.replace(/\.[^.]+$/,'')}
+$('iw-file').addEventListener('change',e=>{add(e.target.files);e.target.value=''});
+const drop=$('iw-drop');
+['dragenter','dragover'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>add(e.dataTransfer.files));
+// a screenshot pasted anywhere on this tool (even in the document) is added as a picture to read; pasted text pastes as normal
+document.addEventListener('paste',e=>{const root=$('iw');if(!root||root.offsetParent===null)return;
+  const fs=[...(e.clipboardData&&e.clipboardData.files||[])].filter(f=>/^image\//.test(f.type));if(!fs.length)return;
+  e.preventDefault();add(fs);msg(fs.length+' picture'+(fs.length>1?'s':'')+' pasted.')});
+$('iw-list').addEventListener('click',e=>{const li=e.target.closest('li');if(!li)return;const i=pics.findIndex(p=>p.id==li.dataset.id);
+  if(e.target.closest('[data-big]')){$('iw-big').src=pics[i].url;$('iw-big').alt=pics[i].name;$('iw-dlg').showModal();return}
+  if(busy)return;
+  const mv=e.target.closest('[data-mv]');if(mv){const j=i+ +mv.dataset.mv;[pics[i],pics[j]]=[pics[j],pics[i]];draw();return}
+  if(e.target.closest('[data-rm]')){URL.revokeObjectURL(pics[i].url);pics.splice(i,1);draw()}});
+$('iw-clear').addEventListener('click',()=>{pics.forEach(p=>URL.revokeObjectURL(p.url));pics=[];draw();msg('')});
+
+/* ---------- Claude (the claude.ai page) ---------- */
+let SAMPLE,IMGMAX=1;
+async function getSample(){if(SAMPLE!==undefined)return SAMPLE;SAMPLE=null;
+  try{const s=window.claude&&window.claude.use?await window.claude.use('sample'):null;
+    if(s){const l=await s.limits().catch(()=>null);if(l&&l.images){SAMPLE=s;IMGMAX=Math.max(1,l.images.maxCount||1)}}}catch(e){}
+  return SAMPLE}
+getSample().then(s=>{$('iw-howhint').textContent=s?'(Claude reads the picture: best for layout, tables and handwriting)':'(text recognition in this browser)'});
+const toJpeg=c=>new Promise(r=>c.toBlob(r,'image/jpeg',0.92));
+// Claude sees each image at about 1.2 megapixels, so tall pages are cut into overlapping bands to keep small print readable
+async function tiles(file){const img=await createImageBitmap(file),w=img.width,h=img.height;
+  const rows=Math.max(1,Math.min(IMGMAX,Math.ceil(w*h/2.5e6)));if(rows===1)return[file];
+  const th=h/rows,out=[];
+  for(let r=0;r<rows;r++){const y0=Math.max(0,r*th-th*0.1),y1=Math.min(h,(r+1)*th+th*0.1),c=document.createElement('canvas');c.width=w;c.height=y1-y0;
+    c.getContext('2d').drawImage(img,0,y0,w,y1-y0,0,0,w,y1-y0);out.push(await toJpeg(c))}
+  return out}
+const PROMPT=n=>(n>1?'These '+n+' images are overlapping horizontal slices of ONE page, from top to bottom. Text cut off at the edge of one slice appears whole in the next: transcribe it once.':'This image contains a page of text (a document, letter, screenshot, sign, form, notes or similar).')+
+  '\n\nTranscribe ALL the text and describe its layout so it can be rebuilt as a Word document. Reply with only this JSON:\n'+
+  '{"blocks":[{"type":"heading","level":1,"text":""},{"type":"paragraph","text":"","align":"left"},{"type":"bullets","items":[""]},{"type":"numbered","items":[""]},{"type":"table","header":true,"rows":[["",""]]}],"notes":[]}\n\nRules:\n'+
+  '- Keep the reading order of the page (for two-column pages, the whole left column, then the right).\n'+
+  '- heading: titles and section headings, shown larger, bolder or set apart. level 1 = the main title (usually one), 2 = section headings, 3 = smaller subheadings.\n'+
+  '- paragraph: join lines that only wrap because the line ran out of room into one paragraph; keep real paragraph breaks as separate blocks. Rejoin words hyphenated at a line end. For lines that must stay separate inside one block (an address, a signature, a poem), put "\\n" between them. align is "left", "center" or "right" as printed; justified text is "left".\n'+
+  '- bullets / numbered: list items without their bullet or number. A sub-item starts with two spaces per level.\n'+
+  '- table: every row as an array of cell texts, all rows the same length; header true when the first row is a heading row. Use a table only for text that is really laid out in a grid.\n'+
+  '- Inside any text, mark words printed in bold as **bold**, italics as *italic*, underlined as __underlined__.\n'+
+  '- Copy the text exactly as printed, including spelling, numbers and punctuation. Do not summarise, correct, translate or add anything. Write [unreadable] where text cannot be read.\n'+
+  '- Leave out page numbers, running headers and footers, and the user interface around a screenshot (menus, buttons, browser bars) unless they are part of the content.\n'+
+  '- notes: anything you could not read or were unsure about, in a few words each. Use [] if none.';
+function claudeErr(e){const c=e&&e.code;return({not_granted:'Reading pictures with Claude needs permission. Reload the page and choose Allow when asked.',
+  sampling_disabled:'Claude isn’t available on this account. Choose “Text recognition in this browser” instead.',
+  rate_limited:'Claude is busy or your usage limit was reached. Try again in a few minutes, or use text recognition.',
+  session_expired:'Your claude.ai session has expired. Sign in again and retry.',image_rejected:'That picture couldn’t be used. Try a JPG or PNG under 20 MB.',
+  invalid_json:'Claude’s answer couldn’t be read. Try again.',refused:'Claude couldn’t read this picture.',cancelled:'Stopped.'})[c]||('Claude couldn’t read the picture ('+((e&&(e.message||e.code))||'unknown error')+').')}
+async function claudeBlocks(p){const s=await getSample(),t=(await tiles(p.file)).slice(0,IMGMAX);
+  let d;try{d=await s.json(PROMPT(t.length),{images:t.length===1?t[0]:t,signal:ctl.signal})}catch(e){const er=new Error(claudeErr(e));er.code=e&&e.code;throw er}
+  const raw=Array.isArray(d)?d:(d&&Array.isArray(d.blocks)?d.blocks:[]),out=[];
+  raw.forEach(b=>{if(!b||typeof b!=='object')return;const ty=String(b.type||'').toLowerCase(),txt=v=>String(v==null?'':v);
+    if(ty==='heading'){const l=Math.min(3,Math.max(1,+b.level||2));if(txt(b.text).trim())out.push({t:'h'+l,text:txt(b.text)})}
+    else if(ty==='bullets'||ty==='numbered'){const items=(b.items||[]).map(txt).filter(s=>s.trim());if(items.length)out.push({t:ty==='bullets'?'ul':'ol',items})}
+    else if(ty==='table'){const rows=(b.rows||[]).filter(Array.isArray).map(r=>r.map(txt));if(rows.length){const n=Math.max(...rows.map(r=>r.length));out.push({t:'table',header:!!b.header,rows:rows.map(r=>r.concat(Array(n-r.length).fill('')))})}}
+    else if(txt(b.text).trim())out.push({t:'p',text:txt(b.text),align:/^(center|centre|right)$/i.test(b.align)?String(b.align).toLowerCase().replace('centre','center'):''})});
+  return{blocks:out,notes:d&&Array.isArray(d.notes)?d.notes.map(String).filter(Boolean):[]}}
+
+/* ---------- text recognition in the browser (Tesseract) ---------- */
+let worker=null;
+async function getWorker(){if(worker)return worker;await load(TESS);
+  worker=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text'&&curProg)curProg(m.progress)}});return worker}
+let curProg=null;
+// small pictures are enlarged first: Tesseract reads text best when capitals are 25-40 px high
+async function prep(file){const img=await createImageBitmap(file),k=img.width<1600?Math.min(3,1600/img.width):1;
+  if(k===1)return{src:file,w:img.width};const c=document.createElement('canvas');c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);
+  const x=c.getContext('2d');x.imageSmoothingQuality='high';x.drawImage(img,0,0,c.width,c.height);return{src:c,w:c.width}}
+// Tesseract often reads a round bullet as +, », «, ©, e or o, so those count too when a capital or digit follows
+const BUL=/^\s*(?:[•·▪■□●○◦◆◇♦►▶▸➢➤✓✔✗\-–—*~+»«]|[©®°eo](?=\s+[A-Z0-9]))\s+/,NUM=/^\s*(?:\(?\d{1,3}[.)]|\(\d{1,3}\)|\(?[a-z][.)]|[ivx]{1,4}[.)])\s+/;
+async function ocrBlocks(p){const w=await getWorker();
+  const im=await prep(p.file),{data}=await w.recognize(im.src,{rotateAuto:true});
+  const L=[];(data.paragraphs||[]).forEach((pa,pi)=>(pa.lines||[]).forEach(l=>{const t=(l.text||'').replace(/\s+$/,'');if(!t.trim()||l.confidence<15)return;
+    const words=(l.words||[]).filter(w=>w.text.trim());
+    // text size = the height of capitals, digits and tall letters (the line's box also counts descenders, so it can't tell a heading from body text)
+    const caps=words.flatMap(w=>(w.symbols||[]).filter(s=>/[A-Z0-9bdfhklt]/.test(s.text)).map(s=>s.bbox.y1-s.bbox.y0)).sort((a,b)=>a-b);
+    const h=l.bbox.y1-l.bbox.y0;
+    L.push({t,pi,x0:l.bbox.x0,x1:l.bbox.x1,y0:l.bbox.y0,y1:l.bbox.y1,h,sz:caps.length?caps[Math.floor(caps.length/2)]:h*0.7,words})}));
+  if(!L.length)return{blocks:[],notes:['No text was found in this picture.']};
+  const szs=L.map(l=>l.sz).sort((a,b)=>a-b),msz=szs[Math.floor(szs.length/2)]||14;
+  const hs=L.map(l=>l.h).sort((a,b)=>a-b),med=hs[Math.floor(hs.length/2)]||20,minX=Math.min(...L.map(l=>l.x0)),maxX=Math.max(...L.map(l=>l.x1)),W=Math.max(1,maxX-minX);
+  // split each line into cells at wide gaps, to find text laid out as a table
+  L.forEach(l=>{const c=[];let cur=null;l.words.forEach(w=>{if(cur&&w.bbox.x0-cur.x1<med*1.8){cur.s+=' '+w.text;cur.x1=w.bbox.x1}else{cur={s:w.text,x0:w.bbox.x0,x1:w.bbox.x1};c.push(cur)}});l.cells=c});
+  const out=[];let i=0;
+  const listOf=t=>BUL.test(t)?'ul':NUM.test(t)?'ol':'';
+  while(i<L.length){
+    // a table: 3+ lines in a row with the same number (2+) of cells
+    let j=i;while(j<L.length&&L[j].cells.length>=2&&L[j].cells.length===L[i].cells.length&&!listOf(L[j].t))j++;
+    if(j-i>=3){out.push({t:'table',header:false,rows:L.slice(i,j).map(l=>l.cells.map(c=>c.s))});i=j;continue}
+    // otherwise gather lines into one block until the paragraph, text size or a list marker changes, or a gap opens
+    const seg=[L[i]],kind=listOf(L[i].t);let k=i+1;
+    while(k<L.length){const a=L[k-1],b=L[k];
+      if(b.pi!==a.pi||listOf(b.t)||Math.abs(b.sz-a.sz)>Math.max(a.sz,b.sz)*0.18||b.y0-a.y1>Math.max(a.h,b.h)*0.9)break;
+      if(kind&&b.x0<seg[0].x0+med*0.5&&!/[a-z,]$/.test(a.t))break;seg.push(b);k++}
+    i=k;
+    let text='';seg.forEach(l=>{let s=l.t.trim();if(!text){text=s;return}
+      if(/[A-Za-z]-$/.test(text)&&/^[a-z]/.test(s))text=text.slice(0,-1)+s;else text+=' '+s});
+    const h=seg.reduce((s,l)=>s+l.sz,0)/seg.length/msz,lf=seg.map(l=>l.x0-minX),rt=seg.map(l=>maxX-l.x1);
+    // centred: the line sits in the middle of the text area or of the picture, and is clearly narrower than the text area
+    const mid=(a,b)=>Math.abs(a-b)<W*0.06,narrow=seg.every(l=>l.x1-l.x0<W*0.85);
+    const align=W>med*15&&narrow&&(seg.every((l,n)=>mid(lf[n],rt[n]))||seg.every(l=>mid(l.x0,im.w-l.x1)))?'center':Math.min(...lf)>W*0.35&&Math.max(...rt)<W*0.04?'right':'';
+    if(kind){text=text.replace(kind==='ul'?BUL:NUM,'');const last=out[out.length-1];if(last&&last.t===kind)last.items.push(text);else out.push({t:kind,items:[text]});continue}
+    const short=text.length<110&&!/[.,;:]$/.test(text);
+    if(short&&h>=1.7&&seg.length<=3)out.push({t:'h1',text,align});
+    else if(short&&h>=1.25&&seg.length<=3)out.push({t:'h2',text,align});
+    else if(short&&h>=1.1&&seg.length===1)out.push({t:'h3',text,align});
+    else if(short&&seg.length===1&&text.length<60&&/[A-Z]{3}/.test(text)&&text===text.toUpperCase()&&/[A-Z]/.test(text))out.push({t:'h3',text});
+    else out.push({t:'p',text,align});}
+  // only one title: keep the first, later "titles" become headings
+  let seen=false;out.forEach(b=>{if(b.t==='h1'){if(seen)b.t='h2';seen=true}});
+  const low=data.confidence<60?['Text recognition was unsure about much of this picture ('+Math.round(data.confidence)+'% confidence). Check it carefully.']:[];
+  return{blocks:out,notes:low}}
+
+/* ---------- blocks -> editable page ---------- */
+// **bold**, *italic*, __underline__ in Claude's text; everything else is escaped
+function inline(t){return esc(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/__(.+?)__/g,'<u>$1</u>').replace(/(^|[^*\w])\*(?!\s)(.+?)\*(?!\w)/g,'$1<em>$2</em>').replace(/\n/g,'<br>')}
+function list(tag,items){// "  item" = one level deeper
+  let h='',depth=0;items.forEach((it,n)=>{const d=Math.min(2,Math.floor((it.match(/^ */)[0].length)/2));
+    if(n&&d>depth){h=h.replace(/<\/li>$/,'');for(;depth<d;depth++)h+='<'+tag+'>'}
+    else for(;depth>d;depth--)h+='</'+tag+'></li>';
+    h+='<li>'+inline(it.trim())+'</li>'});for(;depth>0;depth--)h+='</'+tag+'></li>';return'<'+tag+'>'+h+'</'+tag+'>'}
+function html(blocks){return blocks.map(b=>b.t==='ul'||b.t==='ol'?list(b.t,b.items):b.t==='table'?'<table><tbody>'+b.rows.map((r,n)=>'<tr>'+r.map(c=>b.header&&!n?'<th>'+inline(c)+'</th>':'<td>'+inline(c)+'</td>').join('')+'</tr>').join('')+'</tbody></table>':
+  '<'+b.t+(b.align?' style="text-align:'+b.align+'"':'')+'>'+inline(b.text)+'</'+b.t+'>').join('')}
+
+/* ---------- reading ---------- */
+$('iw-go').addEventListener('click',async()=>{if(busy||!pics.length)return;
+  const page=$('iw-page');if(hasDoc&&page.textContent.trim()&&!confirm('Read the pictures again? This replaces the text in the document, including your edits.'))return;
+  busy=true;ctl=new AbortController();$('iw-stop').hidden=false;draw();msg('');
+  const useClaude=document.querySelector('input[name=iw-how]:checked').value==='auto'&&await getSample();
+  const parts=[],notes=[];let ok=0;
+  for(let n=0;n<pics.length;n++){const p=pics[n];if(ctl.signal.aborted)break;
+    p.st=useClaude?'Claude is reading…':'Reading…';p.err=false;draw();prog(n/pics.length);
+    const tag=pics.length>1?' (picture '+(n+1)+' of '+pics.length+')':'';
+    msg((useClaude?'Claude is reading the text':'Reading the text with text recognition. The first picture takes longer while it loads')+tag+'…');
+    curProg=f=>{prog((n+f)/pics.length);p.st='Reading… '+Math.round(f*100)+'%';const st=document.querySelector('#iw-list li[data-id="'+p.id+'"] .iw-st');if(st)st.textContent=p.st};
+    try{let r;
+      try{r=useClaude?await claudeBlocks(p):await ocrBlocks(p)}
+      catch(e){if(!useClaude||ctl.signal.aborted||e.code==='cancelled')throw e;
+        // Claude unavailable for this one (limit, refusal): fall back to text recognition
+        msg(e.message+' Using text recognition instead'+tag+'…',true);p.st='Reading…';draw();r=await ocrBlocks(p);r.notes.unshift('Read with text recognition because '+e.message.replace(/\.$/,'').toLowerCase())}
+      parts.push(r.blocks);r.notes.forEach(x=>notes.push((pics.length>1?p.name+': ':'')+x));p.st=r.blocks.length?'Done':'No text found';ok++}
+    catch(e){p.err=true;p.st=ctl.signal.aborted?'Stopped':e.message;parts.push([])}
+    draw()}
+  curProg=null;prog(null);
+  const pb=$('iw-pb').checked,body=parts.map(html).filter(Boolean);
+  if(body.length){page.innerHTML=body.join(pb?'<hr class="iw-pb" contenteditable="false">':'');hasDoc=true}
+  busy=false;ctl=null;$('iw-stop').hidden=true;draw();refresh();
+  const first=page.querySelector('h1,h2');if(first&&!$('iw-name').value)$('iw-name').placeholder=first.textContent.trim().slice(0,60)||$('iw-name').placeholder;
+  const fails=pics.filter(p=>p.err).length;
+  msg(!body.length?(fails?'Nothing could be read. '+(pics.find(p=>p.err)||{}).st:'No text was found in the pictures.'):
+    'Done. Check the document against the pictures (click a thumbnail to enlarge it).'+(fails?' '+fails+' picture'+(fails>1?'s':'')+' couldn’t be read.':'')+(notes.length?' Notes: '+notes.join(' · '):''),!body.length||fails>0)});
+$('iw-stop').addEventListener('click',()=>{if(ctl)ctl.abort();if(worker){worker.terminate().catch(()=>{});worker=null}});
+function refresh(){const has=!!$('iw-page').textContent.trim()&&!$('iw-page').querySelector('.iw-ph');$('iw-dl').disabled=!has;$('iw-copy').disabled=!has}
+$('iw-page').addEventListener('input',()=>{const ph=$('iw-page').querySelector('.iw-ph');if(ph)ph.classList.remove('iw-ph');refresh()});
+$('iw-page').addEventListener('focus',()=>{const ph=$('iw-page').querySelector('.iw-ph');if(ph&&!hasDoc){$('iw-page').innerHTML='<p><br></p>'}});
+
+/* ---------- toolbar ---------- */
+$('iw-tools').addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault()});// keep the selection in the page
+$('iw-tools').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;$('iw-page').focus();
+  if(b.dataset.blk)document.execCommand('formatBlock',false,'<'+b.dataset.blk+'>');else document.execCommand(b.dataset.cmd,false,null);refresh()});
+$('iw-page').addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&/^[123]$/.test(e.key)){e.preventDefault();document.execCommand('formatBlock',false,'<h'+e.key+'>')}});
+
+/* ---------- page -> Word ---------- */
+function runs(node,fmt,out){node.childNodes.forEach(c=>{
+  if(c.nodeType===3){const t=c.textContent.replace(/[\r\n\t]+/g,' ');if(t)out.push({text:t,...fmt});return}
+  if(c.nodeType!==1)return;const n=c.nodeName,st=c.style||{};
+  if(n==='BR'){out.push({br:true});return}
+  if(/^(UL|OL|TABLE)$/.test(n))return;// nested lists are handled by the list walker
+  const f={...fmt};if(/^(B|STRONG)$/.test(n)||+st.fontWeight>=600||st.fontWeight==='bold')f.bold=true;if(/^(I|EM)$/.test(n)||st.fontStyle==='italic')f.italics=true;if(n==='U'||/underline/.test(st.textDecoration||''))f.underline=true;
+  runs(c,f,out)});return out}
+function align(el){const a=(el.style&&el.style.textAlign)||el.getAttribute&&el.getAttribute('align')||'';const D=docx.AlignmentType;return a==='center'?D.CENTER:a==='right'?D.RIGHT:a==='justify'?D.JUSTIFIED:undefined}
+function tr(rs){const D=docx;const out=[];rs.forEach((r,n)=>{if(r.br){out.push(new D.TextRun({text:'',break:1}));return}
+  let t=r.text;if(n===0)t=t.replace(/^\s+/,'');if(n===rs.length-1)t=t.replace(/\s+$/,'');if(!t)return;
+  out.push(new D.TextRun({text:t,bold:r.bold,italics:r.italics,underline:r.underline?{}:undefined}))});return out}
+function toDocx(){const D=docx,kids=[],H={H1:D.HeadingLevel.HEADING_1,H2:D.HeadingLevel.HEADING_2,H3:D.HeadingLevel.HEADING_3,H4:D.HeadingLevel.HEADING_3,H5:D.HeadingLevel.HEADING_3,H6:D.HeadingLevel.HEADING_3};
+  let numInst=0,pageBreak=false;const para=o=>{if(pageBreak){o.pageBreakBefore=true;pageBreak=false}kids.push(new D.Paragraph(o))};
+  const walkList=(el,lvl,inst)=>{[...el.children].forEach(li=>{if(li.nodeName!=='LI')return;
+    const o={children:tr(runs(li,{},[])),alignment:align(li)};if(el.nodeName==='OL')o.numbering={reference:'iw-num',level:lvl,instance:inst};else o.bullet={level:lvl};para(o);
+    [...li.children].filter(c=>c.nodeName==='UL'||c.nodeName==='OL').forEach(sub=>walkList(sub,Math.min(lvl+1,2),sub.nodeName==='OL'?++numInst:inst))})};
+  const walk=el=>{[...el.childNodes].forEach(c=>{
+    if(c.nodeType===3){if(c.textContent.trim())para({children:tr([{text:c.textContent}])});return}
+    if(c.nodeType!==1)return;const n=c.nodeName;
+    if(n==='HR'){if(c.classList.contains('iw-pb')&&kids.length)pageBreak=true;return}
+    if(H[n]){para({heading:H[n],children:tr(runs(c,{},[])),alignment:align(c)});return}
+    if(n==='UL'||n==='OL'){walkList(c,0,n==='OL'?++numInst:0);return}
+    if(n==='TABLE'){const rows=[...c.querySelectorAll('tr')];if(!rows.length)return;const cols=Math.max(...rows.map(r=>r.cells.length));
+      if(pageBreak){kids.push(new D.Paragraph({pageBreakBefore:true}));pageBreak=false}
+      kids.push(new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows:rows.map(r=>{const hd=[...r.cells].every(x=>x.nodeName==='TH');
+        return new D.TableRow({tableHeader:hd,children:[...r.cells].concat(Array(cols-r.cells.length).fill(null)).map(x=>new D.TableCell({
+          shading:x&&x.nodeName==='TH'?{fill:'F2F2F2',type:D.ShadingType.CLEAR,color:'auto'}:undefined,
+          margins:{top:60,bottom:60,left:100,right:100},
+          children:[new D.Paragraph({spacing:{after:0},children:x?tr(runs(x,x.nodeName==='TH'?{bold:true}:{},[])):[]})]}))})})}));
+      kids.push(new D.Paragraph({spacing:{after:0},children:[]}));return}
+    if(/^(DIV|SECTION|ARTICLE|BLOCKQUOTE)$/.test(n)&&c.querySelector('p,h1,h2,h3,ul,ol,table,div')){walk(c);return}
+    const r=runs(c,{},[]);if(r.some(x=>x.text&&x.text.trim()))para({children:tr(r),alignment:align(c)});else if(n==='P'||n==='DIV')para({children:[]})})};
+  walk($('iw-page'));
+  const lvls=['%1.','%2.','%3.'].map((t,l)=>({level:l,format:[D.LevelFormat.DECIMAL,D.LevelFormat.LOWER_LETTER,D.LevelFormat.LOWER_ROMAN][l],text:t.replace(/%\d/,'%'+(l+1)),alignment:D.AlignmentType.START,style:{paragraph:{indent:{left:720*(l+1),hanging:360}}}}));
+  return new D.Document({creator:'Menu Hauler',title:fileBase(),
+    styles:{default:{document:{run:{font:'Calibri',size:22},paragraph:{spacing:{after:160,line:276}}}},
+      paragraphStyles:[{id:'Heading1',name:'Heading 1',basedOn:'Normal',next:'Normal',quickFormat:true,run:{size:40,bold:false,color:'1F3864',font:'Calibri Light'},paragraph:{spacing:{before:0,after:200},keepNext:true}},
+        {id:'Heading2',name:'Heading 2',basedOn:'Normal',next:'Normal',quickFormat:true,run:{size:30,color:'2F5496',font:'Calibri Light'},paragraph:{spacing:{before:280,after:120},keepNext:true}},
+        {id:'Heading3',name:'Heading 3',basedOn:'Normal',next:'Normal',quickFormat:true,run:{size:25,color:'2F5496',font:'Calibri Light'},paragraph:{spacing:{before:240,after:80},keepNext:true}}]},
+    numbering:{config:[{reference:'iw-num',levels:lvls}]},
+    sections:[{properties:{page:{margin:{top:1440,bottom:1440,left:1440,right:1440}}},children:kids.length?kids:[new D.Paragraph({})]}]})}
+function fileBase(){return(($('iw-name').value.trim()||$('iw-name').placeholder||'Document').replace(/[\\/:*?"<>|]/g,'').trim()||'Document').slice(0,100)}
+async function save(blob,name){let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){}
+  if(dl){try{await dl.save({filename:name,data:blob});msg('Saved “'+name+'”.')}catch(e){if(e&&e.code!=='declined')msg('The file couldn’t be saved here ('+(e.message||e.code||'unavailable')+').',true)}return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),30000);msg('Downloaded “'+name+'”.')}
+$('iw-dl').addEventListener('click',async()=>{const b=$('iw-dl');b.disabled=true;
+  try{await load(DOCX);const blob=await docx.Packer.toBlob(toDocx());await save(blob,fileBase()+'.docx')}
+  catch(e){msg('The Word file couldn’t be made ('+(e.message||e)+').',true)}b.disabled=false});
+$('iw-copy').addEventListener('click',async()=>{const p=$('iw-page');
+  try{await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([p.innerHTML],{type:'text/html'}),'text/plain':new Blob([p.innerText],{type:'text/plain'})})]);msg('Copied, with formatting. Paste it into Word, Outlook or Google Docs.')}
+  catch(e){try{await navigator.clipboard.writeText(p.innerText);msg('Copied as plain text.')}catch(e2){msg('Copying is blocked in this view. Select the text in the document and press Ctrl+C.',true)}}});
+draw();
+})();
+</script>
+</body>
+</html>

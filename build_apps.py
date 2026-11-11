@@ -1,4 +1,4 @@
-"""Builds apps.html: one page that launches the Menu Converter, Photo Finder, Restaurant Lookup and Setup Tracker,
+"""Builds apps.html: one page that launches the Menu Converter, Photo Finder, Restaurant Lookup, Setup Tracker and Image to Word,
 with the legal pages from legal.html (business details in BUSINESS below) and a footer on every view.
 
     python build_apps.py [publish_copy.html]
@@ -52,6 +52,15 @@ st_body_start = stp.index("<body>") + len("<body>")
 st_script = stp.index("<script>", st_body_start)
 st_body = stp[st_body_start:st_script].strip()
 st_js = stp[st_script + len("<script>"):stp.rindex("</script>")]
+
+# Image to Word also runs in the top page (reading pictures with Claude and the downloads capability only reach it); ids and classes start iw-
+iwp = (HERE / "image-to-word.html").read_text(encoding="utf-8")
+iw_css, _ = between(iwp, "<style>", "</style>")
+iw_css = re.sub(r"/\*BASE.*?/\*END BASE\*/", "", iw_css, flags=re.S)
+iw_body_start = iwp.index("<body>") + len("<body>")
+iw_script = iwp.index("<script>", iw_body_start)
+iw_body = iwp[iw_body_start:iw_script].strip()
+iw_js = iwp[iw_script + len("<script>"):iwp.rindex("</script>")]
 
 # the Photo Finder's page as a JS string; "</" is written "<\/" so it can't close this page's <script>
 # the Oolio One look (oolio-theme.css) goes after every tool's own CSS, and into the Photo Finder frame too
@@ -207,6 +216,7 @@ LAUNCHER_HTML = """
     <button type="button" class="lx-tab" data-go="photos">Photo Finder</button>
     <button type="button" class="lx-tab" data-go="venue">Restaurant Lookup</button>
     <button type="button" class="lx-tab" data-go="setup">Setup Tracker</button>
+    <button type="button" class="lx-tab" data-go="word">Image to Word</button>
   </nav>
   <label class="lx-venue"><span>Venue</span><select id="lx-venue" aria-label="Venue you are working on"><option value="">Loading venues…</option></select></label>
 </header>
@@ -239,6 +249,12 @@ LAUNCHER_HTML = """
       <dl class="lx-flow"><dt>Takes</dt><dd>The venue, or a Restaurant Lookup result</dd><dt>Gives</dt><dd>Progress for each step, devices and printers checked against the rules, and a recap to paste into HubSpot</dd></dl>
       <button type="button" class="lx-open" data-go="setup">Open Setup Tracker</button>
     </article>
+    <article class="lx-card">
+      <h2>Image to Word</h2>
+      <p>Takes the text out of photos, screenshots and scans and lays it out as a properly formatted Word document you can check and edit first.</p>
+      <dl class="lx-flow"><dt>Takes</dt><dd>One or more pictures (JPG, PNG, screenshots)</dd><dt>Gives</dt><dd>A .docx with headings, paragraphs, lists and tables</dd></dl>
+      <button type="button" class="lx-open" data-go="word">Open Image to Word</button>
+    </article>
   </div>
 </section>
 <div id="lx-conv" hidden>
@@ -249,6 +265,9 @@ LAUNCHER_HTML = """
 </div>
 <div id="lx-st" hidden>
 """ + st_body + """
+</div>
+<div id="lx-iw" hidden>
+""" + iw_body + """
 </div>
 <div id="lx-pf" class="lx-pfwrap" hidden>
   <div class="lx-note" id="lx-pfnote" hidden>
@@ -266,7 +285,7 @@ LAUNCHER_HTML = """
 
 LAUNCHER_JS = r"""
 (()=>{
-  const g=id=>document.getElementById(id),views={'':g('lx-home'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st')};
+  const g=id=>document.getElementById(id),views={'':g('lx-home'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),word:g('lx-iw')};
   const LEGAL=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>a.id.slice(3));LEGAL.forEach(k=>{views[k]=g('lx-legal')});
   const onClaude=!!(window.claude&&window.claude.use)||/(^|\.)claude(usercontent)?\.(ai|com)$/.test(location.hostname);
   let pfReady=false,checked=false;
@@ -300,11 +319,12 @@ page = (
     '<meta name="claude:viewport-fit-sides" content="cover">\n'
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>\n'
     + FONT + "\n"
-    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + THEME + "</style>\n"
+    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + iw_css + THEME + "</style>\n"
     + LAUNCHER_HTML
     + "<script>" + conv_js + "</script>\n"
     + "<script>" + rl_js + "</script>\n"
     + "<script>" + st_js + "</script>\n"
+    + "<script>" + iw_js + "</script>\n"
     + "<script>\nconst PF_HTML=" + pf_js + ";\n" + LAUNCHER_JS + "</script>\n"
     + "<script>" + (HERE / "venue-link.js").read_text(encoding="utf-8") + "</script>\n"
 )
