@@ -14,6 +14,11 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+.pytest_cache/
+npm-debug.log*
+
+# Firecrawl CLI scrapes: may hold venue menus and contact details
+.firecrawl/
 
 # Windows / Office clutter
 Thumbs.db
