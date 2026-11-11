@@ -11,8 +11,10 @@ window.OOLIO_HOSTED=true;
 document.documentElement.classList.add('oolio-hosted');
 const qs=o=>new URLSearchParams(Object.entries(o).filter(([,v])=>v!==''&&v!=null)).toString();
 async function call(path,body){
-  let r;try{r=await fetch('/api/'+path,body===undefined?{credentials:'same-origin'}:{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)})}
+  let r;try{r=await fetch('/api/'+path,body===undefined?{credentials:'same-origin',redirect:'manual'}:{method:'POST',credentials:'same-origin',redirect:'manual',headers:{'content-type':'application/json'},body:JSON.stringify(body)})}
   catch(e){const x=new Error('The website couldn’t be reached. Check the connection.');x.code='unavailable';throw x}
+  // Cloudflare Access answers with a redirect to its sign-in page when the sign-in session has run out
+  if(r.type==='opaqueredirect'||(r.status>=300&&r.status<400)){const x=new Error('Your sign-in session has ended. Reload the page to sign in again.');x.code='not_granted';signinBanner(x.message);throw x}
   let j={};try{j=await r.json()}catch(e){}
   if(!r.ok){const x=new Error(j.error||('The website answered '+r.status+'.'));x.code=j.code||(r.status===401?'not_granted':r.status>=500?'unavailable':'invalid_argument');if(x.code==='not_granted')signinBanner(x.message);throw x}
   return j}

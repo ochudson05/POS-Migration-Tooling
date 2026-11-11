@@ -32,7 +32,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-11.2';
+const VERSION = '2026-11-11.3';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -50,20 +50,23 @@ let CERTS = null, CERTS_AT = 0;
 async function accessUser(req, env) {
   const cookie = (req.headers.get('Cookie') || '').match(/(?:^|;\s*)CF_Authorization=([^;]+)/);
   const token = req.headers.get('Cf-Access-Jwt-Assertion') || (cookie && cookie[1]);
-  if (!token) return null;
+  if (!token) return { why: 'no sign-in token reached the site' };
   const [h, p, s] = token.split('.');
-  if (!h || !p || !s) return null;
+  if (!h || !p || !s) return { why: 'the sign-in token is malformed' };
   let head, body;
-  try { head = JSON.parse(new TextDecoder().decode(b64u(h))); body = JSON.parse(new TextDecoder().decode(b64u(p))); } catch (e) { return null; }
+  try { head = JSON.parse(new TextDecoder().decode(b64u(h))); body = JSON.parse(new TextDecoder().decode(b64u(p))); } catch (e) { return { why: 'the sign-in token can’t be read' }; }
   const iss = 'https://' + TEAM(env) + '.cloudflareaccess.com';
   const aud = Array.isArray(body.aud) ? body.aud : [body.aud];
-  if (body.iss !== iss || !aud.includes(AUD(env)) || !(body.exp > Date.now() / 1000)) return null;
+  if (body.iss !== iss) return { why: 'the sign-in came from ' + body.iss + ', not ' + iss };
+  if (!aud.includes(AUD(env))) return { why: 'the sign-in is for Access app ' + aud.join(', ') + ', not ' + AUD(env) };
+  if (!(body.exp > Date.now() / 1000)) return { why: 'the sign-in has expired' };
   if (!CERTS || Date.now() - CERTS_AT > 3600e3) { CERTS = (await (await fetch(iss + '/cdn-cgi/access/certs')).json()).keys || []; CERTS_AT = Date.now(); }
   const jwk = CERTS.find(k => k.kid === head.kid);
-  if (!jwk) return null;
+  if (!jwk) return { why: 'the sign-in key ' + head.kid + ' isn’t one of the team’s keys' };
   const key = await crypto.subtle.importKey('jwk', jwk, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['verify']);
   const ok = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, b64u(s), new TextEncoder().encode(h + '.' + p));
-  return ok && body.email ? { email: String(body.email).toLowerCase() } : null;
+  if (!ok) return { why: 'the sign-in signature doesn’t check out' };
+  return body.email ? { email: String(body.email).toLowerCase() } : { why: 'the sign-in has no email address' };
 }
 const nameOf = email => email.split('@')[0].split(/[._-]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
 
@@ -154,7 +157,7 @@ export default {
       /* ----- the website's API: signed-in people only ----- */
       if (u.pathname.startsWith('/api/')) {
         const user = await accessUser(req, env);
-        if (!user) return api({ error: 'Please sign in again (reload the page).', code: 'not_granted' }, 401);
+        if (!user.email) return api({ error: 'Please sign in again (reload the page). The website says ' + user.why + '.', code: 'not_granted', why: user.why }, 401);
         const route = u.pathname.slice(5);
         if (route === 'me') return api({ email: user.email, name: nameOf(user.email), version: VERSION });
         if (route.startsWith('db/')) return db(route.slice(3), req, env, user, p);
@@ -165,7 +168,7 @@ export default {
 
       /* ----- the original relay: the token, or a signed-in person ----- */
       if (RELAY.has(u.pathname)) {
-        if (!(env.RELAY_TOKEN && p.get('t') === env.RELAY_TOKEN) && !(await accessUser(req, env))) return out({ error: 'Wrong or missing relay token.' }, 403);
+        if (!(env.RELAY_TOKEN && p.get('t') === env.RELAY_TOKEN) && !(await accessUser(req, env)).email) return out({ error: 'Wrong or missing relay token.' }, 403);
         if (u.pathname === '/ping') return out({ ok: true, google: !!env.GOOGLE_KEY, version: VERSION });
 
         if (u.pathname === '/place') {
