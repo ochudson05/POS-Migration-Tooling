@@ -47,6 +47,18 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .map select{padding:5px 7px;font-size:.85rem}
 .chk{border-left:3px solid var(--warn);padding:4px 10px;margin:6px 0}
 .chk.i{border-color:var(--line)}
+/* pre-flight result and menu changes in step 7 */
+.pf{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 12px;background:var(--bg)}
+.pf-h{display:flex;align-items:center;gap:10px;font-weight:600}
+.pf-h .pf-dot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;flex:none;font-size:.9rem}
+.pf.ok .pf-dot{background:var(--ok)}.pf.warn .pf-dot{background:var(--warn)}.pf.bad .pf-dot{background:var(--bad,#c62828)}
+.pf.bad{border-color:var(--bad,#c62828)}
+.pf-h small{display:block;font-weight:400;color:var(--muted);font-size:.84rem}
+.pf details{margin:8px 0 0}.pf summary{cursor:pointer;font-size:.9rem}.pf summary b{font-variant-numeric:tabular-nums}
+.pf ul{margin:4px 0 0;padding-left:18px;font-size:.82rem;color:var(--muted);max-height:180px;overflow:auto}
+.pf .pf-how{font-size:.82rem;color:var(--muted);margin:2px 0 0 18px}
+.pf .pf-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.pf .pf-btns button{margin:0}
+.pf-n{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pf-n span{font-size:.8rem;padding:2px 9px;border-radius:99px;border:1px solid var(--line);background:var(--card)}
 .chk ul{margin:4px 0 0;padding-left:18px;font-size:.82rem;color:var(--muted);max-height:180px;overflow:auto}
 </style>
 </head>
@@ -148,6 +160,8 @@ Double Shot=60</textarea></div>
 <div id="stats" class="warn">Choose a file to begin.</div>
 <input id="q" placeholder="Filter preview…" style="display:none;margin-top:10px">
 <div class="scroll" id="prev" style="display:none"></div>
+<div id="pf"></div>
+<div id="mchg"></div>
 <button id="dlc" disabled>Download CSV</button><button id="dlx" disabled>Download XLSX</button><button id="dlm" class="sec" disabled style="display:none">Modifier groups (CSV)</button>
 <div class="warn">Modifiers are exported as Product Type “Modifier”. The modifier groups file lists each group with its modifiers, prices and linked products, so you can build the groups in Oolio.</div>
 </div>
@@ -1506,7 +1520,8 @@ function convert(){
     if(type!=='Variant'){r['Barcode']=code(o.barcode,o);r['GTIN']=code(o.gtin,o);r['SKU']=o.sku||'';r['PLU']=o.plu||''}
     r['Sell Price*']=x.price!=null?x.price:(o.price===''?'0':o.price);r['Sell Tax*']=taxOf(o.tax);
     r['Variable Pricing?']=yn(o.varp||'');r['Min Pricing']=o.minp||'';r['Max Pricing']=o.maxp||'';r['Image URL']=o.image||'';
-    return OUT.map(h=>r[h])};
+    // stray line breaks, tabs and double spaces break CSV rows and POS buttons
+    return OUT.map(h=>typeof r[h]==='string'?r[h].replace(/[\r\n\t]+/g,' ').replace(/ {2,}/g,' ').trim():r[h])};
   // products that carry a modifier group
   const genMods=[],mgs=new Map();
   items.forEach(it=>{if(it.modOf==null)return;if(!mgs.has(it.modOf))mgs.set(it.modOf,[]);mgs.get(it.modOf).push(it)});
@@ -1560,12 +1575,99 @@ function run(){
   if(!tables.length){$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm'].forEach(i=>$(i).disabled=true);$('dlm').style.display='none';return}
   readSettings();res=convert();
   // new menu: tick the presets that match it, except ones off by default or already in the files
-  if(preInit){preInit=false;pre.forEach((p,i)=>{p.dup=preDup(p);p.on=!p.off&&!p.dup&&res.pre[i].m.length>0});res=convert();buildPre()}else showPre();
+  // and the ones the venue's type uses (Setup Tracker → Venue type), even if they're normally off
+  if(preInit){preInit=false;const T=tplPresets();pre.forEach((p,i)=>{p.dup=preDup(p);p.on=!p.dup&&res.pre[i].m.length>0&&(!p.off||T.includes(p.name))});res=convert();buildPre()}else showPre();
   $('stats').textContent=res.nP+' products, '+res.nV+' with size variants, '+res.nG+' with modifier groups, '+(res.nS?res.nS+' standard option group'+(res.nS===1?'':'s')+', ':'')+res.nM+' modifiers → '+res.rows.length+' rows.'+(res.checks.filter(c=>!c.info).length?' See the checks above.':'');
   $('checks').innerHTML=res.checks.length?res.checks.map(c=>'<div class="chk'+(c.info?' i':'')+'">'+(c.list.length?'<details><summary><b>'+c.list.length+'</b> '+esc(c.msg)+'</summary><ul>'+c.list.slice(0,300).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>':esc(c.msg))+'</div>').join(''):'<div class="warn" style="margin:0">No problems found.</div>';
   $('q').style.display='block';renderPrev();
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
-  const hasM=mods.length||res.genMods.length||res.preMods.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;}
+  const hasM=mods.length||res.genMods.length||res.preMods.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
+  drawPreflight();drawChanges();}
+
+function tplPresets(){const OV=window.OolioVenues,a=OV&&OV.active?OV.active():null,T=window.OOLIO_TEMPLATES;return a&&a.vtype&&T&&T[a.vtype]?T[a.vtype].presets:[]}
+
+/* ---------------- pre-flight: the import rows checked against what the Oolio setup wizard needs ----------------
+   Problems stop an upload (missing required values, prices that aren't numbers, half-filled measure columns, rows the
+   wizard can't tell apart, sizes with no parent). Things to check won't stop it but are worth a look. */
+let PF=null;
+function preflight(rows){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'),t:ix('Product Type*'),pg:ix('Product Group*'),rg:ix('Reporting Group*'),c:ix('Category*'),
+    vg:ix('Variant Group'),vn:ix('Variant Name'),mb:ix('Measured By*'),dv:ix('Default Value'),u:ix('Unit'),pos:ix('POS Name'),pp:ix('Printer Profiles'),p:ix('Sell Price*'),tx:ix('Sell Tax*')};
+  const block=[],warn=[],add=(L,msg,list,how)=>{if(list.length)L.push({msg,list:[...new Set(list)],how})};
+  const miss={},badP=[],meas=[],dup=new Map(),parents=new Set(),orphan=[],emptyVar=new Map(),prn=[],long=[],odd=[],cats=new Map();
+  const V=(window.OOLIO_PRINTERS||[]).map(x=>String(x).toLowerCase());
+  rows.forEach((r,i)=>{if(r[I.t]==='Variant'){parents.add(String(r[I.n]).toLowerCase());emptyVar.set(String(r[I.n]).toLowerCase(),r[I.n])}});
+  rows.forEach((r,i)=>{const t=r[I.t],nm=String(r[I.n]||'').trim()||'(row '+(i+2)+')',lbl=nm+(r[I.vn]?' ('+r[I.vn]+')':'');
+    const need=[['Product Name*',I.n],['Product Type*',I.t],['Reporting Group*',I.rg],['Product Group*',I.pg],['Sell Price*',I.p],['Sell Tax*',I.tx]];
+    if(t!=='Modifier')need.push(['Category*',I.c]);
+    need.forEach(([h,k])=>{if(String(r[k]==null?'':r[k]).trim()==='')(miss[h]=miss[h]||[]).push(lbl)});
+    const p=String(r[I.p]==null?'':r[I.p]).trim();if(p!==''&&!/^\d+(\.\d{1,2})?$/.test(p))badP.push(lbl+': '+p);
+    const m=[r[I.mb],r[I.dv],r[I.u]].map(x=>String(x==null?'':x).trim());if(m.some(Boolean)&&!m.every(Boolean))meas.push(lbl);
+    if(t==='Product'&&r[I.vn]){const k=nm.toLowerCase();if(!parents.has(k))orphan.push(lbl);emptyVar.delete(k)}
+    if(t!=='Modifier'){const k=[t,nm,r[I.c],r[I.vn]].join('|').toLowerCase();dup.set(k,(dup.get(k)||0)+1);if(t==='Product'&&!r[I.vn]||t==='Variant')cats.set(r[I.c],(cats.get(r[I.c])||0)+1)}
+    if(V.length&&t!=='Modifier'&&r[I.pp]&&!String(r[I.pp]).split(/\s*,\s*/).every(x=>V.includes(x.toLowerCase())))prn.push(r[I.pp]);
+    if(t!=='Modifier'&&!r[I.pos]&&nm.length>30)long.push(nm);
+    if(/[^\u0000-ɏ‐-‧€]/.test(nm))odd.push(nm)});
+  Object.entries(miss).forEach(([h,L])=>add(block,'rows have no '+h.replace('*',''),L,'Every row needs it. Fix the source or the settings above.'));
+  add(block,'prices aren’t plain amounts',badP,'Use numbers only, such as 12.50: no $ sign, words or more than two decimals.');
+  add(block,'rows have only some of Measured By, Default Value and Unit',meas,'Fill all three for poured drinks, or leave all three blank for items sold by the unit.');
+  add(block,'rows appear more than once with the same name, category and size',[...dup].filter(([,n])=>n>1).map(([k])=>k.split('|').slice(1).filter(Boolean).join(' · ')),'The wizard can’t tell them apart. Rename one or merge them.');
+  add(block,'sizes have no parent row',orphan,'Each size needs a matching Variant row with the same product name.');
+  add(block,'size groups have a parent row but no sizes',[...emptyVar.values()],'Remove the parent row or add its sizes.');
+  if(!rows.some(r=>r[I.t]==='Product'))block.push({msg:'There are no products to import.',list:[]});
+  add(warn,'printer profiles aren’t printers listed for this venue in the Setup Tracker',prn,'Create these printer profiles in Oolio, or change the printer in step 3.');
+  add(warn,'long product names with no short POS name',long,'They can be cut off on POS buttons and dockets. A POS Name column in the source file sets a shorter one.');
+  add(warn,'names have emoji or unusual characters',odd,'Kitchen and bar printers often can’t print them.');
+  const tiny=[...cats].filter(([c,n])=>c&&n===1).map(([c])=>c);
+  if(tiny.length>=4)add(warn,'categories have only one product',tiny,'Oolio works best with a few broad categories (Hot Coffee, Pizza). Merge small ones in step 3.');
+  return{block,warn,rows:rows.length}}
+function drawPreflight(){const el=$('pf');if(!el)return;if(!res||!res.rows.length){el.innerHTML='';PF=null;return}
+  PF=preflight(res.rows);const nb=PF.block.reduce((s,x)=>s+Math.max(1,x.list.length),0),nw=PF.warn.reduce((s,x)=>s+x.list.length,0);
+  const cls=nb?'bad':nw?'warn':'ok',icon=nb?'!':nw?'?':'✓';
+  const list=(L,open)=>L.map(x=>x.list.length?'<details'+(open?' open':'')+'><summary><b>'+x.list.length+'</b> '+esc(x.msg)+'</summary><p class="pf-how">'+esc(x.how||'')+'</p><ul>'+x.list.slice(0,200).map(y=>'<li>'+esc(y)+'</li>').join('')+'</ul></details>':'<p style="margin:8px 0 0">'+esc(x.msg)+'</p>').join('');
+  el.innerHTML='<div class="pf '+cls+'" role="status"><div class="pf-h"><span class="pf-dot" aria-hidden="true">'+icon+'</span><span>'+
+    (nb?'Fix '+nb+' problem'+(nb>1?'s':'')+' before importing':nw?'Ready to import, with '+nw+' thing'+(nw>1?'s':'')+' to check':'Ready to import')+
+    '<small>Pre-flight check of all '+PF.rows+' rows against what the Oolio setup wizard needs.</small></span></div>'+list(PF.block,true)+list(PF.warn,false)+'</div>'}
+// downloading with problems asks first
+function pfGo(){if(!PF||!PF.block.length)return true;return confirm('The pre-flight check found '+PF.block.length+' kind'+(PF.block.length>1?'s':'')+' of problem that will probably stop the Oolio import. Download anyway?')}
+
+/* ---------------- menu changes: this menu compared with the one last saved to the venue ----------------
+   New items come as their own import file; price changes, renames and removals as a list to make in Back Office. */
+let CHG={v:'',prev:null},CHGD=null;
+function curItems(){const ix=h=>OUT.indexOf(h),iN=ix('Product Name*'),iT=ix('Product Type*'),iC=ix('Category*'),iV=ix('Variant Name'),iS=ix('Sell Price*');
+  return res.rows.filter(r=>r[iT]==='Product').map(r=>[r[iN],r[iC],r[iV]||'',r[iS]===''?'':+r[iS]])}
+async function drawChanges(){const el=$('mchg');if(!el)return;const OV=window.OolioVenues,a=OV&&OV.active?OV.active():null;CHGD=null;
+  if(!a||!(a.menuLog||[]).length||!res||!res.rows.length||!OV.menuVersions||!OV.menuDiff){el.innerHTML='';return}
+  const last=a.menuLog[a.menuLog.length-1];
+  if(CHG.v!==last.v||CHG.id!==a.id){try{const vs=await OV.menuVersions(a.id);CHG={id:a.id,v:last.v,prev:vs.find(v=>v.id===last.v)||vs[0]||null}}catch(e){CHG={id:a.id,v:last.v,prev:null}}}
+  const prev=CHG.prev;if(!prev||!Array.isArray(prev.items)){el.innerHTML='';return}
+  const d=OV.menuDiff(prev.items,curItems());CHGD={d,prev,venue:a.name};
+  const day=new Date(prev.at).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
+  if(d.none){el.innerHTML='<div class="pf ok"><div class="pf-h"><span class="pf-dot" aria-hidden="true">=</span><span>Same as the menu saved for '+esc(a.name)+'<small>Version '+a.menuLog.length+', '+esc(day)+'. Nothing has changed.</small></span></div></div>';return}
+  const sec=(n,t,L)=>L.length?'<details><summary><b>'+L.length+'</b> '+t+'</summary><ul>'+L.slice(0,200).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>':'';
+  const sz=s=>s?' ('+s+')':'',$$=v=>'$'+(+v).toFixed(2);
+  el.innerHTML='<div class="pf warn"><div class="pf-h"><span class="pf-dot" aria-hidden="true">Δ</span><span>Changed since the menu saved for '+esc(a.name)+
+    '<small>Compared with version '+a.menuLog.length+', '+esc(day)+'. Import only what’s new, and make the other changes in Back Office.</small></span></div>'+
+    '<div class="pf-n"><span>'+d.added.length+' new</span><span>'+d.price.length+' price change'+(d.price.length===1?'':'s')+(d.price.length?' (avg '+(d.avgPct>0?'+':'')+d.avgPct+'%)':'')+'</span><span>'+d.renamed.length+' renamed</span><span>'+d.removed.length+' removed</span></div>'+
+    sec(0,'new items',d.added.map(r=>r[0]+sz(r[2])+' · '+r[1]+(r[3]!==''?' · '+$$(r[3]):'')))+
+    sec(0,'price changes',d.price.map(x=>x[0]+sz(x[1])+': '+$$(x[2])+' → '+$$(x[3])))+
+    sec(0,'renamed',d.renamed.map(x=>x[0]+' → '+x[1]+sz(x[2])))+
+    sec(0,'removed',d.removed.map(r=>r[0]+sz(r[2])+' · '+r[1]))+
+    '<div class="pf-btns">'+(d.added.length?'<button type="button" id="chgnew">New items only (CSV)</button>':'')+'<button type="button" class="sec" id="chglist">List of changes (CSV)</button></div></div>'}
+document.addEventListener('click',e=>{const b=e.target.closest('#chgnew,#chglist');if(!b||!CHGD)return;const d=CHGD.d;
+  if(b.id==='chgnew'){if(!pfGo())return;const ix=h=>OUT.indexOf(h),iN=ix('Product Name*'),iT=ix('Product Type*'),iV=ix('Variant Name');
+    const key=(n,s)=>String(n).toLowerCase().trim()+'|'+String(s||'').toLowerCase().trim(),want=new Set(d.added.map(r=>key(r[0],r[2]))),had=new Set(CHGD.prev.items.map(r=>String(r[0]).toLowerCase().trim()));
+    const rows=res.rows.filter(r=>(r[iT]==='Product'&&want.has(key(r[iN],r[iV])))||(r[iT]==='Variant'&&!had.has(String(r[iN]).toLowerCase().trim())&&d.added.some(a=>String(a[0]).toLowerCase().trim()===String(r[iN]).toLowerCase().trim())));
+    save(new Blob(['﻿'+csv([OUT].concat(rows))],{type:'text/csv;charset=utf-8'}),outName('csv','New items'));return}
+  const L=[['Change','Product','Size','Category','Old price','New price','What to do in Back Office']];
+  d.added.forEach(r=>L.push(['New',r[0],r[2],r[1],'',r[3],'Import with the “New items only” file']));
+  d.price.forEach(x=>L.push(['Price',x[0],x[1],'',x[2],x[3],'Change the price (Bulk edit products)']));
+  d.renamed.forEach(x=>L.push(['Renamed',x[1],x[2],'','','','Rename “'+x[0]+'” to “'+x[1]+'”']));
+  d.removed.forEach(r=>L.push(['Removed',r[0],r[2],r[1],r[3],'','Stop selling it, or delete it']));
+  save(new Blob(['﻿'+csv(L)],{type:'text/csv;charset=utf-8'}),outName('csv','Menu changes'))});
+// a different venue picked at the top: compare against that venue's menu instead
+// (the venue list is set up by a later script, so this waits until every script has run)
+document.addEventListener('DOMContentLoaded',()=>{const OV=window.OolioVenues;if(!OV||!OV.on)return;let lastV='';
+  OV.on(()=>{const v=OV.activeId;if(v!==lastV){lastV=v;CHG={v:'',prev:null};if(res)drawChanges()}})});
 function renderPrev(){
   const q=$('q').value.toLowerCase(),rs=q?res.rows.filter(r=>r.some(x=>String(x).toLowerCase().includes(q))):res.rows;
   const p=$('prev');p.style.display='block';
@@ -1592,8 +1694,8 @@ function announce(file){if(!res)return;const ix=h=>OUT.indexOf(h),iN=ix('Product
     items:res.rows.filter(r=>r[iT]==='Product').map(r=>[r[iN],r[iC],r[iV]||'',r[iS]===''?'':+r[iS]]).slice(0,1500),
     sources:tables.filter(t=>t.on&&t.a&&t.a.kind!=='modifiers').map(t=>t.srcLabel||t.file),
     urls:FA.okUrls&&FA.okUrls.length&&tables.some(t=>t.on&&t.srcLabel)?FA.okUrls.slice():[]}}));}
-$('dlc').addEventListener('click',()=>{const n=outName('csv','Oolio One import');save(new Blob(['﻿'+csv([OUT].concat(res.rows))],{type:'text/csv;charset=utf-8'}),n);announce(n)});
-$('dlx').addEventListener('click',()=>{const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([OUT].concat(res.rows)),'in');
+$('dlc').addEventListener('click',()=>{if(!pfGo())return;const n=outName('csv','Oolio One import');save(new Blob(['﻿'+csv([OUT].concat(res.rows))],{type:'text/csv;charset=utf-8'}),n);announce(n)});
+$('dlx').addEventListener('click',()=>{if(!pfGo())return;const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([OUT].concat(res.rows)),'in');
   const n=outName('xlsx','Oolio One import');save(new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),n);announce(n)});
 $('dlm').addEventListener('click',()=>{const r=[['Modifier Group','Modifier','Price','Required?','Maximum','Linked Product(s)']];
   mods.forEach(o=>r.push([o.group,o.name,o.price||'0',o.g?o.g.required:'',o.g?o.g.max:'',o.g?o.g.linked:'']));

@@ -7,6 +7,8 @@
      /api/account             your own account for the settings panel: details, display name, sign out everywhere
      /api/seen                which tool a person opened (for the admin page)
      /api/admin/*             the admin page (/admin): people, permissions, activity; owner and admins only
+     /api/intake/*            customer intake links for a venue (signed in); /api/public/intake/<token> is the form's own API
+     /intake/<token>          the customer intake form (public/intake.html), open to anyone with the link
      /api/db/list|get|set|update|delete   the shared venue records (D1 database "oolio-tools", table docs)
      /api/fc                  Firecrawl scrape / search with the team's key, capped per month
      /api/fetch?url=...       downloads a web page, PDF, menu feed or picture for the page (free; the browser can't)
@@ -41,7 +43,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-11.7';
+const VERSION = '2026-11-11.8';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -181,7 +183,7 @@ async function authLogout(req, env, u) {
   return new Response(null, { status: 303, headers: { Location: '/login', 'Set-Cookie': 'mh_session=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax', 'Cache-Control': 'no-store' } });
 }
 // pages anyone can open: the sign-in itself, the policies and security.txt
-const PUBLIC = path => path === '/login' || path === '/login.html' || path.startsWith('/legal') || path.startsWith('/.well-known/') || path === '/favicon.ico' || path === '/robots.txt';
+const PUBLIC = path => path === '/login' || path === '/login.html' || path === '/intake' || path === '/intake.html' || path.startsWith('/intake/') || path.startsWith('/legal') || path.startsWith('/.well-known/') || path === '/favicon.ico' || path === '/robots.txt';
 const nameOf = email => email.split('@')[0].split(/[._-]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(' ');
 
 /* ---------- shared records (D1) ---------- */
@@ -354,6 +356,139 @@ async function firecrawl(req, env) {
   return api({ payload: j, used: used + cost, cap });
 }
 
+/* ---------- customer intake: a link the team sends a venue, so the owner can give us what setup needs ----------
+   Staff (signed in, able to edit) make one link per venue: /intake/<token>. Anyone with the link can fill in the form
+   and upload files until it expires (INTAKE_DAYS) or is turned off. Files are kept in D1 in pieces, because the free
+   plan has no file storage set up. Tables: intake (one row per link), intake_files, intake_chunks. */
+const INTAKE_DAYS = 30, FILE_MAX = 15e6, TOKEN_MAX_BYTES = 60e6, TOKEN_MAX_FILES = 40, CHUNK = 900000;
+const INTAKE_TYPES = /^(application\/pdf|image\/(jpeg|png|webp|gif|heic|heif)|text\/(csv|plain)|application\/vnd\.openxmlformats-officedocument\.(spreadsheetml\.sheet|wordprocessingml\.document)|application\/vnd\.ms-excel)$/;
+const FILE_KINDS = ['menu', 'logo', 'layout', 'staff', 'other'];
+let ITABLES = false;
+async function intakeTables(env) {
+  if (ITABLES) return;
+  await env.DB.batch([
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS intake (token TEXT PRIMARY KEY, venue TEXT NOT NULL, venue_name TEXT, created_by TEXT, created_at INTEGER, expires INTEGER, revoked INTEGER NOT NULL DEFAULT 0, submitted_at INTEGER, submits INTEGER NOT NULL DEFAULT 0, data TEXT)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS intake_venue ON intake (venue)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS intake_files (id TEXT PRIMARY KEY, token TEXT NOT NULL, name TEXT, type TEXT, size INTEGER, kind TEXT, at INTEGER, chunks INTEGER)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS intake_files_token ON intake_files (token)'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS intake_chunks (file_id TEXT NOT NULL, n INTEGER NOT NULL, data BLOB, PRIMARY KEY (file_id, n))'),
+  ]);
+  ITABLES = true;
+}
+const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const TOKEN = /^[A-Za-z0-9_-]{24}$/;
+const filesOf = async (env, token) => ((await env.DB.prepare('SELECT id, name, type, size, kind, at FROM intake_files WHERE token = ?1 ORDER BY at').bind(token).all()).results || []);
+async function dropFile(env, id) { await env.DB.batch([env.DB.prepare('DELETE FROM intake_chunks WHERE file_id = ?1').bind(id), env.DB.prepare('DELETE FROM intake_files WHERE id = ?1').bind(id)]); }
+const linkOf = (u, token) => new URL('/intake/' + token, u).href;
+const liveLink = r => r && !r.revoked && r.expires > Date.now();
+
+// the team's side (signed in)
+async function intakeStaff(path, req, env, user, q, u) {
+  await intakeTables(env);
+  const DB = env.DB, now = Date.now();
+  if (path === 'status') {
+    const venue = q.get('venue') || '';
+    const r = await DB.prepare('SELECT * FROM intake WHERE venue = ?1 ORDER BY created_at DESC LIMIT 1').bind(venue).first();
+    if (!r) return api({ link: null });
+    let data = null; try { data = r.data ? JSON.parse(r.data) : null; } catch (e) { }
+    return api({ link: { token: r.token, url: linkOf(u, r.token), createdAt: r.created_at, createdBy: r.created_by, expires: r.expires, live: liveLink(r), revoked: !!r.revoked,
+      submittedAt: r.submitted_at, submits: r.submits, data, files: await filesOf(env, r.token) } });
+  }
+  if (path === 'file') {
+    const id = q.get('id') || '';
+    const f = await DB.prepare('SELECT * FROM intake_files WHERE id = ?1').bind(id).first();
+    if (!f) return api({ error: 'That file is no longer there.' }, 404);
+    const parts = (await DB.prepare('SELECT data FROM intake_chunks WHERE file_id = ?1 ORDER BY n').bind(id).all()).results || [];
+    const bufs = parts.map(p => p.data instanceof ArrayBuffer ? new Uint8Array(p.data) : new Uint8Array(p.data || []));
+    const out = new Uint8Array(bufs.reduce((s, b) => s + b.length, 0)); let o = 0; bufs.forEach(b => { out.set(b, o); o += b.length; });
+    return new Response(out, { headers: { 'Content-Type': f.type || 'application/octet-stream', 'Content-Disposition': 'attachment; filename="' + String(f.name || 'file').replace(/["\\\r\n]/g, '') + '"', 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' } });
+  }
+  if (req.method !== 'POST') return api({ error: 'Use POST.' }, 405);
+  if (!user.canEdit) return api({ error: 'Your access is view-only, so you can’t make intake links.' }, 403);
+  const b = await req.json().catch(() => ({}));
+  if (path === 'create') {
+    const venue = String(b.venue || '').slice(0, 200), name = String(b.venueName || '').slice(0, 200);
+    if (!venue) return api({ error: 'No venue.' }, 400);
+    const token = b64url(crypto.getRandomValues(new Uint8Array(18)));
+    await DB.batch([DB.prepare('UPDATE intake SET revoked = 1 WHERE venue = ?1 AND revoked = 0').bind(venue),
+      DB.prepare('INSERT INTO intake (token, venue, venue_name, created_by, created_at, expires) VALUES (?1, ?2, ?3, ?4, ?5, ?6)').bind(token, venue, name, user.email, now, now + INTAKE_DAYS * 864e5),
+      log(env, user.email, 'admin', 'Made a customer intake link for ' + (name || venue))]);
+    return api({ ok: true, url: linkOf(u, token), token, expires: now + INTAKE_DAYS * 864e5 });
+  }
+  if (path === 'revoke') {
+    await DB.prepare('UPDATE intake SET revoked = 1 WHERE token = ?1').bind(String(b.token || '')).run();
+    return api({ ok: true });
+  }
+  if (path === 'extend') {
+    await DB.prepare('UPDATE intake SET expires = ?2, revoked = 0 WHERE token = ?1').bind(String(b.token || ''), now + INTAKE_DAYS * 864e5).run();
+    return api({ ok: true });
+  }
+  // one link ({token}), or every link and file for a venue ({venue}) when the venue is deleted
+  if (path === 'delete') {
+    const tokens = b.venue ? ((await DB.prepare('SELECT token FROM intake WHERE venue = ?1').bind(String(b.venue)).all()).results || []).map(r => r.token) : [String(b.token || '')];
+    for (const token of tokens) {
+      for (const f of await filesOf(env, token)) await dropFile(env, f.id);
+      await DB.prepare('DELETE FROM intake WHERE token = ?1').bind(token).run();
+    }
+    return api({ ok: true, deleted: tokens.length });
+  }
+  return api({ error: 'Unknown address.' }, 404);
+}
+
+// the customer's side (no sign-in; the link is the key)
+async function intakePublic(rest, req, env) {
+  await intakeTables(env);
+  const DB = env.DB, now = Date.now(), [token, action] = rest.split('/');
+  if (!TOKEN.test(token || '')) return api({ error: 'This link isn’t right. Check you copied all of it.' }, 404);
+  const r = await DB.prepare('SELECT * FROM intake WHERE token = ?1').bind(token).first();
+  if (!r) return api({ error: 'This link isn’t right. Check you copied all of it.' }, 404);
+  if (!liveLink(r)) return api({ error: 'This link has ' + (r.revoked ? 'been turned off' : 'expired') + '. Ask your Oolio contact for a new one.', code: 'expired' }, 410);
+  // only this site's own page may send answers or files
+  const origin = req.headers.get('Origin');
+  if (req.method === 'POST' && origin && new URL(origin).host !== new URL(req.url).host) return api({ error: 'Not allowed from another site.' }, 403);
+  if (!action && req.method === 'GET') {
+    let data = null; try { data = r.data ? JSON.parse(r.data) : null; } catch (e) { }
+    return api({ venue: r.venue_name || '', expires: r.expires, submittedAt: r.submitted_at, data, files: await filesOf(env, token), limits: { file: FILE_MAX, total: TOKEN_MAX_BYTES, files: TOKEN_MAX_FILES } });
+  }
+  if (req.method !== 'POST') return api({ error: 'Use POST.' }, 405);
+  if (!action) {
+    const text = await req.text();
+    if (text.length > 100000) return api({ error: 'That’s too much text. Shorten the longest answers.' }, 413);
+    let data; try { data = JSON.parse(text).data; } catch (e) { return api({ error: 'The answers couldn’t be read. Try again.' }, 400); }
+    if (!data || typeof data !== 'object' || Array.isArray(data)) return api({ error: 'The answers couldn’t be read. Try again.' }, 400);
+    if (r.submits >= 50) return api({ error: 'This form has been sent too many times. Ask your Oolio contact for a new link.' }, 429);
+    await DB.prepare('UPDATE intake SET data = ?2, submitted_at = ?3, submits = submits + 1 WHERE token = ?1').bind(token, JSON.stringify(data), now).run();
+    return api({ ok: true, submittedAt: now });
+  }
+  if (action === 'file') {
+    const q = new URL(req.url).searchParams, name = String(q.get('name') || 'file').replace(/[\\/\r\n"]/g, '').slice(0, 150) || 'file';
+    const kind = FILE_KINDS.includes(q.get('kind')) ? q.get('kind') : 'other', type = (req.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
+    if (!INTAKE_TYPES.test(type)) return api({ error: 'That kind of file can’t be uploaded. Use PDF, a photo, a spreadsheet, a Word document or a text file.' }, 415);
+    const len = +(req.headers.get('Content-Length') || 0);
+    if (len > FILE_MAX) return api({ error: 'That file is bigger than ' + Math.round(FILE_MAX / 1e6) + ' MB.' }, 413);
+    const have = await filesOf(env, token), used = have.reduce((s, f) => s + (f.size || 0), 0);
+    if (have.length >= TOKEN_MAX_FILES) return api({ error: 'That’s the most files this form takes. Remove one to add another.' }, 413);
+    const buf = new Uint8Array(await req.arrayBuffer());
+    if (!buf.length) return api({ error: 'That file is empty.' }, 400);
+    if (buf.length > FILE_MAX) return api({ error: 'That file is bigger than ' + Math.round(FILE_MAX / 1e6) + ' MB.' }, 413);
+    if (used + buf.length > TOKEN_MAX_BYTES) return api({ error: 'The files on this form add up to more than ' + Math.round(TOKEN_MAX_BYTES / 1e6) + ' MB. Remove one to add this.' }, 413);
+    // one piece per statement (each under D1's 2 MB row limit); the file row goes in last, so a failed upload leaves no file
+    const id = b64url(crypto.getRandomValues(new Uint8Array(12))), n = Math.ceil(buf.length / CHUNK);
+    try {
+      for (let i = 0; i < n; i++) await DB.prepare('INSERT INTO intake_chunks (file_id, n, data) VALUES (?1, ?2, ?3)').bind(id, i, buf.slice(i * CHUNK, (i + 1) * CHUNK).buffer).run();
+      await DB.prepare('INSERT INTO intake_files (id, token, name, type, size, kind, at, chunks) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)').bind(id, token, name, type, buf.length, kind, now, n).run();
+    } catch (e) { await DB.prepare('DELETE FROM intake_chunks WHERE file_id = ?1').bind(id).run().catch(() => {}); throw e; }
+    return api({ ok: true, file: { id, name, type, size: buf.length, kind, at: now } });
+  }
+  if (action === 'remove') {
+    const b = await req.json().catch(() => ({}));
+    const f = await DB.prepare('SELECT id FROM intake_files WHERE id = ?1 AND token = ?2').bind(String(b.id || ''), token).first();
+    if (f) await dropFile(env, f.id);
+    return api({ ok: true });
+  }
+  return api({ error: 'Unknown address.' }, 404);
+}
+
 /* ---------- download a page, PDF, feed or picture for the page ---------- */
 async function fetchFor(q, env) {
   let target = q.get('url') || '';
@@ -379,6 +514,11 @@ export default {
       if (u.pathname === '/auth/logout') return authLogout(req, env, u);
       if (u.pathname === '/login' && (await sessionUser(req, env))) return Response.redirect(new URL(safeNext(p.get('next')), u).href, 302);
 
+      /* ----- the customer intake form's API: the link is the key, no sign-in ----- */
+      if (u.pathname.startsWith('/api/public/intake/')) return intakePublic(u.pathname.slice('/api/public/intake/'.length), req, env);
+      // the form itself: /intake/<token> is served the page public/intake.html
+      if (u.pathname.startsWith('/intake/') && env.ASSETS) return env.ASSETS.fetch(new Request(new URL('/intake', u), req));
+
       /* ----- the website's API: signed-in people only ----- */
       if (u.pathname.startsWith('/api/')) {
         const user = await sessionUser(req, env);
@@ -397,6 +537,7 @@ export default {
           return firecrawl(req, env);
         }
         if (route === 'fetch') return fetchFor(p, env);
+        if (route.startsWith('intake/')) return intakeStaff(route.slice(7), req, env, user, p, u);
         return api({ error: 'Unknown address.' }, 404);
       }
 

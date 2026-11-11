@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>Venue setup · Menu Hauler</title>
+<!-- the customer intake form, served at /intake/<token> without sign-in (relay-worker.js). build_apps.py adds the
+     font, oolio-theme.css, theme-boot.js and the icon sprite, and writes public/intake.html. -->
+<style>
+[hidden]{display:none!important}
+*,*::before,*::after{box-sizing:border-box}
+:root[data-theme="light"]{color-scheme:light}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.55 var(--f-body,system-ui,sans-serif)}
+.ic{width:1.15em;height:1.15em;flex:none;vertical-align:-.2em}
+.top{background:var(--bar);color:var(--bar-text);padding:14px max(16px,env(safe-area-inset-left,0px));display:flex;align-items:center;gap:10px}
+.top b{display:inline-flex;align-items:center;gap:9px;font-size:1.02rem}.logo{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--bar-text);color:var(--bar)}
+.top .sp{flex:1}.top .save{font-size:.82rem;color:var(--bar-muted)}
+main{max-width:760px;margin:0 auto;padding:22px max(16px,env(safe-area-inset-left,0px)) 80px;display:grid;gap:16px}
+h1{font-size:1.55rem;margin:0;line-height:1.25;text-wrap:balance}
+.lead{color:var(--muted);margin:6px 0 0;max-width:62ch}
+.prog{position:sticky;top:0;z-index:5;background:var(--bg);padding:10px 0;display:grid;gap:6px}
+.prog .bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden}.prog .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .5s cubic-bezier(.2,.8,.2,1)}
+.prog span{font-size:.82rem;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:14px;box-shadow:var(--shadow);animation:in .4s cubic-bezier(.2,.8,.2,1) both}
+@keyframes in{from{opacity:0;transform:translateY(8px)}}
+.card h2{margin:0;font-size:1.1rem;display:flex;align-items:center;gap:10px}
+.card h2 .n{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:var(--accent-soft);color:var(--accent);font-size:.9rem;flex:none;transition:background-color .3s,color .3s}
+.card.done h2 .n{background:var(--ok);color:#fff}
+.card>p{margin:-6px 0 0;color:var(--muted);font-size:.92rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+label.f{display:grid;gap:5px;font-size:.88rem;font-weight:600;color:var(--text)}
+label.f small{font-weight:400;color:var(--muted)}
+input,textarea,select{font:inherit;font-size:1rem;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;min-width:0;transition:border-color .15s,box-shadow .15s}
+textarea{min-height:96px;resize:vertical}
+input:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:1px;box-shadow:0 0 0 4px var(--accent-soft)}
+input:invalid:not(:placeholder-shown){border-color:var(--bad)}
+.drop{display:grid;place-items:center;gap:4px;text-align:center;padding:20px 14px;border:2px dashed var(--line);border-radius:12px;cursor:pointer;color:var(--muted);font-size:.9rem;transition:border-color .2s,background-color .2s}
+.drop b{color:var(--text);display:inline-flex;align-items:center;gap:6px}.drop.over,.drop:hover{border-color:var(--accent);background:var(--accent-soft)}
+.drop input{position:absolute;width:1px;height:1px;opacity:0}
+.drop:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.files{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.files li{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:.9rem;animation:in .3s both}
+.files li .nm{overflow-wrap:anywhere}.files li small{display:block;color:var(--muted);font-size:.78rem}
+.files li .pb{height:4px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:4px}.files li .pb i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.files li.err{border-color:var(--bad)}.files li.err small{color:var(--bad)}
+.files li .ok{color:var(--ok)}
+button{font:inherit;font-weight:600;border-radius:10px;cursor:pointer;margin:0;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background-color .15s,transform .1s}
+button:not(:disabled):active{transform:scale(.97)}
+.x{background:none;border:0;color:var(--muted);padding:6px;border-radius:8px}.x:hover{color:var(--bad);background:var(--card)}
+.go{background:var(--accent);color:var(--accent-text);border:0;padding:14px 22px;font-size:1.05rem;width:100%}
+.go:disabled{opacity:.6;cursor:default}
+.sec{background:transparent;color:var(--text);border:1px solid var(--line);padding:9px 14px}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:.9rem}.consent input{width:auto;margin-top:4px}
+.msg{min-height:1.3em;font-size:.92rem;margin:0}.msg.err{color:var(--bad)}.msg.ok{color:var(--ok)}
+.done-box{text-align:center;display:grid;gap:12px;justify-items:center;padding:28px 18px}
+.done-box .big{display:grid;place-items:center;width:64px;height:64px;border-radius:50%;background:var(--ok);color:#fff;animation:pop .5s cubic-bezier(.2,.8,.2,1)}
+.done-box .big .ic{width:34px;height:34px}
+@keyframes pop{0%{transform:scale(.4)}70%{transform:scale(1.1)}100%{transform:scale(1)}}
+.foot{color:var(--muted);font-size:.8rem;text-align:center}.foot a{color:var(--accent)}
+.blocked{text-align:center;padding:40px 18px;display:grid;gap:10px}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><b><span class="logo"><svg class="ic" aria-hidden="true"><use href="#i-utensils"/></svg></span>Menu Hauler</b><span class="sp"></span><span class="save" id="saved" aria-live="polite"></span></header>
+<main id="main">
+  <div id="loading" class="card" style="text-align:center">Loading your form…</div>
+  <div id="blocked" class="card blocked" hidden><h1>This link can’t be used</h1><p class="lead" id="blockmsg" style="margin:0 auto"></p></div>
+  <form id="form" hidden novalidate>
+    <div><h1 id="title">Let’s set up your venue on Oolio</h1>
+      <p class="lead">Tell us about your venue and send your menu, so we can have your Oolio system ready before training. It takes about 10 minutes. Your answers save on this device as you go, and you can come back and change them until <b id="until"></b>.</p></div>
+    <div class="prog" aria-hidden="true"><div class="bar"><i id="pbar"></i></div><span id="ptext"></span></div>
+
+    <section class="card" data-sec="biz"><h2><span class="n">1</span>Your business</h2>
+      <div class="grid">
+        <label class="f">Trading name<input name="trading" autocomplete="organization" required placeholder="As customers know you"></label>
+        <label class="f">Legal entity name<small>As on your ABN registration</small><input name="legal" placeholder="e.g. Smith Hospitality Pty Ltd"></label>
+        <label class="f">ABN<input name="abn" inputmode="numeric" pattern="[0-9 ]{11,14}" placeholder="11 digits"></label>
+        <label class="f">Website<input name="website" type="url" inputmode="url" placeholder="https://"></label>
+        <label class="f">Venue phone<input name="phone" type="tel" autocomplete="tel"></label>
+        <label class="f">Venue email<small>For receipts and reports</small><input name="email" type="email" autocomplete="email"></label>
+      </div>
+      <label class="f">Venue address<input name="address" autocomplete="street-address" placeholder="Street, suburb, state, postcode"></label>
+      <label class="f">Opening hours<textarea name="hours" placeholder="Mon–Fri 7am–3pm&#10;Sat–Sun 8am–2pm"></textarea></label>
+    </section>
+
+    <section class="card" data-sec="contact"><h2><span class="n">2</span>Main contact</h2><p>Who we should talk to about the setup and training.</p>
+      <div class="grid">
+        <label class="f">Name<input name="cname" autocomplete="name" required></label>
+        <label class="f">Role<input name="crole" placeholder="Owner, manager…"></label>
+        <label class="f">Mobile<input name="cmobile" type="tel" autocomplete="tel"></label>
+        <label class="f">Email<input name="cemail" type="email" autocomplete="email"></label>
+      </div>
+      <label class="f">Preferred go-live date<small>The day you’d like to start trading on Oolio</small><input name="golive" type="date"></label>
+    </section>
+
+    <section class="card" data-sec="menu"><h2><span class="n">3</span>Your menu</h2><p>Send every menu you use: food, drinks, specials, kids, functions. Photos, PDFs, spreadsheets or a POS export all work.</p>
+      <label class="drop" data-kind="menu"><b><svg class="ic" aria-hidden="true"><use href="#i-file-spreadsheet"/></svg>Add menu files</b><span>Tap to choose, or drop files here. Up to 15 MB each.</span><input type="file" multiple accept=".pdf,.csv,.txt,.xlsx,.xls,.docx,image/*"></label>
+      <ul class="files" data-list="menu"></ul>
+      <label class="f">Anything about the menu we should know?<textarea name="menunotes" placeholder="Prices changing soon, items you no longer sell, modifiers like milk options or steak cooking…"></textarea></label>
+    </section>
+
+    <section class="card" data-sec="look"><h2><span class="n">4</span>Logo and layout</h2><p>Your logo goes on receipts and the online store. A floor plan or photos of your counter, bar and kitchen help us set up printers and devices.</p>
+      <label class="drop" data-kind="logo"><b><svg class="ic" aria-hidden="true"><use href="#i-images"/></svg>Add your logo</b><span>PNG or PDF works best</span><input type="file" accept=".pdf,image/*"></label>
+      <ul class="files" data-list="logo"></ul>
+      <label class="drop" data-kind="layout"><b><svg class="ic" aria-hidden="true"><use href="#i-map-pin"/></svg>Add a floor plan or photos</b><span>Optional</span><input type="file" multiple accept=".pdf,image/*"></label>
+      <ul class="files" data-list="layout"></ul>
+      <label class="f">Where are orders printed or made?<small>For example: coffee at the front counter, food in the kitchen, cocktails at the back bar</small><textarea name="stations"></textarea></label>
+    </section>
+
+    <section class="card" data-sec="staff"><h2><span class="n">5</span>Your staff</h2><p>Everyone who needs to use the POS. We’ll create a login for each person.</p>
+      <label class="f">Staff list<small>One person per line: name, role, and email or mobile</small><textarea name="staff" placeholder="Sarah Jones, Manager, sarah@yourvenue.com.au&#10;Tom Lee, Barista, 0412 345 678"></textarea></label>
+      <label class="drop" data-kind="staff"><b><svg class="ic" aria-hidden="true"><use href="#i-users"/></svg>Or add a staff spreadsheet</b><span>Optional</span><input type="file" accept=".csv,.xlsx,.xls,.txt,image/*"></label>
+      <ul class="files" data-list="staff"></ul>
+    </section>
+
+    <section class="card" data-sec="more"><h2><span class="n">6</span>Anything else</h2>
+      <label class="f">Questions or things we should know<textarea name="notes" placeholder="Other systems you use (bookings, accounting, delivery apps), how you split bills, surcharges…"></textarea></label>
+      <label class="drop" data-kind="other"><b><svg class="ic" aria-hidden="true"><use href="#i-plus"/></svg>Add other files</b><span>Optional</span><input type="file" multiple accept=".pdf,.csv,.txt,.xlsx,.xls,.docx,image/*"></label>
+      <ul class="files" data-list="other"></ul>
+    </section>
+
+    <section class="card" data-sec="send"><h2><span class="n">7</span>Send to Oolio</h2>
+      <label class="consent"><input type="checkbox" name="consent" required><span>I’m allowed to share these details, including my staff’s names and contact details, with Oolio to set up our system. Read how we handle them in the <a href="/legal/#privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
+      <button type="submit" class="go" id="send"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg>Send my answers</button>
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+    </section>
+  </form>
+  <div id="done" class="card done-box" hidden><span class="big"><svg class="ic" aria-hidden="true"><use href="#i-check"/></svg></span><h1>Thanks, we’ve got it</h1>
+    <p class="lead" style="margin:0" id="donemsg">Your Oolio contact will be in touch about anything else they need.</p><button type="button" class="sec" id="edit">Change my answers</button></div>
+  <p class="foot">This form is private to your venue. Menu Hauler collects these details to set up your Oolio system. <a href="/legal/#privacy" target="_blank" rel="noopener">Privacy Policy</a> · <a href="/legal/#contact" target="_blank" rel="noopener">Contact</a></p>
+</main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id),esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+const token=(location.pathname.match(/\/intake\/([A-Za-z0-9_-]{24})/)||[])[1]||'';
+const API='/api/public/intake/'+token,DRAFT='mh.intake.'+token,form=$('form');
+const ic=n=>'<svg class="ic" aria-hidden="true"><use href="#i-'+n+'"/></svg>';
+let FILES=[],LIM={file:15e6,total:60e6,files:40},sentOnce=false;
+const size=n=>n>1e6?(n/1e6).toFixed(1)+' MB':Math.max(1,Math.round(n/1e3))+' KB';
+function block(m){$('loading').hidden=true;form.hidden=true;$('blocked').hidden=false;$('blockmsg').textContent=m}
+async function api(path,opt){const r=await fetch(API+path,Object.assign({credentials:'omit'},opt||{}));let j={};try{j=await r.json()}catch(e){}if(!r.ok){const e=new Error(j.error||('Error '+r.status));e.code=j.code;throw e}return j}
+function fill(data){if(!data)return;[...form.elements].forEach(el=>{if(!el.name||!(el.name in data))return;if(el.type==='checkbox')el.checked=!!data[el.name];else el.value=data[el.name]})}
+function collect(){const d={};[...form.elements].forEach(el=>{if(!el.name)return;d[el.name]=el.type==='checkbox'?el.checked:el.value.trim()});return d}
+// progress across the sections
+function progress(){const secs=[...form.querySelectorAll('section[data-sec]')].filter(s=>s.dataset.sec!=='send');let n=0;
+  secs.forEach(s=>{const k=s.dataset.sec,has=[...s.querySelectorAll('input,textarea')].some(el=>el.name&&el.type!=='checkbox'&&el.value.trim())||FILES.some(f=>s.querySelector('[data-list="'+f.kind+'"]'));
+    s.classList.toggle('done',has);if(has)n++});
+  $('pbar').style.width=Math.round(n/secs.length*100)+'%';$('ptext').textContent=n+' of '+secs.length+' sections started'}
+let draftT=null;
+function draft(){clearTimeout(draftT);draftT=setTimeout(()=>{try{localStorage.setItem(DRAFT,JSON.stringify(collect()));$('saved').textContent='Draft saved on this device'}catch(e){}},500);progress()}
+form.addEventListener('input',draft);form.addEventListener('change',draft);
+
+/* ---------- files: uploaded as soon as they're picked ---------- */
+function drawFiles(){document.querySelectorAll('[data-list]').forEach(ul=>{const k=ul.dataset.list;
+  ul.innerHTML=FILES.filter(f=>f.kind===k).map(f=>'<li class="'+(f.err?'err':'')+'" data-id="'+esc(f.id||f.tmp)+'">'+ic(f.err?'info':f.id?'circle-check':'clock')+'<div><span class="nm">'+esc(f.name)+'</span><small>'+(f.err?esc(f.err):f.id?size(f.size)+' · uploaded':'Uploading… '+Math.round((f.p||0)*100)+'%')+'</small>'+(!f.id&&!f.err?'<div class="pb"><i style="width:'+Math.round((f.p||0)*100)+'%"></i></div>':'')+'</div>'+
+    '<button type="button" class="x" data-rm="'+esc(f.id||f.tmp)+'" aria-label="Remove '+esc(f.name)+'">'+ic('x')+'</button></li>').join('')});progress()}
+function upload(file,kind){const f={tmp:'t'+Math.random().toString(36).slice(2),name:file.name,size:file.size,kind,p:0};FILES.push(f);
+  if(file.size>LIM.file){f.err='Bigger than '+Math.round(LIM.file/1e6)+' MB. Send a smaller copy.';drawFiles();return}
+  drawFiles();
+  // XMLHttpRequest, because it reports upload progress
+  const x=new XMLHttpRequest();x.open('POST',API+'/file?'+new URLSearchParams({name:file.name,kind}));x.setRequestHeader('Content-Type',file.type||'application/octet-stream');
+  x.upload.onprogress=e=>{if(e.lengthComputable){f.p=e.loaded/e.total;const li=document.querySelector('[data-id="'+f.tmp+'"]');if(li){const i=li.querySelector('.pb i');if(i)i.style.width=Math.round(f.p*100)+'%';li.querySelector('small').textContent='Uploading… '+Math.round(f.p*100)+'%'}}};
+  x.onload=()=>{let j={};try{j=JSON.parse(x.responseText)}catch(e){}if(x.status>=200&&x.status<300&&j.file){Object.assign(f,j.file);delete f.tmp}else f.err=j.error||'Upload failed. Try again.';drawFiles()};
+  x.onerror=()=>{f.err='Upload failed. Check your connection and try again.';drawFiles()};x.send(file)}
+document.querySelectorAll('.drop').forEach(d=>{const inp=d.querySelector('input'),kind=d.dataset.kind;
+  inp.addEventListener('change',()=>{[...inp.files].forEach(f=>upload(f,kind));inp.value=''});
+  ['dragenter','dragover'].forEach(ev=>d.addEventListener(ev,e=>{e.preventDefault();d.classList.add('over')}));
+  ['dragleave','drop'].forEach(ev=>d.addEventListener(ev,e=>{e.preventDefault();d.classList.remove('over')}));
+  d.addEventListener('drop',e=>{[...e.dataTransfer.files].forEach(f=>upload(f,kind))})});
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-rm]');if(!b)return;const id=b.dataset.rm,f=FILES.find(x=>(x.id||x.tmp)===id);if(!f)return;
+  FILES=FILES.filter(x=>x!==f);drawFiles();if(f.id){try{await api('/remove',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({id:f.id})})}catch(err){}}});
+
+/* ---------- send ---------- */
+form.addEventListener('submit',async e=>{e.preventDefault();const m=$('msg');m.className='msg';
+  const bad=[...form.elements].find(el=>el.name&&!el.checkValidity());
+  if(bad){m.className='msg err';m.textContent=bad.name==='consent'?'Tick the box to say you’re allowed to share these details.':'Check “'+(bad.closest('label')||{}).textContent.split('\n')[0].trim()+'”.';bad.focus();return}
+  if(FILES.some(f=>!f.id&&!f.err)){m.className='msg err';m.textContent='Wait for your files to finish uploading.';return}
+  $('send').disabled=true;m.textContent='Sending…';
+  try{await api('',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({data:collect()})});
+    try{localStorage.removeItem(DRAFT)}catch(err){}sentOnce=true;form.hidden=true;$('done').hidden=false;$('saved').textContent='Sent';
+    const n=FILES.filter(f=>f.id).length;$('donemsg').textContent='We received your answers'+(n?' and '+n+' file'+(n>1?'s':''):'')+'. Your Oolio contact will be in touch about anything else they need. You can change your answers until '+$('until').textContent+'.';window.scrollTo(0,0)}
+  catch(err){m.className='msg err';m.textContent=err.message}$('send').disabled=false});
+$('edit').addEventListener('click',()=>{$('done').hidden=true;form.hidden=false;window.scrollTo(0,0)});
+
+/* ---------- start ---------- */
+(async()=>{if(!token){block('This link isn’t complete. Check you copied all of it from your email.');return}
+  try{const j=await api('');LIM=j.limits||LIM;FILES=(j.files||[]).slice();
+    $('until').textContent=new Date(j.expires).toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'});
+    if(j.venue){$('title').textContent='Let’s set up '+j.venue+' on Oolio';document.title=j.venue+' setup · Menu Hauler'}
+    fill(j.data);let d=null;try{d=JSON.parse(localStorage.getItem(DRAFT)||'null')}catch(e){}
+    if(d&&(!j.submittedAt||Object.keys(d).length)){fill(d);$('saved').textContent='Your draft is back'}
+    if(j.data&&!j.data.trading&&j.venue)form.elements.trading.value=j.venue;
+    if(!j.data&&j.venue&&!form.elements.trading.value)form.elements.trading.value=j.venue;
+    $('loading').hidden=true;form.hidden=false;drawFiles();
+    if(j.submittedAt){$('saved').textContent='Sent '+new Date(j.submittedAt).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}}
+  catch(e){block(e.message)}})();
+})();
+</script>
+</body>
+</html>

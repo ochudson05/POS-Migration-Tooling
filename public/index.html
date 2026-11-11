@@ -163,6 +163,18 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .map select{padding:5px 7px;font-size:.85rem}
 .chk{border-left:3px solid var(--warn);padding:4px 10px;margin:6px 0}
 .chk.i{border-color:var(--line)}
+/* pre-flight result and menu changes in step 7 */
+.pf{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 12px;background:var(--bg)}
+.pf-h{display:flex;align-items:center;gap:10px;font-weight:600}
+.pf-h .pf-dot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;flex:none;font-size:.9rem}
+.pf.ok .pf-dot{background:var(--ok)}.pf.warn .pf-dot{background:var(--warn)}.pf.bad .pf-dot{background:var(--bad,#c62828)}
+.pf.bad{border-color:var(--bad,#c62828)}
+.pf-h small{display:block;font-weight:400;color:var(--muted);font-size:.84rem}
+.pf details{margin:8px 0 0}.pf summary{cursor:pointer;font-size:.9rem}.pf summary b{font-variant-numeric:tabular-nums}
+.pf ul{margin:4px 0 0;padding-left:18px;font-size:.82rem;color:var(--muted);max-height:180px;overflow:auto}
+.pf .pf-how{font-size:.82rem;color:var(--muted);margin:2px 0 0 18px}
+.pf .pf-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.pf .pf-btns button{margin:0}
+.pf-n{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pf-n span{font-size:.8rem;padding:2px 9px;border-radius:99px;border:1px solid var(--line);background:var(--card)}
 .chk ul{margin:4px 0 0;padding-left:18px;font-size:.82rem;color:var(--muted);max-height:180px;overflow:auto}
 
 /* Launcher: a slim bar with the two tools as tabs; the start view shows each tool as a card */
@@ -382,6 +394,35 @@ html.oolio-hosted .claude-only,html.oolio-hosted #rf-setbox{display:none!importa
 .st-sec>header{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;margin-bottom:6px}
 .st-sec>header p{flex-basis:100%;margin:0;color:var(--muted);font-size:.88rem}
 .st-step{border-top:1px solid var(--line)}
+/* owners, due dates, board, staff list, brand (templates and go-live pack use the existing tools row) */
+.st-who{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;max-width:420px;margin:0 0 10px}
+.st-board{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(230px,1fr);gap:12px;overflow-x:auto;padding:12px 2px 16px;margin-top:6px}
+.st-col{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:8px;min-height:180px;transition:border-color .2s,background-color .2s}
+.st-col header{display:flex;justify-content:space-between;align-items:center;font-size:.92rem;padding:2px 4px}
+.st-col.over{border-color:var(--accent);background:var(--accent-soft,var(--bg))}
+.st-cards{display:grid;gap:8px}
+.st .st-bcard{display:grid;gap:6px;text-align:left;width:100%;padding:12px!important;font-weight:400!important;background:var(--card)!important;color:var(--text)!important;border:1px solid var(--line)!important;cursor:grab}
+.st .st-bcard:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgb(0 0 0/.08)}
+.st-bcard.dragging{opacity:.45}
+.st-bcard .st-bar{height:6px}
+.st-bmeta{display:flex;flex-wrap:wrap;gap:4px}
+.st-chip.late{color:var(--bad,#c62828);border-color:var(--bad,#c62828)}.st-chip.soon{color:var(--warn)}
+.st-owner{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--muted)}
+.st-av{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--accent-text);font-size:.68rem;font-weight:700}
+.st-none{margin:6px 4px}
+.st-staff{border:1px solid var(--line);border-radius:10px;padding:12px;margin:8px 0;display:grid;gap:8px}
+.st-twrap{overflow-x:auto}.st-tbl{border-collapse:collapse;width:100%;font-size:.86rem}.st-tbl th{text-align:left;font-size:.76rem;color:var(--muted);font-weight:600;padding:4px}.st-tbl td{padding:3px 4px}.st-tbl input[type=checkbox]{width:auto}
+.st-filebtn{display:inline-flex;align-items:center;cursor:pointer;font-weight:600;border:1px solid var(--line);border-radius:8px;padding:5px 10px;font-size:.85rem}
+.st-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.st-brand{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}
+.st-logos{display:flex;flex-wrap:wrap;gap:10px}
+.st-logo{display:grid;gap:4px;justify-items:center;width:120px;padding:8px;border:1px solid var(--line);border-radius:10px;background:#fff;color:#555;text-decoration:none;font-size:.72rem;text-align:center}
+.st-logo img{max-width:100%;max-height:64px;object-fit:contain}
+.st-swatches{display:flex;flex-wrap:wrap;gap:6px}
+.st .st-sw{display:inline-flex;align-items:center;gap:6px;background:var(--card)!important;color:var(--text)!important;border:1px solid var(--line)!important;padding:4px 10px!important;font-size:.82rem;font-family:ui-monospace,Consolas,monospace}
+.st-sw i{width:16px;height:16px;border-radius:4px;border:1px solid rgb(0 0 0/.15)}
+.st-intake{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}
+.st-intake input[readonly]{font-family:ui-monospace,Consolas,monospace;font-size:.82rem}
 .st-step:first-of-type{border-top:0}
 .st-step>summary{list-style:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 0;cursor:pointer}
 .st-step>summary::-webkit-details-marker{display:none}
@@ -917,6 +958,8 @@ Double Shot=60</textarea></div>
 <div id="stats" class="warn">Choose a file to begin.</div>
 <input id="q" placeholder="Filter preview…" style="display:none;margin-top:10px">
 <div class="scroll" id="prev" style="display:none"></div>
+<div id="pf"></div>
+<div id="mchg"></div>
 <button id="dlc" disabled>Download CSV</button><button id="dlx" disabled>Download XLSX</button><button id="dlm" class="sec" disabled style="display:none">Modifier groups (CSV)</button>
 <div class="warn">Modifiers are exported as Product Type “Modifier”. The modifier groups file lists each group with its modifiers, prices and linked products, so you can build the groups in Oolio.</div>
 </div>
@@ -1032,7 +1075,7 @@ Double Shot=60</textarea></div>
 <p>Menu Hauler (“the tools”, “we”, “us”) is run by Oscar Hudson (ABN 60 219 896 086). This policy explains what personal information the tools collect, why, who it goes to, and how you can see, correct or complain about it. We follow the Australian Privacy Principles (APPs) in the <i>Privacy Act 1988</i> (Cth). It covers the website at https://menuhauler.com and the shared copy of the tools on claude.ai.</p>
 
 <h2>Who the tools are for</h2>
-<p>The tools are for staff who set up venues on Oolio One: they convert menus, find product photos, look up venue details and track setup progress. They are not for the public and not for anyone under 18.</p>
+<p>The tools are for staff who set up venues on Oolio One: they convert menus, find product photos, look up venue details and track setup progress. They are not for the public and not for anyone under 18. The one exception is the venue setup form: our staff can send a venue owner a private link to it, so the venue can give us what their setup needs. This policy covers the people who fill it in, and the staff they list on it.</p>
 
 <h2>What we collect</h2>
 <ul>
@@ -1041,6 +1084,8 @@ Double Shot=60</textarea></div>
 <li><b>Records you save.</b> Venue and organisation names, addresses, phone numbers, websites, ABNs and legal names, menus and menu versions, setup-tracker progress and notes. Each record also stores the email of the person who last changed it and when.</li>
 <li><b>Files and text you add.</b> Menu files, photos, PDFs, pasted text and web addresses. These are read in your own browser. They are only kept if you save the result to a venue.</li>
 <li><b>Lookups.</b> The venue names, suburbs and web addresses you search for, and the results: public business details, opening hours, and Google reviews, which can include the reviewer’s display name.</li>
+<li><b>Staff lists.</b> The names, roles and work email or mobile of a venue’s staff, so we can create their Oolio logins. We get these from the venue (or its setup form), not from the staff themselves.</li>
+<li><b>Venue setup forms.</b> When a venue fills in the form at a link we sent: its business details, opening hours, the main contact’s name, role, mobile and email, the staff list above, notes, and the files it uploads (menus, logos, floor plans, staff lists). While the form is open, the venue’s answers are also saved as a draft in that person’s own browser.</li>
 <li><b>Technical information.</b> Cloudflare, which hosts the website, records each visit’s IP address, browser and time for security. We don’t use analytics, advertising or tracking tools.</li>
 </ul>
 <p>We don’t ask for sensitive information (such as health information) and ask you not to enter it. Contact details of venue staff should be business details only.</p>
@@ -1050,6 +1095,7 @@ Double Shot=60</textarea></div>
 <li>To let approved staff sign in, and to keep everyone else out.</li>
 <li>To share venue records with the team, and to show who changed what.</li>
 <li>To find and convert menus, product photos and venue details.</li>
+<li>To set up a venue’s Oolio system from what it sends us, and to create logins for its staff.</li>
 <li>To keep the tools secure, fix faults and stay within the monthly limits of the services we pay for.</li>
 </ul>
 <p>We don’t send marketing emails or texts, and we don’t sell, rent or trade personal information. If we ever sent marketing, it would be opt-in only, identify us, and have a one-click unsubscribe that we honour within 5 business days, as the <i>Spam Act 2003</i> requires.</p>
@@ -1088,6 +1134,8 @@ Double Shot=60</textarea></div>
 <tr><td>Sign-in codes</td><td>10 minutes, or until used</td></tr>
 <tr><td>Sign-in sessions</td><td>30 days, or until you sign out</td></tr>
 <tr><td>Sign-in and tool-use activity</td><td>180 days</td></tr>
+<tr><td>Venue setup form answers and files</td><td>Until the venue is deleted from the tools, or our staff delete or replace the form. The link itself stops working after 30 days, or sooner if our staff turn it off.</td></tr>
+<tr><td>Staff lists</td><td>Until the venue is deleted from the tools</td></tr>
 <tr><td>Your access settings and when you were last seen</td><td>Until an admin removes you, or you ask us to</td></tr>
 <tr><td>Visit logs</td><td>Cloudflare’s standard retention (a few days)</td></tr>
 <tr><td>Saved lookups and page reads in your browser</td><td>7 to 14 days, then refreshed or dropped; you can clear them at any time by clearing this site’s data</td></tr>
@@ -1178,6 +1226,7 @@ Double Shot=60</textarea></div>
 <thead><tr><th scope="col">Name</th><th scope="col">Type</th><th scope="col">Purpose</th><th scope="col">How long</th></tr></thead>
 <tbody>
 <tr><td>mh_session</td><td>Cookie</td><td>Keeps you signed in to the website. Strictly necessary.</td><td>30 days, or until you sign out</td></tr>
+<tr><td>Setup form draft</td><td>Browser storage</td><td>Keeps a venue’s unsent answers on the venue setup form, on their own device</td><td>Until the form is sent, or the browser’s data is cleared</td></tr>
 <tr><td>Saved lookups and page reads</td><td>Browser storage</td><td>Avoids paying for the same lookup twice</td><td>7 to 14 days</td></tr>
 <tr><td>Your settings (theme, text size, motion, start page, last tool used, venue picked, spirit brands, photo keys)</td><td>Browser storage</td><td>Remembers your choices on this device</td><td>Until you clear them</td></tr>
 </tbody></table></div>
@@ -2777,7 +2826,8 @@ function convert(){
     if(type!=='Variant'){r['Barcode']=code(o.barcode,o);r['GTIN']=code(o.gtin,o);r['SKU']=o.sku||'';r['PLU']=o.plu||''}
     r['Sell Price*']=x.price!=null?x.price:(o.price===''?'0':o.price);r['Sell Tax*']=taxOf(o.tax);
     r['Variable Pricing?']=yn(o.varp||'');r['Min Pricing']=o.minp||'';r['Max Pricing']=o.maxp||'';r['Image URL']=o.image||'';
-    return OUT.map(h=>r[h])};
+    // stray line breaks, tabs and double spaces break CSV rows and POS buttons
+    return OUT.map(h=>typeof r[h]==='string'?r[h].replace(/[\r\n\t]+/g,' ').replace(/ {2,}/g,' ').trim():r[h])};
   // products that carry a modifier group
   const genMods=[],mgs=new Map();
   items.forEach(it=>{if(it.modOf==null)return;if(!mgs.has(it.modOf))mgs.set(it.modOf,[]);mgs.get(it.modOf).push(it)});
@@ -2831,12 +2881,99 @@ function run(){
   if(!tables.length){$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm'].forEach(i=>$(i).disabled=true);$('dlm').style.display='none';return}
   readSettings();res=convert();
   // new menu: tick the presets that match it, except ones off by default or already in the files
-  if(preInit){preInit=false;pre.forEach((p,i)=>{p.dup=preDup(p);p.on=!p.off&&!p.dup&&res.pre[i].m.length>0});res=convert();buildPre()}else showPre();
+  // and the ones the venue's type uses (Setup Tracker → Venue type), even if they're normally off
+  if(preInit){preInit=false;const T=tplPresets();pre.forEach((p,i)=>{p.dup=preDup(p);p.on=!p.dup&&res.pre[i].m.length>0&&(!p.off||T.includes(p.name))});res=convert();buildPre()}else showPre();
   $('stats').textContent=res.nP+' products, '+res.nV+' with size variants, '+res.nG+' with modifier groups, '+(res.nS?res.nS+' standard option group'+(res.nS===1?'':'s')+', ':'')+res.nM+' modifiers → '+res.rows.length+' rows.'+(res.checks.filter(c=>!c.info).length?' See the checks above.':'');
   $('checks').innerHTML=res.checks.length?res.checks.map(c=>'<div class="chk'+(c.info?' i':'')+'">'+(c.list.length?'<details><summary><b>'+c.list.length+'</b> '+esc(c.msg)+'</summary><ul>'+c.list.slice(0,300).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>':esc(c.msg))+'</div>').join(''):'<div class="warn" style="margin:0">No problems found.</div>';
   $('q').style.display='block';renderPrev();
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
-  const hasM=mods.length||res.genMods.length||res.preMods.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;}
+  const hasM=mods.length||res.genMods.length||res.preMods.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
+  drawPreflight();drawChanges();}
+
+function tplPresets(){const OV=window.OolioVenues,a=OV&&OV.active?OV.active():null,T=window.OOLIO_TEMPLATES;return a&&a.vtype&&T&&T[a.vtype]?T[a.vtype].presets:[]}
+
+/* ---------------- pre-flight: the import rows checked against what the Oolio setup wizard needs ----------------
+   Problems stop an upload (missing required values, prices that aren't numbers, half-filled measure columns, rows the
+   wizard can't tell apart, sizes with no parent). Things to check won't stop it but are worth a look. */
+let PF=null;
+function preflight(rows){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'),t:ix('Product Type*'),pg:ix('Product Group*'),rg:ix('Reporting Group*'),c:ix('Category*'),
+    vg:ix('Variant Group'),vn:ix('Variant Name'),mb:ix('Measured By*'),dv:ix('Default Value'),u:ix('Unit'),pos:ix('POS Name'),pp:ix('Printer Profiles'),p:ix('Sell Price*'),tx:ix('Sell Tax*')};
+  const block=[],warn=[],add=(L,msg,list,how)=>{if(list.length)L.push({msg,list:[...new Set(list)],how})};
+  const miss={},badP=[],meas=[],dup=new Map(),parents=new Set(),orphan=[],emptyVar=new Map(),prn=[],long=[],odd=[],cats=new Map();
+  const V=(window.OOLIO_PRINTERS||[]).map(x=>String(x).toLowerCase());
+  rows.forEach((r,i)=>{if(r[I.t]==='Variant'){parents.add(String(r[I.n]).toLowerCase());emptyVar.set(String(r[I.n]).toLowerCase(),r[I.n])}});
+  rows.forEach((r,i)=>{const t=r[I.t],nm=String(r[I.n]||'').trim()||'(row '+(i+2)+')',lbl=nm+(r[I.vn]?' ('+r[I.vn]+')':'');
+    const need=[['Product Name*',I.n],['Product Type*',I.t],['Reporting Group*',I.rg],['Product Group*',I.pg],['Sell Price*',I.p],['Sell Tax*',I.tx]];
+    if(t!=='Modifier')need.push(['Category*',I.c]);
+    need.forEach(([h,k])=>{if(String(r[k]==null?'':r[k]).trim()==='')(miss[h]=miss[h]||[]).push(lbl)});
+    const p=String(r[I.p]==null?'':r[I.p]).trim();if(p!==''&&!/^\d+(\.\d{1,2})?$/.test(p))badP.push(lbl+': '+p);
+    const m=[r[I.mb],r[I.dv],r[I.u]].map(x=>String(x==null?'':x).trim());if(m.some(Boolean)&&!m.every(Boolean))meas.push(lbl);
+    if(t==='Product'&&r[I.vn]){const k=nm.toLowerCase();if(!parents.has(k))orphan.push(lbl);emptyVar.delete(k)}
+    if(t!=='Modifier'){const k=[t,nm,r[I.c],r[I.vn]].join('|').toLowerCase();dup.set(k,(dup.get(k)||0)+1);if(t==='Product'&&!r[I.vn]||t==='Variant')cats.set(r[I.c],(cats.get(r[I.c])||0)+1)}
+    if(V.length&&t!=='Modifier'&&r[I.pp]&&!String(r[I.pp]).split(/\s*,\s*/).every(x=>V.includes(x.toLowerCase())))prn.push(r[I.pp]);
+    if(t!=='Modifier'&&!r[I.pos]&&nm.length>30)long.push(nm);
+    if(/[^\u0000-ɏ‐-‧€]/.test(nm))odd.push(nm)});
+  Object.entries(miss).forEach(([h,L])=>add(block,'rows have no '+h.replace('*',''),L,'Every row needs it. Fix the source or the settings above.'));
+  add(block,'prices aren’t plain amounts',badP,'Use numbers only, such as 12.50: no $ sign, words or more than two decimals.');
+  add(block,'rows have only some of Measured By, Default Value and Unit',meas,'Fill all three for poured drinks, or leave all three blank for items sold by the unit.');
+  add(block,'rows appear more than once with the same name, category and size',[...dup].filter(([,n])=>n>1).map(([k])=>k.split('|').slice(1).filter(Boolean).join(' · ')),'The wizard can’t tell them apart. Rename one or merge them.');
+  add(block,'sizes have no parent row',orphan,'Each size needs a matching Variant row with the same product name.');
+  add(block,'size groups have a parent row but no sizes',[...emptyVar.values()],'Remove the parent row or add its sizes.');
+  if(!rows.some(r=>r[I.t]==='Product'))block.push({msg:'There are no products to import.',list:[]});
+  add(warn,'printer profiles aren’t printers listed for this venue in the Setup Tracker',prn,'Create these printer profiles in Oolio, or change the printer in step 3.');
+  add(warn,'long product names with no short POS name',long,'They can be cut off on POS buttons and dockets. A POS Name column in the source file sets a shorter one.');
+  add(warn,'names have emoji or unusual characters',odd,'Kitchen and bar printers often can’t print them.');
+  const tiny=[...cats].filter(([c,n])=>c&&n===1).map(([c])=>c);
+  if(tiny.length>=4)add(warn,'categories have only one product',tiny,'Oolio works best with a few broad categories (Hot Coffee, Pizza). Merge small ones in step 3.');
+  return{block,warn,rows:rows.length}}
+function drawPreflight(){const el=$('pf');if(!el)return;if(!res||!res.rows.length){el.innerHTML='';PF=null;return}
+  PF=preflight(res.rows);const nb=PF.block.reduce((s,x)=>s+Math.max(1,x.list.length),0),nw=PF.warn.reduce((s,x)=>s+x.list.length,0);
+  const cls=nb?'bad':nw?'warn':'ok',icon=nb?'!':nw?'?':'✓';
+  const list=(L,open)=>L.map(x=>x.list.length?'<details'+(open?' open':'')+'><summary><b>'+x.list.length+'</b> '+esc(x.msg)+'</summary><p class="pf-how">'+esc(x.how||'')+'</p><ul>'+x.list.slice(0,200).map(y=>'<li>'+esc(y)+'</li>').join('')+'</ul></details>':'<p style="margin:8px 0 0">'+esc(x.msg)+'</p>').join('');
+  el.innerHTML='<div class="pf '+cls+'" role="status"><div class="pf-h"><span class="pf-dot" aria-hidden="true">'+icon+'</span><span>'+
+    (nb?'Fix '+nb+' problem'+(nb>1?'s':'')+' before importing':nw?'Ready to import, with '+nw+' thing'+(nw>1?'s':'')+' to check':'Ready to import')+
+    '<small>Pre-flight check of all '+PF.rows+' rows against what the Oolio setup wizard needs.</small></span></div>'+list(PF.block,true)+list(PF.warn,false)+'</div>'}
+// downloading with problems asks first
+function pfGo(){if(!PF||!PF.block.length)return true;return confirm('The pre-flight check found '+PF.block.length+' kind'+(PF.block.length>1?'s':'')+' of problem that will probably stop the Oolio import. Download anyway?')}
+
+/* ---------------- menu changes: this menu compared with the one last saved to the venue ----------------
+   New items come as their own import file; price changes, renames and removals as a list to make in Back Office. */
+let CHG={v:'',prev:null},CHGD=null;
+function curItems(){const ix=h=>OUT.indexOf(h),iN=ix('Product Name*'),iT=ix('Product Type*'),iC=ix('Category*'),iV=ix('Variant Name'),iS=ix('Sell Price*');
+  return res.rows.filter(r=>r[iT]==='Product').map(r=>[r[iN],r[iC],r[iV]||'',r[iS]===''?'':+r[iS]])}
+async function drawChanges(){const el=$('mchg');if(!el)return;const OV=window.OolioVenues,a=OV&&OV.active?OV.active():null;CHGD=null;
+  if(!a||!(a.menuLog||[]).length||!res||!res.rows.length||!OV.menuVersions||!OV.menuDiff){el.innerHTML='';return}
+  const last=a.menuLog[a.menuLog.length-1];
+  if(CHG.v!==last.v||CHG.id!==a.id){try{const vs=await OV.menuVersions(a.id);CHG={id:a.id,v:last.v,prev:vs.find(v=>v.id===last.v)||vs[0]||null}}catch(e){CHG={id:a.id,v:last.v,prev:null}}}
+  const prev=CHG.prev;if(!prev||!Array.isArray(prev.items)){el.innerHTML='';return}
+  const d=OV.menuDiff(prev.items,curItems());CHGD={d,prev,venue:a.name};
+  const day=new Date(prev.at).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'});
+  if(d.none){el.innerHTML='<div class="pf ok"><div class="pf-h"><span class="pf-dot" aria-hidden="true">=</span><span>Same as the menu saved for '+esc(a.name)+'<small>Version '+a.menuLog.length+', '+esc(day)+'. Nothing has changed.</small></span></div></div>';return}
+  const sec=(n,t,L)=>L.length?'<details><summary><b>'+L.length+'</b> '+t+'</summary><ul>'+L.slice(0,200).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>':'';
+  const sz=s=>s?' ('+s+')':'',$$=v=>'$'+(+v).toFixed(2);
+  el.innerHTML='<div class="pf warn"><div class="pf-h"><span class="pf-dot" aria-hidden="true">Δ</span><span>Changed since the menu saved for '+esc(a.name)+
+    '<small>Compared with version '+a.menuLog.length+', '+esc(day)+'. Import only what’s new, and make the other changes in Back Office.</small></span></div>'+
+    '<div class="pf-n"><span>'+d.added.length+' new</span><span>'+d.price.length+' price change'+(d.price.length===1?'':'s')+(d.price.length?' (avg '+(d.avgPct>0?'+':'')+d.avgPct+'%)':'')+'</span><span>'+d.renamed.length+' renamed</span><span>'+d.removed.length+' removed</span></div>'+
+    sec(0,'new items',d.added.map(r=>r[0]+sz(r[2])+' · '+r[1]+(r[3]!==''?' · '+$$(r[3]):'')))+
+    sec(0,'price changes',d.price.map(x=>x[0]+sz(x[1])+': '+$$(x[2])+' → '+$$(x[3])))+
+    sec(0,'renamed',d.renamed.map(x=>x[0]+' → '+x[1]+sz(x[2])))+
+    sec(0,'removed',d.removed.map(r=>r[0]+sz(r[2])+' · '+r[1]))+
+    '<div class="pf-btns">'+(d.added.length?'<button type="button" id="chgnew">New items only (CSV)</button>':'')+'<button type="button" class="sec" id="chglist">List of changes (CSV)</button></div></div>'}
+document.addEventListener('click',e=>{const b=e.target.closest('#chgnew,#chglist');if(!b||!CHGD)return;const d=CHGD.d;
+  if(b.id==='chgnew'){if(!pfGo())return;const ix=h=>OUT.indexOf(h),iN=ix('Product Name*'),iT=ix('Product Type*'),iV=ix('Variant Name');
+    const key=(n,s)=>String(n).toLowerCase().trim()+'|'+String(s||'').toLowerCase().trim(),want=new Set(d.added.map(r=>key(r[0],r[2]))),had=new Set(CHGD.prev.items.map(r=>String(r[0]).toLowerCase().trim()));
+    const rows=res.rows.filter(r=>(r[iT]==='Product'&&want.has(key(r[iN],r[iV])))||(r[iT]==='Variant'&&!had.has(String(r[iN]).toLowerCase().trim())&&d.added.some(a=>String(a[0]).toLowerCase().trim()===String(r[iN]).toLowerCase().trim())));
+    save(new Blob(['﻿'+csv([OUT].concat(rows))],{type:'text/csv;charset=utf-8'}),outName('csv','New items'));return}
+  const L=[['Change','Product','Size','Category','Old price','New price','What to do in Back Office']];
+  d.added.forEach(r=>L.push(['New',r[0],r[2],r[1],'',r[3],'Import with the “New items only” file']));
+  d.price.forEach(x=>L.push(['Price',x[0],x[1],'',x[2],x[3],'Change the price (Bulk edit products)']));
+  d.renamed.forEach(x=>L.push(['Renamed',x[1],x[2],'','','','Rename “'+x[0]+'” to “'+x[1]+'”']));
+  d.removed.forEach(r=>L.push(['Removed',r[0],r[2],r[1],r[3],'','Stop selling it, or delete it']));
+  save(new Blob(['﻿'+csv(L)],{type:'text/csv;charset=utf-8'}),outName('csv','Menu changes'))});
+// a different venue picked at the top: compare against that venue's menu instead
+// (the venue list is set up by a later script, so this waits until every script has run)
+document.addEventListener('DOMContentLoaded',()=>{const OV=window.OolioVenues;if(!OV||!OV.on)return;let lastV='';
+  OV.on(()=>{const v=OV.activeId;if(v!==lastV){lastV=v;CHG={v:'',prev:null};if(res)drawChanges()}})});
 function renderPrev(){
   const q=$('q').value.toLowerCase(),rs=q?res.rows.filter(r=>r.some(x=>String(x).toLowerCase().includes(q))):res.rows;
   const p=$('prev');p.style.display='block';
@@ -2863,8 +3000,8 @@ function announce(file){if(!res)return;const ix=h=>OUT.indexOf(h),iN=ix('Product
     items:res.rows.filter(r=>r[iT]==='Product').map(r=>[r[iN],r[iC],r[iV]||'',r[iS]===''?'':+r[iS]]).slice(0,1500),
     sources:tables.filter(t=>t.on&&t.a&&t.a.kind!=='modifiers').map(t=>t.srcLabel||t.file),
     urls:FA.okUrls&&FA.okUrls.length&&tables.some(t=>t.on&&t.srcLabel)?FA.okUrls.slice():[]}}));}
-$('dlc').addEventListener('click',()=>{const n=outName('csv','Oolio One import');save(new Blob(['﻿'+csv([OUT].concat(res.rows))],{type:'text/csv;charset=utf-8'}),n);announce(n)});
-$('dlx').addEventListener('click',()=>{const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([OUT].concat(res.rows)),'in');
+$('dlc').addEventListener('click',()=>{if(!pfGo())return;const n=outName('csv','Oolio One import');save(new Blob(['﻿'+csv([OUT].concat(res.rows))],{type:'text/csv;charset=utf-8'}),n);announce(n)});
+$('dlx').addEventListener('click',()=>{if(!pfGo())return;const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([OUT].concat(res.rows)),'in');
   const n=outName('xlsx','Oolio One import');save(new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),n);announce(n)});
 $('dlm').addEventListener('click',()=>{const r=[['Modifier Group','Modifier','Price','Required?','Maximum','Linked Product(s)']];
   mods.forEach(o=>r.push([o.group,o.name,o.price||'0',o.g?o.g.required:'',o.g?o.g.max:'',o.g?o.g.linked:'']));
@@ -3401,7 +3538,7 @@ const SECTIONS=[
   {id:'menu-import',t:'Import products',info:['Use the Menu Converter tab to turn the customer’s menu into an Oolio One import. Downloading the import ticks this step.'],extra:o=>menuPanel(o)+historyPanel(o),guides:['create-standard-products','create-modifiers-and-option-groups','create-variant-groups','upload-and-manage-product-images']},
   {id:'menu-photos',t:'Add product photos',info:['Photo Finder takes the products straight from the Menu Converter. Saving the photos ticks this step.','Upload them in Back Office afterwards.'],extra:o=>photoPanel(o),guides:['upload-and-manage-product-images']},
   {id:'menu-pos',t:'Build the POS menu and tables',guides:['create-a-pos-menu','configure-sections-tables','create-courses','create-price-lists']},
-  {id:'menu-users',t:'Create users and roles',guides:['create-a-user','managing-user-roles']},
+  {id:'menu-users',t:'Create users and roles',info:['Get the staff list from the customer (or their intake form) and create a user for each person.'],extra:o=>staffPanel(o),check:o=>{const L=o.staff||[];if(!L.length)return null;const n=L.filter(x=>x.done).length;return n===L.length?{ok:1,m:'All '+L.length+' users created.'}:{m:(L.length-n)+' of '+L.length+' users still to create.'}},guides:['create-a-user','managing-user-roles']},
 ]},
 {id:'trn',phase:'trn',t:'Training session',d:'Treat training as validation. Open the hardware diagram with the customer and confirm all routing.',steps:[
   {id:'trn-diagram',t:'Walk through the hardware diagram',info:['Confirm every printer and device location and its routing with the customer.']},
@@ -3525,6 +3662,8 @@ async function createOrg(o){const id='o'+Date.now().toString(36)+Math.random().t
 // deleting a venue also deletes its saved menu versions; edits still waiting to be sent are dropped
 async function deleteOrg(id){if(READONLY)throw new Error('You can only view this tracker.');
   if(Q[id])Q[id].p=null;delete ORGS[id];if(ACTIVE===id){ACTIVE='';ls.set('ov-active','')}if(VIEW.org===id)VIEW.org=null;notify();render();
+  // on the website, the venue's intake answers and files go too
+  if(window.OOLIO_HOSTED)fetch('/api/intake/delete',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({venue:id})}).catch(()=>{});
   if(MODE==='db'){const mc=DB.collection(MCOL(id));
     for(let round=0;round<20;round++){const s=await mc.get();if(!s.docs.length)break;await Promise.all(s.docs.map(d=>mc.doc(d.id).delete()))}
     await DB.collection(COL).doc(id).delete()}
@@ -3604,6 +3743,7 @@ window.OolioVenues={
   website(id){return ORGS[id]?val(ORGS[id],'prep-gmb','website'):''},
   me(){return ME},
   addMenuVersion(id,snap){return addMenuVersion(id,snap)},
+  menuDiff(a,b){return menuDiff(a,b)},
   menuVersions(id){return menuVersions(id)},
   remove(id){return deleteOrg(id)},
   on(f){LISTEN.add(f);return()=>LISTEN.delete(f)}};
@@ -3790,7 +3930,7 @@ function render(){const root=g('st-view');if(!root)return;
   const a=document.activeElement;if(a&&root.contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.type!=='checkbox'){held=true;return}
   held=false;const y=window.scrollY;
   if(VIEW.org&&!ORGS[VIEW.org])VIEW.org=null;if(VIEW.grp&&!GROUPS[VIEW.grp])VIEW.grp=null;
-  root.innerHTML=VIEW.org?orgHtml(ORGS[VIEW.org],VIEW.org):VIEW.grp?groupHtml(GROUPS[VIEW.grp],VIEW.grp):VIEW.tab==='guides'?guidesHtml():listHtml();
+  root.innerHTML=VIEW.org?orgHtml(ORGS[VIEW.org],VIEW.org):VIEW.grp?groupHtml(GROUPS[VIEW.grp],VIEW.grp):VIEW.tab==='guides'?guidesHtml():VIEW.tab==='board'?boardHtml():listHtml();
   window.scrollTo(0,y);
   const ids=[];Object.values(ORGS).forEach(o=>{ids.push(o.updatedBy,o.createdBy);Object.values(o.steps||{}).forEach(s=>ids.push(s.by))});names(ids)}
 document.addEventListener('focusout',()=>{if(held)setTimeout(()=>{if(held)render()},0)});
@@ -3818,7 +3958,7 @@ function listHtml(){const q=VIEW.q.toLowerCase(),vm=(id,o)=>(!VIEW.stage||o.stag
   let h=head()+'<div class="st-row">'+(READONLY?'':'<button type="button" data-a="newgroup">New organisation</button>')+
     '<input class="st-grow" type="search" id="st-q" placeholder="Search organisations and venues" value="'+esc(VIEW.q)+'" aria-label="Search organisations and venues">'+
     '<select id="st-stagef" aria-label="Filter by stage" style="width:auto"><option value="">All stages</option>'+STAGES.map(([k,t])=>'<option value="'+k+'"'+(VIEW.stage===k?' selected':'')+'>'+t+'</option>').join('')+'</select>'+
-    '<button type="button" class="st-sec" data-a="guides">All guides</button></div>'+
+    '<button type="button" class="st-sec" data-a="board">Board</button><button type="button" class="st-sec" data-a="guides">All guides</button></div>'+
     '<div class="st-row st-small" style="margin-top:8px"><button type="button" class="st-link" data-a="backup">Download backup</button>'+(READONLY?'':'<label class="st-link" style="cursor:pointer;font-weight:600;color:var(--accent)">Restore from backup<input type="file" id="st-restore" accept=".json,application/json" style="display:none"></label>')+'<span id="st-bmsg" class="st-muted"></span></div>';
   if(!LOADED||!GLOADED)return h+'<p class="st-msg">Loading organisations…</p>';
   if(!Object.keys(GROUPS).length&&!Object.keys(ORGS).length)return h+'<div class="st-empty" style="margin-top:14px">No organisations yet. Start one with “New organisation”, then add its venues.</div>';
@@ -3914,10 +4054,12 @@ function stepHtml(o,step){const s=st(o,step.id),open=VIEW.open.has(step.id),cls=
   if(subs.length)badges+='<span class="st-chip">'+subDone+'/'+subs.length+'</span>';
   if((step.guides||[]).length)badges+='<span class="st-chip">'+step.guides.length+' guide'+(step.guides.length>1?'s':'')+'</span>';
   if(s.note)badges+='<span class="st-chip">Note</span>';
+  badges+=dueChip(o,step);if(s.who&&!s.s)badges+='<span class="st-chip">'+esc(s.who)+'</span>';
   let h='<details class="st-step'+cls+'" data-sid="'+step.id+'"'+(open?' open':'')+'><summary>'+
     '<button type="button" class="st-box" data-tick="'+step.id+'" aria-label="'+(s.s==='done'?'Mark not done':'Mark done')+': '+esc(step.t)+'"'+(READONLY?' disabled':'')+'>'+CHECK+'</button>'+
     '<span class="st-stitle">'+esc(step.t)+(s.s?'<small>'+(s.s==='na'?'Not needed':'Done')+(s.by?' by '+esc(who(s.by)):'')+(s.at?', '+esc(when(s.at)):'')+'</small>':'')+'</span>'+
     '<span class="st-badges">'+badges+'</span></summary><div class="st-body">';
+  if(!s.s)h+='<div class="st-who"><label class="st-f">Assigned to<input list="st-people" data-who="'+step.id+'" value="'+esc(s.who||'')+'" placeholder="Name"'+(READONLY?' disabled':'')+'></label><label class="st-f">Due<input type="date" data-due="'+step.id+'" value="'+esc(s.due||'')+'"'+(READONLY?' disabled':'')+'></label></div>';
   if(step.info)h+='<ul class="st-info">'+step.info.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>';
   if(step.why)h+='<div class="st-why"><b>Why:</b> '+esc(step.why)+'</div>';
   if(subs.length)h+='<div class="st-subs">'+subs.map(x=>'<label><input type="checkbox" data-sub="'+step.id+'" data-k="'+esc(x)+'"'+(sv[x]?' checked':'')+(READONLY?' disabled':'')+'> '+esc(x)+'</label>').join('')+'</div>';
@@ -3938,11 +4080,14 @@ function orgHtml(o,id){const p=progress(o),pp=progress(o,'pre'),tp=progress(o,'t
     '<select id="st-stage" aria-label="Stage" style="width:auto"'+dis+'>'+STAGES.map(([k,t])=>'<option value="'+k+'"'+(o.stage===k?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
     '<div class="st-row st-small"><span class="st-bar st-grow" style="max-width:300px"><i style="width:'+p.pct+'%"></i></span><span>'+p.done+' of '+p.total+' steps</span><span class="st-muted">Pre-config '+pp.done+'/'+pp.total+' · Training '+tp.done+'/'+tp.total+'</span></div>'+
     '<div class="st-kv"><label class="st-f">Training date<input type="date" id="st-training" value="'+esc(o.training||'')+'"'+dis+'></label>'+
-    '<label class="st-f">Venue contact (training)<input id="st-contact" value="'+esc(o.contact||'')+'" placeholder="Name, mobile"'+dis+'></label></div>'+
+    '<label class="st-f">Venue contact (training)<input id="st-contact" value="'+esc(o.contact||'')+'" placeholder="Name, mobile"'+dis+'></label>'+
+    '<label class="st-f">Go-live date<input type="date" id="st-golive" value="'+esc(o.golive||'')+'"'+dis+'></label>'+
+    '<label class="st-f">Owner (who’s setting it up)<span class="st-row" style="flex-wrap:nowrap;gap:6px"><input id="st-owner" list="st-people" value="'+esc(o.owner||'')+'" placeholder="Name"'+dis+'>'+(READONLY||!ME||isMine(o)?'':'<button type="button" class="st-sec st-sm" data-a="mine" style="white-space:nowrap">Me</button>')+'</span></label>'+
+    '<label class="st-f">Venue type<span class="st-row" style="flex-wrap:nowrap;gap:6px"><select id="st-vtype"'+dis+'><option value="">Choose…</option>'+VTYPES.map(([k,t])=>'<option value="'+k+'"'+(o.vtype===k?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select>'+(READONLY||!o.vtype?'':'<button type="button" class="st-sec st-sm" data-a="tpl" title="Fill printers, workflow and profiles for this type of venue" style="white-space:nowrap">Use template</button>')+'</span></label></div>'+peopleList()+
     '<div><div class="st-small st-muted" style="margin-bottom:6px">What was sold</div><div class="st-flags">'+FLAGS.map(([k,t])=>'<label class="st-flag"><input type="checkbox" data-flag="'+k+'"'+(fl[k]?' checked':'')+dis+'> '+esc(t)+'</label>').join('')+'</div></div>'+
-    '<div class="st-tools">'+(READONLY?'':'<button type="button" class="st-sec st-sm" data-a="fill">Fill from a lookup</button>')+'<button type="button" class="st-sm" data-a="recap">Recap</button>'+
+    '<div class="st-tools">'+(READONLY?'':'<button type="button" class="st-sec st-sm" data-a="fill">Fill from a lookup</button>')+'<button type="button" class="st-sm" data-a="recap">Recap</button><button type="button" class="st-sec st-sm" data-a="pack">Go-live pack</button>'+(READONLY?'':'<button type="button" class="st-sec st-sm" data-a="brand">'+(o.brand?'Refresh logo and colours':'Get logo and colours')+'</button>')+(window.OOLIO_HOSTED&&!READONLY?'<button type="button" class="st-sec st-sm" data-a="intake">Customer intake link</button>':'')+
     '<button type="button" class="st-sec st-sm" data-a="expand">Open next steps</button><button type="button" class="st-sec st-sm" data-a="collapse">Close all</button>'+
-    (READONLY?'':'<button type="button" class="st-sec st-sm" data-a="delete">Delete</button>')+'</div><div id="st-flash" class="st-msg" style="margin:0"></div>'+lookupPanel(o)+'</div>';
+    (READONLY?'':'<button type="button" class="st-sec st-sm" data-a="delete">Delete</button>')+'</div><div id="st-flash" class="st-msg" style="margin:0"></div>'+lookupPanel(o)+brandPanel(o)+(window.intakePanel?window.intakePanel(o,id):'')+'</div>';
   h+='<div class="st-layout"><nav class="st-nav" aria-label="Sections">';let ph='';
   SECTIONS.forEach(s=>{if(!applies(o,s))return;if(s.phase!==ph){ph=s.phase;h+='<div class="st-phase">'+(ph==='pre'?'Before training':'At training')+'</div>'}
     const L=s.steps.filter(x=>applies(o,x)&&st(o,x.id).s!=='na'),d=L.filter(x=>st(o,x.id).s==='done').length;
@@ -3954,9 +4099,234 @@ function orgHtml(o,id){const p=progress(o),pp=progress(o,'pre'),tp=progress(o,'t
   if(off.length)h+='<p class="st-small st-muted">Hidden because it wasn’t sold: '+esc(off.join(', '))+'.</p>';
   return h+'</div></div>'}
 
+/* ---------- templates by venue type ----------
+   Picking a venue type fills what's still empty: printers (paired as fallbacks), the printing workflow and device
+   profiles. The Menu Converter also ticks the type's standard option groups (window.OOLIO_TEMPLATES). */
+const VTYPES=[['cafe','Café or bakery'],['bar','Bar, pub or club'],['restaurant','Restaurant'],['pizza','Pizza or takeaway'],['qsr','Quick service or food court'],['hotel','Hotel or venue with several bars']];
+const TEMPLATES={
+  cafe:{printers:[['Kitchen 1','Kitchen'],['Coffee','Coffee machine']],wf:{food:'Kitchen 1',drinks:'Coffee'},profiles:'POS default, Online',presets:['Milk','Coffee Extras','Sweetener','Egg Style','Dietary Requirements']},
+  bar:{printers:[['Bar 1','Bar'],['Bar 2','Bar'],['Kitchen 1','Kitchen'],['Kitchen 2','Kitchen']],wf:{cocktails:'Bar 2 (separate docket)',drinks:'Bar 1',food:'Kitchen 1'},profiles:'Bar POS, Roaming POS, MPOS',presets:['Spirit Mixer','Spirit Extras','Beer Extras','Ice','Steak Cook','Steak Sauce','Side Choice']},
+  restaurant:{printers:[['Kitchen 1','Kitchen'],['Kitchen 2','Kitchen'],['Bar 1','Bar']],wf:{food:'Kitchen 1',drinks:'Bar 1',cocktails:'Bar 1 (separate docket)'},profiles:'POS default, Roaming POS, MPOS',presets:['Steak Cook','Steak Sauce','Side Choice','Dietary Requirements','Removals']},
+  pizza:{printers:[['Pizza','Pizza bench'],['Kitchen 1','Kitchen']],wf:{food:'Pizza, Kitchen 1',drinks:'Receipt only'},profiles:'POS default, Online',presets:['Dietary Swaps','Dietary Requirements','Removals']},
+  qsr:{printers:[['Kitchen 1','Kitchen'],['Kitchen 2','Kitchen']],wf:{food:'Kitchen 1',drinks:'Kitchen 1'},profiles:'POS default, Kiosk, Online',presets:['Burger Extras','Removals','Dietary Requirements','Ice']},
+  hotel:{printers:[['Bar 1','Main bar'],['Bar 2','Main bar'],['Kitchen 1','Kitchen'],['Kitchen 2','Kitchen']],wf:{cocktails:'Bar 2 (separate docket)',drinks:'Bar 1',food:'Kitchen 1'},profiles:'Main Bar POS, Bistro POS, Roaming POS, MPOS',presets:['Spirit Mixer','Spirit Extras','Beer Extras','Ice','Steak Cook','Steak Sauce','Side Choice','Dietary Requirements']}};
+window.OOLIO_TEMPLATES=TEMPLATES;
+function applyTemplate(id){const o=ORGS[id],T=o&&TEMPLATES[o.vtype];if(!T||READONLY)return;const done=[],patch={};
+  if(!(o.printers||[]).length){const imp=!!(o.flags||{}).impact;
+    const rows=T.printers.map(([n,loc])=>({name:n,kind:imp&&/kitchen|pizza/i.test(n)?'Impact':'Thermal',ip:'1.1.1.1',fb:'',loc}));
+    rows.forEach(r=>{const m=r.name.match(/^(.*?)(\d)$/);if(m){const o2=rows.find(x=>x.name===m[1]+(m[2]==='1'?'2':'1'));if(o2)r.fb=o2.name}});
+    patch.printers=rows;done.push(rows.length+' printers')}
+  const wf={};Object.entries(T.wf).forEach(([k,x])=>{if(!val(o,'prn-workflow',k))wf[k]=x});
+  if(Object.keys(wf).length){patch.steps={'prn-workflow':{v:wf}};done.push('the printing workflow')}
+  if(!val(o,'prof-split','list')){patch.steps=Object.assign(patch.steps||{},{'prof-split':{v:{list:T.profiles}}});done.push('device profiles')}
+  if(done.length){save(id,patch);render()}
+  flash(done.length?'Filled in '+done.join(', ')+' for a '+(VTYPES.find(x=>x[0]===o.vtype)||['',''])[1].toLowerCase()+'. Check them against the hardware diagram.':'Nothing to fill: printers, workflow and profiles are already set.')}
+
+/* ---------- people and dates: the venue's owner, go-live date, and who does each step by when ---------- */
+const today=()=>new Date().toISOString().slice(0,10);
+const myName=()=>NAMES[ME]||((ME||'').replace(/^u:/,'').split('@')[0].split(/[._-]+/).filter(Boolean).map(w=>w[0].toUpperCase()+w.slice(1)).join(' '))||'Me';
+const isMine=o=>!!ME&&(o.ownerId===ME||(!!o.owner&&clean(o.owner).toLowerCase()===myName().toLowerCase()));
+function peopleList(){const s=new Set();if(ME)s.add(myName());Object.values(ORGS).forEach(o=>{if(o.owner)s.add(clean(o.owner));Object.values(o.steps||{}).forEach(x=>{if(x.who)s.add(clean(x.who))})});
+  return '<datalist id="st-people">'+[...s].filter(Boolean).sort().map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'}
+const overdue=(o,x)=>{const s=st(o,x.id);return!!s.due&&!s.s&&s.due<today()};
+function dueChip(o,x){const s=st(o,x.id);if(!s.due||s.s)return'';return '<span class="st-chip '+(s.due<today()?'w':'')+'">'+(s.due<today()?'Overdue ':'Due ')+esc(fmtDate(s.due))+'</span>'}
+const daysTo=d=>Math.round((new Date(d+'T00:00')-new Date(today()+'T00:00'))/864e5);
+
+/* ---------- the board: every venue as a card in the column for where it's up to ---------- */
+const COLS=[['lookup','Look up'],['menu','Menu'],['config','Configure'],['training','Training'],['follow','Follow-ups'],['live','Live']];
+// dragging a card to one of these columns sets the venue's stage
+const COLSTAGE={config:'pre',training:'ready',follow:'follow',live:'done'};
+function colOf(o){if(o.stage==='done')return'live';if(o.stage==='trained'||o.stage==='follow')return'follow';if(o.stage==='ready')return'training';if(!o.lookup)return'lookup';if(!o.menu)return'menu';return'config'}
+function boardCard(id,o){const p=progress(o),G=groupOf(o),late=stepsFor(o).filter(x=>overdue(o,x)).length,w=warnings(o).length,gl=o.golive,dt=gl?daysTo(gl):null;
+  const glc=gl&&o.stage!=='done'?(dt<0?' late':dt<=7?' soon':''):'';
+  return '<button type="button" class="st-card st-bcard" draggable="'+(READONLY?'false':'true')+'" data-org="'+id+'" data-drag="'+id+'"><b>'+esc(o.name||'Untitled')+'</b>'+
+    (G&&G.name!==o.name?'<span class="st-small st-muted">'+esc(G.name)+'</span>':'')+
+    '<span class="st-bar"><i style="width:'+p.pct+'%"></i></span><span class="st-bmeta">'+
+    (gl?'<span class="st-chip'+glc+'">'+(o.stage==='done'?'Live ':'Go-live ')+esc(fmtDate(gl))+(o.stage!=='done'&&dt!=null?(dt<0?' · '+(-dt)+'d late':dt===0?' · today':' · '+dt+'d'):'')+'</span>':'')+
+    (late?'<span class="st-chip w">'+late+' overdue</span>':'')+(w?'<span class="st-chip w">'+w+' to fix</span>':'')+'<span class="st-chip">'+p.done+'/'+p.total+'</span></span>'+
+    (o.owner?'<span class="st-owner" title="Owner: '+esc(o.owner)+'"><span class="st-av">'+esc(clean(o.owner).split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase())+'</span>'+esc(o.owner)+'</span>':'<span class="st-small st-muted">No owner yet</span>')+'</button>'}
+function boardHtml(){const q=VIEW.q.toLowerCase();
+  const L=Object.entries(ORGS).filter(([,o])=>(!VIEW.mine||isMine(o))&&(!q||(o.name||'').toLowerCase().includes(q)||((groupOf(o)||{}).name||'').toLowerCase().includes(q)||(o.owner||'').toLowerCase().includes(q)))
+    .sort((a,b)=>(a[1].golive||'9999').localeCompare(b[1].golive||'9999')||(b[1].updatedAt||0)-(a[1].updatedAt||0));
+  let h=head()+'<div class="st-row"><button type="button" class="st-sec" data-a="list">List</button><button type="button" aria-pressed="true">Board</button>'+
+    '<input class="st-grow" type="search" id="st-q" placeholder="Search venues, organisations and owners" value="'+esc(VIEW.q)+'" aria-label="Search venues">'+
+    '<label class="st-flag"><input type="checkbox" id="st-mine"'+(VIEW.mine?' checked':'')+'> Only my venues</label></div>';
+  if(!LOADED)return h+'<p class="st-msg">Loading venues…</p>';
+  h+='<p class="st-small st-muted" style="margin:8px 0 0">Venues move along as their lookup and menu are done. Drag a card to Configure, Training, Follow-ups or Live to change its stage. Sorted by go-live date.</p><div class="st-board">';
+  COLS.forEach(([k,t])=>{const C=L.filter(([,o])=>colOf(o)===k);
+    h+='<section class="st-col'+(COLSTAGE[k]?' drop':'')+'" data-col="'+k+'"><header><b>'+esc(t)+'</b><span class="st-chip">'+C.length+'</span></header><div class="st-cards">'+
+      (C.length?C.map(([id,o])=>boardCard(id,o)).join(''):'<p class="st-small st-muted st-none">None</p>')+'</div></section>'});
+  return h+'</div>'}
+// (listening on the document, because the tracker's root element is set up further down)
+let DRAG=null;
+document.addEventListener('dragstart',e=>{const c=e.target.closest&&e.target.closest('[data-drag]');if(!c||READONLY)return;DRAG=c.dataset.drag;e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain',DRAG)}catch(x){}c.classList.add('dragging')});
+document.addEventListener('dragend',e=>{DRAG=null;root.querySelectorAll('.dragging,.over').forEach(x=>x.classList.remove('dragging','over'))});
+document.addEventListener('dragover',e=>{const col=e.target.closest&&e.target.closest('.st-col.drop');if(!col||!DRAG)return;e.preventDefault();root.querySelectorAll('.st-col.over').forEach(x=>{if(x!==col)x.classList.remove('over')});col.classList.add('over')});
+document.addEventListener('drop',e=>{const col=e.target.closest&&e.target.closest('.st-col.drop');if(!col||!DRAG)return;e.preventDefault();const s=COLSTAGE[col.dataset.col],id=DRAG;DRAG=null;
+  if(s&&ORGS[id]&&ORGS[id].stage!==s){save(id,{stage:s});flash('')}render()});
+
+/* ---------- staff list: who needs an Oolio user (Oolio creates users one by one, so this is the list to work through) ---------- */
+const ROLEW=['owner','director','general manager','venue manager','manager','assistant manager','supervisor','head chef','sous chef','chef','cook','kitchen hand','barista','bartender','bar staff','bar','waiter','waitress','wait staff','server','floor staff','front of house','foh','back of house','boh','host','runner','cashier','casual','staff','admin','bookkeeper','accounts'];
+function parseStaffRows(rows){if(!rows.length)return[];const H=rows[0].map(x=>clean(x).toLowerCase());
+  const col=re=>H.findIndex(h=>re.test(h)),fi=col(/^first|given/),la=col(/^last|surname|family/),ni=col(/name|staff|employee|person/),ri=col(/role|position|title|job/),ei=col(/e-?mail/),pi=col(/phone|mobile|cell|contact/);
+  if(fi<0&&ni<0&&ri<0&&ei<0)return parseStaffText(rows.map(r=>r.join('\t')).join('\n'));
+  return rows.slice(1).map(r=>({name:clean(fi>=0?[r[fi],la>=0?r[la]:''].join(' '):r[ni]),role:clean(ri>=0?r[ri]:''),contact:clean([ei>=0?r[ei]:'',pi>=0?r[pi]:''].filter(x=>clean(x)).join(', ')),done:false})).filter(x=>x.name)}
+function parseStaffText(t){return String(t||'').split(/\r?\n/).map(l=>{l=l.replace(/^[\s•\-*\d.)]+/,'').trim();if(!l||/^(name|staff|employee)s?\b.*\b(role|position)/i.test(l))return null;
+    const em=(l.match(/[^\s,;|<>]+@[^\s,;|<>]+\.[a-z]{2,}/i)||[])[0]||'',ph=(l.match(/(\+?\d[\d\s()-]{7,}\d)/)||[])[0]||'';
+    let rest=l.replace(em,' ').replace(ph,' ');const parts=rest.split(/\t|\s[-–|]\s|:\s|,|;|\|/).map(clean).filter(Boolean);
+    let role='';const ri=parts.findIndex(p=>ROLEW.some(w=>new RegExp('\\b'+w+'\\b','i').test(p))&&p.split(' ').length<=4);
+    if(ri>0||(ri===0&&parts.length>1)){role=parts.splice(ri,1)[0]}
+    let name=clean(parts.join(' '));
+    // a role written before or after the name with no separator ("Bar staff Mike Brown")
+    if(!role){const ws=ROLEW.slice().sort((a,b)=>b.length-a.length);for(const w of ws){const m=name.match(new RegExp('^('+w+')\\s+(.+)$|^(.+?)\\s+('+w+')$','i'));if(m&&(m[2]||m[3]).split(' ').length>=2){role=m[1]||m[4];name=clean(m[2]||m[3]);break}}}return name&&name.length<60?{name,role,contact:[em,clean(ph)].filter(Boolean).join(', '),done:false}:null}).filter(Boolean)}
+function staffPanel(o){const L=o.staff||[],dis=READONLY?' disabled':'',n=L.filter(x=>x.done).length;
+  let h='<div class="st-staff"><div class="st-row" style="justify-content:space-between"><b>Staff list</b><span class="st-small st-muted">'+(L.length?n+' of '+L.length+' users created':'From the customer: add, paste or upload it')+'</span></div>';
+  if(L.length)h+='<div class="st-twrap"><table class="st-tbl"><thead><tr><th scope="col">Created</th><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Email or mobile</th><th scope="col"><span class="st-sr">Remove</span></th></tr></thead><tbody>'+
+    L.map((x,i)=>'<tr><td><input type="checkbox" data-staff="'+i+'" data-k="done"'+(x.done?' checked':'')+dis+' aria-label="User created for '+esc(x.name)+'"></td>'+
+      '<td><input data-staff="'+i+'" data-k="name" value="'+esc(x.name)+'"'+dis+' aria-label="Name"></td><td><input data-staff="'+i+'" data-k="role" value="'+esc(x.role)+'" list="st-roles"'+dis+' aria-label="Role"></td>'+
+      '<td><input data-staff="'+i+'" data-k="contact" value="'+esc(x.contact)+'"'+dis+' aria-label="Email or mobile"></td><td>'+(READONLY?'':'<button type="button" class="st-link" data-sdel="'+i+'" aria-label="Remove '+esc(x.name)+'">Remove</button>')+'</td></tr>').join('')+'</tbody></table></div>'+
+    '<datalist id="st-roles">'+['Owner','Manager','Supervisor','Front of house','Bar','Barista','Kitchen','Chef','Cashier'].map(r=>'<option value="'+r+'">').join('')+'</datalist>';
+  if(!READONLY)h+='<div class="st-tools"><button type="button" class="st-sec st-sm" data-a="staffadd">Add person</button><button type="button" class="st-sec st-sm" data-a="staffpaste">Paste a list</button>'+
+    '<label class="st-sec st-sm st-filebtn">Upload a list or photo<input type="file" id="st-sfile" accept=".csv,.txt,.xlsx,.xls,image/*" hidden></label></div><div class="st-small st-muted" id="st-smsg"></div>';
+  return h+'<p class="st-small st-muted" style="margin:6px 0 0">Oolio has no staff import, so create each user in Back Office and tick them off here. Contact details are only kept for this setup.</p></div>'}
+function addStaff(list){const id=VIEW.org,o=ORGS[id];if(!o||!list.length)return 0;const have=new Set((o.staff||[]).map(x=>x.name.toLowerCase()));
+  const add=list.filter(x=>!have.has(x.name.toLowerCase())).slice(0,200);save(id,{staff:(o.staff||[]).concat(add)});render();return add.length}
+async function staffFile(f){const say=t=>{const m=g('st-smsg');if(m)m.textContent=t};say('Reading '+f.name+'…');
+  try{let list=[];
+    if(/^image\//.test(f.type)){const s=await use('sample');let lim=null;try{lim=s&&await s.limits()}catch(e){}
+      if(s&&lim&&lim.images){const j=await s.json('This image is a list of staff for a hospitality venue. Reply with only this JSON: {"staff":[{"name":"","role":"","email":"","mobile":""}]}. Copy names exactly; leave unknown fields "". Leave out anything that is not a person.',{images:f});
+        list=((j&&j.staff)||[]).map(x=>({name:clean(x.name),role:clean(x.role),contact:[clean(x.email),clean(x.mobile)].filter(Boolean).join(', '),done:false})).filter(x=>x.name)}
+      else if(typeof window.ocrLines==='function'||typeof ocrLines==='function'){const L=await (window.ocrLines||ocrLines)([f]);list=parseStaffText(L.map(x=>x.text).join('\n'))}
+      else{say('Reading photos needs Claude (on claude.ai) or the website’s text recognition. Paste the list instead.');return}}
+    else if(/\.(xlsx|xls)$/i.test(f.name)&&window.XLSX){const wb=XLSX.read(await f.arrayBuffer(),{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]];list=parseStaffRows(XLSX.utils.sheet_to_json(ws,{header:1,defval:''}).filter(r=>r.some(c=>clean(c))))}
+    else{const t=await f.text();const rows=t.split(/\r?\n/).filter(l=>l.trim()).map(l=>l.split(/\t|,/));list=/,|\t/.test(t)&&rows[0].length>1?parseStaffRows(rows):parseStaffText(t)}
+    const n=addStaff(list);say(n?'Added '+n+' '+(n===1?'person':'people')+'. Check the names and roles.':'No new people found in that file.')}
+  catch(e){say('Couldn’t read it ('+((e&&(e.message||e.code))||'error')+'). Paste the list instead.')}}
+
+/* ---------- logo and brand colours, from the venue's website ---------- */
+function parseBrand(html,base){const doc=new DOMParser().parseFromString(html,'text/html'),abs=u=>{try{return new URL(u,base).href}catch(e){return''}},logos=[];
+  const push=(u,why)=>{u=abs(u);if(u&&/^https?:/.test(u)&&!logos.some(l=>l.url===u))logos.push({url:u,why})};
+  doc.querySelectorAll('img').forEach(i=>{const s=i.getAttribute('src')||i.getAttribute('data-src')||'',k=[i.className,i.id,i.alt,s].join(' ').toLowerCase();if(s&&/logo|brand/.test(k))push(s,'Logo on the website')});
+  doc.querySelectorAll('svg').forEach(s=>{const k=[s.getAttribute('class'),s.id,s.getAttribute('aria-label')].join(' ').toLowerCase();if(/logo/.test(k)&&s.outerHTML.length<60000)logos.push({url:'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(s.outerHTML),why:'Logo drawn on the website'})});
+  const ati=[...doc.querySelectorAll('link[rel~="apple-touch-icon"],link[rel~="icon"]')].sort((a,b)=>(parseInt((b.getAttribute('sizes')||'0').split('x')[0])||0)-(parseInt((a.getAttribute('sizes')||'0').split('x')[0])||0));
+  const og=doc.querySelector('meta[property="og:image"],meta[name="og:image"]');if(og)push(og.getAttribute('content'),'Image the site shares on social media');
+  ati.forEach(l=>push(l.getAttribute('href'),'Site icon'));
+  const cnt=new Map(),addC=(c,w)=>{c=c.toLowerCase();if(c.length===4)c='#'+c.slice(1).split('').map(x=>x+x).join('');const n=parseInt(c.slice(1),16),r=n>>16,g2=(n>>8)&255,b=n&255,mx=Math.max(r,g2,b),mn=Math.min(r,g2,b);
+    if(mx-mn<24)return;cnt.set(c,(cnt.get(c)||0)+w)};
+  const tc=doc.querySelector('meta[name="theme-color"]');if(tc&&/^#[0-9a-f]{3,6}$/i.test(tc.getAttribute('content')||''))addC(tc.getAttribute('content'),50);
+  const css=[...doc.querySelectorAll('style')].map(s=>s.textContent).join(' ')+' '+[...doc.querySelectorAll('[style]')].map(e=>e.getAttribute('style')).join(' ');
+  (css.match(/#[0-9a-f]{6}\b|#[0-9a-f]{3}\b/gi)||[]).forEach(c=>addC(c,1));
+  return{logos:logos.slice(0,6),colors:[...cnt].sort((a,b)=>b[1]-a[1]).slice(0,5).map(x=>x[0])}}
+async function fetchBrand(id){const o=ORGS[id],site=val(o,'prep-gmb','website')||(lookupOf(o)&&lookupOf(o).place&&lookupOf(o).place.website)||'';
+  if(!site){flash('Add the venue’s website (Before you start → Check Google My Business) first.',true);return}
+  const u=/^https?:/i.test(site)?site:'https://'+site;flash('Reading '+u+' for its logo and colours…');let b=null,via='';
+  try{if(window.OOLIO_HOSTED){const r=await fetch('/api/fetch?url='+encodeURIComponent(u),{credentials:'same-origin'});if(!r.ok)throw new Error('the site answered '+(r.headers.get('X-Status')||r.status));b=parseBrand(await r.text(),r.headers.get('X-Final-Url')||u);via='website'}
+    else{const mcp=await use('mcp');
+      if(mcp){if(!confirm('Reading the logo and colours uses 1 Firecrawl credit. Continue?')){flash('');return}
+        const res=await mcp.callTool('Firecrawl','firecrawl_scrape',{url:u,formats:['branding','rawHtml'],onlyMainContent:false});const p=(res&&(res.payload||res.structuredContent))||{},d=p.data||p,br=d.branding||{};
+        b=d.rawHtml?parseBrand(d.rawHtml,u):{logos:[],colors:[]};const lg=br.logo||(br.images&&br.images.logo);if(lg&&!b.logos.some(l=>l.url===lg))b.logos.unshift({url:lg,why:'Logo found by Firecrawl'});
+        const bc=Object.values(br.colors||{}).filter(c=>typeof c==='string'&&/^#[0-9a-f]{3,6}$/i.test(c));b.colors=[...new Set(bc.map(c=>c.toLowerCase()).concat(b.colors))].slice(0,5);via='firecrawl'}
+      else{const r=await fetch(u);b=parseBrand(await r.text(),u);via='direct'}}}
+  catch(e){flash('Couldn’t read the website ('+((e&&(e.message||e.code))||'error')+').',true);return}
+  if(!b.logos.length&&!b.colors.length){flash('No logo or brand colours were found on '+u+'. Ask the venue for their logo.',true);return}
+  save(id,{brand:{logos:b.logos,colors:b.colors,site:u,at:Date.now(),via}});render();flash('Found '+b.logos.length+' logo option'+(b.logos.length===1?'':'s')+' and '+b.colors.length+' colour'+(b.colors.length===1?'':'s')+'. Check them below.')}
+function brandPanel(o){const B=o.brand;if(!B)return'';
+  return '<div class="st-brand"><div class="st-small st-muted">Logo and brand colours from '+esc(B.site||'the website')+' · '+esc(when(B.at))+'</div><div class="st-logos">'+
+    (B.logos||[]).map(l=>'<a class="st-logo" href="'+esc(l.url)+'" target="_blank" rel="noopener" title="'+esc(l.why)+' (opens the image to save it)"><img src="'+esc(l.url)+'" alt="'+esc(l.why)+'" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{textContent:\'Open image\'}))"><small>'+esc(l.why)+'</small></a>').join('')+'</div>'+
+    ((B.colors||[]).length?'<div class="st-swatches">'+B.colors.map(c=>'<button type="button" class="st-sw" data-copy="'+esc(c)+'" title="Copy '+esc(c)+'"><i style="background:'+esc(c)+'"></i>'+esc(c)+'</button>').join('')+'</div>':'')+'</div>'}
+
+/* ---------- go-live pack: one Word document for the venue (Image to Word's library) ---------- */
+const DOCXLIB='https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js';
+function loadDocx(){return window.docx?Promise.resolve():new Promise((res,rej)=>{const s=document.createElement('script');s.src=DOCXLIB;s.onload=res;s.onerror=()=>rej(new Error('Could not load the Word library. Check the connection.'));document.head.appendChild(s)})}
+async function goLivePack(id){const o=ORGS[id];if(!o)return;flash('Making the go-live pack…');
+  try{await loadDocx()}catch(e){flash(e.message,true);return}
+  const D=window.docx,v=(sid,k)=>val(o,sid,k),P=(t,o2)=>new D.Paragraph(Object.assign({children:[new D.TextRun(String(t==null?'':t))]},o2||{})),H=(t,l)=>new D.Paragraph({heading:l||D.HeadingLevel.HEADING_2,children:[new D.TextRun(t)]});
+  const cell=(t,b)=>new D.TableCell({margins:{top:60,bottom:60,left:100,right:100},shading:b?{fill:'EDE7F6',type:D.ShadingType.CLEAR,color:'auto'}:undefined,children:[new D.Paragraph({spacing:{after:0},children:[new D.TextRun({text:String(t==null?'':t),bold:!!b})]})]});
+  const table=(head,rows)=>new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},rows:[new D.TableRow({tableHeader:true,children:head.map(x=>cell(x,true))})].concat(rows.map(r=>new D.TableRow({children:r.map(x=>cell(x))})))});
+  const K=[],gap=()=>K.push(new D.Paragraph({spacing:{after:120},children:[]}));
+  const G=groupOf(o),stg=(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1];
+  K.push(new D.Paragraph({heading:D.HeadingLevel.TITLE,children:[new D.TextRun((o.name||'Venue')+' · Oolio go-live pack')]}));
+  K.push(P('Prepared '+new Date().toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'})+(o.owner?' by '+o.owner:'')+'. Stage: '+stg+'.',{}));
+  // a section of label/value rows, left out when every value is empty
+  const kvSec=(t,rows)=>{rows=rows.filter(r=>clean(r[1]));if(!rows.length)return;K.push(H(t));K.push(table(['',''],rows));gap()};
+  kvSec('Key dates and contacts',[['Go-live',o.golive?fmtDate(o.golive):''],['Training',o.training?fmtDate(o.training):''],['Oolio contact',o.owner||''],['Venue contact',o.contact||''],['Organisation',G&&G.name!==o.name?G.name:'']]);
+  kvSec('Business details',[['Legal name',v('biz-abn','legal')],['ABN',v('biz-abn','abn')],['Email',v('biz-contact','email')],['Phone',v('biz-contact','phone')],['Address',v('biz-address','address')],['Timezone',v('biz-tz','tz')],['Report emails',v('biz-emails','emails')],['Website',v('prep-gmb','website')]]);
+  const sold=FLAGS.filter(([k])=>(o.flags||{})[k]).map(x=>x[1]);if(sold.length){K.push(H('What was sold'));sold.forEach(s=>K.push(P(s,{bullet:{level:0}})))}
+  if((o.devices||[]).length){K.push(H('Devices'));K.push(table(['Device','Role','Hardware','Profile','Prefix'],o.devices.map(d=>[d.name,d.role,d.hw,d.profile,d.prefix])));gap()}
+  if((o.printers||[]).length){K.push(H('Printers'));K.push(table(['Printer','Type','Prints','Fallback','Location'],o.printers.map(x=>[x.name,(x.kind||'Thermal')+' ('+MODEL[x.kind||'Thermal']+')',x.use||'Dockets and receipts',x.fb||'None',x.loc])));gap()}
+  const wf=[['Cocktails',v('prn-workflow','cocktails')],['Beer, wine and spirits',v('prn-workflow','drinks')],['Food',v('prn-workflow','food')],['Still to confirm',v('prn-workflow','confirm')]].filter(x=>x[1]);
+  kvSec('Printing workflow',wf);
+  if(o.menu){K.push(H('Menu'));K.push(P(o.menu.products+' products in '+(o.menu.cats||[]).length+' categories'+(o.menu.modifiers?', '+o.menu.modifiers+' modifiers':'')+(o.photos?', '+o.photos.saved+' product photos':'')+'.'));
+    if((o.menu.cats||[]).length)K.push(table(['Category','Products','Prints to'],o.menu.cats.map(c=>[c[0],c[1],c[2]||''])));gap()}
+  if((o.staff||[]).length){K.push(H('Staff users'));K.push(table(['Name','Role','Contact','User created'],o.staff.map(x=>[x.name,x.role,x.contact,x.done?'Yes':'Not yet'])));gap()}
+  if(o.brand&&(o.brand.colors||[]).length){K.push(H('Brand'));K.push(P('Colours: '+o.brand.colors.join(', ')));(o.brand.logos||[]).filter(l=>!/^data:/.test(l.url)).slice(0,3).forEach(l=>K.push(P(l.why+': '+l.url,{bullet:{level:0}})))}
+  const out=outstanding(o);if(out.length){K.push(H('Still to do'));out.forEach(x=>{const s=st(o,x.id);K.push(P(x.sec.t+': '+x.t+(s.who?' ('+s.who+(s.due?', due '+fmtDate(s.due):'')+')':s.due?' (due '+fmtDate(s.due)+')':''),{bullet:{level:0}}))})}
+  const gs=[...new Set(stepsFor(o).filter(x=>x.sec.phase==='trn').flatMap(x=>x.guides||[]))].filter(s=>GUIDES[s]).slice(0,25);
+  if(gs.length){K.push(H('Help guides for your team'));gs.forEach(s=>K.push(P(GUIDES[s][0]+': '+HELP+s,{bullet:{level:0}})))}
+  const doc=new D.Document({creator:'Menu Hauler',title:(o.name||'Venue')+' go-live pack',styles:{default:{document:{run:{font:'Calibri',size:22}}}},sections:[{children:K}]});
+  const blob=await D.Packer.toBlob(doc),fn=(o.name||'Venue').replace(/[\\/:*?"<>|]/g,'')+' - Oolio go-live pack.docx';
+  const dl=await use('downloads');if(dl){try{await dl.save({filename:fn,data:blob})}catch(e){}}else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove()}
+  flash('Saved “'+fn+'”.')}
+
+/* ---------- customer intake link (the website only: /api/intake/*, the form at /intake/<token>) ----------
+   One link per venue for its owner to fill in business details, contacts, hours, the staff list, and upload menus,
+   logo and floor plans. The answers fill in what's still empty here, and files open straight in the right tool. */
+const INTAKE={};
+const KIND={menu:'Menu',logo:'Logo',layout:'Floor plan or photo',staff:'Staff list',other:'Other'};
+async function intakeLoad(id,force){if(!window.OOLIO_HOSTED||!id)return;const S=INTAKE[id];if(S&&(S.busy||(!force&&Date.now()-S.t<60000)))return;
+  INTAKE[id]=Object.assign(S||{},{busy:true});
+  try{const r=await fetch('/api/intake/status?venue='+encodeURIComponent(id),{credentials:'same-origin'}),j=await r.json();INTAKE[id]={t:Date.now(),link:j.link||null}}
+  catch(e){INTAKE[id]={t:Date.now(),link:null,err:true}}
+  if(VIEW.org===id)render()}
+async function intakeCall(path,body){const r=await fetch('/api/intake/'+path,{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('Error '+r.status));return j}
+window.intakePanel=(o,id)=>{if(!window.OOLIO_HOSTED)return'';const S=INTAKE[id];if(!S||!S.t){intakeLoad(id);return''}const L=S.link;if(!L)return'';
+  const d=L.data||{},stt=!L.live?(L.revoked?'Turned off':'Expired'):L.submittedAt?'Answers received '+when(L.submittedAt):'Waiting for the customer';
+  const mail='mailto:'+encodeURIComponent(d.cemail||'')+'?subject='+encodeURIComponent('Your Oolio setup: '+(o.name||'your venue'))+'&body='+encodeURIComponent('Hi'+(d.cname?' '+d.cname.split(' ')[0]:'')+',\n\nTo get '+(o.name||'your venue')+' ready on Oolio, please fill in this form and upload your menu. It takes about 10 minutes, and you can come back to it:\n\n'+L.url+'\n\nThe link works until '+new Date(L.expires).toLocaleDateString('en-AU',{day:'numeric',month:'long'})+'.\n\nThanks,\n'+myName());
+  let h='<div class="st-intake"><div class="st-row" style="justify-content:space-between"><b>Customer intake link</b><span class="st-chip '+(L.live?(L.submittedAt?'ok':'a'):'w')+'">'+esc(stt)+'</span></div>';
+  if(L.live)h+='<div class="st-row" style="flex-wrap:nowrap"><input readonly value="'+esc(L.url)+'" aria-label="Intake link" onclick="this.select()"><button type="button" class="st-sm" data-ik="copy">Copy</button><a class="st-sec st-sm st-filebtn" href="'+esc(mail)+'">Email</a></div>'+
+    '<div class="st-small st-muted">Works until '+esc(new Date(L.expires).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}))+'. Anyone with the link can see and change the answers, so only send it to the venue.</div>';
+  if(L.submittedAt){const rows=[['Trading name',d.trading],['Legal name',d.legal],['ABN',d.abn],['Address',d.address],['Phone',d.phone],['Email',d.email],['Website',d.website],['Contact',[d.cname,d.crole,d.cmobile,d.cemail].filter(Boolean).join(' · ')],['Go-live',d.golive?fmtDate(d.golive):''],['Opening hours',d.hours],['Stations',d.stations],['Menu notes',d.menunotes],['Staff',d.staff?parseStaffText(d.staff).length+' people listed':''],['Notes',d.notes]].filter(x=>clean(x[1]));
+    h+='<details'+(S.open?' open':'')+' data-ikopen><summary class="st-small"><b>Their answers</b> ('+rows.length+') and '+L.files.length+' file'+(L.files.length===1?'':'s')+'</summary><dl class="st-dl" style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.88rem;margin:8px 0">'+rows.map(([k,x])=>'<dt class="st-muted">'+esc(k)+'</dt><dd style="margin:0;white-space:pre-wrap">'+esc(x)+'</dd>').join('')+'</dl>'+
+      (L.files.length?'<ul style="list-style:none;padding:0;margin:0;display:grid;gap:6px">'+L.files.map(f=>'<li class="st-row" style="font-size:.88rem"><span class="st-chip">'+esc(KIND[f.kind]||f.kind)+'</span><span class="st-grow" style="overflow-wrap:anywhere">'+esc(f.name)+' <span class="st-muted">· '+Math.max(1,Math.round(f.size/1e3))+' KB</span></span>'+
+        (f.kind==='menu'?'<button type="button" class="st-sm" data-ikf="conv" data-id="'+esc(f.id)+'">Open in Menu Converter</button>':'')+(f.kind==='layout'?'<button type="button" class="st-sec st-sm" data-ikf="diag" data-id="'+esc(f.id)+'">Read as hardware diagram</button>':'')+
+        (f.kind==='staff'?'<button type="button" class="st-sec st-sm" data-ikf="staff" data-id="'+esc(f.id)+'">Add to staff list</button>':'')+'<a class="st-link" href="/api/intake/file?id='+encodeURIComponent(f.id)+'" download>Download</a></li>').join('')+'</ul>':'')+
+      (READONLY?'':'<div class="st-tools"><button type="button" class="st-sm" data-ik="apply">Fill in the checklist from their answers</button></div>')+'</details>'}
+  if(!READONLY)h+='<div class="st-tools">'+(L.live?'<button type="button" class="st-link" data-ik="refresh">Check for answers</button><button type="button" class="st-link" data-ik="off">Turn the link off</button>':'<button type="button" class="st-link" data-ik="extend">Turn it back on for '+30+' days</button>')+'<button type="button" class="st-link" data-ik="new">Make a new link</button></div>';
+  return h+'</div>'};
+window.intakeDialog=async id=>{const S=INTAKE[id];if(S&&S.link&&S.link.live){flash('The intake link is below. Copy it or email it to the venue.');return}
+  try{const o=ORGS[id],r=await intakeCall('create',{venue:id,venueName:o.name||''});INTAKE[id]={t:0};await intakeLoad(id,true);
+    try{await navigator.clipboard.writeText(r.url);flash('Made the intake link and copied it. Send it to the venue owner.')}catch(e){flash('Made the intake link. Copy it below and send it to the venue owner.')}}
+  catch(e){flash('Couldn’t make the link ('+e.message+').',true)}};
+async function intakeFile(id){const r=await fetch('/api/intake/file?id='+encodeURIComponent(id),{credentials:'same-origin'});if(!r.ok)throw new Error('the file couldn’t be downloaded');
+  const name=decodeURIComponent(((r.headers.get('Content-Disposition')||'').match(/filename="([^"]+)"/)||[])[1]||'file'),b=await r.blob();return new File([b],name,{type:b.type})}
+function applyIntake(id){const o=ORGS[id],L=INTAKE[id]&&INTAKE[id].link,d=(L&&L.data)||{};if(!o||!L)return;
+  const p=fillPatch(o,{abn:d.abn||'',legal:d.legal||'',email:d.email||'',phone:d.phone||'',address:d.address||'',website:d.website||'',name:d.trading||''}),filled=Object.values(p.steps).reduce((n,s)=>n+Object.keys(s.v).length,0);
+  const note=(sid,label,x)=>{x=clean(x);if(x&&!st(o,sid).note){(p.steps[sid]=p.steps[sid]||{}).note=label+': '+x}};
+  note('biz-address','Opening hours',d.hours);note('menu-import','From the customer',d.menunotes);note('prep-csp','From the customer',d.notes);
+  if(clean(d.stations)&&!val(o,'prn-workflow','confirm'))(p.steps['prn-workflow']=p.steps['prn-workflow']||{v:{}}).v=Object.assign((p.steps['prn-workflow']||{}).v||{},{confirm:clean(d.stations)});
+  if(!o.contact&&(d.cname||d.cmobile))p.contact=[d.cname,d.crole?'('+d.crole+')':'',d.cmobile||d.cemail].filter(Boolean).join(' ');
+  if(!o.golive&&d.golive)p.golive=d.golive;
+  save(id,p);pushShared(id);const n=d.staff?addStaff(parseStaffText(d.staff)):0;render();
+  flash('Filled in '+filled+' business detail'+(filled===1?'':'s')+(p.contact?', the contact':'')+(p.golive?', the go-live date':'')+(n?', '+n+' staff':'')+'. Anything you’d already entered was kept.')}
+document.addEventListener('click',async e=>{const b=e.target.closest('[data-ik],[data-ikf]');if(!b||!VIEW.org)return;const id=VIEW.org,L=INTAKE[id]&&INTAKE[id].link;
+  try{if(b.dataset.ik==='copy'){await navigator.clipboard.writeText(L.url);flash('Copied the link.');return}
+    if(b.dataset.ik==='apply')return applyIntake(id);
+    if(b.dataset.ik==='refresh'){await intakeLoad(id,true);const N=INTAKE[id]&&INTAKE[id].link;flash(N&&N.submittedAt?'Answers last sent '+when(N.submittedAt)+'.':'No answers yet.');return}
+    if(b.dataset.ik==='off'){if(!confirm('Turn the link off? The venue won’t be able to open the form. Their answers and files stay here.'))return;await intakeCall('revoke',{token:L.token});await intakeLoad(id,true);return}
+    if(b.dataset.ik==='extend'){await intakeCall('extend',{token:L.token});await intakeLoad(id,true);flash('The link works again for 30 days.');return}
+    if(b.dataset.ik==='new'){if(!confirm('Make a new link? The old one stops working, and the venue starts a fresh form.'))return;INTAKE[id]={t:Date.now(),link:null};await window.intakeDialog(id);return}
+    const f=await intakeFile(b.dataset.id);
+    if(b.dataset.ikf==='staff'){await staffFile(f);return}
+    if(b.dataset.ikf==='diag'){VIEW.open.add('prep-hw');render();await readDiagram(f);return}
+    if(b.dataset.ikf==='conv'){const inp=document.getElementById('file');if(!inp){flash('Open the Menu Converter tab, then add the file there.',true);return}
+      const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;inp.dispatchEvent(new Event('change',{bubbles:true}));location.hash='converter'}}
+  catch(err){flash('Couldn’t do that ('+err.message+').',true)}});
+document.addEventListener('toggle',e=>{const d=e.target;if(d.matches&&d.matches('[data-ikopen]')&&VIEW.org&&INTAKE[VIEW.org])INTAKE[VIEW.org].open=d.open},true);
+
 /* ---------- recap ---------- */
 function recapText(o){const L=[],v=(id,k)=>val(o,id,k),fl=o.flags||{},p=progress(o);
-  L.push((o.name||'Untitled')+' – Oolio setup recap','Stage: '+(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1]+' · '+p.done+'/'+p.total+' steps done'+(o.training?' · Training '+fmtDate(o.training):''),'');
+  L.push((o.name||'Untitled')+' – Oolio setup recap','Stage: '+(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1]+' · '+p.done+'/'+p.total+' steps done'+(o.training?' · Training '+fmtDate(o.training):'')+(o.golive?' · Go-live '+fmtDate(o.golive):'')+(o.owner?' · Owner '+o.owner:''),'');
   const det=[['Legal name',v('biz-abn','legal')],['ABN',v('biz-abn','abn')],['Email',v('biz-contact','email')],['Phone',v('biz-contact','phone')],['Address',v('biz-address','address')],['Timezone',v('biz-tz','tz')],['Report emails',v('biz-emails','emails')],['Website',v('prep-gmb','website')]].filter(x=>x[1]);
   if(det.length)L.push('BUSINESS DETAILS',...det.map(x=>'  '+x[0]+': '+x[1]),'');
   const sold=FLAGS.filter(([k])=>fl[k]).map(x=>x[1]);if(sold.length)L.push('SOLD: '+sold.join(', '),'');
@@ -3970,6 +4340,7 @@ function recapText(o){const L=[],v=(id,k)=>val(o,id,k),fl=o.flags||{},p=progress
   if(wf.length||hl.length)L.push('PRINTING WORKFLOW',...wf.map(x=>'  '+x[0]+': '+x[1]),...(hl.length?['  Highlighting: '+hl.join(', ')]:[]),'');
   if(v('prof-split','list'))L.push('DEVICE PROFILES: '+v('prof-split','list'),'');
   if(o.menu)L.push('MENU: '+o.menu.products+' products, '+(o.menu.cats||[]).length+' categories'+(o.menu.modifiers?', '+o.menu.modifiers+' modifiers':'')+' (Menu Converter, '+when(o.menu.at)+')'+(o.photos?' · '+o.photos.saved+' photos':''),'');
+  if((o.staff||[]).length)L.push('STAFF USERS ('+o.staff.filter(x=>x.done).length+'/'+o.staff.length+' created)',...o.staff.map(x=>'  '+(x.done?'[x] ':'[ ] ')+x.name+(x.role?' · '+x.role:'')),'');
   const w=warnings(o);if(w.length)L.push('TO FIX',...w.flatMap(([x,m])=>m.map(t=>'  - '+x.t+': '+t)),'');
   const out=outstanding(o);if(out.length)L.push('OUTSTANDING ('+out.length+')',...out.map(x=>'  [ ] '+x.sec.t+' – '+x.t),'');
   const notes=stepsFor(o).filter(x=>st(o,x.id).note).map(x=>'  '+x.t+': '+clean(st(o,x.id).note));if(notes.length)L.push('NOTES',...notes,'');
@@ -4054,6 +4425,8 @@ root.addEventListener('click',e=>{const t=e.target;
     const rows=[['Version','Date','From','Items','Added','Removed','Renamed','Price up','Price down','Avg price change %','Avg price']].concat(L.map((s,i)=>[i+1,new Date(s.at).toISOString().slice(0,10),s.kind,s.n,s.added,s.removed,s.renamed||0,s.up,s.down,s.pct,s.avg]));
     const blob=new Blob([rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv'}),fn=(o.name||'venue').replace(/[^\w\- ]+/g,'')+' menu history.csv';
     (async()=>{const dl=await use('downloads');if(dl){try{await dl.save({filename:fn,data:blob})}catch(e){}}else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove()}})();return}
+  const sd=t.closest('[data-sdel]');if(sd){const o=ORGS[VIEW.org],rows=(o.staff||[]).slice();rows.splice(+sd.dataset.sdel,1);save(VIEW.org,{staff:rows});render();return}
+  const cp=t.closest('[data-copy]');if(cp){const c=cp.dataset.copy;(navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(()=>flash('Copied '+c+'.'),()=>flash(c));return}
   const jump=t.closest('[data-jump]');if(jump){e.preventDefault();const el=g('st-'+jump.dataset.jump);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});return}
   const a=t.closest('[data-a]');if(!a)return;const act=a.dataset.a,o=VIEW.org&&ORGS[VIEW.org];
   if(act==='new')newOrg();
@@ -4065,6 +4438,14 @@ root.addEventListener('click',e=>{const t=e.target;
   else if(act==='backup')backup();
   else if(act==='guides'){VIEW.tab='guides';VIEW.q='';render();window.scrollTo(0,0)}
   else if(act==='recap')showRecap(o);
+  else if(act==='board'){VIEW.org=null;VIEW.grp=null;VIEW.tab='board';render();window.scrollTo(0,0)}
+  else if(act==='pack')goLivePack(VIEW.org);
+  else if(act==='brand')fetchBrand(VIEW.org);
+  else if(act==='intake'){if(window.intakeDialog)window.intakeDialog(VIEW.org)}
+  else if(act==='tpl')applyTemplate(VIEW.org);
+  else if(act==='mine'){save(VIEW.org,{owner:myName(),ownerId:ME});render()}
+  else if(act==='staffadd'){save(VIEW.org,{staff:(o.staff||[]).concat([{name:'',role:'',contact:'',done:false}])});render()}
+  else if(act==='staffpaste'){const t=prompt('Paste the staff list: one person per line, with their role and email or mobile if you have them.');if(t){const n=addStaff(parseStaffText(t));flash(n?'Added '+n+' '+(n===1?'person':'people')+'.':'No names found in that text.')}}
   else if(act==='fill')fillDialog(VIEW.org);
   else if(act==='expand'){VIEW.open=new Set(outstanding(o).map(x=>x.id));render()}
   else if(act==='collapse'){VIEW.open=new Set();render()}
@@ -4077,7 +4458,7 @@ root.addEventListener('click',e=>{const t=e.target;
 root.addEventListener('toggle',e=>{const d=e.target;if(d.classList&&d.classList.contains('st-mhist'))VIEW.mhist=d.open;if(d.dataset&&d.dataset.sid){if(d.open)VIEW.open.add(d.dataset.sid);else VIEW.open.delete(d.dataset.sid)}},true);
 function onField(t,final){const id=VIEW.org;
   if(t.id==='st-q'){VIEW.q=t.value;held=false;const pos=t.selectionStart;render();const n=g('st-q');if(n){n.focus();try{n.setSelectionRange(pos,pos)}catch(e){}}return}
-  if(t.id==='st-stagef')return;
+  if(t.id==='st-stagef'||t.id==='st-mine'||t.id==='st-sfile')return;
   // the organisation page
   if(!id&&VIEW.grp){let gp=null,key='';
     if(t.id==='st-gname'){gp={name:clean(t.value)};key='gname'}else if(t.id==='st-gcontact'){gp={contact:t.value};key='gcontact'}
@@ -4095,6 +4476,12 @@ function onField(t,final){const id=VIEW.org;
   else if(t.id==='st-stage'){patch={stage:t.value};key='stage'}
   else if(t.id==='st-training'){patch={training:t.value};key='training'}
   else if(t.id==='st-contact'){patch={contact:t.value};key='contact'}
+  else if(t.id==='st-golive'){patch={golive:t.value};key='golive'}
+  else if(t.id==='st-owner'){patch={owner:clean(t.value),ownerId:clean(t.value).toLowerCase()===myName().toLowerCase()?ME:''};key='owner'}
+  else if(t.id==='st-vtype'){patch={vtype:t.value};key='vtype'}
+  else if(t.dataset.who){patch={steps:{[t.dataset.who]:{who:clean(t.value)}}};key='w'+t.dataset.who}
+  else if(t.dataset.due){patch={steps:{[t.dataset.due]:{due:t.value}}};key='d'+t.dataset.due}
+  else if(t.dataset.staff){const o=ORGS[id],rows=(o.staff||[]).map(r=>Object.assign({},r)),i=+t.dataset.staff;if(!rows[i])return;rows[i][t.dataset.k]=t.type==='checkbox'?t.checked:t.value;patch={staff:rows};key='staff'}
   else if(t.dataset.flag){patch={flags:{[t.dataset.flag]:t.checked}};key='f'}
   else if(t.dataset.note){patch={steps:{[t.dataset.note]:{note:t.value}}};key='n'+t.dataset.note}
   else if(t.dataset.sub){patch={steps:{[t.dataset.sub]:{v:{subs:{[t.dataset.k]:t.checked}}}}};key='s'}
@@ -4109,7 +4496,7 @@ function onField(t,final){const id=VIEW.org;
   clearTimeout(textT[key]);
   if(final)save(id,patch);else{const o=ORGS[id];ORGS[id]=deepMerge(o,patch);textT[key]=setTimeout(()=>save(id,patch),700)}}
 root.addEventListener('input',e=>{const t=e.target;if(t.type==='checkbox'||t.tagName==='SELECT')return;onField(t,false)});
-root.addEventListener('change',e=>{const t=e.target;if(t.id==='st-restore'){const f=t.files&&t.files[0];t.value='';if(f)restore(f);return}if(t.id==='st-dfile'){const f=t.files&&t.files[0];t.value='';if(f)readDiagram(f);return}if(t.id==='st-stagef'){VIEW.stage=t.value;render();return}if(t.id==='st-q')return;onField(t,true);if(t.type==='checkbox'||t.tagName==='SELECT'){held=false;render()}});
+root.addEventListener('change',e=>{const t=e.target;if(t.id==='st-restore'){const f=t.files&&t.files[0];t.value='';if(f)restore(f);return}if(t.id==='st-dfile'){const f=t.files&&t.files[0];t.value='';if(f)readDiagram(f);return}if(t.id==='st-stagef'){VIEW.stage=t.value;render();return}if(t.id==='st-mine'){VIEW.mine=t.checked;render();return}if(t.id==='st-sfile'){const f=t.files&&t.files[0];t.value='';if(f)staffFile(f);return}if(t.id==='st-q')return;onField(t,true);if(t.type==='checkbox'||t.tagName==='SELECT'){held=false;render()}});
 // leaving a field redraws, so checks and badges catch up
 root.addEventListener('focusout',e=>{const t=e.target;if(t.dataset&&(t.dataset.step||t.dataset.tbl||t.dataset.note||t.dataset.gk)||t.id==='st-name'||t.id==='st-gname')setTimeout(()=>{if(!root.contains(document.activeElement)||!/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))render()},0)});
 

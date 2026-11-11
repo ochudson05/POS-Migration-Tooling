@@ -425,6 +425,12 @@ adm = adm.replace("<style>", FONT + "\n" + BOOT + "\n<style>" + THEME, 1).replac
 (HERE / "public" / "admin.html").write_bytes(adm.replace("\r\n", "\n").encode("utf-8"))
 print("wrote", HERE / "public" / "admin.html")
 
+# public/intake.html: the customer intake form (intake.html; relay-worker.js serves it at /intake/<token> without sign-in)
+itk = (HERE / "intake.html").read_text(encoding="utf-8")
+itk = itk.replace("<style>", FONT + "\n" + BOOT + "\n<style>" + THEME, 1).replace("<body>", "<body>\n" + SPRITE, 1)
+(HERE / "public" / "intake.html").write_bytes(itk.replace("\r\n", "\n").encode("utf-8"))
+print("wrote", HERE / "public" / "intake.html")
+
 print("wrote", HERE / "apps.html", len(full), "bytes")
 if len(sys.argv) > 1:
     Path(sys.argv[1]).write_text(page, encoding="utf-8")
