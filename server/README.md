@@ -43,6 +43,19 @@ The website works exactly as before without this server. Each part switches on o
    - **Security > Access scopes:** "Set access for each API", then **Storage: Read Write** (only needed
      for backups to Cloud Storage, step 6).
 4. Create, wait a minute, then press **SSH** next to the VM. A terminal opens in the browser.
+5. Check the VM can reach the internet: `curl -s -m 10 -o /dev/null -w "%{http_code}\n" https://github.com`
+   should print `200`. If it times out and prints `000`, the VM has no external IP. Some organisations
+   block external IPs with the policy "External IPs for VM instances". In that case, give the VM outbound
+   internet through Cloud NAT instead. It only allows connections out, so nothing is opened to the
+   internet. In **Cloud Shell** (the `>_` icon at the top of the console), run:
+
+   ```bash
+   gcloud compute routers create menuhauler-router --network default --region australia-southeast1
+   gcloud compute routers nats create menuhauler-nat --router menuhauler-router --region australia-southeast1 \
+     --auto-allocate-nat-external-ips --nat-all-subnet-ip-ranges
+   ```
+
+   Run the curl check again after a minute. Cloud NAT costs about US$1 a month plus a few cents per GB.
 
 ### 2. Get the code onto it
 
@@ -58,7 +71,18 @@ Zero Trust > Networks > **Tunnels** > Create a tunnel > **Cloudflared**:
 1. Name it `menuhauler-server`.
 2. On the install page, copy the long token after `--token` in any of the install commands. Don't run the
    install command itself, because the server runs cloudflared in Docker.
-3. **Public hostname:** subdomain `server`, domain `menuhauler.com`, service **HTTP** `gateway:8080`.
+3. Run setup (step 4). The tunnel's page then shows it as **Healthy**. The page's Continue button stays
+   greyed out until then.
+4. Add the route on the tunnel's page: **Routes > Add route > Published application**. Older dashboards
+   call this the **Public Hostname** tab. Set subdomain `server`, domain `menuhauler.com`, no path, service
+   `http://gateway:8080`. Check the **Routes** count changes from 0 to 1. A tunnel with no route is Healthy,
+   but nothing can reach it.
+
+Cloudflare adds a `server` record of type **Tunnel** under menuhauler.com > DNS. It can take a few minutes to
+show up everywhere, and some networks remember the earlier "doesn't exist" answer for a while. To check from
+anywhere: `https://cloudflare-dns.com/dns-query?name=server.menuhauler.com&type=A` with the header
+`accept: application/dns-json`. Don't add the record by hand. Cloudflare refuses it because the route already
+made one.
 
 ### 4. Run the setup
 
@@ -125,7 +149,26 @@ sudo docker compose ps
 curl -s -H "X-MH-Key: $(grep ^MH_KEY .env | cut -d= -f2)" https://server.menuhauler.com/health
 ```
 
-`/health` shows whether the browser and OCR are on. Without the key the gateway answers 401.
+`/health` shows whether the browser and OCR are on. Without the key the gateway answers 401. A healthy
+reply looks like `{"ok":true,"browser":true,"claude":false,...,"ocr":true}`. `claude` and `firecrawl` are
+false on purpose. The website calls Claude itself, and Firecrawl is the scraper's optional last resort.
+
+Then on the website: open the converter and enter a menu's web address. The card should say *"read from the
+web page (… Menu Hauler server)"*. If it says only *"read from the web page"*, the website didn't use the
+server. Check, in this order:
+
+| Symptom | Fix |
+|---|---|
+| `curl` above says `Could not resolve host` | The route is missing or still spreading (step 3) |
+| Cloudflare error 1033 or 530 | The tunnel isn't connected: `sudo docker compose logs --tail 30 tunnel` |
+| `/health` works on the server, but the converter doesn't use it | `SERVER_URL` or `SERVER_KEY` on menurunner is missing or doesn't match `MH_KEY` in `.env`. Reload the page after fixing it |
+
+To make a new key (for example, if the old one was shown somewhere), run the command below. Then put the
+new `MH_KEY` in the Worker secret `SERVER_KEY`:
+
+```bash
+sed -i "s/^MH_KEY=.*/MH_KEY=$(openssl rand -hex 32)/" .env && sudo docker compose up -d --force-recreate gateway
+```
 
 ## Update it
 
