@@ -111,10 +111,10 @@ button.sm,.btn.sm{padding:4px 10px;font-size:13px;font-weight:600}
     </div>
     <p class="msg" id="lmsg"></p>
     <div class="row">
-      <label for="ourl">Venue’s online ordering page (optional)<input type="text" id="ourl" placeholder="e.g. order.hungryhungry.com/thequartercafe/menu" style="width:380px"></label>
+      <label for="ourl" style="flex:1 1 380px">Venue’s own pages (optional, one address per line)<textarea id="ourl" rows="3" style="width:100%;max-width:560px" placeholder="order.hungryhungry.com/thequartercafe/menu&#10;www.thequartercafe.com.au&#10;ubereats.com/au/store/…&#10;doordash.com/en-AU/store/…"></textarea></label>
       <button type="button" class="sec" id="oread">Get the venue’s photos</button>
     </div>
-    <p class="note" id="omsg">If the venue already sells online, every item photo on its page is downloaded first, turned into a square JPEG under 2 MB and named after the item, ready to download as its own folder. Only then are they matched to your products by name and used first. Works with Hungry Hungry ordering pages, at no cost. These photos belong to the venue, so use them only for that venue.</p>
+    <p class="note" id="omsg">Paste any of the venue’s Hungry Hungry page, its own website, its Uber Eats page and its DoorDash page. Every item photo on them is downloaded first, turned into a square JPEG under 2 MB and named after the item, ready to download as its own folder. Only then are they matched to your products by name and used first. Hungry Hungry, Uber Eats and the venue’s website are free; DoorDash uses 5 Firecrawl credits. These photos belong to the venue, so use them only for that venue.</p>
     <div class="row" id="opack" hidden>
       <button type="button" id="ozip">Download venue photos (ZIP)</button>
       <button type="button" class="sec" id="odir">Save venue photos to a folder</button>
@@ -336,66 +336,191 @@ async function hhPhotos(u){
   Object.values((m&&m.item)||{}).forEach(it=>{const full=absUrl(it&&it.images);if(!it||!it.title||!full||seen.has(full))return;seen.add(full);
     photos.push({name:clean(it.title),key:nkey(it.title),full,thumb:absUrl(it.images_medium)||full})});
   return{venue:clean(th.account_title||th.pageTitle),photos,items:Object.keys((m&&m.item)||{}).length}}
-function matchVenue(it){const a=nkey(it.name);if(!a.length)return null;let best=null,bs=0;
-  for(const v of venuePhotos){const b=v.key,inter=a.filter(w=>b.includes(w)).length;if(!inter)continue;
+/* ---------- more of the venue's pages: its own website, Uber Eats, DoorDash ----------
+   On the Menu Hauler website, pages come through the site's free /api/fetch. DoorDash (which blocks free
+   reading) and pages the free reading can't open go through the team's Firecrawl. Opened as a file on this PC,
+   only Hungry Hungry works, because other sites don't let a page read them. */
+const PARENT=(()=>{try{return window.parent!==window?window.parent:null}catch(e){return null}})();
+const HOSTED=(()=>{try{return!!(window.OOLIO_HOSTED||(PARENT&&PARENT.OOLIO_HOSTED))}catch(e){return false}})();
+let PFMCP,fcUsed=0;
+async function pfMcp(){if(PFMCP!==undefined)return PFMCP;PFMCP=null;
+  try{const c=window.claude||(PARENT&&PARENT.claude);PFMCP=c&&c.use?await c.use('mcp'):null}catch(e){}return PFMCP}
+const NOREAD='open the Photo Finder on the Menu Hauler website to read this page (a page opened from this PC can only read Hungry Hungry)';
+async function freePage(u){
+  try{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),25000);
+    const r=await fetch(HOSTED?'/api/fetch?url='+encodeURIComponent(u):u,{credentials:HOSTED?'same-origin':'omit',signal:ctl.signal});clearTimeout(t);
+    const st=+(r.headers.get('X-Status')||r.status);if(!r.ok||st>=400)return null;const html=await r.text();
+    return html.length>500?{html,url:(HOSTED&&r.headers.get('X-Final-Url'))||r.url||u}:null}catch(e){return null}}
+async function fcPage(u){const mcp=await pfMcp();if(!mcp)throw new Error(HOSTED?'the page couldn’t be read':NOREAD);
+  let res;try{res=await mcp.callTool('Firecrawl','firecrawl_scrape',{url:u,formats:['rawHtml'],onlyMainContent:false,waitFor:3000,
+    objective:'Collect a restaurant’s own menu item photos so they can be used on its Oolio point of sale.'},{cache:false})}
+  catch(e){throw new Error('Firecrawl couldn’t read it ('+(e.code||e.message||'error')+')')}
+  fcUsed++;let p=res&&res.payload!==undefined?res.payload:res;if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){p={rawHtml:p}}}
+  if(p&&p.data&&!p.rawHtml)p=p.data;if(!p||!p.rawHtml)throw new Error('the page came back empty');
+  const md=p.metadata||{};return{html:p.rawHtml,url:md.url||md.sourceURL||u,fc:true}}
+async function pageText(u,allowFc=true){const r=await freePage(u);if(r)return r;if(!allowFc)throw new Error('the page couldn’t be read');return fcPage(u)}
+
+// Uber Eats: the store page carries its whole catalogue as escaped JSON, each item with "imageUrl" then "title"
+const unesc=s=>{for(let i=0;i<3;i++)s=s.replace(/\\+u([0-9a-fA-F]{4})/g,(m,h)=>String.fromCharCode(parseInt(h,16))).replace(/\\+"/g,'"').replace(/\\+\//g,'/');return s};
+async function ueRead(u){const pg=await pageText(u),t=unesc(pg.html),photos=[],seen=new Set(),re=/"imageUrl":"(https:\/\/[^"]+)","title":"([^"]+)"/g;let m;
+  while((m=re.exec(t))){const full=m[1],name=clean(m[2]),k=name.toLowerCase();if(seen.has(full)||seen.has(k))continue;seen.add(full);seen.add(k);photos.push({name,full,thumb:full})}
+  const v=(t.match(/"@type":"Restaurant"[^{}]*?"name":"([^"]+)"/)||[])[1];return{venue:v?clean(v):'',photos}}
+
+// DoorDash: the DoorDash data provider through Firecrawl (5 credits a store); its photos sit behind DoorDash's
+// resizer at 1200x672, so the original behind it is used, with the resized one as a fallback
+const ddStore=u=>{const m=String(u).match(/\/store\/(?:[^\/?#]*-)?(\d{3,20})(?:[\/?#]|$)/);return m?m[1]:''};
+async function ddRead(u){const id=ddStore(u);if(!id)throw new Error('that address has no DoorDash store number in it. Open the store on DoorDash and copy its address');
+  const mcp=await pfMcp();if(!mcp)throw new Error(NOREAD);
+  let res;try{res=await mcp.callTool('Firecrawl','firecrawl_scrape',{alexandria:{provider:'doordash-com',capability:'products/items',options:{store_id:id}},
+    objective:'Collect a restaurant’s own menu item photos from DoorDash so they can be used on its Oolio point of sale.'},{cache:false})}
+  catch(e){throw new Error('Firecrawl couldn’t read it ('+(e.code||e.message||'error')+')')}
+  fcUsed+=5;let p=res&&res.payload!==undefined?res.payload:res;if(typeof p==='string'){try{p=JSON.parse(p)}catch(e){}}
+  if(p&&Array.isArray(p.content)){try{p=JSON.parse(p.content.map(x=>x&&x.text||'').join(''))}catch(e){}}
+  const find=(o,k,d=0)=>{if(!o||typeof o!=='object'||d>6)return;if(k in o)return o[k];for(const v of Object.values(o)){const r=find(v,k,d+1);if(r!==undefined)return r}};
+  const a=find(p,'alexandria'),r=Array.isArray(a)?a[0]:null;
+  if(!r||r.error)throw new Error((r&&r.error&&(r.error.message||r.error.code))||'no answer from DoorDash');
+  const photos=[],seen=new Set();
+  ((r.data&&r.data.groups)||[]).forEach(g=>(g.items||[]).forEach(it=>{if(!it||!it.name||!it.image_url)return;const k=clean(it.name).toLowerCase();if(seen.has(k))return;seen.add(k);
+    photos.push({name:clean(it.name),full:it.image_url.replace(/^https:\/\/img\.cdn4dd\.com\/cdn-cgi\/image\/[^/]+\//,''),thumb:it.image_url})}));
+  return{venue:'',photos,items:(r.data&&r.data.count)||0}}
+
+// the venue's own website: the page and up to 3 of its menu pages. Each picture is named from its alt text,
+// caption or nearest heading, else its file name; pictures with no usable name still go in the pack as "Photo n"
+// but aren't matched to products. Logos, icons and anything under 200 px are left out.
+const JUNKIMG=/logo|icon|favicon|sprite|pixel|badge|payment|visa|mastercard|amex|paypal|afterpay|instagram|facebook|tiktok|tripadvisor|google|apple-touch|placeholder|spinner|loader|arrow|avatar|emoji|gravatar|noise|texture|pattern|divider|\.svg($|[?#])|\.gif($|[?#])/i;
+const GENALT=/^(image|img|photo|picture|pic|untitled|banner|hero|slide|slider|gallery|food|menu|thumbnail|background|bg|header|cover|featured image|our menu|menus?|home|welcome|about|about us|contact|\d+)$/i;
+const SITEBAD=/instagram|facebook|tiktok|twitter|x\.com|linkedin|youtube|google\.|mailto:|tel:|javascript:|\/cart|\/account|\/login|\/privacy|\/terms|\/careers|\/jobs|\/gift|voucher|\/blog\/|\/news\/|\.pdf($|[?#])/i;
+const SITEMENU=/\b(menus?|food|drinks?|eat|lunch|dinner|breakfast|brunch|cocktails?|wines?|desserts?|cakes?|pizzas?|burgers?|takeaway)\b/i;
+const nameOK=n=>!!n&&n.length<=80&&/\p{L}{3}/u.test(n)&&!GENALT.test(n)&&!/^(img|dsc|dscn|pxl|photo|image|screenshot|whatsapp|unnamed|untitled)[\s_-]*\d/i.test(n)&&!/[0-9a-f]{12,}/i.test(n.replace(/[\s-]/g,''));
+function fileWords(u){try{let f=decodeURIComponent(new URL(u).pathname.split('/').filter(Boolean).find(s=>/\.(jpe?g|png|webp|avif)$/i.test(s))||'');
+  f=f.replace(/\.(jpe?g|png|webp|avif)$/i,'').replace(/~mv2.*$/,'').replace(/[-_]\d{2,4}x\d{2,4}$/,'').replace(/[-_](scaled|large|medium|small|thumb|retina|copy|edited|min|\d{1,2})$/gi,'').replace(/[_+-]+/g,' ');
+  return clean(f.replace(/\b\d{5,}\b/g,' ').replace(/\b(hero|banner|desktop|mobile|tablet|web|website|resized|cropped|crop|final|header|bg|hq|hd|lg|sm|md|xl|[a-z]|v\d+|\d{1,3}|\d+px)\b/gi,' '))}catch(e){return''}}
+function upgradeImg(u){try{const x=new URL(u);
+  if(/squarespace-cdn\.com$/.test(x.hostname)){x.search='?format=1500w';return x.href}
+  if(/wixstatic\.com$/.test(x.hostname))return x.origin+x.pathname.replace(/\/v1\/.*$/,'');
+  if(/cdn\.shopify\.com$/.test(x.hostname)||/\/cdn\/shop\//.test(x.pathname)){x.pathname=x.pathname.replace(/_(\d+x\d*|\d*x\d+|small|medium|large|grande|compact)(?=\.\w+$)/,'').replace(/-\d{2,4}x\d{2,4}(?=\.\w+$)/,'');['width','height','crop'].forEach(k=>x.searchParams.delete(k));return x.href}
+  x.pathname=x.pathname.replace(/-\d{2,4}x\d{2,4}(?=\.(jpe?g|png|webp)$)/i,'');return x.href}catch(e){return u}}
+function bestSrc(el,base){const abs=s=>{try{return new URL(String(s).trim().split(/\s+/)[0],base).href}catch(e){return''}};
+  for(const a of['data-srcset','srcset']){const ss=el.getAttribute(a);if(ss){const c=ss.split(/,\s+/).map(s=>{const [u,w]=s.trim().split(/\s+/);return{u,w:parseFloat(w)||0}}).sort((p,q)=>q.w-p.w)[0];if(c&&c.u&&!/^data:/.test(c.u))return abs(c.u)}}
+  for(const a of['data-src','data-lazy-src','data-original','data-image','src']){const s=el.getAttribute(a);if(s&&!/^data:/.test(s))return abs(s)}
+  const bg=(el.getAttribute('style')||'').match(/background(?:-image)?\s*:[^;]*url\(\s*['"]?([^'")]+)/i);return bg?abs(bg[1]):''}
+function imgName(el){for(const a of['alt','title','aria-label','data-title']){const v=clean(el.getAttribute(a));if(nameOK(v))return v}
+  const fig=el.closest('figure'),cap=fig&&fig.querySelector('figcaption');if(cap&&nameOK(clean(cap.textContent)))return clean(cap.textContent);
+  // the nearest heading, but only inside a container that holds just this one picture (a card), not a
+  // section of many where the heading belongs to all of them
+  let p=el.parentElement;for(let d=0;p&&d<4;d++,p=p.parentElement){if(p.querySelectorAll('img').length>1)break;
+    const h=p.querySelector('h1,h2,h3,h4,h5,h6,strong,b,[class*="title"],[class*="name"]');
+    const t=h&&clean(h.textContent);if(t&&nameOK(t)&&t.length<=60)return t}
+  return''}
+function sitePhotos(html,base,out,seen){const doc=new DOMParser().parseFromString(html,'text/html');
+  const add=(src,name)=>{if(!src||seen.has(src)||out.length>=150)return;seen.add(src);const n=nameOK(name)?clean(name):fileWords(src),named=nameOK(n);
+    out.push({name:named?n:'',full:upgradeImg(src),thumb:src,named})};
+  const walk=o=>{if(!o||typeof o!=='object')return;if(Array.isArray(o)){o.forEach(walk);return}
+    const t=[].concat(o['@type']||[]).join(' ');if(/MenuItem|Product/.test(t)&&o.image&&o.name){const im=[].concat(o.image)[0];try{add(new URL(typeof im==='string'?im:im&&im.url,base).href,o.name)}catch(e){}}
+    Object.values(o).forEach(walk)};
+  doc.querySelectorAll('script[type="application/ld+json"]').forEach(s=>{try{walk(JSON.parse(s.textContent))}catch(e){}});
+  doc.querySelectorAll('img,[style*="background"]').forEach(el=>{const w=+el.getAttribute('width')||0,h=+el.getAttribute('height')||0;if((w&&w<120)||(h&&h<120))return;
+    const src=bestSrc(el,base);if(!src||/^data:/.test(src))return;
+    const hint=src+' '+(el.getAttribute('alt')||'')+' '+(el.getAttribute('class')||'')+' '+(el.id||'');if(JUNKIMG.test(hint))return;
+    add(src,imgName(el))});
+  return doc}
+async function siteRead(u){const pg=await pageText(u),photos=[],seen=new Set(),doc=sitePhotos(pg.html,pg.url,photos,seen),host=new URL(pg.url).hostname.replace(/^www\./,'');
+  const links=[];doc.querySelectorAll('a[href]').forEach(a=>{let h;try{h=new URL(a.getAttribute('href'),pg.url)}catch(e){return}h.hash='';
+    if(h.hostname.replace(/^www\./,'')!==host||SITEBAD.test(h.href)||h.href===pg.url||links.includes(h.href))return;
+    if(SITEMENU.test(clean(a.textContent))||SITEMENU.test(h.pathname.replace(/[-_/]/g,' ')))links.push(h.href)});
+  // menu pages are read for free; Firecrawl is used for them only when the home page itself needed it
+  for(const l of links.slice(0,3)){try{const p2=await pageText(l,!!pg.fc);sitePhotos(p2.html,p2.url,photos,seen)}catch(e){}}
+  const og=doc.querySelector('meta[property="og:site_name"]');let n=0;photos.forEach(p=>{if(!p.named)p.name='Photo '+(++n)});
+  return{venue:clean(og&&og.getAttribute('content'))||'',photos}}
+
+/* ---------- matching the venue's photos to products ----------
+   Every source is compared; the best match from each source is offered (at most 3), the venue's own pages first
+   when two match equally well. An exact match means the libraries aren't searched for that product. */
+const SRC_RANK={'Hungry Hungry':0,'Website':1,'Uber Eats':2,'DoorDash':3};
+function venueMatches(it){const a=nkey(it.name);if(!a.length)return[];const out=[];
+  for(const v of venuePhotos){if(!v.named)continue;const b=v.key,inter=a.filter(w=>b.includes(w)).length;if(!inter)continue;
     let s=inter/Math.max(a.length,b.length);if(inter===a.length&&inter===b.length)s=1;
     else if(inter===Math.min(a.length,b.length)&&Math.abs(a.length-b.length)===1)s=Math.max(s,.7);// "Pepperoni" / "Pepperoni Pizza"
-    if(s>bs){bs=s;best=v}}
-  return bs>=.67?{v:best,exact:bs===1}:null}
+    if(s>=.67)out.push({v,s})}
+  out.sort((x,y)=>y.s-x.s||x.v.rank-y.v.rank);const per=new Set();
+  return out.filter(x=>!per.has(x.v.src)&&per.add(x.v.src)).slice(0,3)}
 function applyVenue(){let exact=0,close=0;
   items.forEach(it=>{const old=it.cands.length;it.cands=it.cands.filter(c=>!c.venue);if(it.cands.length<old&&!it.picked)it.pick=0;
-    const m=venuePhotos.length&&matchVenue(it);if(!m)return;
-    it.cands.unshift({thumb:m.v.thumb,full:m.v.full,page:$('ourl').value.trim(),creator:venueSrc,license:'Venue’s own photo',free:true,source:'Venue’s ordering page',title:m.v.name,venue:true,exact:m.exact,blob:m.v.blob});
-    if(it.picked)it.pick++;else it.pick=0;
-    if(m.exact){exact++;if(!it.own&&(it.status==='wait'||it.status==='none'||it.status==='err'))it.status='found'}else{close++;if(!it.own&&it.status==='none')it.status='found'}});
+    const ms=venuePhotos.length?venueMatches(it):[];if(!ms.length)return;
+    ms.slice().reverse().forEach(x=>{it.cands.unshift({thumb:x.v.thumb,full:x.v.full,page:x.v.page,creator:venueSrc,license:'Venue’s own photo',free:true,
+      source:'Venue’s '+(x.v.src==='Website'?'website':x.v.src+' page'),title:x.v.name,venue:true,exact:x.s===1,blob:x.v.blob});if(it.picked)it.pick++});
+    if(!it.picked)it.pick=0;
+    if(ms[0].s===1){exact++;if(!it.own&&(it.status==='wait'||it.status==='none'||it.status==='err'))it.status='found'}else{close++;if(!it.own&&it.status==='none')it.status='found'}});
   render();return{exact,close}}
-$('oread').addEventListener('click',async()=>{const m=$('omsg'),raw=$('ourl').value.trim();let u;
-  try{u=new URL(/^https?:\/\//i.test(raw)?raw:'https://'+raw)}catch(e){m.textContent='Paste the address of the venue’s online ordering page.';return}
-  const h=u.hostname;
-  if(/(^|\.)(meandu\.app|mryum\.com)$/.test(h)){m.textContent='me&u and Mr Yum pages aren’t supported yet. For now, save photos from the venue’s me&u menu and add them with “Use my own”.';return}
-  if(!/(^|\.)hungryhungry\.com$/.test(h)){m.textContent='Only Hungry Hungry ordering pages are supported so far (addresses ending in hungryhungry.com).';return}
-  $('oread').disabled=true;$('opack').hidden=true;venuePack=null;m.textContent='Reading the venue’s menu…';
-  try{const r=await hhPhotos(u.href);venueSrc=r.venue||'the venue';venuePhotos=[];
-    if(!clean($('venue').value)||$('venue').value==='Example Cafe')$('venue').value=r.venue||$('venue').value;
-    if(!r.photos.length){applyVenue();m.textContent=venueSrc+'’s menu ('+r.items+' items) has no photos.';return}
-    // step 1: every photo on the page, downloaded and converted, before anything is matched
-    const pk=await buildPack(r.photos,(d,n)=>{m.textContent='Downloading and converting '+venueSrc+'’s photos: '+d+' of '+n+'…'});
+const srcOf=h=>/(^|\.)hungryhungry\.com$/.test(h)?'Hungry Hungry':/(^|\.)ubereats\.com$/.test(h)?'Uber Eats':/(^|\.)doordash\.com$/.test(h)?'DoorDash':/(^|\.)(meandu\.app|mryum\.com)$/.test(h)?'me&u':'Website';
+const READERS={'Hungry Hungry':u=>hhPhotos(u),'Uber Eats':ueRead,'DoorDash':ddRead,'Website':siteRead};
+$('oread').addEventListener('click',async()=>{const m=$('omsg'),list=[],bad=[];
+  $('ourl').value.split(/[\s,]+/).filter(Boolean).forEach(raw=>{let u;try{u=new URL(/^https?:\/\//i.test(raw)?raw:'https://'+raw)}catch(e){bad.push(raw);return}
+    if(!/\./.test(u.hostname)){bad.push(raw);return}const src=srcOf(u.hostname);if(!list.some(x=>x.u.href===u.href))list.push({u,src})});
+  if(!list.length){m.textContent='Paste the address of the venue’s Hungry Hungry page, website, Uber Eats page or DoorDash page, one per line.';return}
+  $('oread').disabled=true;$('opack').hidden=true;venuePack=null;venuePhotos=[];fcUsed=0;
+  const all=[],notes=bad.map(b=>'“'+b+'” isn’t a web address'),seen=new Set(),srcs=new Set();let vname='';
+  try{list.sort((x,y)=>(SRC_RANK[x.src]??9)-(SRC_RANK[y.src]??9));
+    for(const {u,src} of list){
+      if(src==='me&u'){notes.push('me&u: not supported yet; save its photos and add them with “Use my own”');continue}
+      m.textContent='Reading the venue’s '+(src==='Website'?'website':src+' page')+'…';
+      try{const r=await READERS[src](u.href);let n=0,un=0;
+        r.photos.forEach(p=>{if(seen.has(p.full))return;seen.add(p.full);p.src=src;p.rank=SRC_RANK[src];p.page=u.href;if(p.named===undefined)p.named=true;p.key=p.named?nkey(p.name):[];all.push(p);n++;if(!p.named)un++});
+        if(!vname&&r.venue)vname=r.venue;if(n)srcs.add(src);
+        notes.push(src+': '+n+' photo'+(n===1?'':'s')+(r.items?' of '+r.items+' items':'')+(un?' ('+un+' with no item name)':''))}
+      catch(e){notes.push(src+': '+(e.message&&!/^HTTP|Failed to fetch|abort/i.test(e.message)?e.message:'couldn’t be read ('+(e.message||e.name)+')'))}}
+    venueSrc=vname||clean($('venue').value)||'the venue';
+    if(vname&&(!clean($('venue').value)||$('venue').value==='Example Cafe'))$('venue').value=vname;
+    const spent=fcUsed?' Used '+fcUsed+' Firecrawl credit'+(fcUsed===1?'':'s')+'.':'';
+    if(!all.length){applyVenue();m.textContent='No photos found. '+notes.join('. ')+'.'+spent;return}
+    // step 1: every photo from every page, downloaded and converted, before anything is matched
+    const pk=await buildPack(all,(d,n)=>{m.textContent='Downloading and converting the venue’s photos: '+d+' of '+n+'…'},srcs.size>1);
     venuePack={venue:venueSrc,files:pk.files,failed:pk.failed};$('opack').hidden=!pk.files.length;
     // step 2: only the photos that downloaded are matched to the products
     venuePhotos=pk.files.map(f=>f.photo);const a=applyVenue();
-    m.textContent=pk.files.length+' of '+r.photos.length+' photo'+(r.photos.length===1?'':'s')+' from '+venueSrc+'’s menu ('+r.items+' items) are ready as square JPEGs under 2 MB. Download them below.'+
-      (pk.failed.length?' These couldn’t be downloaded: '+pk.failed.join(', ')+'.':'')+' Then matched by name: '+
+    m.textContent=notes.join('. ')+'. '+pk.files.length+' photo'+(pk.files.length===1?' is':'s are')+' ready as square JPEGs under 2 MB'+(srcs.size>1?', in a folder for each source':'')+'. Download them below.'+
+      (pk.small?' '+pk.small+' small picture'+(pk.small===1?' was':'s were')+' left out (under 200 px, usually icons).':'')+
+      (pk.failed.length?' These couldn’t be downloaded: '+pk.failed.slice(0,15).join(', ')+(pk.failed.length>15?' and '+(pk.failed.length-15)+' more':'')+'.':'')+' Then matched by name: '+
       a.exact+' product'+(a.exact===1?' matches':'s match')+' and use'+(a.exact===1?'s':'')+' the venue’s photo'+(a.close?'; '+a.close+' more '+(a.close===1?'has':'have')+' a close match shown first':'')+'.'+
-      (a.exact?' Those products won’t be searched in the photo libraries, which saves searches.':'')}
-  catch(e){m.textContent=e.message&&!/^HTTP|Failed to fetch|abort/i.test(e.message)?e.message:'Couldn’t read that page’s menu ('+(e.message||e.name)+'). Check the address and try again.'}
+      (a.exact?' Those products won’t be searched in the photo libraries, which saves searches.':'')+spent}
+  catch(e){m.textContent='Couldn’t get the venue’s photos ('+(e.message||e.name)+').'}
   finally{$('oread').disabled=false}});
 
 /* ---------- the venue's photo pack ----------
-   Every photo on the ordering page, each cropped to a centred square, flattened onto white (PNGs with
-   see-through backgrounds) and saved as a JPEG under 2 MB, named after the item. The host sends no CORS
-   header, so photos come through wsrv.nl. Four download at a time. */
+   Every photo found, each cropped to a centred square, flattened onto white (PNGs with see-through
+   backgrounds) and saved as a JPEG under 2 MB, named after the item, in a folder per source when there's
+   more than one. Most of these hosts send no CORS header, so photos come through the website's /api/fetch
+   or wsrv.nl. Four download at a time. */
 let venuePack=null;
 const MAXB=2*1024*1024-1;
 async function squareJpeg(blob){const bmp=await createImageBitmap(blob),m=Math.min(bmp.width,bmp.height),sx=(bmp.width-m)/2,sy=(bmp.height-m)/2;
   let side=Math.min(m,2000),q=.9,out;
-  try{for(let t=0;t<12;t++){const cv=document.createElement('canvas');cv.width=cv.height=side;const g=cv.getContext('2d');
+  try{if(m<200){const e=new Error('small');e.small=true;throw e}
+    for(let t=0;t<12;t++){const cv=document.createElement('canvas');cv.width=cv.height=side;const g=cv.getContext('2d');
       g.fillStyle='#fff';g.fillRect(0,0,side,side);g.imageSmoothingQuality='high';g.drawImage(bmp,sx,sy,m,m,0,0,side,side);
       out=await new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('encode')),'image/jpeg',q));
       if(out.size<=MAXB)return out;if(q>.71)q-=.1;else side=Math.round(side*.8)}}
   finally{bmp.close&&bmp.close()}
   throw new Error('too big')}
-async function venueBlob(p){const tries=[p.full,p.thumb].filter((u,i,a)=>u&&a.indexOf(u)===i).map(u=>'https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=2000&h=2000&fit=inside&we&output=jpg&q=95');
-  for(const u of tries){try{return await squareJpeg(await fetchBlob(u))}catch(e){}}throw new Error('download')}
-async function buildPack(photos,prog){const files=new Array(photos.length),failed=[];let next=0,done=0;
+async function venueBlob(p){const urls=[p.full,p.thumb].filter((u,i,a)=>u&&a.indexOf(u)===i),tries=[];
+  urls.forEach(u=>{if(HOSTED)tries.push('/api/fetch?url='+encodeURIComponent(u));tries.push('https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=2000&h=2000&fit=inside&we&output=jpg&q=95')});
+  let small=false;
+  for(const u of tries){try{const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),25000);
+      const r=await fetch(u,{credentials:u[0]==='/'?'same-origin':'omit',referrerPolicy:'no-referrer',signal:ctl.signal});
+      if(!r.ok||+(r.headers.get('X-Status')||200)>=400||!/image|octet/i.test(r.headers.get('content-type')||'')){clearTimeout(t);continue}
+      const b=await r.blob();clearTimeout(t);return await squareJpeg(b)}
+    catch(e){if(e.small)small=true}}
+  const e=new Error(small?'small':'download');e.small=small;throw e}
+async function buildPack(photos,prog,folders){const files=new Array(photos.length),failed=[];let next=0,done=0,small=0;
   const worker=async()=>{while(next<photos.length){const i=next++,p=photos[i];
-    try{p.blob=await venueBlob(p);files[i]={photo:p,blob:p.blob}}catch(e){failed.push(p.name)}
+    try{p.blob=await venueBlob(p);files[i]={photo:p,blob:p.blob}}catch(e){if(e.small)small++;else failed.push(p.name)}
     prog(++done,photos.length)}};
   await Promise.all([0,1,2,3].map(worker));
   const used=new Set(),out=files.filter(Boolean);
-  out.forEach(f=>{let base=safe(f.photo.name),n=base,j=2;while(used.has(n.toLowerCase()))n=base+' '+j++;used.add(n.toLowerCase());f.fn=n+'.jpg'});
-  return{files:out,failed}}
+  out.forEach(f=>{const dir=folders?f.photo.src+'/':'';let base=safe(f.photo.name),n=base,j=2;while(used.has((dir+n).toLowerCase()))n=base+' '+j++;used.add((dir+n).toLowerCase());f.fn=dir+n+'.jpg'});
+  return{files:out,failed,small}}
 function packName(){return safe((venuePack&&venuePack.venue)||clean($('venue').value)||'Venue')+' - venue photos'}
-function packList(){return new Blob(['﻿'+[['Item','File','Original photo'],...venuePack.files.map(f=>[f.photo.name,f.fn,f.photo.full])].map(r=>r.map(csvq).join(',')).join('\r\n')],{type:'text/csv'})}
+function packList(){return new Blob(['﻿'+[['Source','Item','File','Original photo','Page'],...venuePack.files.map(f=>[f.photo.src,f.photo.named?f.photo.name:'',f.fn,f.photo.full,f.photo.page])].map(r=>r.map(csvq).join(',')).join('\r\n')],{type:'text/csv'})}
 $('ozip').addEventListener('click',async()=>{if(!venuePack)return;const m=$('omsg'),v=packName();$('ozip').disabled=true;
   try{const zip=new JSZip(),f=zip.folder(v);venuePack.files.forEach(x=>f.file(x.fn,x.blob));f.file('photo list.csv',packList());
     const blob=await zip.generateAsync({type:'blob'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=v+'.zip';
@@ -407,7 +532,8 @@ $('odir').addEventListener('click',async()=>{if(!venuePack)return;const m=$('oms
   if(!window.showDirectoryPicker){m.textContent='This browser can’t save straight into a folder. Use the ZIP, or open this page in Edge or Chrome.';return}
   let root;try{root=await showDirectoryPicker({id:'mpf',mode:'readwrite',startIn:'pictures'})}catch(e){return}
   try{const dir=await root.getDirectoryHandle(v,{create:true});
-    const put=async(fn,b)=>{const fh=await dir.getFileHandle(fn,{create:true}),w=await fh.createWritable();await w.write(b);await w.close()};
+    const put=async(fn,b)=>{const parts=fn.split('/');let d=dir;for(const x of parts.slice(0,-1))d=await d.getDirectoryHandle(x,{create:true});
+      const fh=await d.getFileHandle(parts[parts.length-1],{create:true}),w=await fh.createWritable();await w.write(b);await w.close()};
     for(const x of venuePack.files)await put(x.fn,x.blob);await put('photo list.csv',packList());
     m.textContent='Saved '+venuePack.files.length+' photos to the “'+v+'” folder inside “'+root.name+'”.'}
   catch(e){m.textContent='Couldn’t write to that folder ('+(e.message||e.name)+'). Pick a folder you can edit, or use the ZIP.'}});
