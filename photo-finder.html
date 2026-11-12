@@ -114,7 +114,11 @@ button.sm,.btn.sm{padding:4px 10px;font-size:13px;font-weight:600}
       <label for="ourl">Venue’s online ordering page (optional)<input type="text" id="ourl" placeholder="e.g. order.hungryhungry.com/thequartercafe/menu" style="width:380px"></label>
       <button type="button" class="sec" id="oread">Get the venue’s photos</button>
     </div>
-    <p class="note" id="omsg">If the venue already sells online, its own item photos are used first, matched to your products by name. Works with Hungry Hungry ordering pages, at no cost. These photos belong to the venue, so use them only for that venue.</p>
+    <p class="note" id="omsg">If the venue already sells online, every item photo on its page is downloaded first, turned into a square JPEG under 2 MB and named after the item, ready to download as its own folder. Only then are they matched to your products by name and used first. Works with Hungry Hungry ordering pages, at no cost. These photos belong to the venue, so use them only for that venue.</p>
+    <div class="row" id="opack" hidden>
+      <button type="button" id="ozip">Download venue photos (ZIP)</button>
+      <button type="button" class="sec" id="odir">Save venue photos to a folder</button>
+    </div>
     <details id="keys">
       <summary>Better photos with Pexels or Pixabay (optional, free key)</summary>
       <div class="row">
@@ -341,7 +345,7 @@ function matchVenue(it){const a=nkey(it.name);if(!a.length)return null;let best=
 function applyVenue(){let exact=0,close=0;
   items.forEach(it=>{const old=it.cands.length;it.cands=it.cands.filter(c=>!c.venue);if(it.cands.length<old&&!it.picked)it.pick=0;
     const m=venuePhotos.length&&matchVenue(it);if(!m)return;
-    it.cands.unshift({thumb:m.v.thumb,full:m.v.full,page:$('ourl').value.trim(),creator:venueSrc,license:'Venue’s own photo',free:true,source:'Venue’s ordering page',title:m.v.name,venue:true,exact:m.exact});
+    it.cands.unshift({thumb:m.v.thumb,full:m.v.full,page:$('ourl').value.trim(),creator:venueSrc,license:'Venue’s own photo',free:true,source:'Venue’s ordering page',title:m.v.name,venue:true,exact:m.exact,blob:m.v.blob});
     if(it.picked)it.pick++;else it.pick=0;
     if(m.exact){exact++;if(!it.own&&(it.status==='wait'||it.status==='none'||it.status==='err'))it.status='found'}else{close++;if(!it.own&&it.status==='none')it.status='found'}});
   render();return{exact,close}}
@@ -350,15 +354,63 @@ $('oread').addEventListener('click',async()=>{const m=$('omsg'),raw=$('ourl').va
   const h=u.hostname;
   if(/(^|\.)(meandu\.app|mryum\.com)$/.test(h)){m.textContent='me&u and Mr Yum pages aren’t supported yet. For now, save photos from the venue’s me&u menu and add them with “Use my own”.';return}
   if(!/(^|\.)hungryhungry\.com$/.test(h)){m.textContent='Only Hungry Hungry ordering pages are supported so far (addresses ending in hungryhungry.com).';return}
-  $('oread').disabled=true;m.textContent='Reading the venue’s menu…';
-  try{const r=await hhPhotos(u.href);venuePhotos=r.photos;venueSrc=r.venue||'the venue';
+  $('oread').disabled=true;$('opack').hidden=true;venuePack=null;m.textContent='Reading the venue’s menu…';
+  try{const r=await hhPhotos(u.href);venueSrc=r.venue||'the venue';venuePhotos=[];
     if(!clean($('venue').value)||$('venue').value==='Example Cafe')$('venue').value=r.venue||$('venue').value;
-    const a=applyVenue();
-    m.textContent='Found '+r.photos.length+' photo'+(r.photos.length===1?'':'s')+' on '+venueSrc+'’s menu ('+r.items+' items). '+
-      a.exact+' product'+(a.exact===1?' matches':'s match')+' by name and use'+(a.exact===1?'s':'')+' the venue’s photo'+(a.close?'; '+a.close+' more '+(a.close===1?'has':'have')+' a close match shown first':'')+'.'+
+    if(!r.photos.length){applyVenue();m.textContent=venueSrc+'’s menu ('+r.items+' items) has no photos.';return}
+    // step 1: every photo on the page, downloaded and converted, before anything is matched
+    const pk=await buildPack(r.photos,(d,n)=>{m.textContent='Downloading and converting '+venueSrc+'’s photos: '+d+' of '+n+'…'});
+    venuePack={venue:venueSrc,files:pk.files,failed:pk.failed};$('opack').hidden=!pk.files.length;
+    // step 2: only the photos that downloaded are matched to the products
+    venuePhotos=pk.files.map(f=>f.photo);const a=applyVenue();
+    m.textContent=pk.files.length+' of '+r.photos.length+' photo'+(r.photos.length===1?'':'s')+' from '+venueSrc+'’s menu ('+r.items+' items) are ready as square JPEGs under 2 MB. Download them below.'+
+      (pk.failed.length?' These couldn’t be downloaded: '+pk.failed.join(', ')+'.':'')+' Then matched by name: '+
+      a.exact+' product'+(a.exact===1?' matches':'s match')+' and use'+(a.exact===1?'s':'')+' the venue’s photo'+(a.close?'; '+a.close+' more '+(a.close===1?'has':'have')+' a close match shown first':'')+'.'+
       (a.exact?' Those products won’t be searched in the photo libraries, which saves searches.':'')}
   catch(e){m.textContent=e.message&&!/^HTTP|Failed to fetch|abort/i.test(e.message)?e.message:'Couldn’t read that page’s menu ('+(e.message||e.name)+'). Check the address and try again.'}
   finally{$('oread').disabled=false}});
+
+/* ---------- the venue's photo pack ----------
+   Every photo on the ordering page, each cropped to a centred square, flattened onto white (PNGs with
+   see-through backgrounds) and saved as a JPEG under 2 MB, named after the item. The host sends no CORS
+   header, so photos come through wsrv.nl. Four download at a time. */
+let venuePack=null;
+const MAXB=2*1024*1024-1;
+async function squareJpeg(blob){const bmp=await createImageBitmap(blob),m=Math.min(bmp.width,bmp.height),sx=(bmp.width-m)/2,sy=(bmp.height-m)/2;
+  let side=Math.min(m,2000),q=.9,out;
+  try{for(let t=0;t<12;t++){const cv=document.createElement('canvas');cv.width=cv.height=side;const g=cv.getContext('2d');
+      g.fillStyle='#fff';g.fillRect(0,0,side,side);g.imageSmoothingQuality='high';g.drawImage(bmp,sx,sy,m,m,0,0,side,side);
+      out=await new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('encode')),'image/jpeg',q));
+      if(out.size<=MAXB)return out;if(q>.71)q-=.1;else side=Math.round(side*.8)}}
+  finally{bmp.close&&bmp.close()}
+  throw new Error('too big')}
+async function venueBlob(p){const tries=[p.full,p.thumb].filter((u,i,a)=>u&&a.indexOf(u)===i).map(u=>'https://wsrv.nl/?url='+encodeURIComponent(u)+'&w=2000&h=2000&fit=inside&we&output=jpg&q=95');
+  for(const u of tries){try{return await squareJpeg(await fetchBlob(u))}catch(e){}}throw new Error('download')}
+async function buildPack(photos,prog){const files=new Array(photos.length),failed=[];let next=0,done=0;
+  const worker=async()=>{while(next<photos.length){const i=next++,p=photos[i];
+    try{p.blob=await venueBlob(p);files[i]={photo:p,blob:p.blob}}catch(e){failed.push(p.name)}
+    prog(++done,photos.length)}};
+  await Promise.all([0,1,2,3].map(worker));
+  const used=new Set(),out=files.filter(Boolean);
+  out.forEach(f=>{let base=safe(f.photo.name),n=base,j=2;while(used.has(n.toLowerCase()))n=base+' '+j++;used.add(n.toLowerCase());f.fn=n+'.jpg'});
+  return{files:out,failed}}
+function packName(){return safe((venuePack&&venuePack.venue)||clean($('venue').value)||'Venue')+' - venue photos'}
+function packList(){return new Blob(['﻿'+[['Item','File','Original photo'],...venuePack.files.map(f=>[f.photo.name,f.fn,f.photo.full])].map(r=>r.map(csvq).join(',')).join('\r\n')],{type:'text/csv'})}
+$('ozip').addEventListener('click',async()=>{if(!venuePack)return;const m=$('omsg'),v=packName();$('ozip').disabled=true;
+  try{const zip=new JSZip(),f=zip.folder(v);venuePack.files.forEach(x=>f.file(x.fn,x.blob));f.file('photo list.csv',packList());
+    const blob=await zip.generateAsync({type:'blob'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=v+'.zip';
+    document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),60000);
+    m.textContent='Downloaded “'+v+'.zip” with '+venuePack.files.length+' photos. Unzip it to get the “'+v+'” folder.'}
+  catch(e){m.textContent='The ZIP couldn’t be made ('+(e.message||e.name)+').'}
+  finally{$('ozip').disabled=false}});
+$('odir').addEventListener('click',async()=>{if(!venuePack)return;const m=$('omsg'),v=packName();
+  if(!window.showDirectoryPicker){m.textContent='This browser can’t save straight into a folder. Use the ZIP, or open this page in Edge or Chrome.';return}
+  let root;try{root=await showDirectoryPicker({id:'mpf',mode:'readwrite',startIn:'pictures'})}catch(e){return}
+  try{const dir=await root.getDirectoryHandle(v,{create:true});
+    const put=async(fn,b)=>{const fh=await dir.getFileHandle(fn,{create:true}),w=await fh.createWritable();await w.write(b);await w.close()};
+    for(const x of venuePack.files)await put(x.fn,x.blob);await put('photo list.csv',packList());
+    m.textContent='Saved '+venuePack.files.length+' photos to the “'+v+'” folder inside “'+root.name+'”.'}
+  catch(e){m.textContent='Couldn’t write to that folder ('+(e.message||e.name)+'). Pick a folder you can edit, or use the ZIP.'}});
 
 /* ---------- picking the best photo ---------- */
 const reEsc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
@@ -490,6 +542,7 @@ async function toJpeg(blob,square){const bmp=await createImageBitmap(blob);let s
   const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,cw,ch);g.drawImage(bmp,sx,sy,sw,sh,0,0,cw,ch);bmp.close&&bmp.close();
   return await new Promise((res,rej)=>cv.toBlob(b=>b?res(b):rej(new Error('encode')),'image/jpeg',.9))}
 async function imageFor(it){if(it.own)return toJpeg(it.own,$('square').checked);const c=it.cands[it.pick];
+  if(c.blob&&$('square').checked)return c.blob;// a venue photo already converted for the photo pack
   // some photo hosts (the venue's ordering site among them) don't let other pages download their images,
   // so a failed download is retried through wsrv.nl, a free image proxy that does
   const urls=[c.full,c.fallback,c.thumb].filter((u,i,a)=>u&&a.indexOf(u)===i),tries=[];
