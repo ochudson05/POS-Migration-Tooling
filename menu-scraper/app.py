@@ -38,9 +38,12 @@ async def lifespan(_app):
 
 
 app = FastAPI(title="Menu Scraper", version="1.0", lifespan=lifespan)
-origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "*").split(",") if o.strip()]
-app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "OPTIONS"],
-                   allow_headers=["*"], allow_private_network=True)
+# No cross-origin access by default: in production this runs behind Caddy + Cloudflare Tunnel and is called
+# server-to-server (CORS doesn't apply), so a browser never needs it. Set ALLOWED_ORIGINS for local browser dev.
+origins = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+if origins:
+    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "OPTIONS"],
+                       allow_headers=["*"])
 
 
 def check_key(x_api_key: str | None = Header(default=None), authorization: str | None = Header(default=None)):

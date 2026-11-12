@@ -13,10 +13,12 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import ipaddress
 import json
 import logging
 import os
 import re
+import socket
 from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
@@ -33,6 +35,40 @@ class FetchError(Exception):
         super().__init__(message)
         self.code = code
         self.status = status
+
+
+def _ip_blocked(ip: str) -> bool:
+    """True for loopback, private, link-local (incl. 169.254 cloud metadata), reserved, etc."""
+    try:
+        a = ipaddress.ip_address(ip)
+    except ValueError:
+        return True
+    if getattr(a, "ipv4_mapped", None):
+        return _ip_blocked(str(a.ipv4_mapped))
+    return (a.is_private or a.is_loopback or a.is_link_local or a.is_reserved
+            or a.is_multicast or a.is_unspecified)
+
+
+def guard_url(url: str) -> None:
+    """SSRF guard: refuse to fetch internal hosts. Blocks a venue URL that resolves
+    to the VM's own network or the cloud metadata service (169.254.169.254)."""
+    host = (urlparse(url).hostname or "").strip("[]")
+    if not host:
+        raise FetchError("That isn't a web address", "blocked", 400)
+    try:
+        ipaddress.ip_address(host)  # literal IP in the URL
+        if _ip_blocked(host):
+            raise FetchError("That address points to an internal host", "blocked", 403)
+        return
+    except ValueError:
+        pass  # it's a name; resolve it
+    try:
+        answers = socket.getaddrinfo(host, None)
+    except socket.gaierror:
+        raise FetchError(f"{host} could not be found", "connect_failed", 502)
+    for info in answers:
+        if _ip_blocked(info[4][0]):
+            raise FetchError("That address points to an internal host", "blocked", 403)
 
 
 @dataclass
@@ -292,6 +328,7 @@ def _thin(page: Page) -> bool:
 
 async def fetch(url: str, start: str = "http", attempts: list | None = None) -> Page:
     """Try tiers from `start` onwards. `attempts` collects what was tried, for the response."""
+    guard_url(url)  # SSRF: never fetch internal / link-local / metadata addresses
     order = ["http", "browser", "firecrawl"]
     order = order[order.index(start):] if start in order else order
     attempts = attempts if attempts is not None else []

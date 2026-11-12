@@ -780,7 +780,8 @@ async function fetchFor(q, env) {
   const r = await fetch(target, { redirect: 'follow', headers: { 'User-Agent': UA, 'Accept': '*/*', 'Accept-Language': 'en-AU,en;q=0.9' } });
   const len = +(r.headers.get('content-length') || 0);
   if (len > 20e6) return api({ error: 'That file is too big.' }, 413);
-  const h = new Headers({ 'Content-Type': r.headers.get('content-type') || 'application/octet-stream', 'X-Final-Url': r.url, 'X-Status': String(r.status), 'Cache-Control': 'no-store' });
+  // the proxied body is never trusted: force download, never let the browser render or sniff it as HTML on our origin
+  const h = new Headers({ 'Content-Type': r.headers.get('content-type') || 'application/octet-stream', 'Content-Disposition': 'attachment', 'X-Content-Type-Options': 'nosniff', 'X-Final-Url': r.url, 'X-Status': String(r.status), 'Cache-Control': 'no-store' });
   return new Response(r.body, { status: r.ok ? 200 : 502, headers: h });
 }
 
@@ -817,8 +818,28 @@ async function server(path, req, env) {
   return api(r.ok ? j : { error: (j && (j.message || (typeof j.detail === 'string' && j.detail))) || 'The Menu Hauler server answered ' + r.status + '.', code: r.status === 401 ? 'unavailable' : 'tool_error' }, r.ok ? 200 : 502);
 }
 
+// baseline security headers added to every response (set here, not in Cloudflare, so they ship with the code)
+const SEC = {
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'SAMEORIGIN',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  // deliberately no script-src/default-src: the tool pages rely on inline scripts (and a cdnjs srcdoc frame).
+  // frame-ancestors stops cross-origin clickjacking; base-uri/object-src block two injection vectors.
+  'Content-Security-Policy': "frame-ancestors 'self'; base-uri 'self'; object-src 'none'",
+};
+function harden(res) {
+  const h = new Headers(res.headers);
+  for (const [k, v] of Object.entries(SEC)) if (!h.has(k)) h.set(k, v);
+  return new Response(res.body, { status: res.status, statusText: res.statusText, headers: h });
+}
 export default {
   async fetch(req, env) {
+    return harden(await handle(req, env));
+  },
+};
+async function handle(req, env) {
     const u = new URL(req.url), p = u.searchParams;
     // www.menuhauler.com -> menuhauler.com
     if (u.hostname.startsWith('www.')) { u.hostname = u.hostname.slice(4); return Response.redirect(u.href, 301); }
@@ -927,5 +948,4 @@ export default {
     }
     if (env.ASSETS) return env.ASSETS.fetch(req);
     return out({ error: 'Unknown address.' }, 404);
-  },
-};
+}
