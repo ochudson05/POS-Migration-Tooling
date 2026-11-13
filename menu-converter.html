@@ -60,6 +60,9 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .pf .pf-how{font-size:.82rem;color:var(--muted);margin:2px 0 0 18px}
 .pf .pf-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.pf .pf-btns button{margin:0}
 .pf-n{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pf-n span{font-size:.8rem;padding:2px 9px;border-radius:99px;border:1px solid var(--line);background:var(--card)}
+#dropov{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);pointer-events:none}#dropov.on{display:flex}
+#dropov div{background:var(--card);color:var(--text);border:2px dashed var(--accent);padding:28px 40px;border-radius:14px;font-weight:600}
+#npfix table input{width:90px;margin:0;padding:4px 6px}#npfix tr.npc td{background:var(--bg)}#rsbox button{margin:0 0 0 8px;padding:4px 12px}
 .chk ul{margin:4px 0 0;padding-left:18px;font-size:.82rem;color:var(--muted);max-height:180px;overflow:auto}
 </style>
 </head>
@@ -70,9 +73,11 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 
 <div class="card">
 <h2>1. Source files</h2>
-<label for="file">Choose one or more files: spreadsheets (.csv, .xlsx), menu PDFs, Word documents (.docx), saved web pages (.html), text files or photos of a menu (.jpg, .png)</label>
+<div id="rsbox"></div>
+<label for="file">Choose one or more files: spreadsheets (.csv, .xlsx), menu PDFs, Word documents (.docx), saved web pages (.html), text files or photos of a menu (.jpg, .png). You can also drag files onto the page, or paste a screenshot with Ctrl+V.</label>
 <p class="lx-cn" style="margin:0 0 6px">Files are read in your browser and aren’t kept unless you save the result to a venue. Don’t include personal or payment details. <a href="#privacy">Privacy Policy</a> · <a href="#ai">Use of AI</a></p>
 <input type="file" id="file" accept=".csv,.tsv,.txt,.md,.docx,.xlsx,.xlsm,.xls,.ods,.pdf,.html,.htm,.png,.jpg,.jpeg,.webp,.gif" multiple>
+<label class="ck" style="margin-top:8px"><input type="checkbox" id="noprice">Include items without prices (for menus that don’t show them). Their price is set to 0 and they are listed in Checks. Tick this before you add the file, read the page or paste the text.</label>
 <div class="warn hosted-only site-claude" style="margin-top:6px">Menu photos, PDFs and Word documents are read by Claude, which the site owner has switched on for your account. Check names and prices against the menu. Take photos straight on, in good light, one page at a time.</div>
 <div class="warn hosted-only ocr-note" style="margin-top:6px">Menu photos and scanned PDFs are read with text recognition (OCR) in your browser, which can take a minute. Check names and prices carefully against the photo. Take photos straight on, in good light, one page at a time.</div>
 <div class="warn claude-only" style="margin-top:6px">Menu photos, PDFs and Word documents are read by Claude, which uses a little of your own Claude usage and also picks up add-ons and choices (e.g. “Add bacon +$4”) as modifier groups. The first time, you’re asked to allow it. Take photos straight on, in good light, one page at a time.</div>
@@ -155,6 +160,7 @@ Double Shot=60</textarea></div>
 <div class="card" id="kcard" style="display:none">
 <h2>6. Checks</h2>
 <div id="checks"></div>
+<div id="npfix"></div>
 <div id="aichk"></div>
 </div>
 
@@ -285,8 +291,11 @@ async function imageTiles(src){
     const x0=Math.max(0,c*tw-tw*0.04),x1=Math.min(w,(c+1)*tw+tw*0.04),y0=Math.max(0,r*th-th*0.12),y1=Math.min(h,(r+1)*th+th*0.12);
     const cv=document.createElement('canvas');cv.width=x1-x0;cv.height=y1-y0;cv.getContext('2d').drawImage(img,x0,y0,x1-x0,y1-y0,0,0,x1-x0,y1-y0);out.push(await toBlob(cv))}
   return out;}
+// "Include items without prices" (step 1): off by default, so menus are only read for priced items
+const NOPRICE=()=>{const e=document.getElementById('noprice');return!!(e&&e.checked)};
+const EVERY=()=>NOPRICE()?'every item, including items with no price shown (use null for their price)':'every item that has a price';
 const MENU_PROMPT=n=>'These '+(n>1?n+' images are overlapping slices of ONE restaurant or cafe menu page, in reading order (left to right, then top to bottom). An item cut off at an edge of one slice appears whole in the next: list it once.':'image is a restaurant or cafe menu.')+
-  '\n\nRead every item that has a price, and every add-on or choice, and reply with only this JSON:\n{"items":[{"category":"","name":"","size":"","price":0,"description":"","dietary":""}],"options":[{"group":"","name":"","price":0,"required":false,"max":0,"for":""}],"notes":[]}\n\nRules:\n'+MENU_RULES;
+  '\n\nRead '+EVERY()+', and every add-on or choice, and reply with only this JSON:\n{"items":[{"category":"","name":"","size":"","price":0,"description":"","dietary":""}],"options":[{"group":"","name":"","price":0,"required":false,"max":0,"for":""}],"notes":[]}\n\nRules:\n'+MENU_RULES;
 const MENU_RULES=
   '- category: the section heading the item is printed under, exactly as printed (e.g. "Breakfast", "Hot Drinks"). Use "" if there is none.\n'+
   '- name: the item name only, without the price, size or dietary codes.\n'+
@@ -460,7 +469,7 @@ const tidy=s=>{s=clean(s).replace(/^[•*\-–·▪►]+\s*/,'').replace(/[:\-�
 const descLike=s=>{const w=s.split(' ').length;return/^[a-z(]/.test(s)||s.includes(',')||w>7||/[.!]$/.test(s)||(w>3&&/\b(with|served|topped|choice|your|on a|in a|of)\b/i.test(s))};
 function docTable(name,lines,how){
   const body=(()=>{const hs=lines.filter(l=>l.h&&hasPrice(l.text)).map(l=>l.h).sort((a,b)=>a-b);return hs.length?hs[Math.floor(hs.length/2)]:0})();
-  const rows=[],ignored=[];let cat='',cols=null,last=null,pend=null;
+  const rows=[],ignored=[],np=NOPRICE();let cat='',cols=null,last=null,pend=null;
   const add=(nm,desc,pairs)=>{
     let n=tidy(nm),diet=[];
     // "Smashed Avo — feta, dukkah": a description after a long dash moves to Description
@@ -473,6 +482,8 @@ function docTable(name,lines,how){
     else if(pairs.length===1&&!labels[0]&&cols&&cols.length===1)labels=[cols[0]];
     const made=pairs.map((p,i)=>{const r=[cat,n,pairs.length>1||labels[i]?labels[i]||'':'',p.price,clean(desc),[...new Set(diet.map(d=>d.toUpperCase()))].join(', ')];rows.push(r);return r});
     last={rows:made};};
+  // with "Include items without prices" ticked, a held-back name that isn't a heading is an item with no price
+  const flush=()=>{if(!pend)return;if(np&&!pend.head){add(pend.name,pend.desc,[{price:'',label:pend.size||''}]);pend=null}else takePend(true)};
   // column headings (Glass / Bottle) read after a section heading belong to that section, so keep them
   const takePend=asCat=>{if(!pend)return;if(asCat&&pend.name.split(' ').length<=5&&!/\d/.test(pend.name)&&!descLike(pend.name)){cat=tidy(pend.name);if(cols===pend.cols0)cols=null}else ignored.push(pend.name+(pend.desc?' — '+pend.desc:''));pend=null};
   for(const L of lines){
@@ -491,16 +502,16 @@ function docTable(name,lines,how){
     const heading=L.tag==='h'||(w<=6&&s.length<=40&&(isCaps(s)||(body&&L.h>body*1.18)));
     // A heading is held back: if a price line follows it, it is an item name (many websites put every
     // item in its own heading); if another item or heading follows, it was a category.
-    if(heading&&!descLike(s)){if(pend)takePend(true);pend={name:s,desc:'',head:true,cols0:cols};continue}
+    if(heading&&!descLike(s)){flush();pend={name:s,desc:'',head:true,cols0:cols};continue}
     // a size on its own line ("600ml") belongs to the item above, with the price that follows
     if(pend&&s.split(' ').every(isLbl)){pend.size=lbl(s);continue}
     // a longer line after a name is that item's description ("Doppio" / "Is Italian for double espresso")
     // (an item name is Title Case; a description is written like a sentence, mostly lower-case words)
     if(pend&&(descLike(s)||(w>=4&&sentenceCase(s)))){pend.desc=clean(pend.desc+' '+s);continue}
     if(descLike(s)){if(last)last.rows.forEach(r=>r[4]=clean(r[4]+' '+s));else ignored.push(s);continue}
-    if(pend)takePend(true);
+    flush();
     pend={name:s,desc:'',cols0:cols};}
-  if(pend)ignored.push(pend.name);
+  if(pend){if(np&&!pend.head)flush();else ignored.push(pend.name)}
   return mkDocTable(name,rows,ignored,how||'PDF');}
 function mkDocTable(name,rows,ignored,how){
   return{file:name,sheet:'',doc:{ignored,how,count:rows.length},rows:[['Category','Item Name','Variation','Price','Description','Dietary Tags'],...rows]};}
@@ -950,6 +961,7 @@ function applyGroups(items,gs){
 
 /* ---------------- state ---------------- */
 let tables=[],base=[],mods=[],vg=[],catCfg={},res=null,dropped=[],merged=[],deliveryOnly=[];
+let PX={},npSig='';// prices typed in step 6 for items with none
 const S={};
 function readSettings(){S.tax=clean($('tax').value)||'GST';S.free=clean($('taxfree').value)||'GST Free';S.pgrp=clean($('pgrp').value);S.comb=$('comb').checked;
   S.mUnit='Unit';S.mVol=clean($('mVol').value);S.mWt=clean($('mWt').value);S.mVolU=clean($('mVolU').value);S.mWtU=clean($('mWtU').value);readSizes();}
@@ -1033,9 +1045,13 @@ function mergeSizeCats(){
     g.mem.forEach(it=>{it.variation=cap(sing(it.cat.toLowerCase()));it.name=g.b;it.cat=TAPCAT;it.vhint=''})});}
 
 async function handleFiles(files){
-  for(const f of files){try{say('Reading '+f.name+'…');addTables((await readFile(f)).flatMap(t=>[t,...(t.extra||[])]))}catch(e){say('');tables.push({file:f.name,sheet:'',rows:[],a:null,on:false,err:e.message,id:tables.length})}}
-  say('');renderSources();rebuild();}
-function addTables(ts){ts.forEach(t=>{t.a=analyse(t);if(t.a&&t.doc)t.a.src='document';if(t.doc&&!t.doc.count){t.a=null;t.err='No menu items with prices were found in it.'}t.on=!!t.a;t.id=tables.length;tables.push(t)})}
+  for(const f of files){try{say('Reading '+f.name+'…');const ts=(await readFile(f)).flatMap(t=>[t,...(t.extra||[])]);
+      // a price request sheet sent back by the venue fills in prices instead of being added as a menu
+      if(takePrices(f.name,ts))continue;
+      ts.forEach(t=>t.src0={f});addTables(ts)}
+    catch(e){say('');tables.push({file:f.name,sheet:'',rows:[],a:null,on:false,err:e.message,id:tables.length,src0:{f}})}}
+  say('');renderSources();rebuild();if(takePrices.msg){$('dmsg').textContent=takePrices.msg;takePrices.msg=''}}
+function addTables(ts){ts.forEach(t=>{t.a=analyse(t);if(t.a&&t.doc)t.a.src='document';if(t.doc&&!t.doc.count){t.a=null;t.err='No menu items with prices were found in it.'+(NOPRICE()?'':' If the menu has no prices, tick “Include items without prices” in step 1 and add it again.')}t.on=!!t.a;t.id=tables.length;tables.push(t)})}
 /* Reading a website through the viewer's Firecrawl connector (on the shared claude.ai page).
    Firecrawl loads the page in a real browser (so menus that load with JavaScript come through),
    returns it as markdown, and the markdown goes through the same menu parser as everything else. */
@@ -1122,7 +1138,7 @@ function structuredRows(doc,html){
   while((m=re.exec(html))){try{blobs.push(JSON.parse(m[1]))}catch(e){}}
   blobs.forEach(b=>cands.push(jsonRows(b)));
   let best=[];cands.forEach(rs=>{rs=dedupeRows(rs.filter(r=>r[3]!==''||r[2]));if(rs.length>best.length)best=rs});return best;}
-const PAGE_PROMPT='Below is text from a restaurant, cafe or bar menu or website: one or more pages, each in <page> tags. Find the menu and read every item that has a price. Reply with only this JSON:\n{"venue":"","items":[{"category":"","name":"","size":"","price":0,"description":"","dietary":""}],"options":[{"group":"","name":"","price":0,"required":false,"max":0,"for":""}],"notes":[]}\n\nRules:\n- venue: the venue\'s name if shown, else "".\n- Skip navigation, opening hours, events, gift cards, booking text and anything that is not an orderable item. If the same item appears on two pages, list it once.\n';
+const PAGE_PROMPT=()=>'Below is text from a restaurant, cafe or bar menu or website: one or more pages, each in <page> tags. Find the menu and read '+EVERY()+'. Reply with only this JSON:\n{"venue":"","items":[{"category":"","name":"","size":"","price":0,"description":"","dietary":""}],"options":[{"group":"","name":"","price":0,"required":false,"max":0,"for":""}],"notes":[]}\n\nRules:\n- venue: the venue\'s name if shown, else "".\n- Skip navigation, opening hours, events, gift cards, booking text and anything that is not an orderable item. If the same item appears on two pages, list it once.\n';
 async function claudeText(name,pages){
   const s=await sampleNS(),lim=await s.limits().catch(()=>null),cap=((lim&&lim.maxPromptBytes)||262144)-8000,enc=new TextEncoder(),notes=[];
   let body='';
@@ -1131,7 +1147,7 @@ async function claudeText(name,pages){
     body+=t;}
   readCtl=new AbortController();
   sayStop('Claude is reading the menu'+(pages.length>1?' from '+pages.length+' pages':'')+'. This can take up to a minute…');
-  let data;try{data=await s.json(PAGE_PROMPT+MENU_RULES+'\n\n'+body,{signal:readCtl.signal})}
+  let data;try{data=await s.json(PAGE_PROMPT()+MENU_RULES+'\n\n'+body,{signal:readCtl.signal})}
   catch(e){readCtl=null;const x=new Error(claudeErr(e));x.code=e&&e.code;throw x}
   readCtl=null;
   const rows=[],items=Array.isArray(data)?data:(data&&Array.isArray(data.items)?data.items:[]);
@@ -1148,7 +1164,7 @@ async function claudeText(name,pages){
    Linked menu PDFs go to the built-in PDF reader whenever the file can be downloaded directly.
    Results are saved in this browser for CACHE_DAYS, so reading the same site again costs nothing. */
 const FC_MAX=3,LINK_MAX=3,CACHE_DAYS=7,CKEY='menuRead:';
-const cacheKey=u=>CKEY+u.trim().replace(/^https?:\/\/(www\.)?/i,'').replace(/#.*$/,'').replace(/\/+$/,'').toLowerCase();
+const cacheKey=u=>CKEY+(NOPRICE()?'np:':'')+u.trim().replace(/^https?:\/\/(www\.)?/i,'').replace(/#.*$/,'').replace(/\/+$/,'').toLowerCase();
 function cacheGet(u){try{const c=JSON.parse(localStorage.getItem(cacheKey(u))||'null');if(c&&Date.now()-c.at<CACHE_DAYS*864e5)return c}catch(e){}return null}
 function cachePut(u,t){try{localStorage.setItem(cacheKey(u),JSON.stringify({at:Date.now(),file:t.file,doc:t.doc,rows:t.rows,urls:t.urls||[],imgs:t.imgs||[],extra:(t.extra||[]).map(x=>({file:x.file,rows:x.rows}))}))}catch(e){}}
 const cancelled=e=>e&&(e.code==='cancelled'||e.message==='Stopped.');
@@ -1498,7 +1514,8 @@ async function findAllMenus(ctx){if(FA.run)return;const mcp=await getMcp(),plan=
   faDraw((FA.stop?'Stopped. ':'')+'Found '+good.filter(t=>t.doc).length+' menu source'+(good.length===1?'':'s')+' with '+items+' lines for '+name+(merged.length?'; '+merged.length+' items found on more than one source were merged':'')+'. '+(B.used?'Used '+B.used+' Firecrawl credits.':'No Firecrawl credits used.'));
   say('');return{sources:good.length,items,credits:B.used}}
 window.convFindAll=findAllMenus;
-function addPaste(){const t=$('paste').value;if(!t.trim())return;addTables([docTable('Pasted menu '+(tables.filter(x=>/^Pasted/.test(x.file)).length+1),textLines(t),'pasted text')]);$('paste').value='';renderSources();rebuild();}
+function addPaste(){const t=$('paste').value;if(!t.trim())return;addPasteText(t,'Pasted menu '+(tables.filter(x=>/^Pasted/.test(x.file)).length+1));$('paste').value='';renderSources();rebuild();}
+function addPasteText(t,name){const tb=docTable(name,textLines(t),'pasted text');tb.src0={text:t,name};addTables([tb])}
 function renderSources(){
   $('srcs').innerHTML=tables.map(t=>{
     const nm=esc(t.file)+(t.sheet?' › '+esc(t.sheet):'');
@@ -1511,12 +1528,12 @@ function renderSources(){
     (tables.length?'<button class="sec" id="clr" type="button">Clear files</button>':'');
   $('srcs').querySelectorAll('input[data-t]').forEach(n=>n.addEventListener('change',()=>{tables[+n.dataset.t].on=n.checked;rebuild()}));
   $('srcs').querySelectorAll('select[data-m]').forEach(n=>n.addEventListener('change',()=>{const a=tables[+n.dataset.m].a;if(n.value==='')delete a.map[n.dataset.k];else a.map[n.dataset.k]=+n.value;rebuild()}));
-  const c=$('clr');if(c)c.addEventListener('click',()=>{tables=[];catCfg={};$('file').value='';renderSources();rebuild()});}
+  const c=$('clr');if(c)c.addEventListener('click',()=>{tables=[];catCfg={};PX={};npSig='';$('file').value='';forgetSession();renderSources();rebuild()});}
 
 function rebuild(){
   readSettings();base=[];mods=[];
-  tables.forEach(t=>{if(!t.on||!t.a)return;const r=extract(t);t.info=r;base.push(...r.items);mods.push(...r.mods);
-    const el=$('ti'+t.id);if(el)el.textContent=t.doc?r.items.length+' menu lines with prices read from the '+t.doc.how+(t.doc.ignored.length?', '+t.doc.ignored.length+' other lines not used (listed in Checks)':'')+'. Check names and prices against the original.':
+  tables.forEach(t=>{if(!t.on||!t.a)return;const r=extract(t);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods);
+    const el=$('ti'+t.id);if(el)el.textContent=t.doc?r.items.length+' menu lines'+(NOPRICE()?'':' with prices')+' read from the '+t.doc.how+(t.doc.ignored.length?', '+t.doc.ignored.length+' other lines not used (listed in Checks)':'')+'. Check names and prices against the original.':
       r.items.length+' products, '+r.mods.length+' modifiers read'+(t.a.marker?' (template examples above the “below this line” row were skipped)':'')+'.';});
   prep();
   const cats=[...new Set(base.map(i=>i.cat))];
@@ -1629,6 +1646,7 @@ function showPre(){
 /* ---------------- building the output ---------------- */
 function convert(){
   const items=base.map(o=>({...o}));applyGroups(items,vg);
+  items.forEach(it=>{if(it._np&&PX[it._k]!=null&&PX[it._k]!=='')it.price=PX[it._k]});
   const rows=[],checks=[],chk=(msg,list,info)=>{if(list.length)checks.push({msg,list,info})};
   const catName=c=>(catCfg[c]&&catCfg[c].rename)||c;
   const printerOf=o=>{const g=catCfg[o.cat];if(g&&g.printer!=='*')return g.printer;return o.printer!=null&&o.printer!==''?normPrinter(o.printer):venuePrinter(itemPrinter(o));};
@@ -1700,7 +1718,7 @@ function convert(){
   return{rows,nP,nV,nM,nG,nS:preList.length,checks,genMods,preMods,pre:preR};}
 
 function run(){
-  if(!tables.length){$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm'].forEach(i=>$(i).disabled=true);$('dlm').style.display='none';return}
+  if(!tables.length){$('npfix').innerHTML='';npSig='';$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm'].forEach(i=>$(i).disabled=true);$('dlm').style.display='none';return}
   readSettings();res=convert();
   // new menu: tick the presets that match it, except ones off by default or already in the files
   // and the ones the venue's type uses (Setup Tracker → Venue type), even if they're normally off
@@ -1710,7 +1728,7 @@ function run(){
   $('q').style.display='block';renderPrev();
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
   const hasM=mods.length||res.genMods.length||res.preMods.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
-  drawPreflight();drawChanges();drawAIC();}
+  renderNP();drawPreflight();drawChanges();drawAIC();saveSession();}
 
 /* ---------------- Claude's check (step 6) ----------------
    The finished list goes to the cheaper "small jobs" model (chosen on /admin), item by item, with what ~220 venues'
@@ -1855,8 +1873,102 @@ function renderPrev(){
   const p=$('prev');p.style.display='block';
   p.innerHTML='<table><thead><tr>'+OUT.map(h=>'<th>'+esc(h)+'</th>').join('')+'</tr></thead><tbody>'+rs.slice(0,300).map(r=>'<tr>'+r.map(x=>'<td>'+esc(x)+'</td>').join('')+'</tr>').join('')+'</tbody></table>'+(rs.length>300?'<div class="warn" style="padding:6px 10px">Showing 300 of '+rs.length+' rows. All rows are in the download.</div>':'');}
 
+/* ---------------- missing prices (step 6) ----------------
+   Items the menu shows no price for can be priced here, one by one or a whole category at once. Typed prices are kept
+   by item name, size and the source's category, so they survive changes to the settings above. The same list can go to
+   the venue as a "price request" spreadsheet; when they send it back, adding it fills the prices in. */
+const PRICE_SHEET='Price request',PREF='Ref (please don’t change)';
+const pxKey=it=>[it.name,it.variation,it.catSrc||it.sub||it.section].map(N).join('|');
+function markNP(items){items.forEach(it=>{if(it.price!=='')return;it._np=true;it._k=pxKey(it)})}
+function npItems(){const seen=new Set(),out=[];base.forEach(it=>{if(!it._np||seen.has(it._k))return;seen.add(it._k);out.push(it)});return out}
+const catShown=c=>(catCfg[c]&&catCfg[c].rename)||c;
+function npLeft(its){const n=its.filter(i=>PX[i._k]==null||PX[i._k]==='').length;return n?n+' of '+its.length+' still to fill in':'all '+its.length+' filled in'}
+function renderNP(){
+  const el=$('npfix'),its=npItems();
+  if(!its.length){el.innerHTML='';npSig='';return}
+  // redraw only when the list itself changes, so typing a price doesn't move the cursor
+  const sig=its.map(i=>i._k+'@'+catShown(i.cat)).join('#');
+  if(sig===npSig){const l=$('npleft');if(l)l.textContent='('+npLeft(its)+')';return}
+  npSig=sig;
+  const cats=[...new Set(its.map(i=>i.cat))];
+  el.innerHTML='<details class="chk" id="npd" open><summary><b>Fill in missing prices</b> <span id="npleft">('+npLeft(its)+')</span></summary>'+
+    '<div class="warn" style="margin:6px 0">Type a price for each item, or use “Set all” to give a whole category the same price. Items left blank are imported at $0. You can also send the list to the venue and add their reply as a file.</div>'+
+    '<div class="scroll" style="max-height:340px"><table><thead><tr><th>Item</th><th>Size</th><th>Price ($)</th></tr></thead><tbody>'+
+    cats.map(c=>'<tr class="npc"><td colspan="2"><b>'+(c?esc(catShown(c)):'<i>(no category)</i>')+'</b></td><td><input data-npc="'+esc(c)+'" inputmode="decimal" placeholder="Set all" aria-label="Price for every item in '+esc(catShown(c)||'no category')+'"></td></tr>'+
+      its.filter(i=>i.cat===c).map(i=>'<tr><td>'+esc(i.name)+'</td><td>'+esc(i.variation||'')+'</td><td><input data-np="'+esc(i._k)+'" inputmode="decimal" value="'+esc(PX[i._k]||'')+'" aria-label="Price for '+esc(i.name)+'"></td></tr>').join('')).join('')+
+    '</tbody></table></div><button type="button" class="sec" id="npreq" style="margin-top:8px">Download price request sheet (for the venue)</button></details>';
+  let tm;const later=()=>{clearTimeout(tm);tm=setTimeout(run,350)};
+  el.querySelectorAll('input[data-np]').forEach(n=>n.addEventListener('input',()=>{PX[n.dataset.np]=num(n.value);later()}));
+  el.querySelectorAll('input[data-npc]').forEach(n=>n.addEventListener('change',()=>{const v=num(n.value);if(v==='')return;
+    its.filter(i=>i.cat===n.dataset.npc).forEach(i=>{PX[i._k]=v;const x=el.querySelector('input[data-np="'+CSS.escape(i._k)+'"]');if(x)x.value=v});n.value='';run()}));
+  $('npreq').addEventListener('click',priceSheet);}
+function priceSheet(){const its=npItems();if(!its.length)return;
+  const rows=[['Category','Item Name','Variation','Price','Description',PREF]];
+  its.forEach(i=>rows.push([catShown(i.cat),i.name,i.variation||'',PX[i._k]||'',i.desc||'','#'+i._k]));
+  const ws=XLSX.utils.aoa_to_sheet(rows);ws['!cols']=[{wch:22},{wch:36},{wch:14},{wch:10},{wch:44},{wch:28}];
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,PRICE_SHEET);
+  save(new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),outName('xlsx','price request'));}
+// a returned price request sheet (xlsx or saved as CSV): the Ref column says which item each price is for
+function takePrices(file,ts){
+  const sh=ts.filter(t=>t.rows&&t.rows.length&&t.rows[0].some(c=>/^ref\b.*change/i.test(clean(c))));
+  if(!sh.length)return false;
+  let n=0,miss=0;const known=new Set(npItems().map(i=>i._k));
+  sh.forEach(t=>{const h=t.rows[0].map(clean),iR=h.findIndex(c=>/^ref\b/i.test(c)),iP=h.findIndex(c=>/^price$/i.test(c));if(iR<0||iP<0)return;
+    t.rows.slice(1).forEach(r=>{const k=clean(r[iR]).replace(/^#/,''),v=num(r[iP]);if(!k||v==='')return;PX[k]=v;n++;if(!known.has(k))miss++})});
+  takePrices.msg='Filled in '+n+' price'+(n===1?'':'s')+' from “'+file+'”.'+(miss?' '+miss+' of them are for items that aren’t in the current menu: add the menu and they’ll be used.':'');
+  npSig='';return true;}
+
+/* ---------------- re-reading when "Include items without prices" changes ----------------
+   Files and pasted text added in this visit are read again with the new setting. Web pages aren't, because reading
+   them again can use Firecrawl credits: the address goes back in the box so it's one click. */
+async function reReadNP(){
+  const srcs=new Set(tables.filter(t=>t.src0&&(t.doc||t.err)).map(t=>t.src0));
+  const stuck=tables.filter(t=>!t.src0&&(t.doc||t.err));
+  let msg='';
+  if(stuck.length){if(addUrl.last&&!$('url').value)$('url').value=addUrl.last;
+    msg=stuck.length+' menu'+(stuck.length===1?'':'s')+' from a web page or an earlier visit weren’t read again. Click Read page, or add the file again, to use this setting for '+(stuck.length===1?'it':'them')+'.'}
+  if(!srcs.size){$('dmsg').textContent=msg;return}
+  tables=tables.filter(t=>!srcs.has(t.src0));tables.forEach((t,i)=>t.id=i);
+  for(const s of srcs){
+    if(s.text){addPasteText(s.text,s.name);continue}
+    try{say('Reading '+s.f.name+' again…');const ts=(await readFile(s.f)).flatMap(t=>[t,...(t.extra||[])]);ts.forEach(t=>t.src0=s);addTables(ts)}
+    catch(e){say('');tables.push({file:s.f.name,sheet:'',rows:[],a:null,on:false,err:e.message,id:tables.length,src0:s})}}
+  say('');renderSources();rebuild();
+  $('dmsg').textContent=srcs.size+' file'+(srcs.size===1?' was':'s were')+' read again '+(NOPRICE()?'with':'without')+' items that have no price.'+(msg?' '+msg:'');}
+
+/* ---------------- keeping work between visits ----------------
+   The menu being converted (files as read, column choices, category settings, typed prices) is kept in this browser,
+   so a refresh or a closed tab doesn't lose it; the next visit offers to carry on. Settings in step 2 are remembered
+   separately. Variant group and standard option group edits aren't kept. */
+const SESS='oolio.convSession',SETK='oolio.convSettings';
+const SET_IDS=['tax','taxfree','pgrp','catmode','comb','mVol','mWt','mVolU','mWtU','sizes'];
+function saveSession(){clearTimeout(saveSession.t);saveSession.t=setTimeout(()=>{if(!tables.length)return;
+  const ts=tables.map(t=>({file:t.file,sheet:t.sheet,rows:t.rows,doc:t.doc,on:t.on,err:t.err||'',map:t.a?t.a.map:null,rank:t.rank,srcLabel:t.srcLabel,delivery:t.delivery,urls:t.urls}));
+  try{localStorage.setItem(SESS,JSON.stringify({at:Date.now(),tables:ts,catCfg,PX,np:NOPRICE()}))}catch(e){/* too big for this browser's storage: not kept */}},800)}
+function forgetSession(){clearTimeout(saveSession.t);try{localStorage.removeItem(SESS)}catch(e){}$('rsbox').innerHTML=''}
+function offerRestore(){let s=null;try{s=JSON.parse(localStorage.getItem(SESS)||'null')}catch(e){}
+  if(!s||!Array.isArray(s.tables)||!s.tables.length||tables.length)return;
+  const names=[...new Set(s.tables.map(t=>t.file))],when=new Date(s.at);
+  $('rsbox').innerHTML='<div class="warn" style="margin:0 0 10px">Your last menu ('+esc(names.slice(0,3).join(', '))+(names.length>3?' and '+(names.length-3)+' more':'')+', '+esc(when.toLocaleDateString()+' '+when.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}))+') is still here.'+
+    '<button type="button" id="rsy">Carry on with it</button><button type="button" class="sec" id="rsn">Start fresh</button></div>';
+  $('rsy').addEventListener('click',()=>{$('rsbox').innerHTML='';restoreSession(s)});
+  $('rsn').addEventListener('click',forgetSession);}
+function restoreSession(s){
+  tables=[];s.tables.forEach(o=>{const t=Object.assign({},o);delete t.map;
+    t.a=!t.err&&t.rows&&t.rows.length?analyse(t):null;if(t.a&&t.doc)t.a.src='document';if(t.a&&o.map)t.a.map=o.map;
+    t.on=!!t.a&&o.on!==false;t.id=tables.length;tables.push(t)});
+  catCfg=s.catCfg||{};PX=s.PX||{};npSig='';$('noprice').checked=!!s.np;renderSources();rebuild();}
+const SET_DEF={};
+function loadSettings(){SET_IDS.forEach(id=>{const e=$(id);if(e)SET_DEF[id]=e.type==='checkbox'?e.checked:e.value});
+  let s=null;try{s=JSON.parse(localStorage.getItem(SETK)||'null')}catch(e){}if(!s)return;
+  SET_IDS.forEach(id=>{const e=$(id);if(!e||s[id]==null)return;if(e.type==='checkbox')e.checked=!!s[id];else e.value=s[id]})}
+function saveSettings(){const s={};SET_IDS.forEach(id=>{const e=$(id);if(e)s[id]=e.type==='checkbox'?e.checked:e.value});try{localStorage.setItem(SETK,JSON.stringify(s))}catch(e){}}
+function resetSettings(){SET_IDS.forEach(id=>{const e=$(id);if(!e||SET_DEF[id]==null)return;if(e.type==='checkbox')e.checked=SET_DEF[id];else e.value=SET_DEF[id]});
+  try{localStorage.removeItem(SETK)}catch(e){}catCfg={};rebuild()}
+
 /* ---------------- downloads ---------------- */
-function outName(ext,suffix){if(window.OOLIO_VENUE_NAME)return String(window.OOLIO_VENUE_NAME).replace(/[\\/:*?"<>|]/g,'').trim()+' - '+suffix+'.'+ext;
+function outName(ext,suffix){const d=new Date();suffix+=' '+d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(window.OOLIO_VENUE_NAME)return String(window.OOLIO_VENUE_NAME).replace(/[\\/:*?"<>|]/g,'').trim()+' - '+suffix+'.'+ext;
   const f=(tables.find(t=>t.on&&t.a)||{}).file||'menu';let v=f.replace(/\.[^.]+$/,'').split(' - ')[0].replace(/[\\/:*?"<>|]/g,'').trim();
   if(/^(venue name|square_menu.*|restaurant_menu.*|lightspeed.*)$/i.test(v))v='menu';return v+' - '+suffix+'.'+ext;}
 // On the shared claude.ai page, downloads go through the page's save capability (the viewer confirms);
@@ -1905,6 +2017,24 @@ if(ONCLAUDE)$('svcbox').remove();else{const c=svcCfg();$('svc').value=c.url;$('s
 $('urlb').addEventListener('click',()=>addUrl());$('url').addEventListener('keydown',e=>{if(e.key==='Enter')addUrl()});
 $('pasteb').addEventListener('click',addPaste);
 $('q').addEventListener('input',renderPrev);
+// remembered settings, drag and drop, pasted screenshots, carrying on with the last menu
+loadSettings();
+SET_IDS.forEach(id=>{const e=$(id);if(e){e.addEventListener('input',saveSettings);e.addEventListener('change',saveSettings)}});
+$('scard').insertAdjacentHTML('beforeend','<div class="warn" style="margin:12px 0 0">These settings are remembered in this browser. <button type="button" class="sec" id="setrst" style="margin:0 0 0 6px;padding:4px 10px">Reset to defaults</button></div>');
+$('setrst').addEventListener('click',resetSettings);
+$('noprice').addEventListener('change',reReadNP);
+(function(){const ov=document.createElement('div');ov.id='dropov';ov.innerHTML='<div>Drop menu files to add them</div>';document.body.appendChild(ov);
+  let n=0,pn=0;const vis=()=>$('file').offsetParent!==null,hasF=e=>!!(e.dataTransfer&&[...e.dataTransfer.types].includes('Files'));
+  document.addEventListener('dragenter',e=>{if(!hasF(e)||!vis())return;n++;ov.classList.add('on')});
+  document.addEventListener('dragleave',e=>{if(!hasF(e))return;if(--n<=0){n=0;ov.classList.remove('on')}});
+  document.addEventListener('dragover',e=>{if(hasF(e)&&vis())e.preventDefault()});
+  document.addEventListener('drop',e=>{n=0;ov.classList.remove('on');if(!hasF(e)||!vis())return;e.preventDefault();const fs=[...e.dataTransfer.files];if(fs.length)handleFiles(fs)});
+  // Ctrl+V with a screenshot (or copied files) adds them like chosen files; pasted text still goes where the cursor is
+  document.addEventListener('paste',e=>{if(!vis()||!e.clipboardData)return;
+    const fs=[...e.clipboardData.items].filter(i=>i.kind==='file').map(i=>i.getAsFile()).filter(Boolean)
+      .map(f=>/^image\//.test(f.type)&&(!f.name||/^image\.\w+$/i.test(f.name))?new File([f],'Pasted screenshot '+(++pn)+'.'+((f.type.split('/')[1]||'png').replace('jpeg','jpg')),{type:f.type}):f);
+    if(!fs.length)return;e.preventDefault();handleFiles(fs)});})();
+offerRestore();
 </script>
 </body>
 </html>
