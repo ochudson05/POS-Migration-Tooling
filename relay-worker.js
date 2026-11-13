@@ -655,8 +655,9 @@ async function claude(req, env, user) {
 /* ---------- customer intake: a link the team sends a venue, so the owner can give us what setup needs ----------
    Staff (signed in, able to edit) make one link per venue: /intake/<token>. Anyone with the link can fill in the form
    and upload files until it expires (INTAKE_DAYS) or is turned off. Files are kept in D1 in pieces, because the free
-   plan has no file storage set up. Tables: intake (one row per link), intake_files, intake_chunks. */
-const INTAKE_DAYS = 30, FILE_MAX = 15e6, TOKEN_MAX_BYTES = 60e6, TOKEN_MAX_FILES = 40, CHUNK = 900000;
+   plan has no file storage set up. Tables: intake (one row per link), intake_files, intake_chunks, and intake_seen
+   (when each team member last looked at a link's answers, so the site can say which sent-in forms are new to them). */
+const INTAKE_DAYS = 30, INBOX_DAYS = 60, FILE_MAX = 15e6, TOKEN_MAX_BYTES = 60e6, TOKEN_MAX_FILES = 40, CHUNK = 900000;
 const INTAKE_TYPES = /^(application\/pdf|image\/(jpeg|png|webp|gif|heic|heif)|text\/(csv|plain)|application\/vnd\.openxmlformats-officedocument\.(spreadsheetml\.sheet|wordprocessingml\.document)|application\/vnd\.ms-excel)$/;
 const FILE_KINDS = ['menu', 'logo', 'layout', 'staff', 'other'];
 let ITABLES = false;
@@ -668,6 +669,7 @@ async function intakeTables(env) {
     env.DB.prepare('CREATE TABLE IF NOT EXISTS intake_files (id TEXT PRIMARY KEY, token TEXT NOT NULL, name TEXT, type TEXT, size INTEGER, kind TEXT, at INTEGER, chunks INTEGER)'),
     env.DB.prepare('CREATE INDEX IF NOT EXISTS intake_files_token ON intake_files (token)'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS intake_chunks (file_id TEXT NOT NULL, n INTEGER NOT NULL, data BLOB, PRIMARY KEY (file_id, n))'),
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS intake_seen (email TEXT NOT NULL, token TEXT NOT NULL, seen_at INTEGER, PRIMARY KEY (email, token))'),
   ]);
   ITABLES = true;
 }
@@ -687,8 +689,30 @@ async function intakeStaff(path, req, env, user, q, u) {
     const r = await DB.prepare('SELECT * FROM intake WHERE venue = ?1 ORDER BY created_at DESC LIMIT 1').bind(venue).first();
     if (!r) return api({ link: null });
     let data = null; try { data = r.data ? JSON.parse(r.data) : null; } catch (e) { }
+    const seen = await DB.prepare('SELECT seen_at FROM intake_seen WHERE email = ?1 AND token = ?2').bind(user.email, r.token).first();
     return api({ link: { token: r.token, url: linkOf(u, r.token), createdAt: r.created_at, createdBy: r.created_by, expires: r.expires, live: liveLink(r), revoked: !!r.revoked,
-      submittedAt: r.submitted_at, submits: r.submits, data, files: await filesOf(env, r.token) } });
+      submittedAt: r.submitted_at, submits: r.submits, seenAt: seen ? seen.seen_at : null, data, files: await filesOf(env, r.token) } });
+  }
+  // every venue's sent-in form from the last INBOX_DAYS, newest first, and whether this person has looked at it since
+  // it was last sent. The site's bell and the Setup Tracker use it; only people with the Setup Tracker get any.
+  if (path === 'inbox') {
+    if (user.tools && !user.tools.includes('setup')) return api({ items: [] });
+    const rows = (await DB.prepare('SELECT i.token, i.venue, i.venue_name, i.created_by, i.submitted_at, i.submits, i.revoked, i.expires, s.seen_at, ' +
+      '(SELECT COUNT(*) FROM intake_files f WHERE f.token = i.token) AS files FROM intake i LEFT JOIN intake_seen s ON s.token = i.token AND s.email = ?1 ' +
+      'WHERE i.submitted_at > ?2 ORDER BY i.submitted_at DESC LIMIT 200').bind(user.email, now - INBOX_DAYS * 864e5).all()).results || [];
+    // one row per venue: its newest link
+    const by = new Map(); rows.forEach(r => { if (!by.has(r.venue)) by.set(r.venue, r); });
+    return api({ now, items: [...by.values()].map(r => ({ token: r.token, venue: r.venue, venueName: r.venue_name || '', createdBy: r.created_by, submittedAt: r.submitted_at,
+      submits: r.submits, files: r.files, live: liveLink(r), seenAt: r.seen_at || null, unseen: !r.seen_at || r.seen_at < r.submitted_at })) });
+  }
+  // this person has looked at the answers ({token}), or at all of them ({all: true}); view-only people can do this too
+  if (path === 'seen') {
+    if (req.method !== 'POST') return api({ error: 'Use POST.' }, 405);
+    const b = await req.json().catch(() => ({}));
+    const tokens = b.all ? ((await DB.prepare('SELECT token FROM intake WHERE submitted_at > ?1').bind(now - INBOX_DAYS * 864e5).all()).results || []).map(r => r.token)
+      : [String(b.token || '')].filter(t => TOKEN.test(t));
+    if (tokens.length) await DB.batch(tokens.map(t => DB.prepare('INSERT INTO intake_seen (email, token, seen_at) VALUES (?1, ?2, ?3) ON CONFLICT(email, token) DO UPDATE SET seen_at = ?3').bind(user.email, t, now)));
+    return api({ ok: true, seen: tokens.length });
   }
   if (path === 'file') {
     const id = q.get('id') || '';
@@ -724,7 +748,7 @@ async function intakeStaff(path, req, env, user, q, u) {
     const tokens = b.venue ? ((await DB.prepare('SELECT token FROM intake WHERE venue = ?1').bind(String(b.venue)).all()).results || []).map(r => r.token) : [String(b.token || '')];
     for (const token of tokens) {
       for (const f of await filesOf(env, token)) await dropFile(env, f.id);
-      await DB.prepare('DELETE FROM intake WHERE token = ?1').bind(token).run();
+      await DB.batch([DB.prepare('DELETE FROM intake WHERE token = ?1').bind(token), DB.prepare('DELETE FROM intake_seen WHERE token = ?1').bind(token)]);
     }
     return api({ ok: true, deleted: tokens.length });
   }

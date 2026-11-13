@@ -146,3 +146,29 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 .mh-sheet button.mh-bz-text{display:block;width:100%;text-align:left;white-space:normal;font-weight:400;font-size:.82rem;line-height:1.5;color:var(--muted);background:var(--card);border:1px dashed var(--line);max-height:7.5em;overflow:auto;cursor:copy}
 .mh-sheet button.mh-bz-text:hover{border-color:var(--accent);color:var(--text)}
 .mh-btn.done{background:var(--ok,#1a8a4a)!important;border-color:var(--ok,#1a8a4a)!important}
+/* notifications: the bell, its list, and notices */
+#mh-bell{position:relative}
+#mh-bell.has .ic{animation:mh-ring 2.4s ease-in-out 1}
+@keyframes mh-ring{0%,100%{transform:none}10%,30%{transform:rotate(14deg)}20%,40%{transform:rotate(-12deg)}50%{transform:none}}
+.mh-badge{position:absolute;top:-4px;right:-4px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:#e53935;color:#fff;font-size:.68rem;font-weight:800;line-height:18px;text-align:center;box-shadow:0 0 0 2px var(--card)}
+.mh-pop{position:fixed;z-index:1001;width:min(360px,calc(100vw - 16px));max-height:min(70dvh,520px);overflow:auto;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:14px;box-shadow:0 18px 50px rgb(0 0 0/.28);animation:mh-in .2s var(--ease) both;font-size:15px}
+.mh-pop-h{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card)}
+.mh-pop-f{display:flex;align-items:center;gap:7px;padding:10px 14px;border-top:1px solid var(--line);color:var(--muted);font-size:.84rem}
+.mh-lnk{font:inherit;font-size:.84rem;font-weight:600;background:none!important;border:0!important;color:var(--accent)!important;cursor:pointer;padding:0!important;margin:0;display:inline-flex;align-items:center;gap:6px}
+.mh-nl{list-style:none;margin:0;padding:6px}
+.mh-nl button{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;font:inherit;background:none;border:0;border-radius:10px;padding:9px 10px;margin:0;color:var(--text);cursor:pointer}
+.mh-nl button:hover{background:var(--bg)}
+.mh-nl button .ic{flex:none;margin-top:2px;color:var(--muted)}
+.mh-nl button.new .ic{color:var(--accent)}
+.mh-nl b{display:block;font-size:.92rem}.mh-nl small{display:block;color:var(--muted);font-size:.8rem}
+.mh-nl button.new b::after{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-left:7px;vertical-align:middle}
+.mh-notices{position:fixed;top:max(68px,env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));z-index:1000;display:grid;gap:10px;width:min(380px,calc(100vw - 32px))}
+.mh-notice{position:relative;display:flex;gap:12px;align-items:flex-start;padding:14px 40px 14px 14px;border-radius:14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-left:4px solid var(--accent);box-shadow:0 14px 40px rgb(0 0 0/.25);animation:mh-notice-in .4s var(--ease) both;font-size:15px}
+.mh-notice.live{border-left-color:#e53935}
+.mh-notice b{display:block;font-size:.95rem}.mh-notice small{display:block;color:var(--muted);font-size:.82rem;margin:2px 0 10px}
+.mh-notice .mh-nic{display:grid;place-items:center;width:34px;height:34px;border-radius:50%;background:var(--accent);color:var(--accent-text);flex:none}
+.mh-notice .mh-x{position:absolute;top:8px;right:8px}
+.mh-notice .mh-btn{font:inherit;font-size:.85rem;font-weight:600;display:inline-flex;align-items:center;gap:6px;padding:7px 12px;border-radius:var(--r);border:1px solid var(--accent);background:var(--accent);color:var(--accent-text);cursor:pointer;margin:0}
+@keyframes mh-notice-in{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+@media (max-width:560px){.mh-notices{top:auto;bottom:max(16px,env(safe-area-inset-bottom,0px));right:16px}}
+.mh-still .mh-notice,.mh-still .mh-pop,.mh-still #mh-bell .ic{animation:none}

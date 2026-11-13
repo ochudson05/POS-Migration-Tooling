@@ -96,6 +96,29 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
 .st .st-sw{display:inline-flex;align-items:center;gap:6px;background:var(--card)!important;color:var(--text)!important;border:1px solid var(--line)!important;padding:4px 10px!important;font-size:.82rem;font-family:ui-monospace,Consolas,monospace}
 .st-sw i{width:16px;height:16px;border-radius:4px;border:1px solid rgb(0 0 0/.15)}
 .st-intake{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}
+/* intake: a clear "sent in" banner, the answers page, and "new" markers */
+.st-chip.new{color:#fff;background:var(--accent);border-color:var(--accent);font-weight:700}
+.st-chip.new::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-right:5px;vertical-align:middle;animation:st-pulse 1.6s ease-in-out infinite}
+@keyframes st-pulse{50%{opacity:.25}}
+.st-ikdone{display:flex;gap:12px;align-items:center;flex-wrap:wrap;padding:12px 14px;border-radius:10px;border:1px solid var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--card))}
+.st-ikdone.is-new{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--card));box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 18%,transparent)}
+.st-ikdone .st-ikic{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:var(--ok);color:#fff;flex:none}
+.st-ikdone.is-new .st-ikic{background:var(--accent)}
+.st-ikdone .st-ikic svg{width:20px;height:20px}
+.st-ikdone b.st-ikt{display:block;font-size:1.02rem}
+.st-ikwait{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:10px;border:1px dashed var(--line);color:var(--muted);font-size:.9rem}
+.st-inbox{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0 0;padding:12px 14px;border-radius:10px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--card))}
+.st-inbox .st-grow{min-width:200px}
+.st-ikpage{display:grid;gap:14px}
+.st-ikgrid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
+.st-ikgrid .st-card h2,.st-ikpage>.st-card h2{font-size:1rem;margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.st-ikdl{display:grid;grid-template-columns:minmax(90px,auto) 1fr;gap:6px 14px;margin:0;font-size:.92rem}
+.st-ikdl dt{color:var(--muted)}.st-ikdl dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
+.st-ikdl dd.none{color:var(--muted);font-style:italic}
+.st-ikfiles{list-style:none;padding:0;margin:0;display:grid;gap:8px}
+.st-ikfiles li{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:8px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+.st-ikthumb{width:56px;height:56px;object-fit:cover;border-radius:6px;border:1px solid var(--line);background:var(--card);flex:none}
+.st-ikmeta{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .st-intake input[readonly]{font-family:ui-monospace,Consolas,monospace;font-size:.82rem}
 .st-step:first-of-type{border-top:0}
 .st-step>summary{list-style:none;display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:start;padding:10px 0;cursor:pointer}
@@ -637,7 +660,7 @@ function lookupPanel(o){const P=lookupOf(o);if(!P||!P.place)return'';const f=P.f
     '<div class="st-tools" style="margin-top:6px">'+goBtn('venue','Open the lookup')+'</div></div>'}
 
 /* ---------- rendering ---------- */
-let VIEW={org:null,grp:null,tab:'list',q:'',stage:'',open:new Set()};
+let VIEW={org:null,grp:null,tab:'list',q:'',stage:'',open:new Set(),page:'',pageOrg:null};
 const CHECK='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
 let rq=null;function soonRender(){if(rq)return;rq=requestAnimationFrame(()=>{rq=null;render()})}
 let held=false;
@@ -646,7 +669,8 @@ function render(){const root=g('st-view');if(!root)return;
   const a=document.activeElement;if(a&&root.contains(a)&&/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)&&a.type!=='checkbox'){held=true;return}
   held=false;const y=window.scrollY;
   if(VIEW.org&&!ORGS[VIEW.org])VIEW.org=null;if(VIEW.grp&&!GROUPS[VIEW.grp])VIEW.grp=null;
-  root.innerHTML=VIEW.org?orgHtml(ORGS[VIEW.org],VIEW.org):VIEW.grp?groupHtml(GROUPS[VIEW.grp],VIEW.grp):VIEW.tab==='guides'?guidesHtml():VIEW.tab==='board'?boardHtml():listHtml();
+  if(VIEW.page&&VIEW.pageOrg!==VIEW.org)VIEW.page='';
+  root.innerHTML=VIEW.org&&VIEW.page==='intake'?intakeHtml(ORGS[VIEW.org],VIEW.org):VIEW.org?orgHtml(ORGS[VIEW.org],VIEW.org):VIEW.grp?groupHtml(GROUPS[VIEW.grp],VIEW.grp):VIEW.tab==='guides'?guidesHtml():VIEW.tab==='board'?boardHtml():listHtml();
   window.scrollTo(0,y);
   const ids=[];Object.values(ORGS).forEach(o=>{ids.push(o.updatedBy,o.createdBy);Object.values(o.steps||{}).forEach(s=>ids.push(s.by))});names(ids)}
 document.addEventListener('focusout',()=>{if(held)setTimeout(()=>{if(held)render()},0)});
@@ -656,7 +680,7 @@ function head(){const where=MODE==='db'?'Shared with everyone who opens this pag
   (LOADMSG?'<p class="st-msg err">'+esc(LOADMSG)+'</p>':'')}
 // one venue as a row: stage, progress and what needs fixing
 function venueRow(id,o){const p=progress(o),pp=progress(o,'pre'),tp=progress(o,'trn'),w=warnings(o).length,stg=(STAGES.find(s=>s[0]===o.stage)||STAGES[0])[1],tr=o.training;
-  return '<button type="button" class="st-org" data-org="'+id+'"><span><b>'+esc(o.name||'Untitled')+'</b> <span class="st-chip a">'+esc(stg)+'</span>'+(w?' <span class="st-chip w">'+w+' to fix</span>':'')+'</span>'+
+  return '<button type="button" class="st-org" data-org="'+id+'"><span><b>'+esc(o.name||'Untitled')+'</b> <span class="st-chip a">'+esc(stg)+'</span>'+(w?' <span class="st-chip w">'+w+' to fix</span>':'')+ikChip(id)+'</span>'+
     '<span class="st-prog"><span class="st-bar"><i style="width:'+p.pct+'%"></i></span><span>'+p.done+'/'+p.total+'</span></span>'+
     '<span class="st-meta"><span>Pre-config '+pp.pct+'%</span><span>Training '+tp.pct+'%</span>'+(tr?'<span>Training '+esc(fmtDate(tr))+'</span>':'')+
     '<span>Updated '+esc(when(o.updatedAt))+(o.updatedBy?' by '+esc(who(o.updatedBy)):'')+'</span></span></button>'}
@@ -677,6 +701,7 @@ function listHtml(){const q=VIEW.q.toLowerCase(),vm=(id,o)=>(!VIEW.stage||o.stag
     '<button type="button" class="st-sec" data-a="board">Board</button><button type="button" class="st-sec" data-a="guides">All guides</button></div>'+
     '<div class="st-row st-small" style="margin-top:8px"><button type="button" class="st-link" data-a="backup">Download backup</button>'+(READONLY?'':'<label class="st-link" style="cursor:pointer;font-weight:600;color:var(--accent)">Restore from backup<input type="file" id="st-restore" accept=".json,application/json" style="display:none"></label>')+'<span id="st-bmsg" class="st-muted"></span></div>';
   if(!LOADED||!GLOADED)return h+'<p class="st-msg">Loading organisations…</p>';
+  h+=inboxBanner();
   if(!Object.keys(GROUPS).length&&!Object.keys(ORGS).length)return h+'<div class="st-empty" style="margin-top:14px">No organisations yet. Start one with “New organisation”, then add its venues.</div>';
   h+='<div class="st-groups">';
   gs.forEach(({gid,G,all,vs})=>{const tt=groupTotals(gid),pct=tt.total?Math.round(tt.done/tt.total*100):0;
@@ -1000,16 +1025,68 @@ window.intakePanel=(o,id)=>{if(!window.OOLIO_HOSTED)return'';const S=INTAKE[id];
   const d=L.data||{},stt=!L.live?(L.revoked?'Turned off':'Expired'):L.submittedAt?'Answers received '+when(L.submittedAt):'Waiting for the customer';
   const mail='mailto:'+encodeURIComponent(d.cemail||'')+'?subject='+encodeURIComponent('Your Oolio setup: '+(o.name||'your venue'))+'&body='+encodeURIComponent('Hi'+(d.cname?' '+d.cname.split(' ')[0]:'')+',\n\nTo get '+(o.name||'your venue')+' ready on Oolio, please fill in this form and upload your menu. It takes about 10 minutes, and you can come back to it:\n\n'+L.url+'\n\nThe link works until '+new Date(L.expires).toLocaleDateString('en-AU',{day:'numeric',month:'long'})+'.\n\nThanks,\n'+myName());
   let h='<div class="st-intake"><div class="st-row" style="justify-content:space-between"><b>Customer intake link</b><span class="st-chip '+(L.live?(L.submittedAt?'ok':'a'):'w')+'">'+esc(stt)+'</span></div>';
+  if(L.submittedAt){const nw=ikUnseen(L),nf=L.files.length,na=ikRows(d).filter(x=>clean(x[1])).length;
+    h+='<div class="st-ikdone'+(nw?' is-new':'')+'"><span class="st-ikic">'+CHECK+'</span><div class="st-grow"><b class="st-ikt">The venue has sent in its intake form'+(nw?' <span class="st-chip new">New</span>':'')+'</b>'+
+      '<span class="st-small st-muted">Sent '+esc(sentAt(L.submittedAt))+(d.cname?' by '+esc(d.cname)+(d.crole?' ('+esc(d.crole)+')':''):'')+' · '+plural(na,'answer')+' · '+plural(nf,'file')+(L.submits>1?' · sent '+L.submits+' times':'')+'</span></div>'+
+      '<button type="button" class="st-sm" data-ik="page">Open intake answers</button></div>'}
+  else if(L.live)h+='<div class="st-ikwait">Waiting for the venue to send the form. You’ll get a notification when they do.</div>';
   if(L.live)h+='<div class="st-row" style="flex-wrap:nowrap"><input readonly value="'+esc(L.url)+'" aria-label="Intake link" onclick="this.select()"><button type="button" class="st-sm" data-ik="copy">Copy</button><a class="st-sec st-sm st-filebtn" href="'+esc(mail)+'">Email</a></div>'+
     '<div class="st-small st-muted">Works until '+esc(new Date(L.expires).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}))+'. Anyone with the link can see and change the answers, so only send it to the venue.</div>';
-  if(L.submittedAt){const rows=[['Trading name',d.trading],['Legal name',d.legal],['ABN',d.abn],['Address',d.address],['Phone',d.phone],['Email',d.email],['Website',d.website],['Contact',[d.cname,d.crole,d.cmobile,d.cemail].filter(Boolean).join(' · ')],['Go-live',d.golive?fmtDate(d.golive):''],['Opening hours',d.hours],['Stations',d.stations],['Menu notes',d.menunotes],['Staff',d.staff?parseStaffText(d.staff).length+' people listed':''],['Notes',d.notes]].filter(x=>clean(x[1]));
-    h+='<details'+(S.open?' open':'')+' data-ikopen><summary class="st-small"><b>Their answers</b> ('+rows.length+') and '+L.files.length+' file'+(L.files.length===1?'':'s')+'</summary><dl class="st-dl" style="display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:.88rem;margin:8px 0">'+rows.map(([k,x])=>'<dt class="st-muted">'+esc(k)+'</dt><dd style="margin:0;white-space:pre-wrap">'+esc(x)+'</dd>').join('')+'</dl>'+
-      (L.files.length?'<ul style="list-style:none;padding:0;margin:0;display:grid;gap:6px">'+L.files.map(f=>'<li class="st-row" style="font-size:.88rem"><span class="st-chip">'+esc(KIND[f.kind]||f.kind)+'</span><span class="st-grow" style="overflow-wrap:anywhere">'+esc(f.name)+' <span class="st-muted">· '+Math.max(1,Math.round(f.size/1e3))+' KB</span></span>'+
-        (f.kind==='menu'?'<button type="button" class="st-sm" data-ikf="conv" data-id="'+esc(f.id)+'">Open in Menu Converter</button>':'')+(f.kind==='layout'?'<button type="button" class="st-sec st-sm" data-ikf="diag" data-id="'+esc(f.id)+'">Read as hardware diagram</button>':'')+
-        (f.kind==='staff'?'<button type="button" class="st-sec st-sm" data-ikf="staff" data-id="'+esc(f.id)+'">Add to staff list</button>':'')+'<a class="st-link" href="/api/intake/file?id='+encodeURIComponent(f.id)+'" download>Download</a></li>').join('')+'</ul>':'')+
-      (READONLY?'':'<div class="st-tools"><button type="button" class="st-sm" data-ik="apply">Fill in the checklist from their answers</button></div>')+'</details>'}
   if(!READONLY)h+='<div class="st-tools">'+(L.live?'<button type="button" class="st-link" data-ik="refresh">Check for answers</button><button type="button" class="st-link" data-ik="off">Turn the link off</button>':'<button type="button" class="st-link" data-ik="extend">Turn it back on for '+30+' days</button>')+'<button type="button" class="st-link" data-ik="new">Make a new link</button></div>';
   return h+'</div>'};
+// the answers, in the order the form asks for them ([label, value, section])
+function ikRows(d){return[['Trading name',d.trading,'biz'],['Legal name',d.legal,'biz'],['ABN',d.abn,'biz'],['Address',d.address,'biz'],['Phone',d.phone,'biz'],['Email',d.email,'biz'],['Website',d.website,'biz'],
+  ['Name',d.cname,'contact'],['Role',d.crole,'contact'],['Mobile',d.cmobile,'contact'],['Email',d.cemail,'contact'],
+  ['Go-live date',d.golive?fmtDate(d.golive):'','open'],['Opening hours',d.hours,'open'],['Stations and printers',d.stations,'setup'],['Menu notes',d.menunotes,'setup'],['Staff',d.staff,'staff'],['Anything else',d.notes,'notes']]}
+const people=n=>n===1?'1 person':n+' people';
+const sentAt=t=>(new Date(t).toDateString()===new Date().toDateString()?'today at ':'on ')+when(t);
+const ikUnseen=L=>!!(L&&L.submittedAt&&(!L.seenAt||L.seenAt<L.submittedAt));
+// the site's inbox (shell.js polls /api/intake/inbox and fires "mh:inbox"): one entry per venue
+const inboxOf=id=>{const I=window.MH_INBOX;return I&&I.byVenue?I.byVenue[id]:null};
+function ikChip(id){const x=inboxOf(id);if(!x)return'';return x.unseen?' <span class="st-chip new">New intake answers</span>':' <span class="st-chip ok">Intake sent in</span>'}
+function inboxBanner(){const I=window.MH_INBOX;if(!I||!I.items)return'';const L=I.items.filter(x=>x.unseen&&ORGS[x.venue]);if(!L.length)return'';
+  return'<div class="st-inbox"><span class="st-chip new">'+L.length+' new</span><div class="st-grow"><b>'+(L.length===1?'A venue has':L.length+' venues have')+' sent in their intake form</b><div class="st-small st-muted">'+
+    L.slice(0,4).map(x=>esc(ORGS[x.venue].name||x.venueName||'Untitled')+' · '+esc(when(x.submittedAt))).join('<br>')+(L.length>4?'<br>and '+(L.length-4)+' more':'')+'</div></div>'+
+    '<div class="st-row">'+L.slice(0,3).map(x=>'<button type="button" class="st-sm" data-ikgo="'+esc(x.venue)+'">'+esc(L.length===1?'Open answers':(ORGS[x.venue].name||'Open'))+'</button>').join('')+'</div></div>'}
+// mark the answers as looked at (for this person), once per sending
+const ikSeenBusy={};
+function ikMarkSeen(L){if(!L||!ikUnseen(L)||ikSeenBusy[L.token]===L.submittedAt)return;ikSeenBusy[L.token]=L.submittedAt;
+  intakeCall('seen',{token:L.token}).then(()=>{L.seenAt=Date.now();if(window.mhInboxSeen)window.mhInboxSeen(L.token)}).catch(()=>{delete ikSeenBusy[L.token]})}
+// open a venue's intake answers page (the bell and notices call this too)
+window.OolioIntakeOpen=id=>{if(!ORGS[id])return false;try{window.OolioVenues.setActive(id)}catch(e){}
+  VIEW.org=id;VIEW.grp=null;VIEW.page='intake';VIEW.pageOrg=id;intakeLoad(id,true);render();window.scrollTo(0,0);return true};
+function intakeHtml(o,id){const S=INTAKE[id],L=S&&S.link;
+  let h='<p class="st-row"><button type="button" class="st-link" data-ik="back">← '+esc(o.name||'Venue')+'</button><span class="st-small st-muted">Intake answers</span></p>';
+  if(!window.OOLIO_HOSTED)return h+'<p class="st-msg">Intake links work on the Menu Hauler website only.</p>';
+  if(!S||!S.t){intakeLoad(id);return h+'<p class="st-msg">Loading the answers…</p>'}
+  if(S.err)return h+'<p class="st-msg err">Couldn’t load the answers. <button type="button" class="st-link" data-ik="refresh">Try again</button></p>';
+  if(!L)return h+'<div class="st-empty">There’s no intake link for this venue yet. Go back and use “Intake link” to make one.</div>';
+  const d=L.data||{},nw=ikUnseen(L);
+  h+='<div class="st-ikpage"><div class="st-card st-head"><div class="st-title"><h1 style="margin:0;font-size:1.3rem">'+esc(o.name||'Untitled')+' · intake answers</h1></div>';
+  if(L.submittedAt){const p=fillPatch(o,{abn:d.abn||'',legal:d.legal||'',email:d.email||'',phone:d.phone||'',address:d.address||'',website:d.website||'',name:d.trading||''}),fill=Object.values(p.steps).reduce((n,x)=>n+Object.keys(x.v).length,0),sn=d.staff?parseStaffText(d.staff).length:0;
+    h+='<div class="st-ikdone'+(nw?' is-new':'')+'"><span class="st-ikic">'+CHECK+'</span><div class="st-grow"><b class="st-ikt">Sent in '+esc(sentAt(L.submittedAt))+(nw?' <span class="st-chip new">New</span>':'')+'</b>'+
+      '<span class="st-small st-muted">'+(d.cname?'By '+esc(d.cname)+(d.crole?' ('+esc(d.crole)+')':'')+' · ':'')+(L.submits>1?'Sent '+L.submits+' times; this is the latest · ':'')+plural(L.files.length,'file')+'</span></div></div>'+
+      '<div class="st-tools">'+(READONLY?'':'<button type="button" class="st-sm" data-ik="apply">Fill in the checklist'+(fill?' ('+plural(fill,'detail')+' to add)':'')+'</button>'+(sn?'<button type="button" class="st-sec st-sm" data-ik="staffadd">Add '+people(sn)+' to the staff list</button>':''))+
+      '<button type="button" class="st-sec st-sm" data-ik="refresh">Check for newer answers</button>'+(d.cemail?'<a class="st-sec st-sm st-filebtn" href="mailto:'+esc(d.cemail)+'">Email '+esc(d.cname?d.cname.split(' ')[0]:'the contact')+'</a>':'')+'</div>'}
+  else h+='<div class="st-ikwait">The venue hasn’t sent the form yet. '+(L.live?'You’ll get a notification when they do.':'The link is '+(L.revoked?'turned off':'expired')+'.')+'</div>';
+  h+='<div class="st-small st-muted">Link made '+esc(when(L.createdAt))+(L.createdBy?' by '+esc(who(L.createdBy)):'')+' · '+(L.live?'works until '+esc(new Date(L.expires).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})):(L.revoked?'turned off':'expired'))+'</div><div id="st-flash" class="st-msg" style="margin:0"></div></div>';
+  if(!L.submittedAt&&!L.files.length)return h+'</div>';
+  const R=ikRows(d),sec=(k,t)=>'<section class="st-card"><h2>'+t+'</h2><dl class="st-ikdl">'+R.filter(x=>x[2]===k).map(([l,x])=>{x=clean(x);
+      let v=esc(x);if(x&&/email/i.test(l))v='<a href="mailto:'+esc(x)+'">'+esc(x)+'</a>';else if(x&&/phone|mobile/i.test(l))v='<a href="tel:'+esc(x.replace(/[^\d+]/g,''))+'">'+esc(x)+'</a>';else if(x&&l==='Website')v='<a href="'+esc(/^https?:/i.test(x)?x:'https://'+x)+'" target="_blank" rel="noopener">'+esc(x)+'</a>';
+      if(x&&l==='ABN')v+=' '+(abnOk(x)?'<span class="st-chip ok">checksum OK</span>':'<span class="st-chip w">fails the checksum</span>');
+      return'<dt>'+esc(l)+'</dt><dd'+(x?'':' class="none"')+'>'+(x?v:'Not given')+'</dd>'}).join('')+'</dl></section>';
+  const staff=d.staff?parseStaffText(d.staff):[];
+  h+='<div class="st-ikgrid">'+sec('biz','Business details')+sec('contact','Main contact')+sec('open','Opening and go-live')+sec('setup','Setup')+
+    '<section class="st-card"><h2>Staff'+(staff.length?' <span class="st-chip">'+staff.length+'</span>':'')+'</h2>'+(staff.length?'<div class="st-twrap"><table class="st-tbl"><thead><tr><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Email or mobile</th></tr></thead><tbody>'+
+      staff.map(x=>'<tr><td>'+esc(x.name)+'</td><td>'+esc(x.role||'')+'</td><td>'+esc(x.contact||'')+'</td></tr>').join('')+'</tbody></table></div>':'<p class="st-small st-muted" style="margin:0">'+(clean(d.staff)?esc(d.staff):'No staff listed in the form.')+'</p>')+'</section>'+
+    sec('notes','Anything else')+'</div>';
+  const F=L.files;
+  h+='<section class="st-card"><h2>Files <span class="st-chip">'+F.length+'</span></h2>'+(F.length?'<ul class="st-ikfiles">'+F.map(f=>{const src='/api/intake/file?id='+encodeURIComponent(f.id);
+      return'<li>'+(/^image\//.test(f.type||'')?'<img class="st-ikthumb" alt="" loading="lazy" src="'+esc(src)+'">':'')+'<span class="st-grow" style="overflow-wrap:anywhere"><span class="st-ikmeta"><span class="st-chip">'+esc(KIND[f.kind]||f.kind)+'</span><b>'+esc(f.name)+'</b></span><span class="st-small st-muted">'+Math.max(1,Math.round(f.size/1e3))+' KB · '+esc(when(f.at))+'</span></span>'+
+        (f.kind==='menu'?'<button type="button" class="st-sm" data-ikf="conv" data-id="'+esc(f.id)+'">Open in Menu Converter</button>':'')+(f.kind==='layout'?'<button type="button" class="st-sec st-sm" data-ikf="diag" data-id="'+esc(f.id)+'">Read as hardware diagram</button>':'')+
+        (f.kind==='staff'&&!READONLY?'<button type="button" class="st-sec st-sm" data-ikf="staff" data-id="'+esc(f.id)+'">Add to staff list</button>':'')+'<a class="st-link" href="'+esc(src)+'" download>Download</a></li>'}).join('')+'</ul>':'<p class="st-small st-muted" style="margin:0">No files uploaded.</p>')+'</section>';
+  ikMarkSeen(L);
+  return h+'</div>'}
 window.intakeDialog=async id=>{const S=INTAKE[id];if(S&&S.link&&S.link.live){flash('The intake link is below. Copy it or email it to the venue.');return}
   try{const o=ORGS[id],r=await intakeCall('create',{venue:id,venueName:o.name||''});INTAKE[id]={t:0};await intakeLoad(id,true);
     try{await navigator.clipboard.writeText(r.url);flash('Made the intake link and copied it. Send it to the venue owner.')}catch(e){flash('Made the intake link. Copy it below and send it to the venue owner.')}}
@@ -1025,10 +1102,14 @@ function applyIntake(id){const o=ORGS[id],L=INTAKE[id]&&INTAKE[id].link,d=(L&&L.
   if(!o.golive&&d.golive)p.golive=d.golive;
   save(id,p);pushShared(id);const n=d.staff?addStaff(parseStaffText(d.staff)):0;render();
   flash('Filled in '+filled+' business detail'+(filled===1?'':'s')+(p.contact?', the contact':'')+(p.golive?', the go-live date':'')+(n?', '+n+' staff':'')+'. Anything you’d already entered was kept.')}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-ikgo]');if(b)window.OolioIntakeOpen(b.dataset.ikgo)});
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-ik],[data-ikf]');if(!b||!VIEW.org)return;const id=VIEW.org,L=INTAKE[id]&&INTAKE[id].link;
-  try{if(b.dataset.ik==='copy'){await navigator.clipboard.writeText(L.url);flash('Copied the link.');return}
+  try{if(b.dataset.ik==='page'){window.OolioIntakeOpen(id);return}
+    if(b.dataset.ik==='back'){VIEW.page='';render();window.scrollTo(0,0);return}
+    if(b.dataset.ik==='staffadd'){const n=addStaff(parseStaffText((L&&L.data&&L.data.staff)||''));render();flash(n?'Added '+people(n)+' to the staff list.':'Everyone was already on the staff list.');return}
+    if(b.dataset.ik==='copy'){await navigator.clipboard.writeText(L.url);flash('Copied the link.');return}
     if(b.dataset.ik==='apply')return applyIntake(id);
-    if(b.dataset.ik==='refresh'){await intakeLoad(id,true);const N=INTAKE[id]&&INTAKE[id].link;flash(N&&N.submittedAt?'Answers last sent '+when(N.submittedAt)+'.':'No answers yet.');return}
+    if(b.dataset.ik==='refresh'){await intakeLoad(id,true);render();const N=INTAKE[id]&&INTAKE[id].link;flash(N&&N.submittedAt?'Answers last sent '+when(N.submittedAt)+'.':'No answers yet.');if(window.mhInboxRefresh)window.mhInboxRefresh();return}
     if(b.dataset.ik==='off'){if(!confirm('Turn the link off? The venue won’t be able to open the form. Their answers and files stay here.'))return;await intakeCall('revoke',{token:L.token});await intakeLoad(id,true);return}
     if(b.dataset.ik==='extend'){await intakeCall('extend',{token:L.token});await intakeLoad(id,true);flash('The link works again for 30 days.');return}
     if(b.dataset.ik==='new'){if(!confirm('Make a new link? The old one stops working, and the venue starts a fresh form.'))return;INTAKE[id]={t:Date.now(),link:null};await window.intakeDialog(id);return}
@@ -1038,6 +1119,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-ik],
     if(b.dataset.ikf==='conv'){const inp=document.getElementById('file');if(!inp){flash('Open the Menu Converter tab, then add the file there.',true);return}
       const dt=new DataTransfer();dt.items.add(f);inp.files=dt.files;inp.dispatchEvent(new Event('change',{bubbles:true}));location.hash='converter'}}
   catch(err){flash('Couldn’t do that ('+err.message+').',true)}});
+addEventListener('mh:inbox',()=>{const id=VIEW.org,x=id&&inboxOf(id),L=id&&INTAKE[id]&&INTAKE[id].link;if(x&&L&&x.submittedAt!==L.submittedAt)intakeLoad(id,true);soonRender()});
 document.addEventListener('toggle',e=>{const d=e.target;if(d.matches&&d.matches('[data-ikopen]')&&VIEW.org&&INTAKE[VIEW.org])INTAKE[VIEW.org].open=d.open},true);
 
 /* ---------- recap ---------- */

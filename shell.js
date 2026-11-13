@@ -156,10 +156,84 @@ async function act(a,b){
   if(a==='signout-all'){if(!confirm('Sign out on every device, including this one?'))return;b.disabled=true;
     try{await fetch('/api/account/signout-all',{method:'POST',credentials:'same-origin'});location.href='/login'}catch(e){toast('Couldn’t sign out everywhere. Try again.','err');b.disabled=false}}}
 
+/* ---------- notifications: venues that sent in their intake form (website only) ----------
+   Polls /api/intake/inbox (every minute while the page is open, less often in a background tab). New or unread forms
+   show as a count on the bell, a notice when the page opens or reloads, and a notice (plus a desktop alert, if the
+   person turned those on) the moment one arrives. Opening a venue's answers in the Setup Tracker marks it read. */
+const INBOX={items:[],byVenue:{},loaded:false},known=new Set(),ikey=x=>x.token+'@'+x.submittedAt;
+window.MH_INBOX=INBOX;
+let bellT=null,dismissed=new Set();
+const canInbox=()=>HOSTED&&allowed('setup');
+function bell(){let b=g('mh-bell');if(b||!canInbox())return b;const acts=document.querySelector('.lx-acts');if(!acts)return null;
+  b=document.createElement('button');b.type='button';b.className='lx-ib';b.id='mh-bell';b.setAttribute('aria-haspopup','dialog');b.setAttribute('aria-expanded','false');
+  acts.insertBefore(b,acts.firstChild);drawBell();return b}
+function unseen(){return INBOX.items.filter(x=>x.unseen)}
+function vname(x){try{const v=window.OolioVenues&&window.OolioVenues.get(x.venue);if(v&&v.name)return v.name}catch(e){}return x.venueName||'A venue'}
+function drawBell(){const b=g('mh-bell');if(!b)return;const n=unseen().length;
+  b.innerHTML=ic('bell')+(n?'<span class="mh-badge">'+(n>9?'9+':n)+'</span>':'');b.classList.toggle('has',!!n);
+  b.setAttribute('aria-label',n?n+' new intake form'+(n===1?'':'s')+' sent in':'Notifications');b.title=n?n+' new intake form'+(n===1?'':'s'):'Notifications'}
+function pop(){let d=g('mh-bellpop');if(d)return d;d=document.createElement('div');d.id='mh-bellpop';d.className='mh-pop';d.setAttribute('role','dialog');d.setAttribute('aria-label','Notifications');d.hidden=true;document.body.appendChild(d);
+  d.addEventListener('click',e=>{const t=e.target.closest('[data-nb]');if(!t)return;const a=t.dataset.nb;
+    if(a==='open')openIntake(t.dataset.v);else if(a==='all')seenAll();else if(a==='desk')askDesk()});return d}
+function drawPop(){const d=g('mh-bellpop');if(!d||d.hidden)return;const L=INBOX.items,n=unseen().length;
+  let h='<div class="mh-pop-h"><b>Intake forms sent in</b>'+(n?'<button type="button" class="mh-lnk" data-nb="all">Mark all as read</button>':'')+'</div>';
+  h+=L.length?'<ul class="mh-nl">'+L.slice(0,25).map(x=>'<li><button type="button" data-nb="open" data-v="'+esc(x.venue)+'" class="'+(x.unseen?'new':'')+'">'+ic(x.unseen?'mail':'circle-check')+
+      '<span><b>'+esc(vname(x))+'</b><small>'+(x.unseen?'New · ':'')+'Sent '+esc(ago(x.submittedAt))+(x.files?' · '+x.files+' file'+(x.files===1?'':'s'):'')+(x.submits>1?' · sent '+x.submits+' times':'')+'</small></span></button></li>').join('')+'</ul>'
+    :'<p class="mh-note" style="padding:12px 14px">No intake forms sent in during the last 60 days. When a venue sends theirs, it shows up here.</p>';
+  if('Notification' in window&&Notification.permission!=='denied')h+='<div class="mh-pop-f">'+(Notification.permission==='granted'?ic('circle-check')+'Desktop alerts are on for this browser.':'<button type="button" class="mh-lnk" data-nb="desk">'+ic('bell')+'Also alert me on this computer</button>')+'</div>';
+  d.innerHTML=h}
+function togglePop(force){const d=pop(),b=g('mh-bell'),show=force!=null?force:d.hidden;d.hidden=!show;if(b)b.setAttribute('aria-expanded',String(show));
+  if(show){closeNotice();const r=b.getBoundingClientRect();d.style.top=(r.bottom+8)+'px';d.style.right=Math.max(8,innerWidth-r.right-4)+'px';drawPop();poll()}}
+document.addEventListener('click',e=>{const d=g('mh-bellpop');if(!d||d.hidden)return;if(e.target.closest('#mh-bellpop,#mh-bell'))return;togglePop(false)});
+addEventListener('keydown',e=>{if(e.key==='Escape'){const d=g('mh-bellpop');if(d&&!d.hidden){togglePop(false);const b=g('mh-bell');if(b)b.focus()}}});
+const ago=t=>{const m=Math.round((Date.now()-t)/6e4);if(m<1)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<24)return h+' hour'+(h===1?'':'s')+' ago';
+  return new Date(t).toLocaleDateString('en-AU',{day:'numeric',month:'short'})+' at '+new Date(t).toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})};
+// open a venue's answers in the Setup Tracker
+function openIntake(v){togglePop(false);closeNotice(v);
+  const ok=window.OolioIntakeOpen&&window.OolioIntakeOpen(v);
+  if(!ok){toast('That venue isn’t in the Setup Tracker any more.','err');return}
+  if(location.hash!=='#setup')location.hash='setup'}
+async function seenAll(){try{await fetch('/api/intake/seen',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({all:true})});
+  INBOX.items.forEach(x=>{x.unseen=false});changed();closeNotice();toast('All intake forms marked as read.')}catch(e){toast('Couldn’t mark them as read. Try again.','err')}}
+window.mhInboxSeen=token=>{let hit=false;INBOX.items.forEach(x=>{if(x.token===token&&x.unseen){x.unseen=false;hit=true;closeNotice(x.venue)}});if(hit)changed()};
+window.mhInboxRefresh=()=>poll();
+function changed(){INBOX.byVenue={};INBOX.items.forEach(x=>{INBOX.byVenue[x.venue]=x});drawBell();drawPop();dispatchEvent(new CustomEvent('mh:inbox'))}
+async function poll(){if(!canInbox())return;bell();
+  try{const r=await fetch('/api/intake/inbox',{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;const j=await r.json();if(!j||!Array.isArray(j.items))return;
+    const first=!INBOX.loaded,fresh=j.items.filter(x=>x.unseen&&!known.has(ikey(x)));
+    INBOX.items=j.items;INBOX.loaded=true;j.items.forEach(x=>known.add(ikey(x)));changed();
+    if(first){const u=unseen();if(u.length)notice(u,false)}
+    else if(fresh.length){notice(fresh,true);desk(fresh)}}
+  catch(e){}finally{clearTimeout(bellT);bellT=setTimeout(poll,document.hidden?180000:60000)}}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&INBOX.loaded)poll()});
+// a notice that stays until it's opened or closed: when the page opens with unread forms, and when a new one arrives
+function notices(){let w=g('mh-notices');if(!w){w=document.createElement('div');w.id='mh-notices';w.className='mh-notices';w.setAttribute('role','status');w.setAttribute('aria-live','polite');document.body.appendChild(w);
+  w.addEventListener('click',e=>{const t=e.target.closest('[data-nn]');if(!t)return;const card=t.closest('.mh-notice');
+    if(t.dataset.nn==='open')openIntake(t.dataset.v);else if(t.dataset.nn==='list'){card.remove();togglePop(true)}else{(card.dataset.ks||'').split('|').forEach(k=>dismissed.add(k));card.remove()}})}return w}
+function notice(list,live){list=list.filter(x=>!dismissed.has(ikey(x)));if(!list.length)return;const w=notices(),one=list.length===1,x=list[0];
+  const el=document.createElement('div');el.className='mh-notice'+(live?' live':'');el.dataset.vs=list.map(x=>x.venue).join('|');el.dataset.ks=list.map(ikey).join('|');
+  el.innerHTML='<span class="mh-nic">'+ic('mail')+'</span><div><b>'+(one?esc(vname(x))+(live?' just sent in':' sent in')+' their intake form':list.length+' venues'+(live?' just sent in':' have sent in')+' their intake forms')+'</b>'+
+    '<small>'+(one?'Sent '+esc(ago(x.submittedAt))+(x.files?' with '+x.files+' file'+(x.files===1?'':'s'):''):list.slice(0,3).map(y=>esc(vname(y))).join(', ')+(list.length>3?' and '+(list.length-3)+' more':''))+'</small>'+
+    '<div class="mh-btns">'+(one?'<button type="button" class="mh-btn" data-nn="open" data-v="'+esc(x.venue)+'">View answers</button>':'<button type="button" class="mh-btn" data-nn="list">See them</button>')+'<button type="button" class="mh-btn sec" data-nn="x">Later</button></div></div>'+
+    '<button type="button" class="mh-x" data-nn="x" aria-label="Close">'+ic('x')+'</button>';
+  w.prepend(el);while(w.children.length>3)w.lastChild.remove();placeNotices()}
+// just under the top bar (it is taller on small screens)
+function placeNotices(){const w=g('mh-notices'),bar=document.querySelector('.lx-bar');if(!w||!bar||innerWidth<=560){if(w)w.style.top='';return}w.style.top=Math.max(8,bar.getBoundingClientRect().bottom+10)+'px'}
+addEventListener('resize',placeNotices);addEventListener('scroll',placeNotices,{passive:true});
+function closeNotice(v){const w=g('mh-notices');if(!w)return;[...w.children].forEach(c=>{const vs=(c.dataset.vs||'').split('|');if(!v||vs.includes(v)){if(vs.length<=1||!v)c.remove()}})}
+function askDesk(){try{Notification.requestPermission().then(p=>{drawPop();if(p==='granted')toast('Desktop alerts are on. You’ll get one when a venue sends its form while this page is open.')})}catch(e){}}
+function desk(list){if(!('Notification' in window)||Notification.permission!=='granted')return;
+  list.slice(0,3).forEach(x=>{try{const n=new Notification('Intake form sent in',{body:vname(x)+' just sent in their intake form'+(x.files?' with '+x.files+' file'+(x.files===1?'':'s'):'')+'.',tag:'mh-intake-'+x.token,icon:'/favicon.ico'});
+    n.onclick=()=>{try{window.focus()}catch(e){}openIntake(x.venue);n.close()}}catch(e){}})}
+addEventListener('mh:me',()=>{if(canInbox()){bell();if(!INBOX.loaded)poll()}else{const b=g('mh-bell');if(b)b.remove()}});
+// the tracker's venue names arrive after the first poll; redraw the names then
+let hookN=0;const hookV=()=>{if(window.OolioVenues&&window.OolioVenues.on)window.OolioVenues.on(drawPop);else if(hookN++<40)setTimeout(hookV,500)};setTimeout(hookV,0);
+
 /* ---------- the bar's buttons ---------- */
-document.addEventListener('click',e=>{const t=e.target.closest('#mh-theme,#mh-open');if(!t)return;
-  if(t.id==='mh-theme')setTheme(()=>effective()==='dark'?'light':'dark',t);else openSettings()});
+document.addEventListener('click',e=>{const t=e.target.closest('#mh-theme,#mh-open,#mh-bell');if(!t)return;
+  if(t.id==='mh-bell')togglePop();else if(t.id==='mh-theme')setTheme(()=>effective()==='dark'?'light':'dark',t);else openSettings()});
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key===','){e.preventDefault();open?close():openSettings()}});
 const fr=g('lx-pfframe');if(fr)fr.addEventListener('load',syncFrame);
 drawQuick();drawMe();
+if(canInbox())setTimeout(poll,600);
 })();
