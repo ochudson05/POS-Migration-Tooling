@@ -58,7 +58,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-12.1';
+const VERSION = '2026-11-13.1';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -108,7 +108,7 @@ const list = v => String(v || '').split(',').map(x => x.trim().toLowerCase()).fi
 
 /* ---------- people and permissions ---------- */
 // role: owner (the built-in OWNER, can't be changed) > admin (uses /admin) > member. status: active | blocked.
-const TOOLS = ['converter', 'photos', 'venue', 'setup', 'word'];
+const TOOLS = ['venues', 'converter', 'photos', 'venue', 'setup', 'word'];
 const ACTIVITY_DAYS = 180;
 // email domains that may sign in without being added one by one: set on /admin, else ALLOWED_DOMAINS, else oolio.com
 async function domainsOf(env) {

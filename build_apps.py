@@ -139,6 +139,44 @@ LEGAL_CSS = r"""
 @media (max-width:720px){.lx-legal{grid-template-columns:1fr}.lx-lnav{position:static;display:flex;flex-wrap:wrap;gap:4px}.lg-doc{padding:16px}}
 """
 
+VS_CSS = r"""
+/* Venues tab: search the team's saved venues */
+.vs-main{max-width:1100px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:14px}
+.vs-main h1{font-size:1.5rem;margin:0}
+.vs-sub{margin:0;color:var(--muted);max-width:70ch}
+.vs-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.vs-bar select{font:inherit;font-size:.9rem;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px;margin:0;width:auto;max-width:100%}
+.vs-q{flex:1 1 320px;display:flex;align-items:center;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:0 12px;color:var(--muted);min-width:0}
+.vs-q:focus-within{border-color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 25%,transparent)}
+.vs-q input{flex:1;min-width:0;font:inherit;font-size:1rem;color:var(--text);background:none;border:0;outline:0;padding:10px 0;margin:0}
+.vs-ck{display:flex;gap:6px;align-items:center;font-size:.9rem;white-space:nowrap}.vs-ck input{margin:0;width:auto}
+.vs-count{font-size:.85rem;color:var(--muted);min-height:1.2em}
+.vs-list{list-style:none;margin:0;padding:0;display:grid;gap:10px}
+.vs-item{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--t-venues);border-radius:12px;padding:12px 16px;display:grid;gap:8px;min-width:0}
+.vs-item.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.vs-head{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.vs-name{font:inherit;font-size:1.05rem;font-weight:700;color:var(--text);background:none!important;border:0!important;padding:0!important;margin:0!important;cursor:pointer;text-align:left}
+.vs-name:hover,.vs-name:focus-visible{color:var(--accent);text-decoration:underline}
+.vs-org{color:var(--muted);font-size:.88rem}
+.vs-prog{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:.82rem;font-variant-numeric:tabular-nums;color:var(--muted)}
+.vs-bar2{display:block;width:110px;height:6px;border-radius:3px;background:var(--line);overflow:hidden}.vs-bar2 i{display:block;height:100%;background:var(--ok)}
+.vs-facts{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:.86rem;color:var(--muted)}.vs-facts .ic{width:14px;height:14px;vertical-align:-2px;margin-right:2px}
+.vs-facts span{min-width:0;overflow-wrap:anywhere}
+.vs-tags{display:flex;flex-wrap:wrap;gap:6px}
+.vs-tag{font-size:.76rem;padding:2px 9px;border-radius:99px;border:1px solid var(--line);background:var(--bg);color:var(--text);display:inline-flex;gap:4px;align-items:center}
+.vs-tag .ic{width:12px;height:12px}
+.vs-tag.warn{border-color:var(--warn);color:var(--warn)}.vs-tag.bad{border-color:var(--bad);color:var(--bad)}.vs-tag.on{border-color:var(--accent);color:var(--accent)}
+.vs-tag.s-done{border-color:var(--ok);color:var(--ok)}
+.vs-acts{display:flex;flex-wrap:wrap;gap:6px}
+.vs-acts button,.vs-acts a{font:inherit;font-size:.85rem;font-weight:600;padding:5px 10px;margin:0;border-radius:8px;cursor:pointer;background:var(--accent);color:var(--accent-text);border:0;display:inline-flex;gap:5px;align-items:center;text-decoration:none}
+.vs-acts .ic{width:14px;height:14px}
+.vs-main mark{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;border-radius:2px}
+.vs-empty{background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:16px;display:grid;gap:10px}.vs-empty p{margin:0}
+.vs-empty .lx-row button{display:inline-flex;gap:5px;align-items:center}.vs-empty .ic{width:14px;height:14px}
+.vs-more{color:var(--muted);font-size:.85rem;padding:4px 2px}
+@media (max-width:560px){.vs-prog{margin-left:0;width:100%}.vs-bar select{flex:1 1 45%}}
+"""
+
 LAUNCHER_CSS = r"""
 /* Launcher: a slim bar with the two tools as tabs; the start view shows each tool as a card */
 [hidden]{display:none!important}
@@ -217,10 +255,13 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 #lx-pfframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
 """
 
+LAUNCHER_CSS += VS_CSS
+
 LAUNCHER_HTML = SPRITE + """
 <header class="lx-bar">
   <button type="button" class="lx-brand" data-go=""><span class="lx-logo">""" + ic("utensils") + """</span>Menu Hauler</button>
   <nav class="lx-tabs" aria-label="Tools">
+    <button type="button" class="lx-tab" data-go="venues">""" + ic("search") + """<span>Venues</span></button>
     <button type="button" class="lx-tab" data-go="converter">""" + ic("file-spreadsheet") + """<span>Menu Converter</span></button>
     <button type="button" class="lx-tab" data-go="photos">""" + ic("images") + """<span>Photo Finder</span></button>
     <button type="button" class="lx-tab" data-go="venue">""" + ic("store") + """<span>Restaurant Lookup</span></button>
@@ -235,6 +276,13 @@ LAUNCHER_HTML = SPRITE + """
   <div id="lx-hub"></div>
   <h2 class="lx-toolsh">""" + ic("layout-grid") + """All tools</h2>
   <div class="lx-cards">
+    <article class="lx-card t-venues">
+      <div class="lx-cico">""" + ic("search") + """</div>
+      <h2>Venues</h2>
+      <p>Finds any venue the team has already saved, by name, organisation, suburb, ABN, owner, phone or email, and shows where it’s up to.</p>
+      <dl class="lx-flow"><dt>Takes</dt><dd>A few letters of anything you know about the venue</dd><dt>Gives</dt><dd>Matching venues with stage, go-live date and progress, one click from any tool</dd></dl>
+      <button type="button" class="lx-open" data-go="venues">Open Venues""" + ic("arrow-right") + """</button>
+    </article>
     <article class="lx-card t-converter">
       <div class="lx-cico">""" + ic("file-spreadsheet") + """</div>
       <h2>Menu Converter</h2>
@@ -272,6 +320,9 @@ LAUNCHER_HTML = SPRITE + """
     </article>
   </div>
 </section>
+<div id="lx-vs" hidden>
+<main class="vs-main" id="vs-root"></main>
+</div>
 <div id="lx-conv" hidden>
 """ + conv_body + """
 </div>
@@ -300,7 +351,7 @@ LAUNCHER_HTML = SPRITE + """
 
 LAUNCHER_JS = r"""
 (()=>{
-  const g=id=>document.getElementById(id),views={'':g('lx-home'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),word:g('lx-iw')};
+  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),word:g('lx-iw')};
   const LEGAL=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>a.id.slice(3));LEGAL.forEach(k=>{views[k]=g('lx-legal')});
   const onClaude=!!(window.claude&&window.claude.use)||/(^|\.)claude(usercontent)?\.(ai|com)$/.test(location.hostname);
   let pfReady=false,checked=false;
@@ -345,6 +396,7 @@ page = (
     + "<script>" + iw_js + "</script>\n"
     + "<script>\nconst PF_HTML=" + pf_js + ";\n" + LAUNCHER_JS + "</script>\n"
     + "<script>" + (HERE / "venue-link.js").read_text(encoding="utf-8") + "</script>\n"
+    + "<script>" + (HERE / "venue-search.js").read_text(encoding="utf-8") + "</script>\n"
 )
 
 full = (

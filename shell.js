@@ -7,7 +7,7 @@
 const g=id=>document.getElementById(id),esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
 const ic=(n,c)=>'<svg class="ic'+(c?' '+c:'')+'" aria-hidden="true" focusable="false"><use href="#i-'+n+'"/></svg>';
 window.mhIcon=ic;
-const TOOLS=[{k:'converter',n:'Menu Converter',i:'file-spreadsheet'},{k:'photos',n:'Photo Finder',i:'images'},{k:'venue',n:'Restaurant Lookup',i:'store'},
+const TOOLS=[{k:'venues',n:'Venues',i:'search'},{k:'converter',n:'Menu Converter',i:'file-spreadsheet'},{k:'photos',n:'Photo Finder',i:'images'},{k:'venue',n:'Restaurant Lookup',i:'store'},
   {k:'setup',n:'Setup Tracker',i:'list-checks'},{k:'word',n:'Image to Word',i:'scan-text'}];
 window.mhTools=TOOLS;
 const KEY='mh.settings';let S={};try{S=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){}
@@ -58,7 +58,7 @@ window.mhAfterShow=(v,el)=>{moveInd();
 addEventListener('resize',()=>requestAnimationFrame(moveInd));
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(moveInd);
 // each tool's own heading gets its icon (again whenever a tool redraws its page)
-const HEADS=[['lx-conv','file-spreadsheet','converter'],['lx-rf','store','venue'],['lx-st','list-checks','setup'],['lx-iw','scan-text','word']];
+const HEADS=[['lx-vs','search','venues'],['lx-conv','file-spreadsheet','converter'],['lx-rf','store','venue'],['lx-st','list-checks','setup'],['lx-iw','scan-text','word']];
 function heads(){HEADS.forEach(([id,i,k])=>{const h=g(id)&&g(id).querySelector('h1');if(h&&!h.querySelector('.mh-hico'))h.insertAdjacentHTML('afterbegin','<span class="mh-hico t-'+k+'">'+ic(i)+'</span>')})}
 heads();let headQ=false;
 const mo=new MutationObserver(()=>{if(!headQ){headQ=true;requestAnimationFrame(()=>{headQ=false;heads()})}});

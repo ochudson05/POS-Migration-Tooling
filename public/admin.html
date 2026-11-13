@@ -292,7 +292,7 @@ html.mh-still *{animation:none!important;transition:none!important}
 <script>
 (()=>{
 const $=id=>document.getElementById(id),esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
-const TOOLNAME={converter:'Menu Converter',photos:'Photo Finder',venue:'Restaurant Lookup',setup:'Setup Tracker',word:'Image to Word'};
+const TOOLNAME={venues:'Venues',converter:'Menu Converter',photos:'Photo Finder',venue:'Restaurant Lookup',setup:'Setup Tracker',word:'Image to Word'};
 const ic=n=>'<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-'+n+'"/></svg>';
 const nm=u=>u.name||nameOf(u.email);
 const nameOf=e=>e.split('@')[0].split(/[._-]+/).filter(Boolean).map(w=>w[0].toUpperCase()+w.slice(1)).join(' ');

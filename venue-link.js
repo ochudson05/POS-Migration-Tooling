@@ -51,6 +51,8 @@ function newVenue(prefill){const d=g('lx-dlg');
       if(run){LK.for=id;go('venue');window.dispatchEvent(new CustomEvent('oolio:lookup-fill',{detail:{name,loc,force:true,clear:true,run:true}}))}else go('')}
     catch(e){alert('Couldn’t create the venue: '+((e&&(e.message||e.code))||'error'))}}}
 
+window.mhNewVenue=p=>newVenue(p);
+
 /* ---------- home: the venue's progress through the tools ---------- */
 // icons come from shell.js (the Lucide sprite); each step wears its tool's icon and colour
 const IC=n=>window.mhIcon?window.mhIcon(n):'';

@@ -119,7 +119,7 @@ window.claude={use:async n=>{
 // tabs and cards for tools they haven't been given are hidden, and opening one by its address goes back to the start;
 // view-only and Firecrawl limits are also enforced by the website itself. Admins get a link to /admin in the footer.
 let ME_NOW=null;
-const TOOLKEYS=['converter','photos','venue','setup','word'];
+const TOOLKEYS=['venues','converter','photos','venue','setup','word'];
 function applyAccess(m){ME_NOW=m;window.MH_ME=m;const ok=t=>!m.tools||m.tools.includes(t);
   // pages show their "read by Claude" notes instead of the OCR ones
   document.documentElement.classList.toggle('oolio-claude',!!m.claude);
