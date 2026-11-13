@@ -12,7 +12,8 @@
      mcp   -> /api/fc    (Firecrawl with the team key; the Claude app's browser isn't needed, see /api/fetch)
      sample -> /api/claude, but only for people the owner has switched Claude on for (see /admin); everyone else gets
                nothing, so each tool falls back to its built-in readers and OCR exactly as before.
-               json(prompt, {task:'light'}) asks for the cheaper model the owner picked for small jobs; {context} is
+               json(prompt, {task:'light'}) asks for the cheaper model the owner picked for small jobs, and
+               {task:'check'} for the model picked to check OCR readings against the original photos; {context} is
                fixed reference text sent first (Anthropic's prompt cache); a repeated question is answered from a
                saved reading unless {fresh:true}. On claude.ai these options are simply ignored.
      window.MH_SERVER -> the Menu Hauler server through /api/server/* (menu scraper, OCR), when the website has one
@@ -92,12 +93,14 @@ function parseJSON(t){t=String(t||'').trim().replace(/^```(?:json)?\s*/i,'').rep
   return undefined}
 const SAMPLE={
   async limits(){const m=await me(),l=m.claudeLimits||{};return{maxPromptBytes:Math.floor((l.maxPromptChars||200000)*0.9),images:{maxCount:l.maxImages||4}}},
+  // who reads menu photos in the converter (set on /admin): "ocr" (OCR reads, the AI can check it) or "ai"
+  async photoReader(){try{return(await me()).photoReader||'ocr'}catch(e){return'ocr'}},
   async json(prompt,o){o=o||{};const list=o.images?(Array.isArray(o.images)?o.images:[o.images]):[],images=[];
     for(const x of list){const blob=x instanceof Blob?x:await new Promise(r=>x.toBlob(r,'image/jpeg',0.9));
       images.push({type:blob.type==='image/jpg'?'image/jpeg':(blob.type||'image/jpeg'),data:await b64(blob)})}
     let r;try{r=await fetch('/api/claude',{method:'POST',credentials:'same-origin',redirect:'manual',signal:o.signal,headers:{'content-type':'application/json'},
-      // task "light" = a small job for the cheaper model; context = fixed reference text (prompt-cached); fresh = skip saved readings
-      body:JSON.stringify({prompt:String(prompt),images,tool:location.hash.slice(1),task:o.task==='light'?'light':undefined,context:typeof o.context==='string'?o.context:undefined,fresh:o.fresh===true||undefined})})}
+      // task "light" = a small job for the cheaper model, "check" = the check model; context = fixed reference text (prompt-cached); fresh = skip saved readings
+      body:JSON.stringify({prompt:String(prompt),images,tool:location.hash.slice(1),task:o.task==='light'||o.task==='check'?o.task:undefined,context:typeof o.context==='string'?o.context:undefined,fresh:o.fresh===true||undefined})})}
     catch(e){if(o.signal&&o.signal.aborted)throw err('Stopped.','cancelled');throw err('The website couldn’t be reached. Check the connection.','unavailable')}
     if(r.type==='opaqueredirect'||r.status===401){signinBanner('Your sign-in session has ended. Reload the page to sign in again.');throw err('Your sign-in session has ended.','session_expired')}
     let j={};try{j=await r.json()}catch(e){}
@@ -838,6 +841,14 @@ kbd{font:inherit;font-size:.78rem;padding:1px 6px;border:1px solid var(--line);b
 html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+/* HubSpot Breeze AI prompts (settings) */
+.mh-bz{display:block}.mh-bz>summary{list-style:none;cursor:pointer}.mh-bz>summary::-webkit-details-marker{display:none}
+.mh-bz>summary h3{margin:0}.mh-bz .mh-bz-chev{margin-left:auto;transition:transform .2s var(--ease)}.mh-bz[open] .mh-bz-chev{transform:rotate(90deg)}
+.mh-bz>*:not(summary){margin-top:10px}
+.mh-bz-item{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg)}
+.mh-sheet button.mh-bz-text{display:block;width:100%;text-align:left;white-space:normal;font-weight:400;font-size:.82rem;line-height:1.5;color:var(--muted);background:var(--card);border:1px dashed var(--line);max-height:7.5em;overflow:auto;cursor:copy}
+.mh-sheet button.mh-bz-text:hover{border-color:var(--accent);color:var(--text)}
+.mh-btn.done{background:var(--ok,#1a8a4a)!important;border-color:var(--ok,#1a8a4a)!important}
 </style>
 </head>
 <body>
@@ -889,6 +900,7 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 <symbol id="i-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <line x1="19" x2="19" y1="8" y2="14" /> <line x1="22" x2="16" y1="11" y2="11" /></symbol>
 <symbol id="i-user-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /> <circle cx="9" cy="7" r="4" /> <line x1="17" x2="22" y1="8" y2="13" /> <line x1="22" x2="17" y1="8" y2="13" /></symbol>
 <symbol id="i-circle-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <circle cx="12" cy="10" r="3" /> <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662" /></symbol>
+<symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2" /> <path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" /></symbol>
 </svg>
 <header class="lx-bar">
   <button type="button" class="lx-brand" data-go=""><span class="lx-logo"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-utensils"/></svg></span>Menu Hauler</button>
@@ -1035,6 +1047,7 @@ Double Shot=60</textarea></div>
 <div class="card" id="vcard" style="display:none">
 <h2>4. Variants &amp; modifier groups</h2>
 <div class="warn" style="margin:0 0 10px">Variants are for sizes only (Small / Medium / Large Latte, Pint / Schooner). Anything else becomes one product with a modifier group: Vanilla, Chocolate and Strawberry Milkshake become a Milkshake product with a “Milkshake Flavours” group. When options cost different amounts, the product takes the lowest price and each modifier adds the difference. Change how any group is handled, rename the product or the group, or add a group by keyword.</div>
+<label class="ck" style="margin:0 0 10px"><input type="checkbox" id="flavvar">Override: make flavours variants too, not just sizes (Chocolate, Vanilla and Strawberry Milkshake become variants of a Milkshake product in a “Milkshake Flavours” variant group). Off by default.</label>
 <div id="vg"></div>
 <div class="two"><input id="kw" placeholder="Make a modifier group by keyword, e.g. milkshake"><button id="kwb" type="button" class="sec" style="margin:0">Add group</button></div>
 <div class="warn" id="kwmsg"></div>
@@ -1051,6 +1064,7 @@ Double Shot=60</textarea></div>
 <div id="checks"></div>
 <div id="npfix"></div>
 <div id="aichk"></div>
+<div id="ochk"></div>
 </div>
 
 <div class="card">
@@ -1519,6 +1533,12 @@ const when=t=>t?new Date(t).toLocaleString('en-AU',{day:'numeric',month:'short',
 const day=t=>t?new Date(t).toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}):'—';
 function cacheKeys(){const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^(menuRead:|rf1:|mpf1:)/.test(k))out.push(k)}}catch(e){}return out}
 function seg(name,cur,opts){return'<div class="mh-seg" role="radiogroup">'+opts.map(([v,l,i])=>'<label class="'+(String(cur)===String(v)?'on':'')+'"><input type="radio" name="'+name+'" value="'+v+'"'+(String(cur)===String(v)?' checked':'')+'>'+(i?ic(i):'')+'<span>'+l+'</span></label>').join('')+'</div>'}
+/* ---------- HubSpot Breeze AI prompts: ready-made prompts with the signed-in person's name put in, one click to copy ---------- */
+const BREEZE=[{t:'Ticket briefing snapshot',d:'Every ticket assigned to you, with contacts, company, ABN, site diagrams and prework links.',
+  p:'Create a NEW dated {NAME} Ticket Briefing snapshot from all tickets currently assigned to {NAME} that I can access, including open and closed tickets. Use Oolio styling, searchable per-ticket sections and an open/closed filter. For each ticket include status, linked contact names, phones and emails, primary company legal entity name and ABN, existing site-diagram file links from the ticket and attached notes, and direct SharePoint prework URLs found in the ticket or notes. Keep diagram attachments distinct from unverified attachments. Mark missing details clearly, link back to the source ticket, and include this refresh command. Re-query current data rather than copying the old snapshot. Do not modify any CRM records.'}];
+const breezeText=(i,name)=>BREEZE[i].p.split('{NAME}').join(name||'[your name]');
+async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(e){}
+  try{const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.cssText='position:fixed;opacity:0;top:0;left:0';(g('mh-set')||document.body).appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}catch(e){return false}}
 function drawSettings(){const body=g('mh-set-body');if(!body)return;const m=Object.assign({},window.MH_ME||{},ACC||{});
   let acct;
   if(HOSTED){const tools=m.tools?TOOLS.filter(t=>m.tools.includes(t.k)):TOOLS;
@@ -1539,7 +1559,7 @@ function drawSettings(){const body=g('mh-set-body');if(!body)return;const m=Obje
   else acct='<div class="mh-who"><span class="mh-av big" aria-hidden="true">'+ic('laptop')+'</span><div><b>Opened from this computer</b><span>Not signed in</span></div></div><p class="mh-note">Nothing you do here is shared with the team. Use menuhauler.com to work on shared venues.</p>';
   const theme=S.theme==='light'||S.theme==='dark'?S.theme:'system',ck=cacheKeys();
   const legal=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>'<a href="#'+a.id.slice(3)+'" data-s="close">'+esc(a.dataset.title)+'</a>').join('');
-  const avail=TOOLS.filter(t=>allowed(t.k));
+  const avail=TOOLS.filter(t=>allowed(t.k)),nm=String(m.name||'').trim();
   body.innerHTML=
     '<section><h3>'+ic('circle-user')+'Account</h3>'+acct+'</section>'+
     '<section><h3>'+ic('sun')+'Appearance</h3>'+
@@ -1549,10 +1569,15 @@ function drawSettings(){const body=g('mh-set-body');if(!body)return;const m=Obje
       '<label class="mh-sw"><input type="checkbox" id="mh-motion" role="switch"'+(S.motion==='reduce'?' checked':'')+'><span class="mh-track" aria-hidden="true"></span><span>Reduce animations<small>Turns off slides, fades and the theme reveal.</small></span></label></section>'+
     '<section><h3>'+ic('layout-grid')+'Start page</h3><div class="mh-field"><label class="mh-lbl" for="mh-start">When I open Menu Hauler, show</label><select id="mh-start">'+
       [['home','Home (my venues)'],['last','The last tool I used']].concat(avail.map(t=>[t.k,t.n])).map(([v,l])=>'<option value="'+v+'"'+((S.start||'home')===v?' selected':'')+'>'+esc(l)+'</option>').join('')+'</select></div></section>'+
+    '<section><details class="mh-bz"'+(S.bzOpen?' open':'')+'><summary><h3>'+ic('sparkles')+'HubSpot Breeze AI prompts'+ic('chevron-right','mh-bz-chev')+'</h3></summary>'+
+      '<p class="mh-note">'+(nm?'Written for <b>'+esc(nm)+'</b>. ':'Set your display name above so the prompts use it. ')+'Click a prompt to copy it, then paste it into Breeze in HubSpot.</p>'+
+      BREEZE.map((b,i)=>'<div class="mh-bz-item"><div class="mh-line"><div><b>'+esc(b.t)+'</b><small>'+esc(b.d)+'</small></div><button type="button" class="mh-btn" data-s="bz-copy" data-i="'+i+'">'+ic('copy')+'Copy</button></div>'+
+        '<button type="button" class="mh-bz-text" data-s="bz-copy" data-i="'+i+'" title="Click to copy">'+esc(breezeText(i,nm))+'</button></div>').join('')+'</details></section>'+
     '<section><h3>'+ic('hard-drive')+'Data on this device</h3><div class="mh-line"><div><b>Saved lookups and page reads</b><small>'+(ck.length?ck.length+' saved, so repeat lookups are free. Clearing them doesn’t touch shared venues.':'Nothing saved yet.')+'</small></div><button type="button" class="mh-btn sec" data-s="clear"'+(ck.length?'':' disabled')+'>'+ic('trash-2')+'Clear</button></div>'+
       '<div class="mh-line"><div><b>These settings</b><small>Theme, text size, motion and start page are kept in this browser only.</small></div><button type="button" class="mh-btn sec" data-s="reset">'+ic('rotate-ccw')+'Reset</button></div></section>'+
     '<section><h3>'+ic('info')+'About</h3><p class="mh-note">Menu Hauler'+(m.version?' · version '+esc(m.version):'')+'. Press <kbd>Ctrl</kbd> + <kbd>,</kbd> to open these settings.</p><nav class="mh-links" aria-label="Policies">'+legal+'</nav></section>';
   body.querySelectorAll('.mh-seg input').forEach(i=>i.addEventListener('change',()=>i.closest('.mh-seg').querySelectorAll('label').forEach(l=>l.classList.toggle('on',l.contains(i)))));
+  const bz=body.querySelector('.mh-bz');if(bz)bz.addEventListener('toggle',()=>{S.bzOpen=bz.open;save()});
   const f=body.querySelector('[data-form=name]');if(f)f.addEventListener('submit',saveName)}
 async function saveName(e){e.preventDefault();const v=g('mh-name').value.trim(),b=e.target.querySelector('button');b.disabled=true;
   try{const r=await fetch('/api/account',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({name:v})});const j=await r.json();if(!r.ok)throw new Error(j.error||'error');
@@ -1560,6 +1585,9 @@ async function saveName(e){e.preventDefault();const v=g('mh-name').value.trim(),
   catch(err){toast('Couldn’t save your name ('+err.message+').','err')}b.disabled=false}
 async function act(a,b){
   if(a==='close')return close();
+  if(a==='bz-copy'){const m=Object.assign({},window.MH_ME||{},ACC||{}),i=+b.dataset.i,ok=await copyText(breezeText(i,String(m.name||'').trim()));
+    if(ok){const btn=b.closest('.mh-bz-item').querySelector('.mh-btn');btn.innerHTML=ic('check')+'Copied';btn.classList.add('done');setTimeout(()=>{btn.innerHTML=ic('copy')+'Copy';btn.classList.remove('done')},1800);toast('Prompt copied. Paste it into Breeze.')}
+    else toast('Couldn’t copy. Select the text and copy it yourself.','err');return}
   if(a==='clear'){const ks=cacheKeys();ks.forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});toast('Cleared '+ks.length+' saved lookups and page reads.');drawSettings();return}
   if(a==='reset'){const last=S.last;S={last};save();applyTheme();applySize();applyMotion();drawSettings();toast('Settings reset to the defaults.');return}
   if(a==='signout-all'){if(!confirm('Sign out on every device, including this one?'))return;b.disabled=true;
@@ -1603,7 +1631,7 @@ function parseCSV(t,d){
 async function readFile(f){
   const buf=await f.arrayBuffer();
   if(/\.pdf$/i.test(f.name))return[await pdfTable(f.name,buf)];
-  if(/\.(png|jpe?g|webp|gif)$/i.test(f.name))return[(await getSample())?await claudeRead(f.name,[f],'photo'):docTable(f.name,await ocrLines([f]),'photo (OCR)')];
+  if(/\.(png|jpe?g|webp|gif)$/i.test(f.name))return[(await aiPhotos())?await claudeRead(f.name,[f],'photo'):withImg(docTable(f.name,await ocrLines([f]),'photo (OCR)'),[f])];
   if(/\.(html?|txt)$/i.test(f.name)){let t;try{t=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){t=new TextDecoder('windows-1252').decode(buf)}
     return[/\.txt$/i.test(f.name)?docTable(f.name,textLines(t),'text'):htmlTable(f.name,t)];}
   if(/\.docx$/i.test(f.name))return[await docRead(f.name,docxLines(buf),'Word document')];
@@ -1666,9 +1694,9 @@ function docxLines(buf){
     tag:/<w:pStyle w:val="(Heading|Title)/i.test(p)?'h':''})).filter(l=>l.text.trim());}
 async function pdfTable(name,buf){const r=await pdfLines(buf);
   if(!r.scan)return docRead(name,r,'PDF');
-  if(await getSample())return claudeRead(name,r.scan,'scanned PDF');
+  if(await aiPhotos())return claudeRead(name,r.scan,'scanned PDF');
   say('This PDF is a scan with no text, so it is being read with OCR. This can take a minute…');
-  return docTable(name,await ocrLines(r.scan),'scanned PDF (OCR)');}
+  return withImg(docTable(name,await ocrLines(r.scan),'scanned PDF (OCR)'),r.scan);}
 
 /* Reading menu photos and scanned PDFs with Claude (on the shared claude.ai page).
    Each image is sent to Claude, which returns the menu items as data. Large or tall photos are
@@ -1681,6 +1709,13 @@ async function getSample(){
   try{const s=await sampleNS();
     if(s){const l=await s.limits().catch(()=>null);if(l&&l.images){SAMPLE=s;IMGMAX=Math.max(1,l.images.maxCount||1)}}}catch(e){}
   return SAMPLE;}
+// the AI for reading menu photos, or null when OCR should read them: on the website the owner chooses on /admin
+// ("OCR reads, the AI checks" is the default); on claude.ai Claude reads them whenever it is there
+async function aiPhotos(){const s=await getSample();if(!s)return null;
+  try{if(typeof s.photoReader==='function'&&await s.photoReader()==='ocr')return null}catch(e){}
+  return s}
+// keep the original pages of a menu OCR read, so the AI can check the result against them (not kept between visits)
+const withImg=(t,imgs)=>{if(t&&imgs&&imgs.length)t.img=[...imgs];return t};
 const toBlob=c=>new Promise(r=>c.toBlob(r,'image/jpeg',0.9));
 async function imageTiles(src){
   const img=src instanceof HTMLCanvasElement?src:await createImageBitmap(src),w=img.width,h=img.height;
@@ -2357,7 +2392,7 @@ function detectGroups(items){
   return out;}
 function applyGroups(items,gs){
   gs.forEach((g,gi)=>{g.members.forEach(mb=>{const it=items[mb.i];if(!it)return;
-    if(g.mode==='variant'){it.name=clean(g.base)||it.name;it.variation=mb.v;it.vg=clean(g.vgroup);it.cat=g.cat}
+    if(g.mode==='variant'){const full=it.name;it.name=clean(g.base)||it.name;it.variation=g.fv?full:mb.v;it.vg=clean(g.vgroup);it.cat=g.cat}
     else if(g.mode==='modifier'){it.name=clean(g.base)||it.name;it.variation='';it.modOf=gi;it.opt=mb.v;it.cat=g.cat}
     else if(g.type==='file'){it.name=it.name+' - '+mb.v;it.variation=''}})});}
 
@@ -2903,10 +2938,10 @@ async function findAllMenus(ctx){if(FA.run)return;const mcp=await getMcp(),plan=
       catch(e){L.st='err';L.msg=e.message==='Stopped.'?'stopped':String(e.message||e).slice(0,160);if(FA.stop)break}}
     // menu pictures found on the site, read by Claude (uses a little Claude usage, no Firecrawl credits)
     const imgs=[...images].slice(0,6);
-    if(imgs.length&&!FA.stop){const can=await getSample(),ocr=!can&&!!window.OOLIO_HOSTED;
+    if(imgs.length&&!FA.stop){const can=await aiPhotos(),ocr=!can&&!!window.OOLIO_HOSTED;
       for(let i=0;i<imgs.length&&!FA.stop;i++){const L={label:'Menu picture '+(i+1)+': '+imgs[i].replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:can||ocr?'run':'err',msg:can||ocr?'':'Claude isn’t available in this view'};FA.log.push(L);faDraw('Finding every menu for '+name+'…');if(!can&&!ocr)continue;
         try{const b=await imgBlob(imgs[i]);if(!b){L.st='err';L.msg='couldn’t be downloaded';continue}
-          const t=can?await claudeRead(name+' menu picture '+(i+1),[b],'menu picture'):docTable(name+' menu picture '+(i+1),await ocrLines([b]),'menu picture (OCR)');const n=take(t,null,'Menu picture '+(i+1),4,false);
+          const t=can?await claudeRead(name+' menu picture '+(i+1),[b],'menu picture'):withImg(docTable(name+' menu picture '+(i+1),await ocrLines([b]),'menu picture (OCR)'),[b]);const n=take(t,null,'Menu picture '+(i+1),4,false);
           L.st=n?'ok':'err';L.msg=n?n+' items':'no menu items in it'}
         catch(e){L.st='err';L.msg=String(e.message||e).slice(0,120)}}}}
   finally{FA.run=false;readCtl=null}
@@ -2943,7 +2978,7 @@ function rebuild(){
     // no printer in the file: "Auto" picks one per item (bar or coffee for drinks, kitchen printers for food)
     const u=[...new Set(ps)];catCfg[c]={rename:'',printer:ps.length?(u.length===1&&ps.length===its.length?u[0]:'*'):'*',rg:'*',meas:'*'};});
   window.catList=cats;
-  vg=detectGroups(base).sort((a,b)=>(a.mode==='off')-(b.mode==='off'));
+  vg=detectGroups(base).sort((a,b)=>(a.mode==='off')-(b.mode==='off'));flavVar(FLAVVAR());
   const any=tables.length>0;['scard','ccard','vcard','pcard','kcard'].forEach(id=>$(id).style.display=any&&(base.length||mods.length)?'block':'none');
   const sig=base.map(i=>i.name).join('|')+'#'+mods.map(m=>m.group+'/'+m.name).join('|');if(sig!==preSig){preSig=sig;preInit=true}
   renderCats();buildVG();run();}
@@ -2959,15 +2994,26 @@ function renderCats(){
       '<td>'+sel(i,'printer',po,g.printer)+'</td><td>'+sel(i,'rg',[['*','Auto'],['Food','Food'],['Beverage','Beverage']],g.rg)+'</td>'+
       '<td>'+sel(i,'meas',[['*','Auto'],['unit','Unit'],['volume','Volume'],['weight','Weight']],g.meas)+'</td></tr>'}).join('')+'</tbody>';
   $('cats').querySelectorAll('[data-c]').forEach(n=>n.addEventListener(n.tagName==='INPUT'?'input':'change',()=>{catCfg[catList[+n.dataset.c]][n.dataset.k]=n.tagName==='INPUT'?clean(n.value):n.value;run()}));}
+/* Flavours as variants (override, off by default): groups that would be modifier groups because their options aren't sizes
+   (Chocolate / Vanilla Milkshake) become variants instead, in a "<Product> Flavours" variant group, each variant named
+   after the full item (Chocolate Milkshake), as some venues' pre-work does. Unticking puts them back. */
+const FLAVVAR=()=>{const e=document.getElementById('flavvar');return!!(e&&e.checked)};
+function flavVar(on){vg.forEach(g=>{const sz=g.members.every(m=>isSize(m.v));
+  if(on&&g.mode==='modifier'&&!sz){g.fv=true;g.mode='variant';g.vg0=g.vgroup;g.vgroup=g.mgroup}
+  else if(!on&&g.fv){g.fv=false;if(g.mode==='variant')g.mode='modifier';if(g.vgroup===g.mgroup)g.vgroup=g.vg0||g.vgroup}})}
+function toggleFlavVar(){const e=$('flavvar');
+  if(e.checked&&!confirm('Are you sure?\n\nThis makes flavours and types (Chocolate, Vanilla, Strawberry Milkshake) variants instead of one product with a modifier group. Oolio variants are normally for sizes only, so only do this if the venue wants flavours set up as variants.')){e.checked=false;return}
+  flavVar(e.checked);buildVG();run();mhNote(e.checked)}
+function mhNote(on){if(window.mhToast)window.mhToast(on?'Flavours are now variants. Check step 4.':'Flavours are back to modifier groups.')}
 const TYPENAME={file:'from file',bracket:'size in brackets',size:'size in name',flavour:'flavour or type in name',custom:'keyword'};
 function buildVG(){
   const el=$('vg');
   el.innerHTML=vg.length?vg.map((g,i)=>{const sz=g.members.every(m=>isSize(m.v));
     return'<div class="vr'+(g.mode==='off'?' off':'')+'"><div class="warn" style="margin:0 0 4px"><b style="color:var(--text)">'+esc(g.base)+'</b> · '+esc(g.cat||'no category')+' · '+g.members.length+' items · '+TYPENAME[g.type]+(sz?' · <span class="badge">sizes</span>':'')+'</div>'+
-    '<div class="three"><select data-i="'+i+'" data-k="mode"><option value="variant"'+(g.mode==='variant'?' selected':'')+'>Variants (sizes)</option><option value="modifier"'+(g.mode==='modifier'?' selected':'')+'>Modifier group</option><option value="off"'+(g.mode==='off'?' selected':'')+'>Off (separate products)</option></select>'+
+    '<div class="three"><select data-i="'+i+'" data-k="mode"><option value="variant"'+(g.mode==='variant'?' selected':'')+'>'+(g.fv?'Variants (flavours)':'Variants (sizes)')+'</option><option value="modifier"'+(g.mode==='modifier'?' selected':'')+'>Modifier group</option><option value="off"'+(g.mode==='off'?' selected':'')+'>Off (separate products)</option></select>'+
     '<input data-i="'+i+'" data-k="base" value="'+esc(g.base)+'" placeholder="Product name"'+(g.mode==='off'?' disabled':'')+'>'+
     '<input data-i="'+i+'" data-k="'+(g.mode==='modifier'?'mgroup':'vgroup')+'" value="'+esc(g.mode==='modifier'?g.mgroup:g.vgroup)+'" placeholder="'+(g.mode==='modifier'?'Modifier group':'Variant group')+'"'+(g.mode==='off'?' disabled':'')+'></div>'+
-    '<div class="warn" style="margin:0">'+g.members.map(m=>esc(m.v)).join(' · ')+(g.mode==='variant'&&!sz?' <span class="badge w">not sizes: a modifier group is usually better</span>':'')+'</div></div>'}).join(''):'<div class="warn">No sizes or flavour groups found.</div>';
+    '<div class="warn" style="margin:0">'+g.members.map(m=>esc(m.v)).join(' · ')+(g.mode==='variant'&&!sz&&!g.fv?' <span class="badge w">not sizes: a modifier group is usually better</span>':'')+'</div></div>'}).join(''):'<div class="warn">No sizes or flavour groups found.</div>';
   el.querySelectorAll('[data-i]').forEach(n=>n.addEventListener(n.tagName==='SELECT'?'change':'input',()=>{const g=vg[+n.dataset.i],k=n.dataset.k;g[k]=n.value;
     if(k==='mode'){if(g.mode!=='off')vg.forEach(o=>{if(o!==g&&o.mode!=='off'&&o.members.some(m=>g.members.some(x=>x.i===m.i)))o.mode='off'});buildVG()}run()}));}
 function addKW(){
@@ -3130,7 +3176,7 @@ function run(){
   $('q').style.display='block';renderPrev();
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
   const hasM=mods.length||res.genMods.length||res.preMods.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
-  renderNP();drawPreflight();drawChanges();drawAIC();saveSession();}
+  renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();saveSession();}
 
 /* ---------------- Claude's check (step 6) ----------------
    The finished list goes to the cheaper "small jobs" model (chosen on /admin), item by item, with what ~220 venues'
@@ -3185,6 +3231,69 @@ async function runAIC(again){const rs=aicRows(),s=await getSample();if(!rs.lengt
       if(d&&Array.isArray(d.issues))issues.push(...d.issues.filter(x=>x&&typeof x==='object'&&part.some(r=>r[0]===+x.row)))}}
   catch(e){err=claudeErr(e)}
   AIC={sig,issues,err,byRow:new Map(rs.map(r=>[r[0],r]))};AICBUSY=false;drawAIC()}
+
+/* ---------------- AI check against the original pages (step 6) ----------------
+   When OCR read a photo or scanned page, the check model (chosen on /admin; task "check") looks at each original page
+   next to the finished list and flags what doesn't match: prices, misread names, sizes, priced items the list is
+   missing and add-ons listed as products. It only flags; nothing in the list changes. The originals live only in this
+   visit (a restored menu has none), and a page and list checked before are answered from the website's saved reading. */
+const OCK_RULES='You check a menu that a text reader (OCR) and a parser turned into a list for Oolio POS (Australian venues). '+
+  'You get one page of the original menu (a photo or a scan, sometimes cut into overlapping slices of the same page) and the list made from the WHOLE menu, '+
+  'which may have several pages, so many list items will not be on this page.\n\n'+
+  'Compare the page with the list and flag only real differences a person should check:\n'+
+  '- price: an item on this page whose price in the list is different from the printed price\n'+
+  '- name: an item whose name in the list is misread (wrong letters or words); ignore capitals, punctuation and dietary codes\n'+
+  '- size: a size or serve (Schooner, Pint, Glass, Bottle, Small, Large) that the list has wrong, is missing, or has on the wrong item\n'+
+  '- missing: an item printed on this page with a price that is not in the list at all\n'+
+  '- addon: an add-on or choice printed on the page ("Add bacon +$4", "Oat milk +80c") that the list has as a product\n'+
+  '- other: anything else clearly wrong, such as a price matched to the item above or below it\n\n'+
+  'Do not flag list items that are not on this page. Do not comment on categories, printers or reporting groups. '+
+  'Copy names and prices exactly as printed. If you are not sure something is wrong, leave it out.\n\n'+
+  'Reply with only this JSON:\n{"flags":[{"row":null,"kind":"price|name|size|missing|addon|other","list":"","page":"","why":""}]}\n'+
+  'row is the number at the start of the list line, or null for a missing item. "list" is what the list says and "page" what the page shows. '+
+  'Keep "why" under 15 words. At most 40 flags.';
+let OCK=null,OCKBUSY=false,OCKCTL=null;
+// every original page kept from an OCR reading, in the order the files were added
+const ockPages=()=>tables.filter(t=>t.on&&Array.isArray(t.img)&&t.img.length).flatMap(t=>t.img.map((im,i)=>({label:t.file+(t.img.length>1?' page '+(i+1):''),im})));
+const ockRestored=()=>tables.some(t=>t.on&&!t.img&&t.doc&&/\(OCR\)/.test(t.doc.how||''));
+const ockSig=(rs,pages)=>aicSig(rs)+'#'+pages.map(p=>p.label).join('|');
+async function drawOCK(){const el=$('ochk');if(!el)return;
+  const pages=ockPages(),rs=aicRows(),s=rs.length&&(pages.length||ockRestored())?await getSample():null;
+  if(!s){el.innerHTML='';return}
+  if(!pages.length){el.innerHTML='<div class="chk i"><b>AI check against the original</b> <span class="muted" style="font-size:.85rem">This menu was restored from your last visit, so the original photos aren’t here. Add them again to check what OCR read.</span></div>';return}
+  const sig=ockSig(rs,pages),fresh=OCK&&OCK.sig===sig;
+  let h='<div class="chk i"><b>AI check against the original</b> <span class="muted" style="font-size:.85rem">The AI looks at each photo or scanned page that OCR read ('+pages.length+' page'+(pages.length>1?'s':'')+') and flags prices, names and sizes that don’t match the list, items it missed and add-ons listed as products. It only flags: nothing is changed. It uses the check model chosen on the admin page.</span><div style="margin-top:6px">'+
+    (OCKBUSY?'<button type="button" class="sec" id="ockstop">Stop</button> <span class="muted">'+esc(OCK&&OCK.at||'Checking…')+'</span>':'<button type="button" class="sec" id="ockgo">'+(fresh?'Check again':'Check against the original')+'</button>')+'</div>';
+  if(OCK&&!fresh&&!OCKBUSY&&OCK.sig)h+='<p class="pf-how" style="margin-left:0">The list or the pages have changed since the last check.</p>';
+  if(OCK&&OCK.err&&!OCKBUSY)h+='<p class="pf-how" style="margin-left:0">'+esc(OCK.err)+'</p>';
+  if(OCK&&fresh&&!OCKBUSY&&OCK.done){const L={price:'Price',name:'Name',size:'Size',missing:'Not in the list',addon:'Add-on, not a product',other:'Check'};
+    const by=new Map();OCK.flags.forEach(x=>{if(!by.has(x.pg))by.set(x.pg,[]);by.get(x.pg).push(x)});
+    h+=OCK.flags.length?'<details open><summary><b>'+OCK.flags.length+'</b> difference'+(OCK.flags.length>1?'s':'')+' to look at</summary>'+[...by].map(([pg,fl])=>
+        (by.size>1||pages.length>1?'<p style="margin:6px 0 2px"><b>'+esc(pg)+'</b></p>':'')+'<ul>'+fl.map(x=>{const r=x.row!=null?OCK.byRow.get(+x.row):null;
+          const who=r?r[1]+(r[2]?' ('+r[2]+')':''):clean(x.page)||clean(x.list)||'Item';
+          return'<li><b>'+esc(who)+'</b> · '+esc(L[x.kind]||'Check')+(x.list||x.page?': '+(x.list?'list has “'+esc(clean(x.list))+'”':'')+(x.list&&x.page?', ':'')+(x.page?'page shows “'+esc(clean(x.page))+'”':''):'')+
+            (x.why?' <span class="muted">('+esc(clean(x.why))+')</span>':'')+'</li>'}).join('')+'</ul>').join('')+'</details>'
+      :'<p class="pf-how" style="margin-left:0">No differences found between the list and the original'+(pages.length>1?' pages':'')+'.</p>';
+    if(OCK.skipped)h+='<p class="pf-how" style="margin-left:0">'+OCK.skipped+' page'+(OCK.skipped>1?'s weren’t':' wasn’t')+' checked: '+esc(OCK.err||'stopped')+'</p>'}
+  el.innerHTML=h+'</div>';
+  if($('ockgo'))$('ockgo').addEventListener('click',()=>runOCK(fresh));
+  if($('ockstop'))$('ockstop').addEventListener('click',()=>{if(OCKCTL)OCKCTL.abort()});}
+async function runOCK(again){const rs=aicRows(),pages=ockPages(),s=await getSample();if(!rs.length||!pages.length||!s||OCKBUSY)return;
+  OCKBUSY=true;OCKCTL=new AbortController();const sig=ockSig(rs,pages),flags=[];let err='',done=0;
+  const list='List, one item per line as JSON: [row, name, size, category, price]\n'+rs.map(r=>JSON.stringify([r[0],r[1],r[2],r[3],r[6]])).join('\n');
+  OCK={sig:'',flags:[],at:'Checking…'};drawOCK();
+  try{for(let i=0;i<pages.length;i++){OCK.at='Checking '+pages[i].label+(pages.length>1?' ('+(i+1)+' of '+pages.length+')':'')+'…';drawOCK();
+      const tiles=(await imageTiles(pages[i].im)).slice(0,IMGMAX);
+      const prompt=(tiles.length>1?'The '+tiles.length+' images are overlapping slices of ONE menu page, in reading order. ':'The image is one menu page. ')+'Check it against this list.\n\n'+list;
+      const d=await s.json(prompt,{images:tiles.length===1?tiles[0]:tiles,task:'check',context:OCK_RULES,fresh:again===true,signal:OCKCTL.signal});
+      const ok=x=>x&&typeof x==='object'&&(x.row==null?x.kind==='missing'||x.page:rs.some(r=>r[0]===+x.row));
+      if(d&&Array.isArray(d.flags))flags.push(...d.flags.filter(ok).slice(0,40).map(x=>Object.assign({},x,{pg:pages[i].label})));
+      done++}}
+  catch(e){err=claudeErr(e)}
+  OCK={sig,flags,err,done:true,skipped:pages.length-done,byRow:new Map(rs.map(r=>[r[0],r]))};
+  // nothing checked at all: show only the error, and let the button run it again
+  if(!done){OCK.done=false;OCK.sig=''}
+  OCKBUSY=false;OCKCTL=null;drawOCK()}
 
 function tplPresets(){const OV=window.OolioVenues,a=OV&&OV.active?OV.active():null,T=window.OOLIO_TEMPLATES;return a&&a.vtype&&T&&T[a.vtype]?T[a.vtype].presets:[]}
 
@@ -3425,6 +3534,7 @@ SET_IDS.forEach(id=>{const e=$(id);if(e){e.addEventListener('input',saveSettings
 $('scard').insertAdjacentHTML('beforeend','<div class="warn" style="margin:12px 0 0">These settings are remembered in this browser. <button type="button" class="sec" id="setrst" style="margin:0 0 0 6px;padding:4px 10px">Reset to defaults</button></div>');
 $('setrst').addEventListener('click',resetSettings);
 $('noprice').addEventListener('change',reReadNP);
+$('flavvar').addEventListener('change',toggleFlavVar);
 (function(){const ov=document.createElement('div');ov.id='dropov';ov.innerHTML='<div>Drop menu files to add them</div>';document.body.appendChild(ov);
   let n=0,pn=0;const vis=()=>$('file').offsetParent!==null,hasF=e=>!!(e.dataTransfer&&[...e.dataTransfer.types].includes('Files'));
   document.addEventListener('dragenter',e=>{if(!hasF(e)||!vis())return;n++;ov.classList.add('on')});

@@ -96,6 +96,12 @@ const when=t=>t?new Date(t).toLocaleString('en-AU',{day:'numeric',month:'short',
 const day=t=>t?new Date(t).toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'}):'—';
 function cacheKeys(){const out=[];try{for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);if(/^(menuRead:|rf1:|mpf1:)/.test(k))out.push(k)}}catch(e){}return out}
 function seg(name,cur,opts){return'<div class="mh-seg" role="radiogroup">'+opts.map(([v,l,i])=>'<label class="'+(String(cur)===String(v)?'on':'')+'"><input type="radio" name="'+name+'" value="'+v+'"'+(String(cur)===String(v)?' checked':'')+'>'+(i?ic(i):'')+'<span>'+l+'</span></label>').join('')+'</div>'}
+/* ---------- HubSpot Breeze AI prompts: ready-made prompts with the signed-in person's name put in, one click to copy ---------- */
+const BREEZE=[{t:'Ticket briefing snapshot',d:'Every ticket assigned to you, with contacts, company, ABN, site diagrams and prework links.',
+  p:'Create a NEW dated {NAME} Ticket Briefing snapshot from all tickets currently assigned to {NAME} that I can access, including open and closed tickets. Use Oolio styling, searchable per-ticket sections and an open/closed filter. For each ticket include status, linked contact names, phones and emails, primary company legal entity name and ABN, existing site-diagram file links from the ticket and attached notes, and direct SharePoint prework URLs found in the ticket or notes. Keep diagram attachments distinct from unverified attachments. Mark missing details clearly, link back to the source ticket, and include this refresh command. Re-query current data rather than copying the old snapshot. Do not modify any CRM records.'}];
+const breezeText=(i,name)=>BREEZE[i].p.split('{NAME}').join(name||'[your name]');
+async function copyText(t){try{await navigator.clipboard.writeText(t);return true}catch(e){}
+  try{const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.cssText='position:fixed;opacity:0;top:0;left:0';(g('mh-set')||document.body).appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}catch(e){return false}}
 function drawSettings(){const body=g('mh-set-body');if(!body)return;const m=Object.assign({},window.MH_ME||{},ACC||{});
   let acct;
   if(HOSTED){const tools=m.tools?TOOLS.filter(t=>m.tools.includes(t.k)):TOOLS;
@@ -116,7 +122,7 @@ function drawSettings(){const body=g('mh-set-body');if(!body)return;const m=Obje
   else acct='<div class="mh-who"><span class="mh-av big" aria-hidden="true">'+ic('laptop')+'</span><div><b>Opened from this computer</b><span>Not signed in</span></div></div><p class="mh-note">Nothing you do here is shared with the team. Use menuhauler.com to work on shared venues.</p>';
   const theme=S.theme==='light'||S.theme==='dark'?S.theme:'system',ck=cacheKeys();
   const legal=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>'<a href="#'+a.id.slice(3)+'" data-s="close">'+esc(a.dataset.title)+'</a>').join('');
-  const avail=TOOLS.filter(t=>allowed(t.k));
+  const avail=TOOLS.filter(t=>allowed(t.k)),nm=String(m.name||'').trim();
   body.innerHTML=
     '<section><h3>'+ic('circle-user')+'Account</h3>'+acct+'</section>'+
     '<section><h3>'+ic('sun')+'Appearance</h3>'+
@@ -126,10 +132,15 @@ function drawSettings(){const body=g('mh-set-body');if(!body)return;const m=Obje
       '<label class="mh-sw"><input type="checkbox" id="mh-motion" role="switch"'+(S.motion==='reduce'?' checked':'')+'><span class="mh-track" aria-hidden="true"></span><span>Reduce animations<small>Turns off slides, fades and the theme reveal.</small></span></label></section>'+
     '<section><h3>'+ic('layout-grid')+'Start page</h3><div class="mh-field"><label class="mh-lbl" for="mh-start">When I open Menu Hauler, show</label><select id="mh-start">'+
       [['home','Home (my venues)'],['last','The last tool I used']].concat(avail.map(t=>[t.k,t.n])).map(([v,l])=>'<option value="'+v+'"'+((S.start||'home')===v?' selected':'')+'>'+esc(l)+'</option>').join('')+'</select></div></section>'+
+    '<section><details class="mh-bz"'+(S.bzOpen?' open':'')+'><summary><h3>'+ic('sparkles')+'HubSpot Breeze AI prompts'+ic('chevron-right','mh-bz-chev')+'</h3></summary>'+
+      '<p class="mh-note">'+(nm?'Written for <b>'+esc(nm)+'</b>. ':'Set your display name above so the prompts use it. ')+'Click a prompt to copy it, then paste it into Breeze in HubSpot.</p>'+
+      BREEZE.map((b,i)=>'<div class="mh-bz-item"><div class="mh-line"><div><b>'+esc(b.t)+'</b><small>'+esc(b.d)+'</small></div><button type="button" class="mh-btn" data-s="bz-copy" data-i="'+i+'">'+ic('copy')+'Copy</button></div>'+
+        '<button type="button" class="mh-bz-text" data-s="bz-copy" data-i="'+i+'" title="Click to copy">'+esc(breezeText(i,nm))+'</button></div>').join('')+'</details></section>'+
     '<section><h3>'+ic('hard-drive')+'Data on this device</h3><div class="mh-line"><div><b>Saved lookups and page reads</b><small>'+(ck.length?ck.length+' saved, so repeat lookups are free. Clearing them doesn’t touch shared venues.':'Nothing saved yet.')+'</small></div><button type="button" class="mh-btn sec" data-s="clear"'+(ck.length?'':' disabled')+'>'+ic('trash-2')+'Clear</button></div>'+
       '<div class="mh-line"><div><b>These settings</b><small>Theme, text size, motion and start page are kept in this browser only.</small></div><button type="button" class="mh-btn sec" data-s="reset">'+ic('rotate-ccw')+'Reset</button></div></section>'+
     '<section><h3>'+ic('info')+'About</h3><p class="mh-note">Menu Hauler'+(m.version?' · version '+esc(m.version):'')+'. Press <kbd>Ctrl</kbd> + <kbd>,</kbd> to open these settings.</p><nav class="mh-links" aria-label="Policies">'+legal+'</nav></section>';
   body.querySelectorAll('.mh-seg input').forEach(i=>i.addEventListener('change',()=>i.closest('.mh-seg').querySelectorAll('label').forEach(l=>l.classList.toggle('on',l.contains(i)))));
+  const bz=body.querySelector('.mh-bz');if(bz)bz.addEventListener('toggle',()=>{S.bzOpen=bz.open;save()});
   const f=body.querySelector('[data-form=name]');if(f)f.addEventListener('submit',saveName)}
 async function saveName(e){e.preventDefault();const v=g('mh-name').value.trim(),b=e.target.querySelector('button');b.disabled=true;
   try{const r=await fetch('/api/account',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({name:v})});const j=await r.json();if(!r.ok)throw new Error(j.error||'error');
@@ -137,6 +148,9 @@ async function saveName(e){e.preventDefault();const v=g('mh-name').value.trim(),
   catch(err){toast('Couldn’t save your name ('+err.message+').','err')}b.disabled=false}
 async function act(a,b){
   if(a==='close')return close();
+  if(a==='bz-copy'){const m=Object.assign({},window.MH_ME||{},ACC||{}),i=+b.dataset.i,ok=await copyText(breezeText(i,String(m.name||'').trim()));
+    if(ok){const btn=b.closest('.mh-bz-item').querySelector('.mh-btn');btn.innerHTML=ic('check')+'Copied';btn.classList.add('done');setTimeout(()=>{btn.innerHTML=ic('copy')+'Copy';btn.classList.remove('done')},1800);toast('Prompt copied. Paste it into Breeze.')}
+    else toast('Couldn’t copy. Select the text and copy it yourself.','err');return}
   if(a==='clear'){const ks=cacheKeys();ks.forEach(k=>{try{localStorage.removeItem(k)}catch(e){}});toast('Cleared '+ks.length+' saved lookups and page reads.');drawSettings();return}
   if(a==='reset'){const last=S.last;S={last};save();applyTheme();applySize();applyMotion();drawSettings();toast('Settings reset to the defaults.');return}
   if(a==='signout-all'){if(!confirm('Sign out on every device, including this one?'))return;b.disabled=true;

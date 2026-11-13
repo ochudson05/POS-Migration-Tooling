@@ -138,3 +138,11 @@ kbd{font:inherit;font-size:.78rem;padding:1px 6px;border:1px solid var(--line);b
 html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!important;transition:none!important}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
 ::view-transition-old(root),::view-transition-new(root){animation:none;mix-blend-mode:normal}
+/* HubSpot Breeze AI prompts (settings) */
+.mh-bz{display:block}.mh-bz>summary{list-style:none;cursor:pointer}.mh-bz>summary::-webkit-details-marker{display:none}
+.mh-bz>summary h3{margin:0}.mh-bz .mh-bz-chev{margin-left:auto;transition:transform .2s var(--ease)}.mh-bz[open] .mh-bz-chev{transform:rotate(90deg)}
+.mh-bz>*:not(summary){margin-top:10px}
+.mh-bz-item{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg)}
+.mh-sheet button.mh-bz-text{display:block;width:100%;text-align:left;white-space:normal;font-weight:400;font-size:.82rem;line-height:1.5;color:var(--muted);background:var(--card);border:1px dashed var(--line);max-height:7.5em;overflow:auto;cursor:copy}
+.mh-sheet button.mh-bz-text:hover{border-color:var(--accent);color:var(--text)}
+.mh-btn.done{background:var(--ok,#1a8a4a)!important;border-color:var(--ok,#1a8a4a)!important}

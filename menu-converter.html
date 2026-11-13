@@ -146,6 +146,7 @@ Double Shot=60</textarea></div>
 <div class="card" id="vcard" style="display:none">
 <h2>4. Variants &amp; modifier groups</h2>
 <div class="warn" style="margin:0 0 10px">Variants are for sizes only (Small / Medium / Large Latte, Pint / Schooner). Anything else becomes one product with a modifier group: Vanilla, Chocolate and Strawberry Milkshake become a Milkshake product with a “Milkshake Flavours” group. When options cost different amounts, the product takes the lowest price and each modifier adds the difference. Change how any group is handled, rename the product or the group, or add a group by keyword.</div>
+<label class="ck" style="margin:0 0 10px"><input type="checkbox" id="flavvar">Override: make flavours variants too, not just sizes (Chocolate, Vanilla and Strawberry Milkshake become variants of a Milkshake product in a “Milkshake Flavours” variant group). Off by default.</label>
 <div id="vg"></div>
 <div class="two"><input id="kw" placeholder="Make a modifier group by keyword, e.g. milkshake"><button id="kwb" type="button" class="sec" style="margin:0">Add group</button></div>
 <div class="warn" id="kwmsg"></div>
@@ -162,6 +163,7 @@ Double Shot=60</textarea></div>
 <div id="checks"></div>
 <div id="npfix"></div>
 <div id="aichk"></div>
+<div id="ochk"></div>
 </div>
 
 <div class="card">
@@ -201,7 +203,7 @@ function parseCSV(t,d){
 async function readFile(f){
   const buf=await f.arrayBuffer();
   if(/\.pdf$/i.test(f.name))return[await pdfTable(f.name,buf)];
-  if(/\.(png|jpe?g|webp|gif)$/i.test(f.name))return[(await getSample())?await claudeRead(f.name,[f],'photo'):docTable(f.name,await ocrLines([f]),'photo (OCR)')];
+  if(/\.(png|jpe?g|webp|gif)$/i.test(f.name))return[(await aiPhotos())?await claudeRead(f.name,[f],'photo'):withImg(docTable(f.name,await ocrLines([f]),'photo (OCR)'),[f])];
   if(/\.(html?|txt)$/i.test(f.name)){let t;try{t=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){t=new TextDecoder('windows-1252').decode(buf)}
     return[/\.txt$/i.test(f.name)?docTable(f.name,textLines(t),'text'):htmlTable(f.name,t)];}
   if(/\.docx$/i.test(f.name))return[await docRead(f.name,docxLines(buf),'Word document')];
@@ -264,9 +266,9 @@ function docxLines(buf){
     tag:/<w:pStyle w:val="(Heading|Title)/i.test(p)?'h':''})).filter(l=>l.text.trim());}
 async function pdfTable(name,buf){const r=await pdfLines(buf);
   if(!r.scan)return docRead(name,r,'PDF');
-  if(await getSample())return claudeRead(name,r.scan,'scanned PDF');
+  if(await aiPhotos())return claudeRead(name,r.scan,'scanned PDF');
   say('This PDF is a scan with no text, so it is being read with OCR. This can take a minute…');
-  return docTable(name,await ocrLines(r.scan),'scanned PDF (OCR)');}
+  return withImg(docTable(name,await ocrLines(r.scan),'scanned PDF (OCR)'),r.scan);}
 
 /* Reading menu photos and scanned PDFs with Claude (on the shared claude.ai page).
    Each image is sent to Claude, which returns the menu items as data. Large or tall photos are
@@ -279,6 +281,13 @@ async function getSample(){
   try{const s=await sampleNS();
     if(s){const l=await s.limits().catch(()=>null);if(l&&l.images){SAMPLE=s;IMGMAX=Math.max(1,l.images.maxCount||1)}}}catch(e){}
   return SAMPLE;}
+// the AI for reading menu photos, or null when OCR should read them: on the website the owner chooses on /admin
+// ("OCR reads, the AI checks" is the default); on claude.ai Claude reads them whenever it is there
+async function aiPhotos(){const s=await getSample();if(!s)return null;
+  try{if(typeof s.photoReader==='function'&&await s.photoReader()==='ocr')return null}catch(e){}
+  return s}
+// keep the original pages of a menu OCR read, so the AI can check the result against them (not kept between visits)
+const withImg=(t,imgs)=>{if(t&&imgs&&imgs.length)t.img=[...imgs];return t};
 const toBlob=c=>new Promise(r=>c.toBlob(r,'image/jpeg',0.9));
 async function imageTiles(src){
   const img=src instanceof HTMLCanvasElement?src:await createImageBitmap(src),w=img.width,h=img.height;
@@ -955,7 +964,7 @@ function detectGroups(items){
   return out;}
 function applyGroups(items,gs){
   gs.forEach((g,gi)=>{g.members.forEach(mb=>{const it=items[mb.i];if(!it)return;
-    if(g.mode==='variant'){it.name=clean(g.base)||it.name;it.variation=mb.v;it.vg=clean(g.vgroup);it.cat=g.cat}
+    if(g.mode==='variant'){const full=it.name;it.name=clean(g.base)||it.name;it.variation=g.fv?full:mb.v;it.vg=clean(g.vgroup);it.cat=g.cat}
     else if(g.mode==='modifier'){it.name=clean(g.base)||it.name;it.variation='';it.modOf=gi;it.opt=mb.v;it.cat=g.cat}
     else if(g.type==='file'){it.name=it.name+' - '+mb.v;it.variation=''}})});}
 
@@ -1501,10 +1510,10 @@ async function findAllMenus(ctx){if(FA.run)return;const mcp=await getMcp(),plan=
       catch(e){L.st='err';L.msg=e.message==='Stopped.'?'stopped':String(e.message||e).slice(0,160);if(FA.stop)break}}
     // menu pictures found on the site, read by Claude (uses a little Claude usage, no Firecrawl credits)
     const imgs=[...images].slice(0,6);
-    if(imgs.length&&!FA.stop){const can=await getSample(),ocr=!can&&!!window.OOLIO_HOSTED;
+    if(imgs.length&&!FA.stop){const can=await aiPhotos(),ocr=!can&&!!window.OOLIO_HOSTED;
       for(let i=0;i<imgs.length&&!FA.stop;i++){const L={label:'Menu picture '+(i+1)+': '+imgs[i].replace(/^https?:\/\/(www\.)?/,'').slice(0,70),st:can||ocr?'run':'err',msg:can||ocr?'':'Claude isn’t available in this view'};FA.log.push(L);faDraw('Finding every menu for '+name+'…');if(!can&&!ocr)continue;
         try{const b=await imgBlob(imgs[i]);if(!b){L.st='err';L.msg='couldn’t be downloaded';continue}
-          const t=can?await claudeRead(name+' menu picture '+(i+1),[b],'menu picture'):docTable(name+' menu picture '+(i+1),await ocrLines([b]),'menu picture (OCR)');const n=take(t,null,'Menu picture '+(i+1),4,false);
+          const t=can?await claudeRead(name+' menu picture '+(i+1),[b],'menu picture'):withImg(docTable(name+' menu picture '+(i+1),await ocrLines([b]),'menu picture (OCR)'),[b]);const n=take(t,null,'Menu picture '+(i+1),4,false);
           L.st=n?'ok':'err';L.msg=n?n+' items':'no menu items in it'}
         catch(e){L.st='err';L.msg=String(e.message||e).slice(0,120)}}}}
   finally{FA.run=false;readCtl=null}
@@ -1541,7 +1550,7 @@ function rebuild(){
     // no printer in the file: "Auto" picks one per item (bar or coffee for drinks, kitchen printers for food)
     const u=[...new Set(ps)];catCfg[c]={rename:'',printer:ps.length?(u.length===1&&ps.length===its.length?u[0]:'*'):'*',rg:'*',meas:'*'};});
   window.catList=cats;
-  vg=detectGroups(base).sort((a,b)=>(a.mode==='off')-(b.mode==='off'));
+  vg=detectGroups(base).sort((a,b)=>(a.mode==='off')-(b.mode==='off'));flavVar(FLAVVAR());
   const any=tables.length>0;['scard','ccard','vcard','pcard','kcard'].forEach(id=>$(id).style.display=any&&(base.length||mods.length)?'block':'none');
   const sig=base.map(i=>i.name).join('|')+'#'+mods.map(m=>m.group+'/'+m.name).join('|');if(sig!==preSig){preSig=sig;preInit=true}
   renderCats();buildVG();run();}
@@ -1557,15 +1566,26 @@ function renderCats(){
       '<td>'+sel(i,'printer',po,g.printer)+'</td><td>'+sel(i,'rg',[['*','Auto'],['Food','Food'],['Beverage','Beverage']],g.rg)+'</td>'+
       '<td>'+sel(i,'meas',[['*','Auto'],['unit','Unit'],['volume','Volume'],['weight','Weight']],g.meas)+'</td></tr>'}).join('')+'</tbody>';
   $('cats').querySelectorAll('[data-c]').forEach(n=>n.addEventListener(n.tagName==='INPUT'?'input':'change',()=>{catCfg[catList[+n.dataset.c]][n.dataset.k]=n.tagName==='INPUT'?clean(n.value):n.value;run()}));}
+/* Flavours as variants (override, off by default): groups that would be modifier groups because their options aren't sizes
+   (Chocolate / Vanilla Milkshake) become variants instead, in a "<Product> Flavours" variant group, each variant named
+   after the full item (Chocolate Milkshake), as some venues' pre-work does. Unticking puts them back. */
+const FLAVVAR=()=>{const e=document.getElementById('flavvar');return!!(e&&e.checked)};
+function flavVar(on){vg.forEach(g=>{const sz=g.members.every(m=>isSize(m.v));
+  if(on&&g.mode==='modifier'&&!sz){g.fv=true;g.mode='variant';g.vg0=g.vgroup;g.vgroup=g.mgroup}
+  else if(!on&&g.fv){g.fv=false;if(g.mode==='variant')g.mode='modifier';if(g.vgroup===g.mgroup)g.vgroup=g.vg0||g.vgroup}})}
+function toggleFlavVar(){const e=$('flavvar');
+  if(e.checked&&!confirm('Are you sure?\n\nThis makes flavours and types (Chocolate, Vanilla, Strawberry Milkshake) variants instead of one product with a modifier group. Oolio variants are normally for sizes only, so only do this if the venue wants flavours set up as variants.')){e.checked=false;return}
+  flavVar(e.checked);buildVG();run();mhNote(e.checked)}
+function mhNote(on){if(window.mhToast)window.mhToast(on?'Flavours are now variants. Check step 4.':'Flavours are back to modifier groups.')}
 const TYPENAME={file:'from file',bracket:'size in brackets',size:'size in name',flavour:'flavour or type in name',custom:'keyword'};
 function buildVG(){
   const el=$('vg');
   el.innerHTML=vg.length?vg.map((g,i)=>{const sz=g.members.every(m=>isSize(m.v));
     return'<div class="vr'+(g.mode==='off'?' off':'')+'"><div class="warn" style="margin:0 0 4px"><b style="color:var(--text)">'+esc(g.base)+'</b> · '+esc(g.cat||'no category')+' · '+g.members.length+' items · '+TYPENAME[g.type]+(sz?' · <span class="badge">sizes</span>':'')+'</div>'+
-    '<div class="three"><select data-i="'+i+'" data-k="mode"><option value="variant"'+(g.mode==='variant'?' selected':'')+'>Variants (sizes)</option><option value="modifier"'+(g.mode==='modifier'?' selected':'')+'>Modifier group</option><option value="off"'+(g.mode==='off'?' selected':'')+'>Off (separate products)</option></select>'+
+    '<div class="three"><select data-i="'+i+'" data-k="mode"><option value="variant"'+(g.mode==='variant'?' selected':'')+'>'+(g.fv?'Variants (flavours)':'Variants (sizes)')+'</option><option value="modifier"'+(g.mode==='modifier'?' selected':'')+'>Modifier group</option><option value="off"'+(g.mode==='off'?' selected':'')+'>Off (separate products)</option></select>'+
     '<input data-i="'+i+'" data-k="base" value="'+esc(g.base)+'" placeholder="Product name"'+(g.mode==='off'?' disabled':'')+'>'+
     '<input data-i="'+i+'" data-k="'+(g.mode==='modifier'?'mgroup':'vgroup')+'" value="'+esc(g.mode==='modifier'?g.mgroup:g.vgroup)+'" placeholder="'+(g.mode==='modifier'?'Modifier group':'Variant group')+'"'+(g.mode==='off'?' disabled':'')+'></div>'+
-    '<div class="warn" style="margin:0">'+g.members.map(m=>esc(m.v)).join(' · ')+(g.mode==='variant'&&!sz?' <span class="badge w">not sizes: a modifier group is usually better</span>':'')+'</div></div>'}).join(''):'<div class="warn">No sizes or flavour groups found.</div>';
+    '<div class="warn" style="margin:0">'+g.members.map(m=>esc(m.v)).join(' · ')+(g.mode==='variant'&&!sz&&!g.fv?' <span class="badge w">not sizes: a modifier group is usually better</span>':'')+'</div></div>'}).join(''):'<div class="warn">No sizes or flavour groups found.</div>';
   el.querySelectorAll('[data-i]').forEach(n=>n.addEventListener(n.tagName==='SELECT'?'change':'input',()=>{const g=vg[+n.dataset.i],k=n.dataset.k;g[k]=n.value;
     if(k==='mode'){if(g.mode!=='off')vg.forEach(o=>{if(o!==g&&o.mode!=='off'&&o.members.some(m=>g.members.some(x=>x.i===m.i)))o.mode='off'});buildVG()}run()}));}
 function addKW(){
@@ -1728,7 +1748,7 @@ function run(){
   $('q').style.display='block';renderPrev();
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
   const hasM=mods.length||res.genMods.length||res.preMods.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
-  renderNP();drawPreflight();drawChanges();drawAIC();saveSession();}
+  renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();saveSession();}
 
 /* ---------------- Claude's check (step 6) ----------------
    The finished list goes to the cheaper "small jobs" model (chosen on /admin), item by item, with what ~220 venues'
@@ -1783,6 +1803,69 @@ async function runAIC(again){const rs=aicRows(),s=await getSample();if(!rs.lengt
       if(d&&Array.isArray(d.issues))issues.push(...d.issues.filter(x=>x&&typeof x==='object'&&part.some(r=>r[0]===+x.row)))}}
   catch(e){err=claudeErr(e)}
   AIC={sig,issues,err,byRow:new Map(rs.map(r=>[r[0],r]))};AICBUSY=false;drawAIC()}
+
+/* ---------------- AI check against the original pages (step 6) ----------------
+   When OCR read a photo or scanned page, the check model (chosen on /admin; task "check") looks at each original page
+   next to the finished list and flags what doesn't match: prices, misread names, sizes, priced items the list is
+   missing and add-ons listed as products. It only flags; nothing in the list changes. The originals live only in this
+   visit (a restored menu has none), and a page and list checked before are answered from the website's saved reading. */
+const OCK_RULES='You check a menu that a text reader (OCR) and a parser turned into a list for Oolio POS (Australian venues). '+
+  'You get one page of the original menu (a photo or a scan, sometimes cut into overlapping slices of the same page) and the list made from the WHOLE menu, '+
+  'which may have several pages, so many list items will not be on this page.\n\n'+
+  'Compare the page with the list and flag only real differences a person should check:\n'+
+  '- price: an item on this page whose price in the list is different from the printed price\n'+
+  '- name: an item whose name in the list is misread (wrong letters or words); ignore capitals, punctuation and dietary codes\n'+
+  '- size: a size or serve (Schooner, Pint, Glass, Bottle, Small, Large) that the list has wrong, is missing, or has on the wrong item\n'+
+  '- missing: an item printed on this page with a price that is not in the list at all\n'+
+  '- addon: an add-on or choice printed on the page ("Add bacon +$4", "Oat milk +80c") that the list has as a product\n'+
+  '- other: anything else clearly wrong, such as a price matched to the item above or below it\n\n'+
+  'Do not flag list items that are not on this page. Do not comment on categories, printers or reporting groups. '+
+  'Copy names and prices exactly as printed. If you are not sure something is wrong, leave it out.\n\n'+
+  'Reply with only this JSON:\n{"flags":[{"row":null,"kind":"price|name|size|missing|addon|other","list":"","page":"","why":""}]}\n'+
+  'row is the number at the start of the list line, or null for a missing item. "list" is what the list says and "page" what the page shows. '+
+  'Keep "why" under 15 words. At most 40 flags.';
+let OCK=null,OCKBUSY=false,OCKCTL=null;
+// every original page kept from an OCR reading, in the order the files were added
+const ockPages=()=>tables.filter(t=>t.on&&Array.isArray(t.img)&&t.img.length).flatMap(t=>t.img.map((im,i)=>({label:t.file+(t.img.length>1?' page '+(i+1):''),im})));
+const ockRestored=()=>tables.some(t=>t.on&&!t.img&&t.doc&&/\(OCR\)/.test(t.doc.how||''));
+const ockSig=(rs,pages)=>aicSig(rs)+'#'+pages.map(p=>p.label).join('|');
+async function drawOCK(){const el=$('ochk');if(!el)return;
+  const pages=ockPages(),rs=aicRows(),s=rs.length&&(pages.length||ockRestored())?await getSample():null;
+  if(!s){el.innerHTML='';return}
+  if(!pages.length){el.innerHTML='<div class="chk i"><b>AI check against the original</b> <span class="muted" style="font-size:.85rem">This menu was restored from your last visit, so the original photos aren’t here. Add them again to check what OCR read.</span></div>';return}
+  const sig=ockSig(rs,pages),fresh=OCK&&OCK.sig===sig;
+  let h='<div class="chk i"><b>AI check against the original</b> <span class="muted" style="font-size:.85rem">The AI looks at each photo or scanned page that OCR read ('+pages.length+' page'+(pages.length>1?'s':'')+') and flags prices, names and sizes that don’t match the list, items it missed and add-ons listed as products. It only flags: nothing is changed. It uses the check model chosen on the admin page.</span><div style="margin-top:6px">'+
+    (OCKBUSY?'<button type="button" class="sec" id="ockstop">Stop</button> <span class="muted">'+esc(OCK&&OCK.at||'Checking…')+'</span>':'<button type="button" class="sec" id="ockgo">'+(fresh?'Check again':'Check against the original')+'</button>')+'</div>';
+  if(OCK&&!fresh&&!OCKBUSY&&OCK.sig)h+='<p class="pf-how" style="margin-left:0">The list or the pages have changed since the last check.</p>';
+  if(OCK&&OCK.err&&!OCKBUSY)h+='<p class="pf-how" style="margin-left:0">'+esc(OCK.err)+'</p>';
+  if(OCK&&fresh&&!OCKBUSY&&OCK.done){const L={price:'Price',name:'Name',size:'Size',missing:'Not in the list',addon:'Add-on, not a product',other:'Check'};
+    const by=new Map();OCK.flags.forEach(x=>{if(!by.has(x.pg))by.set(x.pg,[]);by.get(x.pg).push(x)});
+    h+=OCK.flags.length?'<details open><summary><b>'+OCK.flags.length+'</b> difference'+(OCK.flags.length>1?'s':'')+' to look at</summary>'+[...by].map(([pg,fl])=>
+        (by.size>1||pages.length>1?'<p style="margin:6px 0 2px"><b>'+esc(pg)+'</b></p>':'')+'<ul>'+fl.map(x=>{const r=x.row!=null?OCK.byRow.get(+x.row):null;
+          const who=r?r[1]+(r[2]?' ('+r[2]+')':''):clean(x.page)||clean(x.list)||'Item';
+          return'<li><b>'+esc(who)+'</b> · '+esc(L[x.kind]||'Check')+(x.list||x.page?': '+(x.list?'list has “'+esc(clean(x.list))+'”':'')+(x.list&&x.page?', ':'')+(x.page?'page shows “'+esc(clean(x.page))+'”':''):'')+
+            (x.why?' <span class="muted">('+esc(clean(x.why))+')</span>':'')+'</li>'}).join('')+'</ul>').join('')+'</details>'
+      :'<p class="pf-how" style="margin-left:0">No differences found between the list and the original'+(pages.length>1?' pages':'')+'.</p>';
+    if(OCK.skipped)h+='<p class="pf-how" style="margin-left:0">'+OCK.skipped+' page'+(OCK.skipped>1?'s weren’t':' wasn’t')+' checked: '+esc(OCK.err||'stopped')+'</p>'}
+  el.innerHTML=h+'</div>';
+  if($('ockgo'))$('ockgo').addEventListener('click',()=>runOCK(fresh));
+  if($('ockstop'))$('ockstop').addEventListener('click',()=>{if(OCKCTL)OCKCTL.abort()});}
+async function runOCK(again){const rs=aicRows(),pages=ockPages(),s=await getSample();if(!rs.length||!pages.length||!s||OCKBUSY)return;
+  OCKBUSY=true;OCKCTL=new AbortController();const sig=ockSig(rs,pages),flags=[];let err='',done=0;
+  const list='List, one item per line as JSON: [row, name, size, category, price]\n'+rs.map(r=>JSON.stringify([r[0],r[1],r[2],r[3],r[6]])).join('\n');
+  OCK={sig:'',flags:[],at:'Checking…'};drawOCK();
+  try{for(let i=0;i<pages.length;i++){OCK.at='Checking '+pages[i].label+(pages.length>1?' ('+(i+1)+' of '+pages.length+')':'')+'…';drawOCK();
+      const tiles=(await imageTiles(pages[i].im)).slice(0,IMGMAX);
+      const prompt=(tiles.length>1?'The '+tiles.length+' images are overlapping slices of ONE menu page, in reading order. ':'The image is one menu page. ')+'Check it against this list.\n\n'+list;
+      const d=await s.json(prompt,{images:tiles.length===1?tiles[0]:tiles,task:'check',context:OCK_RULES,fresh:again===true,signal:OCKCTL.signal});
+      const ok=x=>x&&typeof x==='object'&&(x.row==null?x.kind==='missing'||x.page:rs.some(r=>r[0]===+x.row));
+      if(d&&Array.isArray(d.flags))flags.push(...d.flags.filter(ok).slice(0,40).map(x=>Object.assign({},x,{pg:pages[i].label})));
+      done++}}
+  catch(e){err=claudeErr(e)}
+  OCK={sig,flags,err,done:true,skipped:pages.length-done,byRow:new Map(rs.map(r=>[r[0],r]))};
+  // nothing checked at all: show only the error, and let the button run it again
+  if(!done){OCK.done=false;OCK.sig=''}
+  OCKBUSY=false;OCKCTL=null;drawOCK()}
 
 function tplPresets(){const OV=window.OolioVenues,a=OV&&OV.active?OV.active():null,T=window.OOLIO_TEMPLATES;return a&&a.vtype&&T&&T[a.vtype]?T[a.vtype].presets:[]}
 
@@ -2023,6 +2106,7 @@ SET_IDS.forEach(id=>{const e=$(id);if(e){e.addEventListener('input',saveSettings
 $('scard').insertAdjacentHTML('beforeend','<div class="warn" style="margin:12px 0 0">These settings are remembered in this browser. <button type="button" class="sec" id="setrst" style="margin:0 0 0 6px;padding:4px 10px">Reset to defaults</button></div>');
 $('setrst').addEventListener('click',resetSettings);
 $('noprice').addEventListener('change',reReadNP);
+$('flavvar').addEventListener('change',toggleFlavVar);
 (function(){const ov=document.createElement('div');ov.id='dropov';ov.innerHTML='<div>Drop menu files to add them</div>';document.body.appendChild(ov);
   let n=0,pn=0;const vis=()=>$('file').offsetParent!==null,hasF=e=>!!(e.dataTransfer&&[...e.dataTransfer.types].includes('Files'));
   document.addEventListener('dragenter',e=>{if(!hasF(e)||!vis())return;n++;ov.classList.add('on')});
