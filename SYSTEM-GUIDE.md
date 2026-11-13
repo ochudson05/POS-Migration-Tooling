@@ -139,7 +139,7 @@ Download backup / Restore to move records between the two.
 | `RELAY_TOKEN` | Old relay endpoints used by the claude.ai copy | For the claude.ai copy |
 | `ANTHROPIC_API_KEY` | Claude on the website | Optional (off without it) |
 | `CLAUDE_OFF` | `1` = emergency stop for Claude | Optional |
-| `GEMINI_KEY`, `GEMINI_MODEL` | Gemini for small jobs (paid-tier key only) | Optional |
+| `GEMINI_KEY`, `GEMINI_MODEL` | Gemini for small jobs and checks; with no Claude key, all AI requests (paid-tier key only) | Optional |
 | `SERVER_URL`, `SERVER_KEY` | Connecting to the Google VM | Optional (server features off without them) |
 | `LOCAL_MODEL_ON`, `LOCAL_MODEL` | Local AI model on the VM | Optional (off) |
 | `ALLOWED_DOMAINS`, `ALLOWED_EMAILS`, `MAIL_FROM` | Who may sign in, sender address | Optional (domains can also be set on /admin; default `oolio.com`) |
@@ -249,7 +249,7 @@ because all tools ship in one page.
 |---|---|
 | **Google Cloud trial ends** (90 days or US$500) | Google stops the VM unless you upgrade (~US$15–18/month) or move it (`server/README.md` → "Moving to another provider"). The website keeps working without it. **Activation date not recorded. Check Billing in the Google console.** |
 | Nightly D1 backups | **Not set up yet** (`server/README.md` step 6). Cloudflare's Time Travel covers the last 7 days in the meantime. |
-| Claude on the website | Off until `ANTHROPIC_API_KEY` is set and the owner enables it on `/admin` |
+| Claude on the website | Off until `ANTHROPIC_API_KEY` or `GEMINI_KEY` is set and the owner enables it on `/admin`. Menu photos are read by OCR and the AI only checks them ("Check against the original", step 6), unless /admin says the AI reads them |
 | Legal pages | Contact email, phone and address still blank in `BUSINESS` (`build_apps.py`); governing state assumed NSW |
 | Data split | The claude.ai copy has its own records. Moving everything to the website is the recommended direction, but the decision is still open. |
 | Untested live | Customer intake uploads on real D1, Claude reading of PDFs/diagrams on the site, two people editing one venue at once |

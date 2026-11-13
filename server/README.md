@@ -139,6 +139,27 @@ and Haiku answers if Gemini fails.
 Whether Gemini API usage comes out of the Google Cloud trial credits depends on Google's current terms.
 Check **Billing > Reports** after a day of use.
 
+## AI check of OCR readings (ready, waiting for a key)
+
+The converter reads menu photos and scanned PDFs with the server's OCR, then an AI model can compare each
+original page with the finished list and **flag** differences: prices, misread names, sizes, priced items the
+list missed and add-ons listed as products. It never changes the list. The button is **Check against the
+original** in step 6 of the converter. It only appears once a key is set and the person has AI switched on.
+
+To turn it on later:
+
+1. Add **one** key in Cloudflare > menurunner > Variables and Secrets (Secret):
+   - `ANTHROPIC_API_KEY` for Claude (console.anthropic.com > API keys), or
+   - `GEMINI_KEY` for Gemini (paid-tier key, see the section above). With only this key, every AI request on the
+     website goes to Gemini, whatever Claude model is picked on /admin.
+2. On **/admin** (owner): tick "Claude is on for the website", set **Model for checks** (Sonnet 5.5 by default;
+   Haiku or Gemini Flash-Lite for the cheapest), leave **Menu photos read by** on "OCR on the server", set the
+   budgets and Save. Then tick "Can use Claude on the website" in each person's Edit window.
+3. Rough cost per page checked (one photo plus the list): Gemini Flash-Lite or Haiku about US$0.002, Sonnet about
+   US$0.04, Opus about US$0.07. The same page and list checked again within 30 days is free (saved reading).
+
+"Menu photos read by: The AI" goes back to having the reading model read photos itself (no OCR, no check).
+
 ## Check it
 
 From the server:

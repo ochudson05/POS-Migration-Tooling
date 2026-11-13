@@ -42,7 +42,9 @@
                      model too if the server runs it (LOCAL_MODEL_ON = "1").
      LOCAL_MODEL_ON  text (optional)  "1" when the server runs the local model (the "local-model" profile in server/)
      LOCAL_MODEL     text (optional)  the local model's name on that server, default "qwen3:4b" (LOCAL_MODEL in server/.env)
-     GEMINI_KEY      secret (optional) a Gemini API key (Google AI Studio or Google Cloud). Set = /admin offers Gemini for small jobs.
+     GEMINI_KEY      secret (optional) a Gemini API key (Google AI Studio or Google Cloud). Set = /admin offers Gemini for small jobs
+                     and for the converter's check against the original photos. With only this key (no ANTHROPIC_API_KEY),
+                     every AI request goes to Gemini.
      GEMINI_MODEL    text (optional)  which Gemini model, default "gemini-2.5-flash-lite"
 
    Claude on the website (/api/claude) is off until the owner turns it on at /admin, and then only for people the
@@ -308,7 +310,7 @@ async function admin(path, req, env, user, q) {
       .forEach(r => { spend[r.email] = { calls: r.calls, usd: r.cost / 1e6 }; });
     const cached = ((await DB.prepare("SELECT COUNT(*) AS n FROM claude_calls WHERE at >= ?1 AND state = 'cached'").bind(monthStart()).first()) || {}).n || 0;
     const claudeInfo = { settings: cs, hard: CLAUDE_HARD, models: Object.entries(CLAUDE_PRICES).map(([id, p]) => ({ id, inUsd: p[0], outUsd: p[1] })), efforts: CLAUDE_EFFORTS,
-      keySet: !!env.ANTHROPIC_API_KEY, stopped: env.CLAUDE_OFF === '1', spend, monthUsd: Object.values(spend).reduce((a, x) => a + x.usd, 0),
+      keySet: !!env.ANTHROPIC_API_KEY, geminiKey: !!env.GEMINI_KEY, stopped: env.CLAUDE_OFF === '1', spend, monthUsd: Object.values(spend).reduce((a, x) => a + x.usd, 0),
       localOn: localOn(env), gemini: env.GEMINI_KEY ? geminiModel(env) : null, cachedThisMonth: cached };
     return api({ me: user, owner: OWNER, users, tools: TOOLS, domains: await domainsOf(env), domainsFrom: set ? 'admin' : (env.ALLOWED_DOMAINS ? 'cloudflare' : 'default'),
       extraEmails: list(env.ALLOWED_EMAILS), activityDays: ACTIVITY_DAYS, firecrawl: { used: fc, cap: +env.FIRECRAWL_MONTHLY_CAP || 500 }, claude: claudeInfo });
@@ -339,13 +341,15 @@ async function admin(path, req, env, user, q) {
     const next = {
       enabled: has('enabled') ? b.enabled === true : cur.enabled, model: has('model') && CLAUDE_PRICES[b.model] ? b.model : cur.model,
       lightModel: has('lightModel') && (CLAUDE_PRICES[b.lightModel] || b.lightModel === LOCAL_MODEL || b.lightModel === GEMINI) ? b.lightModel : cur.lightModel,
+      checkModel: has('checkModel') && (CLAUDE_PRICES[b.checkModel] || b.checkModel === GEMINI) ? b.checkModel : cur.checkModel,
+      photoReader: has('photoReader') && PHOTO_READERS.includes(b.photoReader) ? b.photoReader : cur.photoReader,
       effort: has('effort') && CLAUDE_EFFORTS.includes(b.effort) ? b.effort : cur.effort,
       siteMonthUsd: has('siteMonthUsd') ? b.siteMonthUsd : cur.siteMonthUsd, userMonthUsd: has('userMonthUsd') ? b.userMonthUsd : cur.userMonthUsd,
       userDayCalls: has('userDayCalls') ? b.userDayCalls : cur.userDayCalls, userMinuteCalls: has('userMinuteCalls') ? b.userMinuteCalls : cur.userMinuteCalls,
     };
     await DB.prepare("INSERT INTO settings (key, value) VALUES ('claude', ?1) ON CONFLICT(key) DO UPDATE SET value = ?1").bind(JSON.stringify(next)).run();
     const s = await claudeSettings(env);   // read back, clamped to the ceilings
-    await log(env, user.email, 'admin', 'Claude ' + (s.enabled ? 'on' : 'off') + ': ' + s.model + ' (small jobs: ' + s.lightModel + '), effort ' + s.effort + ', site US$' + s.siteMonthUsd + '/month, US$' + s.userMonthUsd +
+    await log(env, user.email, 'admin', 'Claude ' + (s.enabled ? 'on' : 'off') + ': ' + s.model + ' (small jobs: ' + s.lightModel + ', checks: ' + s.checkModel + ', photos read by ' + (s.photoReader === 'ai' ? 'AI' : 'OCR') + '), effort ' + s.effort + ', site US$' + s.siteMonthUsd + '/month, US$' + s.userMonthUsd +
       '/person/month, ' + s.userDayCalls + ' calls/person/day, ' + s.userMinuteCalls + '/minute').run();
     return api({ ok: true, settings: s });
   }
@@ -426,8 +430,11 @@ async function firecrawl(req, env) {
 /* ---------- Claude with the team's Anthropic key: off until the owner turns it on ----------
    The page sends a prompt and up to a few pictures; everything else (model, effort, output length) is decided here.
    Before each call the worst-case cost is written down, so the limits hold even when several calls run at once.
-   Two models, both chosen on /admin: "model" reads menus, pictures and documents; "lightModel" does the small jobs a
-   page marks task: "light" (review summaries, staff lists, the converter's check). lightModel can be "local", the small
+   Three models, all chosen on /admin: "model" reads menus, pictures and documents; "lightModel" does the small jobs a
+   page marks task: "light" (review summaries, staff lists, the converter's list check); "checkModel" does task: "check",
+   the converter's comparison of what OCR read against the original photos (it only flags differences).
+   "photoReader" says who reads menu photos in the converter: "ocr" (the server's OCR, then checkModel can check it)
+   or "ai" (the reading model). Either key is enough: with only GEMINI_KEY, every request goes to Gemini. lightModel can be "local", the small
    model on the Menu Hauler server, which costs nothing and hands over to Haiku when it can't answer, or "gemini"
    (GEMINI_KEY), Google's model, which is priced and limited exactly like Claude and also hands over to Haiku if it fails.
    Answers are saved by a hash of exactly what was asked (claude_cache), so the same file read twice is paid for once.
@@ -441,7 +448,8 @@ const GEMINI_PRICES = { 'gemini-2.5-flash-lite': [0.10, 0.40], 'gemini-3.1-flash
 const geminiModel = env => String(env.GEMINI_MODEL || GEMINI_DEFAULT).trim();
 const localOn = env => serverOn(env) && env.LOCAL_MODEL_ON === '1';
 const CLAUDE_CACHE_DAYS = 30;
-const CLAUDE_DEFAULTS = { enabled: false, model: 'claude-opus-5-5', lightModel: 'claude-haiku-5-5', effort: 'medium', siteMonthUsd: 10, userMonthUsd: 2, userDayCalls: 25, userMinuteCalls: 4 };
+const PHOTO_READERS = ['ocr', 'ai'];
+const CLAUDE_DEFAULTS = { enabled: false, model: 'claude-opus-5-5', lightModel: 'claude-haiku-5-5', checkModel: 'claude-sonnet-5-5', photoReader: 'ocr', effort: 'medium', siteMonthUsd: 10, userMonthUsd: 2, userDayCalls: 25, userMinuteCalls: 4 };
 // ceilings the admin page can't go past
 const CLAUDE_HARD = { maxTokens: 16000, maxPromptChars: 200000, maxImages: 4, maxImageBytes: 5e6, siteMonthUsd: 200, userMonthUsd: 50, userDayCalls: 200, userMinuteCalls: 10 };
 const CLAUDE_EFFORTS = ['low', 'medium', 'high'];
@@ -454,13 +462,15 @@ async function claudeSettings(env) {
   return {
     enabled: s.enabled === true, model: CLAUDE_PRICES[s.model] ? s.model : d.model, effort: CLAUDE_EFFORTS.includes(s.effort) ? s.effort : d.effort,
     lightModel: CLAUDE_PRICES[s.lightModel] || (s.lightModel === LOCAL_MODEL && localOn(env)) || (s.lightModel === GEMINI && env.GEMINI_KEY) ? s.lightModel : d.lightModel,
+    checkModel: CLAUDE_PRICES[s.checkModel] || (s.checkModel === GEMINI && env.GEMINI_KEY) ? s.checkModel : d.checkModel,
+    photoReader: PHOTO_READERS.includes(s.photoReader) ? s.photoReader : d.photoReader,
     siteMonthUsd: num0(s.siteMonthUsd, d.siteMonthUsd, 0, h.siteMonthUsd), userMonthUsd: num0(s.userMonthUsd, d.userMonthUsd, 0, h.userMonthUsd),
     userDayCalls: Math.round(num0(s.userDayCalls, d.userDayCalls, 0, h.userDayCalls)), userMinuteCalls: Math.round(num0(s.userMinuteCalls, d.userMinuteCalls, 1, h.userMinuteCalls)),
   };
 }
 // can this person use Claude right now? (limits are checked per call)
 function claudeState(env, s, user) {
-  if (!env.ANTHROPIC_API_KEY) return { ok: false, why: 'Claude isn’t set up on the website (no API key).' };
+  if (!env.ANTHROPIC_API_KEY && !env.GEMINI_KEY) return { ok: false, why: 'AI isn’t set up on the website (no API key).' };
   if (env.CLAUDE_OFF === '1') return { ok: false, why: 'Claude has been switched off for the website in Cloudflare.' };
   if (!s.enabled) return { ok: false, why: 'Claude is turned off for the website. The owner can turn it on at /admin.' };
   if (!user.claude) return { ok: false, why: 'Claude isn’t switched on for your account. Ask the owner if you need it.' };
@@ -533,16 +543,18 @@ async function claude(req, env, user) {
     if (i.data.length * 0.75 > CLAUDE_HARD.maxImageBytes) return api({ error: 'A picture is too big for Claude (5 MB at most).', code: 'image_rejected' }, 413);
   }
   const tool = TOOLS.includes(b.tool) ? b.tool : '', now = Date.now(), DB = env.DB;
-  // small jobs go to the light model, at low effort; the local model can't see pictures
-  const light = b.task === 'light';
-  let model = light ? s.lightModel : s.model;
-  const effort = light ? 'low' : s.effort;
+  // small jobs go to the light model, at low effort; checks to the check model, at medium effort; the local model can't see pictures
+  const light = b.task === 'light', check = b.task === 'check', anth = !!env.ANTHROPIC_API_KEY;
+  // with only a Gemini key, Gemini answers whatever Claude model was chosen
+  const viaKey = m => anth || !CLAUDE_PRICES[m] ? m : geminiModel(env);
+  let model = light ? s.lightModel : check ? s.checkModel : s.model;
+  const effort = light ? 'low' : check ? 'medium' : s.effort;
   if (model === LOCAL_MODEL && (imgs.length || !localOn(env))) model = LOCAL_FALLBACK;
   if (model === GEMINI) model = env.GEMINI_KEY ? geminiModel(env) : LOCAL_FALLBACK;
-  const gemini = model.startsWith('gemini');
+  model = viaKey(model);
 
   // the same question asked before (by anyone, within CLAUDE_CACHE_DAYS) is answered from the saved reading, free
-  const key = await askKey([light ? 'light:' + model : model, effort, context, b.prompt, ...imgs.map(i => i.type + ':' + i.data)]);
+  const key = await askKey([light ? 'light:' + model : check ? 'check:' + model : model, effort, context, b.prompt, ...imgs.map(i => i.type + ':' + i.data)]);
   if (b.fresh !== true) {
     const hit = await DB.prepare('SELECT text, model FROM claude_cache WHERE key = ?1 AND at > ?2').bind(key, now - CLAUDE_CACHE_DAYS * 864e5).first();
     if (hit) {
@@ -564,13 +576,14 @@ async function claude(req, env, user) {
       await remember(text, LOCAL_MODEL);
       return api({ text, model: LOCAL_MODEL, truncated: false, costUsd: 0 });
     }
-    model = LOCAL_FALLBACK;
+    model = viaKey(LOCAL_FALLBACK);
   }
+  const gemini = model.startsWith('gemini');
 
   // the worst this call could cost: about 1 token per 3 characters, ~1,600 per picture, and the longest allowed answer
-  // (for Gemini, the dearer of it and Haiku, which answers instead if Gemini fails)
+  // (for Gemini, the dearer of it and Haiku, which answers instead if Gemini fails and there is a Claude key)
   const tokIn = Math.ceil((b.prompt.length + context.length * 1.25) / 3) + imgs.length * 1600;
-  const worst = Math.max(costOf(model, tokIn, CLAUDE_HARD.maxTokens), gemini ? costOf(LOCAL_FALLBACK, tokIn, CLAUDE_HARD.maxTokens) : 0);
+  const worst = Math.max(costOf(model, tokIn, CLAUDE_HARD.maxTokens), gemini && anth ? costOf(LOCAL_FALLBACK, tokIn, CLAUDE_HARD.maxTokens) : 0);
   // free answers (saved readings, the local model) don't count towards the per-minute and per-day limits
   const [minute, day, mine, site] = await DB.batch([
     DB.prepare("SELECT COUNT(*) AS n FROM claude_calls WHERE email = ?1 AND at > ?2 AND state != 'cached' AND model != 'local'").bind(user.email, now - 60e3),
@@ -601,6 +614,7 @@ async function claude(req, env, user) {
       if (!g.cut && g.text) await remember(g.text, model);
       return api({ text: g.text, model, truncated: g.cut, costUsd: cost / 1e6 });
     }
+    if (!anth) { await settle(0, 'failed', model, 0, 0, 'Gemini failed: ' + g.error); return api({ error: 'The AI couldn’t answer (' + String(g.error).slice(0, 120) + '). Try again in a minute.', code: 'unavailable' }, 502); }
     gemNote = 'Gemini failed (' + g.error + '), Haiku answered. ';
     model = LOCAL_FALLBACK;
   }
@@ -864,9 +878,9 @@ async function handle(req, env) {
         if (req.method === 'POST' && origin && new URL(origin).host !== u.host) return api({ error: 'Not allowed from another site.' }, 403);
         const route = u.pathname.slice(5);
         if (route === 'me') {
-          const cs = claudeState(env, await claudeSettings(env), user);
+          const ss = await claudeSettings(env), cs = claudeState(env, ss, user);
           return api({ email: user.email, name: user.name, version: VERSION, role: user.role, tools: user.tools, canEdit: user.canEdit, firecrawl: user.firecrawl, admin: isAdmin(user),
-            claude: cs.ok, claudeLimits: cs.ok ? { maxImages: CLAUDE_HARD.maxImages, maxPromptChars: CLAUDE_HARD.maxPromptChars } : null,
+            claude: cs.ok, photoReader: ss.photoReader, claudeLimits: cs.ok ? { maxImages: CLAUDE_HARD.maxImages, maxPromptChars: CLAUDE_HARD.maxPromptChars } : null,
             scraper: serverOn(env), ocr: serverOn(env) });
         }
         if (route.startsWith('server/')) return server(route.slice(7), req, env);

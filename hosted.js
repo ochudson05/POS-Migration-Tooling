@@ -6,7 +6,8 @@
      mcp   -> /api/fc    (Firecrawl with the team key; the Claude app's browser isn't needed, see /api/fetch)
      sample -> /api/claude, but only for people the owner has switched Claude on for (see /admin); everyone else gets
                nothing, so each tool falls back to its built-in readers and OCR exactly as before.
-               json(prompt, {task:'light'}) asks for the cheaper model the owner picked for small jobs; {context} is
+               json(prompt, {task:'light'}) asks for the cheaper model the owner picked for small jobs, and
+               {task:'check'} for the model picked to check OCR readings against the original photos; {context} is
                fixed reference text sent first (Anthropic's prompt cache); a repeated question is answered from a
                saved reading unless {fresh:true}. On claude.ai these options are simply ignored.
      window.MH_SERVER -> the Menu Hauler server through /api/server/* (menu scraper, OCR), when the website has one
@@ -86,12 +87,14 @@ function parseJSON(t){t=String(t||'').trim().replace(/^```(?:json)?\s*/i,'').rep
   return undefined}
 const SAMPLE={
   async limits(){const m=await me(),l=m.claudeLimits||{};return{maxPromptBytes:Math.floor((l.maxPromptChars||200000)*0.9),images:{maxCount:l.maxImages||4}}},
+  // who reads menu photos in the converter (set on /admin): "ocr" (OCR reads, the AI can check it) or "ai"
+  async photoReader(){try{return(await me()).photoReader||'ocr'}catch(e){return'ocr'}},
   async json(prompt,o){o=o||{};const list=o.images?(Array.isArray(o.images)?o.images:[o.images]):[],images=[];
     for(const x of list){const blob=x instanceof Blob?x:await new Promise(r=>x.toBlob(r,'image/jpeg',0.9));
       images.push({type:blob.type==='image/jpg'?'image/jpeg':(blob.type||'image/jpeg'),data:await b64(blob)})}
     let r;try{r=await fetch('/api/claude',{method:'POST',credentials:'same-origin',redirect:'manual',signal:o.signal,headers:{'content-type':'application/json'},
-      // task "light" = a small job for the cheaper model; context = fixed reference text (prompt-cached); fresh = skip saved readings
-      body:JSON.stringify({prompt:String(prompt),images,tool:location.hash.slice(1),task:o.task==='light'?'light':undefined,context:typeof o.context==='string'?o.context:undefined,fresh:o.fresh===true||undefined})})}
+      // task "light" = a small job for the cheaper model, "check" = the check model; context = fixed reference text (prompt-cached); fresh = skip saved readings
+      body:JSON.stringify({prompt:String(prompt),images,tool:location.hash.slice(1),task:o.task==='light'||o.task==='check'?o.task:undefined,context:typeof o.context==='string'?o.context:undefined,fresh:o.fresh===true||undefined})})}
     catch(e){if(o.signal&&o.signal.aborted)throw err('Stopped.','cancelled');throw err('The website couldn’t be reached. Check the connection.','unavailable')}
     if(r.type==='opaqueredirect'||r.status===401){signinBanner('Your sign-in session has ended. Reload the page to sign in again.');throw err('Your sign-in session has ended.','session_expired')}
     let j={};try{j=await r.json()}catch(e){}
