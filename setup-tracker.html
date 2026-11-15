@@ -554,34 +554,142 @@ function planFromDiagram(j,o){const locs=(j&&Array.isArray(j.locations))?j.locat
   if(eft)notes.unshift(eft+' payment terminal'+(eft>1?'s':'')+' paired with POS devices: connect them in Devices → Connect payment terminals.');
   return{devices:D,printers:P,profiles,notes,venue:clean(j&&j.venue)}}
 window.__stPlanFromDiagram=planFromDiagram;
+/*DIAGRULES*/
+/* ---------- reading the diagram without AI ----------
+   The team server's text recognition (or a .drawio file's own labels) gives lines of text with their positions, {t,x0,y0,x1,y1}.
+   These rules turn them into the same JSON DIAG_PROMPT asks Claude for, so planFromDiagram names everything the same way.
+   Oolio install diagrams have:
+   - "location | <area>" headings with "N x <hardware>" lines under them, and an electrician "REQ:" line;
+   - on the newer template, a port schedule (Port / Device / Location columns) and "Install notes".
+   The port schedule is the source when there are no location lists, and a cross-check when there are. */
+const dgFix=s=>clean(String(s==null?'':s).replace(/&nbsp;| /g,' ')).replace(/[×✕✖]/g,'x').replace(/\bOo(?:ll|il|li|l1|i1|ii)o\b/gi,'Oolio')
+  .replace(/(\d{1,2}(?:\.\d)?)\s?[*”″“°]/g,'$1"').replace(/\s*(?:\.{2,}|…)\s*$/,'').trim();
+const DG_HEAD=/^location\s*(?:[|lI!:\/]|\s)\s*(?=\S)/i;
+function dgKind(t,area){const s=(t||'').toLowerCase(),a=(area||'').toLowerCase();
+  if(/access ?point|\bwap\b|\bswitch\b|modem|router|network|\bups\b|patch panel|unifi|ubiquiti/.test(s)||(/wireless|wi-?fi\b/.test(s)&&!/printer|terminal|eftpos|tablet|pc\b/.test(s)))return'network';
+  if(/cash ?drawer|till drawer/.test(s))return'drawer';
+  if(/kiosk/.test(s))return'kiosk';
+  if(/customer[- ]?(facing )?display|\bcfd\b|second screen|pole display/.test(s))return'customer_display';
+  if(/printer/.test(s))return'printer';
+  if(/\bkds\b|kitchen display|bump|order display/.test(s))return'kds';
+  if(/\bmpos\b|pay ?@ ?table|pay at table/.test(s)&&!/integrated|paired/.test(s))return'mpos';
+  if(/eftpos|payment terminal|card (reader|terminal)|\bs1f2\b|\bterminal\b/.test(s)&&!/touch|\bpc\b/.test(s))return'eftpos';
+  if(/handheld|\bl3\b|\bnfc\b|8\.7"|phone/.test(s))return'handheld';
+  if(/touch ?pc|\bpos\b|tablet|ipad|all-in-one|\baio\b|\bpc\b|screen|monitor|surface|sunmi/.test(s)){
+    if(/pick ?up|\bpass\b|expo|kds|kitchen/.test(a)&&/screen|monitor|all-in-one|21\.5|2[2-7]"/.test(s))return'kds';
+    return/roaming/.test(a)&&/tablet|phone/.test(s)?'handheld':'pos'}
+  return''}
+// "15.6" Oolio Black Touch PC (Existing Mounts (supplying adapter brackets))" -> "15.6" Oolio Black Touch PC"
+function dgHw(t){let s=dgFix(t).replace(/\bOolio-[A-Z]\b/g,'Oolio');for(let i=0;i<4&&/\([^()]*\)/.test(s);i++)s=s.replace(/\([^()]*\)/g,' ');
+  return clean(s.replace(/\(.*$/,'').replace(/\)/g,' ').replace(/\s[-–]\s*(pos|mpos|kds)\b.*$/i,'').replace(/\s+(?:with|for)\s+(?:pole|wall|vesa|stand|case|mount|kds|bump|pay).*$/i,'')
+    .replace(/\b(printer|drawer|cashdrawer|terminal|tablet|screen|display|pc)s\b/gi,'$1').replace(/\s*\*+\s*/g,' '))}
+// the lines under a heading: left-aligned with it, until a gap or another heading
+function dgBlock(L,h,isHead){const lh=Math.max(4,h.y1-h.y0),tol=Math.max(14,lh*1.5),out=[];let last=h.y1;
+  L.filter(l=>l!==h&&l.y0>=h.y0+lh*0.5&&Math.abs(l.x0-h.x0)<=tol).sort((a,b)=>a.y0-b.y0)
+    .some(l=>{if(l.y0-last>lh*2.5||isHead(l))return true;out.push(l);last=Math.max(last,l.y1);return/^req\b/i.test(l.t)});// the electrician line ends a list
+  return out}
+// port schedule rows {port,dev,loc}; there can be more than one set of Port/Device/Location columns side by side
+function dgPorts(L){const rows=[],near=(a,b)=>Math.abs(a.y0-b.y0)<Math.max(6,(a.y1-a.y0)*0.8);
+  L.filter(l=>/^device$/i.test(l.t)).forEach(d=>{const lh=Math.max(4,d.y1-d.y0),same=L.filter(l=>near(l,d));
+    const loc=same.filter(l=>/^location$/i.test(l.t)&&l.x0>d.x1).sort((a,b)=>a.x0-b.x0)[0];if(!loc)return;
+    const port=same.filter(l=>/^port$/i.test(l.t)&&l.x1<=d.x0+2).sort((a,b)=>b.x0-a.x0)[0];
+    const next=same.filter(l=>/^(port|device)$/i.test(l.t)&&l.x0>loc.x0).sort((a,b)=>a.x0-b.x0)[0];
+    const left=port?port.x0-lh:d.x0-lh*2,right=next?next.x0-lh*0.5:loc.x0+(loc.x0-d.x0)*1.1;
+    let last=d.y1,cur=null;
+    for(const c of L.filter(l=>l.y0>d.y1-2&&l.x0>=left&&l.x0<right).sort((a,b)=>a.y0-b.y0)){if(c.y0-last>lh*3)break;last=Math.max(last,c.y1);
+      if(!cur||c.y0-cur.y>lh*0.6){cur={y:c.y0,port:'',dev:'',loc:''};rows.push(cur)}
+      if(c.x0>=loc.x0-lh)cur.loc=cur.loc||c.t;else if(c.x0>=d.x0-lh)cur.dev=cur.dev||c.t;else cur.port=cur.port||c.t}});
+  return rows.filter(r=>r.dev)}
+function dgRead(lines){const L=(lines||[]).map(l=>({t:dgFix(l.t),x0:+l.x0||0,y0:+l.y0||0,x1:+l.x1||0,y1:+l.y1||0})).filter(l=>l.t);
+  const notes=[],locs=[],by={},used=new Set(),heads=L.filter(l=>DG_HEAD.test(l.t));
+  const isHead=l=>DG_HEAD.test(l.t)||/^(install notes|notes|legend|summary|port schedule)$/i.test(l.t);
+  const loc=n=>{const k=n.toLowerCase();if(!by[k]){by[k]={name:n,items:[]};locs.push(by[k])}return by[k]};
+  const add=(Lc,n,desc,src)=>{const k=dgKind(desc,Lc.name),hw=dgHw(desc),A=TC(Lc.name);
+    const own=/existing|customer[- ](owned|supplied)|already on site/i.test(desc.replace(/existing mounts?|mounts? (are )?(already )?on site/gi,'')),sp=/\bspare\b|backup/i.test(desc+' '+Lc.name);
+    if(!k||k==='network'||k==='drawer'){if(src!=='port'||!k)notes.push(A+': '+n+' x '+hw+(own?' (customer owned)':'')+(k?'':' – not sure what this is, add it by hand if it’s needed')+'.');return}
+    if(own&&src!=='port')notes.push(A+': the '+hw+(n>1?' ('+n+')':'')+' is customer owned.');
+    const pm=(desc.match(PURP)||[''])[0],purpose=k==='printer'?(/receipt/i.test(desc)?'receipt':pm.toLowerCase()):k==='kds'?pm.toLowerCase():'';
+    const it={kind:k,count:n,hardware:hw,printer_type:k==='printer'?(/impact|u220/i.test(desc)?'impact':'thermal'):'',purpose,spare:sp};
+    const same=Lc.items.find(x=>x.kind===it.kind&&x.hardware.toLowerCase()===it.hardware.toLowerCase()&&x.purpose===it.purpose&&x.spare===it.spare&&x.printer_type===it.printer_type);
+    if(same)same.count+=n;else Lc.items.push(it)};
+  const tl=L.find(l=>/install\s*[—–-]+\s*\S/i.test(l.t)),venue=tl?clean(tl.t.replace(/^.*install\s*[—–-]+\s*/i,'')):'';
+  heads.forEach(h=>{used.add(h);const name=clean(h.t.replace(DG_HEAD,'')),Lc=loc(name);
+    dgBlock(L,h,isHead).forEach(l=>{used.add(l);const m=l.t.match(/^(\d{1,3})\s*x\s*(.+)$/i),r=l.t.match(/^req\b[:.\s]*(.+)$/i);
+      if(r){notes.push(TC(name)+': electrician needs '+r[1].replace(/\bPOWER\b/g,'power').replace(/\bDATA\b/g,'data')+'.');return}
+      if(m)add(Lc,Math.min(20,+m[1]),m[2],'list');else if(/[a-z]{3}/i.test(l.t))notes.push(TC(name)+': '+l.t)})});
+  const ports=dgPorts(L),fromLists=locs.some(l=>l.items.length);
+  if(!fromLists)ports.forEach(r=>{const area=clean((r.loc||'Main').split(/\s*[—–]\s*|\s+-\s+/)[0])||'Main';add(loc(area),1,r.dev,'port')});
+  else if(ports.length){const tally=it=>{const c={pos:0,printer:0,kds:0};it.forEach(x=>{const k=x.kind==='handheld'?'pos':x.kind;if(k in c&&!x.spare)c[k]+=x.count});return c};
+    const a=tally([].concat(...locs.map(l=>l.items))),b=tally(ports.map(r=>({kind:dgKind(r.dev,r.loc),count:1}))),W={pos:'POS',printer:'printers',kds:'kitchen screens'};
+    Object.keys(a).forEach(k=>{if(b[k]&&a[k]!==b[k])notes.push('The port schedule lists '+b[k]+' '+W[k]+' but the location lists add up to '+a[k]+'. Check the diagram.')})}
+  L.filter(l=>!used.has(l)&&/^\d{1,3}\s*x\s+\S/i.test(l.t)&&!ports.some(r=>r.dev===l.t)).forEach(l=>notes.push('Also on the diagram: '+l.t+'.'));
+  L.filter(l=>/^install notes$/i.test(l.t)).forEach(h=>dgBlock(L,h,isHead).forEach(l=>notes.push(l.t)));
+  return{venue,locations:locs.filter(l=>l.items.length),notes:[...new Set(notes)],source:fromLists?'lists':ports.length?'ports':''}}
+// a .drawio file: every label with its place on the page, split into lines like the text recognition gives
+async function dgDrawio(text){const doc=new DOMParser().parseFromString(text,'text/xml'),out=[];
+  const inflate=async s=>{const b=Uint8Array.from(atob(s.trim()),c=>c.charCodeAt(0));
+    const t=await new Response(new Blob([b]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();try{return decodeURIComponent(t)}catch(e){return t}};
+  let pages=[...doc.getElementsByTagName('diagram')].map(d=>d.getElementsByTagName('mxGraphModel')[0]||d.textContent);
+  if(!pages.length)pages=[doc.getElementsByTagName('mxGraphModel')[0]].filter(Boolean);
+  const plain=h=>{const d=new DOMParser().parseFromString('<body>'+String(h||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/?(div|p|li|tr|h\d)\b[^>]*>/gi,'\n')+'</body>','text/html');return d.body.textContent||''};
+  for(let p=0;p<Math.min(pages.length,6);p++){let m=pages[p];
+    if(typeof m==='string'){if(!m.trim())continue;m=new DOMParser().parseFromString(await inflate(m),'text/xml').documentElement}
+    const cells={};[...m.getElementsByTagName('mxCell')].forEach(c=>{const o=/^(object|UserObject)$/i.test(c.parentNode.nodeName)?c.parentNode:null,id=(o||c).getAttribute('id');
+      const g=[...c.children].find(x=>x.nodeName==='mxGeometry');
+      cells[id]={par:c.getAttribute('parent'),edge:c.getAttribute('edge')==='1',v:o?(o.getAttribute('label')||''):(c.getAttribute('value')||''),
+        x:g?+g.getAttribute('x')||0:0,y:g?+g.getAttribute('y')||0:0,w:g?+g.getAttribute('width')||0:0,rel:g&&g.getAttribute('relative')==='1'}});
+    const abs=(id,n)=>{const c=cells[id];if(!c||n>20)return{x:0,y:0};const q=abs(c.par,n+1);return{x:q.x+(c.rel?0:c.x),y:q.y+(c.rel?0:c.y)}};
+    Object.keys(cells).forEach(id=>{const c=cells[id];if(c.edge||!c.v)return;const a=abs(id,0),Y=a.y+p*1e5;let i=0,blank=false;
+      plain(c.v).split('\n').forEach(s=>{s=clean(s);if(!s){if(i&&!blank){i++;blank=true}return}blank=false;out.push({t:s,x0:a.x,y0:Y+i*14,x1:a.x+Math.max(c.w,s.length*6),y1:Y+i*14+12});i++})})}
+  return out}
+window.__stDiagRules={dgRead,dgDrawio};
+/*/DIAGRULES*/
 function profileList(o){const fromDev=(o.devices||[]).map(d=>clean(d.profile)).filter(Boolean),typed=val(o,'prof-split','list').split(/\s*,\s*/).filter(Boolean);return[...new Set(typed.concat(fromDev))]}
 function diagramPanel(o){const d=o.diagram;
-  return '<div class="st-check"><b>Read the diagram</b>: upload the site map (image or PDF) and Claude proposes device names, device profiles and printer names from it, for you to check before they’re added.'+
-    (READONLY?'':'<div class="st-tools" style="margin-top:6px"><label class="st-sec st-sm" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer;font-weight:600;color:var(--text)">Upload diagram<input type="file" id="st-dfile" accept="image/*,.pdf" style="display:none"></label><span id="st-dmsg" class="st-small st-muted"></span></div>')+
+  return '<div class="st-check"><b>Read the diagram</b>: upload the site map (image, PDF or .drawio file) and Menu Hauler proposes device names, device profiles and printer names from it, for you to check before they’re added.'+
+    (READONLY?'':'<div class="st-tools" style="margin-top:6px"><label class="st-sec st-sm" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer;font-weight:600;color:var(--text)">Upload diagram<input type="file" id="st-dfile" accept="image/*,.pdf,.drawio,.xml" style="display:none"></label><span id="st-dmsg" class="st-small st-muted"></span></div>')+
     (d?'<div class="st-small st-muted" style="margin-top:6px">Last read: '+esc(d.file||'diagram')+', '+esc(when(d.at))+(d.by?' by '+esc(who(d.by)):'')+'. '+esc(d.summary||'')+'</div>':'')+'</div>'}
 let PDFLIB=null;function loadPdf(){return PDFLIB||(PDFLIB=new Promise((res,rej)=>{if(window.pdfjsLib)return res(window.pdfjsLib);const W='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=()=>{const w=document.createElement('script');w.src=W;w.onload=()=>{window.pdfjsLib.GlobalWorkerOptions.workerSrc=W;res(window.pdfjsLib)};w.onerror=()=>res(window.pdfjsLib);document.head.appendChild(w)};
   s.onerror=()=>{PDFLIB=null;rej(new Error('The PDF reader couldn’t load.'))};document.head.appendChild(s)}))}
 const toJpeg=c=>new Promise(r=>c.toBlob(r,'image/jpeg',0.9));
-async function diagramImages(f,max){if(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name)){const lib=await loadPdf(),doc=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise,out=[];
-    for(let i=1;i<=Math.min(doc.numPages,max);i++){const pg=await doc.getPage(i),v0=pg.getViewport({scale:1}),vp=pg.getViewport({scale:Math.min(3,2400/v0.width)}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
+// side: the longest side in pixels (Claude takes 2600; the server's text recognition reads up to 3000, and small print needs it)
+async function diagramImages(f,max,side){side=side||2600;if(/pdf$/i.test(f.type)||/\.pdf$/i.test(f.name)){const lib=await loadPdf(),doc=await lib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise,out=[];
+    for(let i=1;i<=Math.min(doc.numPages,max);i++){const pg=await doc.getPage(i),v0=pg.getViewport({scale:1}),vp=pg.getViewport({scale:Math.min(4,side/Math.max(v0.width,v0.height))}),c=document.createElement('canvas');c.width=vp.width;c.height=vp.height;
       await pg.render({canvasContext:c.getContext('2d'),viewport:vp}).promise;out.push(await toJpeg(c))}return out}
-  const bm=await createImageBitmap(f),sc=Math.min(1,2600/Math.max(bm.width,bm.height));if(sc===1&&f.size<4e6)return[f];
+  const bm=await createImageBitmap(f),sc=Math.min(1,side/Math.max(bm.width,bm.height));if(sc===1&&f.size<4e6&&/^image\/(jpeg|png|webp|gif)$/.test(f.type))return[f];
   const c=document.createElement('canvas');c.width=Math.round(bm.width*sc);c.height=Math.round(bm.height*sc);c.getContext('2d').drawImage(bm,0,0,c.width,c.height);return[await toJpeg(c)]}
-async function readDiagram(f){const m=g('st-dmsg'),say=x=>{if(g('st-dmsg'))g('st-dmsg').textContent=x},id=VIEW.org;
-  const s=await use('sample');if(!s){say(window.OOLIO_HOSTED?'Reading diagrams needs Claude, which isn’t switched on for your account (the site owner can turn it on). Add the devices and printers below by hand for now.':'Reading diagrams needs Claude, which is only available when this page is open on claude.ai.');return}
+/* Reading order: a .drawio file's own labels; then the team server's text recognition + the rules above (no AI, no usage);
+   then Claude reads the picture when the rules found nothing (a hand-drawn or unusual diagram) or the server is off. */
+const OCR_HOW='Read by the team server’s text recognition and the diagram rules (no AI). Check every row against the diagram.';
+async function readDiagram(f){const say=x=>{if(g('st-dmsg'))g('st-dmsg').textContent=x},id=VIEW.org;
+  if(/\.(drawio|xml)$/i.test(f.name)){try{say('Reading '+f.name+'…');const j=dgRead(await dgDrawio(await f.text())),plan=planFromDiagram(j,ORGS[id]);
+      if(plan.devices.length||plan.printers.length){say('');reviewPlan(id,plan,f.name,'Read from the draw.io file’s own labels (no AI). Check every row against the diagram.');return}
+      say('This draw.io file has no “location | …” lists or port schedule to read. Export it as a PNG or PDF and upload that instead.')}
+    catch(e){say('The draw.io file couldn’t be read ('+((e&&e.message)||'error')+'). Export it as a PNG or PDF and upload that instead.')}
+    return}
+  let why='';
+  if(window.OOLIO_HOSTED&&window.MH_SERVER){let on=null;try{on=await window.MH_SERVER.on()}catch(e){}
+    if(on&&on.ocr)try{say('Preparing '+f.name+'…');const imgs=await diagramImages(f,4,3000),lines=[];
+      for(let i=0;i<imgs.length;i++){say('Reading the text on '+(imgs.length>1?'page '+(i+1)+' of '+imgs.length:f.name)+'…');const d=await window.MH_SERVER.ocr(imgs[i]);
+        (d.lines||[]).forEach(l=>{const b=l.box||[0,0,0,0];lines.push({t:l.text,x0:b[0],y0:b[1]+i*1e5,x1:b[2],y1:b[3]+i*1e5})})}
+      const j=dgRead(lines),plan=planFromDiagram(j,ORGS[id]);
+      if(plan.devices.length||plan.printers.length){say('');reviewPlan(id,plan,f.name,OCR_HOW);return}
+      why='The text recognition didn’t find “location | …” lists or a port schedule on it. '}
+    catch(e){why='The team server couldn’t read it ('+((e&&e.message)||'error')+'). '}}
+  const s=await use('sample');if(!s){say(why+(window.OOLIO_HOSTED?'Reading '+(why?'it ':'diagrams ')+'with Claude needs Claude switched on for your account (the site owner can turn it on). Add the devices and printers below by hand for now.':'Reading diagrams needs Claude, which is only available when this page is open on claude.ai, or the team server on the website.'));return}
   let max=1;try{const l=await s.limits();if(!l||!l.images){say('Claude can’t read images in this view.');return}max=Math.max(1,l.images.maxCount||1)}catch(e){}
   try{say('Preparing '+f.name+'…');const imgs=(await diagramImages(f,Math.min(max,4)));
-    say('Claude is reading the diagram. This can take up to a minute…');
+    say(why+'Claude is reading the diagram. This can take up to a minute…');
     const j=await s.json(DIAG_PROMPT,{images:imgs.length===1?imgs[0]:imgs});
     const plan=planFromDiagram(j,ORGS[id]);if(!plan.devices.length&&!plan.printers.length){say('No devices or printers were found on it. Try a clearer image.');return}
-    say('');reviewPlan(id,plan,f.name)}
+    say('');reviewPlan(id,plan,f.name,'Read by Claude. Check every row against the diagram.')}
   catch(e){say(e&&e.code==='not_granted'?'Claude needs your OK to read the diagram. Upload it again and choose Allow.':'The diagram couldn’t be read ('+((e&&(e.message||e.code))||'error')+').')}}
 // check and edit the proposed names before anything is added
-function reviewPlan(id,plan,file){const o=ORGS[id],d=g('st-dlg'),haveD=new Set((o.devices||[]).map(x=>clean(x.name).toLowerCase())),haveP=new Set((o.printers||[]).map(x=>clean(x.name).toLowerCase()));
+function reviewPlan(id,plan,file,how){const o=ORGS[id],d=g('st-dlg'),haveD=new Set((o.devices||[]).map(x=>clean(x.name).toLowerCase())),haveP=new Set((o.printers||[]).map(x=>clean(x.name).toLowerCase()));
   const row=(kind,i,x,extra,have)=>'<tr><td><input type="checkbox" data-pk="'+kind+'" data-pi="'+i+'"'+(have?'':' checked')+'></td><td><input data-pn="'+kind+'" data-pi="'+i+'" value="'+esc(x.name||x)+'"></td>'+extra+(have?'<td class="st-small st-muted">already listed</td>':'<td></td>')+'</tr>';
   d.innerHTML='<form method="dialog" class="st" style="padding:0;max-width:none;display:grid;gap:12px"><h2>From the diagram'+(plan.venue?': '+esc(plan.venue):'')+'</h2>'+
-    '<p class="st-small st-muted" style="margin:0">Check the names, untick anything that shouldn’t be added, then add them. Renaming a profile or printer here updates the devices and fallbacks that use it.</p>'+
+    '<p class="st-small st-muted" style="margin:0">'+(how?esc(how)+' ':'')+'Check the names, untick anything that shouldn’t be added, then add them. Renaming a profile or printer here updates the devices and fallbacks that use it.</p>'+
     '<h3 style="margin:0;font-size:1rem">Devices ('+plan.devices.length+')</h3><div class="st-tblw"><table class="st-tbl" style="min-width:560px"><thead><tr><th></th><th>Name</th><th>Type</th><th>Location</th><th>Profile</th><th>Prefix</th><th></th></tr></thead><tbody>'+
       plan.devices.map((x,i)=>row('d',i,x,'<td>'+esc(x.role)+'</td><td>'+esc(x.loc)+'</td><td>'+esc(x.profile||'–')+'</td><td>'+esc(x.prefix||'')+'</td>',haveD.has(x.name.toLowerCase()))).join('')+'</tbody></table></div>'+
     '<h3 style="margin:0;font-size:1rem">Device profiles ('+plan.profiles.length+')</h3><div class="st-tblw"><table class="st-tbl" style="min-width:0"><tbody>'+plan.profiles.map((x,i)=>row('p',i,{name:x},'',profileList(o).map(s=>s.toLowerCase()).includes(x.toLowerCase()))).join('')+'</tbody></table></div>'+
