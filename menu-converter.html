@@ -45,6 +45,7 @@ th{background:var(--bg);position:sticky;top:0;z-index:1}
 #cats td{padding:4px 6px}#cats input,#cats select{padding:5px 7px;font-size:.85rem;min-width:110px}
 details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .map{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));margin-top:8px}
+.plrole{margin:6px 0 0;font-size:.92em;display:flex;flex-wrap:wrap;align-items:center;gap:6px}.plrole select,.plrole input{width:auto;min-width:0;max-width:220px}
 .map select{padding:5px 7px;font-size:.85rem}
 .chk{border-left:3px solid var(--warn);padding:4px 10px;margin:6px 0}
 .chk.i{border-color:var(--line)}
@@ -179,7 +180,10 @@ Double Shot=60</textarea></div>
 </main>
 
 <script>
-const OUT=['Product ID','Product Name*','Product Type*','Product Group*','Reporting Group*','Category*','Variant Group','Variant Name','Measured By*','Default Value','Unit','POS Name','Kitchen Name','Printer Profiles','Description','Is Selling?','Print On Receipt?','Dietary Tags','Allergens','Available Location','Barcode','SKU','PLU','GTIN','Sell Price*','Sell Tax*','Recipe','Variable Pricing?','Min Pricing','Max Pricing','Image URL'];
+const OUTB=['Product ID','Product Name*','Product Type*','Product Group*','Reporting Group*','Category*','Variant Group','Variant Name','Measured By*','Default Value','Unit','POS Name','Kitchen Name','Printer Profiles','Description','Is Selling?','Print On Receipt?','Dietary Tags','Allergens','Available Location','Barcode','SKU','PLU','GTIN','Sell Price*','Sell Tax*','Recipe','Variable Pricing?','Min Pricing','Max Pricing','Image URL'];
+// price lists (Oolio Back Office → Items → Price Lists) go in as extra columns between GTIN and Sell Price*, one per list,
+// headed with the price list's name, the way Oolio's own product export has them
+let OUT=OUTB.slice(),PLS=[],PLCHK=[];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clean=s=>String(s==null?'':s).replace(/ /g,' ').replace(/\s+/g,' ').trim();
@@ -577,12 +581,20 @@ function analyse(t){
   let src='custom';
   if(H.has('producttype'))src='oolio';
   else if(kind==='modifiers')src=/pre-?work/i.test(text)?'prework':'custom';
+  else if(H.has('printergroup')&&(H.has('systemstate')||H.has('plusgroup')||H.has('optiongroups')))src='ordermate';
   else if(H.has('screenname')||H.has('subscreenname')||H.has('menuname'))src='lightspeed';
   else if(H.has('token')||(H.has('itemname')&&H.has('variationname')))src='square';
   else if(H.has('sellprice')||H.has('categorynames')||H.has('printerprofiles')||/pre-?work/i.test(text))src='prework';
   let mk=-1;rows.forEach((r,i)=>{if(i>hdr&&r.some(c=>MARK.test(c)))mk=i});
-  return{hdr,headers,map,kind,src,start:mk>=0?mk+1:hdr+1,marker:mk>=0};}
-const SRCNAME={square:'Square',lightspeed:'Lightspeed',prework:'Oolio pre-work',oolio:'Oolio import file',custom:'Custom spreadsheet',document:'Menu document'};
+  // OrderMate: "Group" is the menu group (the category), "Category" is Food/Beverage, "Printer Group" the printer
+  if(src==='ordermate'){const at=k=>headers.findIndex(h=>N(h)===k);[['category','group'],['reporting','category'],['printer','printergroup'],['visible','systemstate'],['pos','shortname']].forEach(([k,h])=>{const j=at(h);if(j>=0)map[k]=j})}
+  // an Oolio file with more columns than the template: the extra price columns are price lists
+  const pl=[];if(src==='oolio'&&kind==='products'){const used=new Set(Object.values(map));
+    headers.forEach((h,j)=>{if(!h||used.has(j)||OOLIOH.has(N(h)))return;const vs=rows.slice(hdr+1,hdr+201).map(r=>clean(r[j])).filter(Boolean);
+      if(vs.length&&vs.filter(v=>/^-?\$?\d+(\.\d+)?$/.test(v)).length>=vs.length*0.6)pl.push({name:clean(h).replace(/\s*\*$/,''),j})})}
+  return{hdr,headers,map,kind,src,pl,start:mk>=0?mk+1:hdr+1,marker:mk>=0};}
+const OOLIOH=new Set(OUTB.map(N).concat(['productid','measuredby']));
+const SRCNAME={ordermate:'OrderMate',square:'Square',lightspeed:'Lightspeed',prework:'Oolio pre-work',oolio:'Oolio import file',custom:'Custom spreadsheet',document:'Menu document'};
 
 /* ---------------- extracting rows ---------------- */
 const num=v=>{let s=String(v==null?'':v).trim();if(!s)return'';
@@ -612,7 +624,8 @@ function extract(t){
       price:num(v('price')),tax:v('tax'),desc:v('description'),sku:v('sku'),barcode:v('barcode'),gtin:v('gtin'),plu:v('plu'),
       pos:v('pos'),kitchen:v('kitchen'),printer:v('printer'),reporting:v('reporting'),dietary:v('dietary'),allergens:v('allergens'),
       image:v('image'),location:v('location'),visible:v('visible'),varp:v('varp'),minp:num(v('minp')),maxp:num(v('maxp')),
-      src:a.src,file:t.file,row:i+1,tid:t.id,rank:t.rank||3,srcLabel:t.srcLabel||t.file,delivery:!!t.delivery};
+      src:a.src,file:t.file,row:i+1,tid:t.id,rank:t.rank||3,srcLabel:t.srcLabel||t.file,delivery:!!t.delivery,pl:{}};
+    (a.pl||[]).forEach(c=>{const p=num(r[c.j]);if(p!=='')it.pl[c.name]=p});
     if(m.printer==null)it.printer=null;
     if(pt==='modifier'||/^(1|true|yes)$/i.test(v('ismod'))){mods.push({name,price:it.price,group:it.catSrc||it.sub||it.screen||'Modifiers',g:null,src:a.src,file:t.file,row:i+1});continue}
     items.push(it);}
@@ -1022,7 +1035,8 @@ function mergeSources(){merged=[];deliveryOnly=[];
       if(o.dietary)it.dietary=[...new Set((it.dietary?it.dietary.split(/\s*,\s*/):[]).concat(o.dietary.split(/\s*,\s*/)))].filter(Boolean).join(', ');
       if(!it.cat&&o.cat)it.cat=o.cat;
       if(it.delivery&&!o.delivery&&o.price){it.price=o.price;it.delivery=false}// the venue's own price beats a delivery app's
-      if(!it.price&&o.price)it.price=o.price;});
+      if(!it.price&&o.price)it.price=o.price;
+      if(o.pl&&Object.keys(o.pl).length)it.pl=Object.assign({},o.pl,it.pl);});
     merged.push(it.name+(it.variation?' ('+it.variation+')':'')+(it.price?' $'+it.price:'')+', kept from '+it.srcLabel+'. Also on '+ms.map(m=>m.it.srcLabel+(m.it.name!==it.name?' as “'+m.it.name+'”':'')+(m.it.price&&m.it.price!==it.price?' at $'+m.it.price:'')).join(', '))});
   const drop=new Set([...gone].map(e=>e.it));base=base.filter(it=>!drop.has(it));
   const multi=new Set(base.map(it=>it.tid)).size>1;
@@ -1060,7 +1074,39 @@ async function handleFiles(files){
       ts.forEach(t=>t.src0={f});addTables(ts)}
     catch(e){say('');tables.push({file:f.name,sheet:'',rows:[],a:null,on:false,err:e.message,id:tables.length,src0:{f}})}}
   say('');renderSources();rebuild();if(takePrices.msg){$('dmsg').textContent=takePrices.msg;takePrices.msg=''}}
-function addTables(ts){ts.forEach(t=>{t.a=analyse(t);if(t.a&&t.doc)t.a.src='document';if(t.doc&&!t.doc.count){t.a=null;t.err='No menu items with prices were found in it.'+(NOPRICE()?'':' If the menu has no prices, tick “Include items without prices” in step 1 and add it again.')}t.on=!!t.a;t.id=tables.length;tables.push(t)})}
+function addTables(ts){ts.forEach(t=>{t.a=analyse(t);if(t.a&&t.doc)t.a.src='document';if(t.doc&&!t.doc.count){t.a=null;t.err='No menu items with prices were found in it.'+(NOPRICE()?'':' If the menu has no prices, tick “Include items without prices” in step 1 and add it again.')}t.on=!!t.a;t.id=tables.length;t.pl=t.pl||autoPL(t);tables.push(t)})}
+/* Price lists from repeated exports: OrderMate (and other POS systems) export one price level at a time, so a venue
+   with Takeaway and Public Holiday prices sends the whole menu two or three times. A file with the same columns and
+   mostly the same items as one already added is a price list: its prices are matched to the menu's items by group,
+   name and size and go in a column of their own, named after the file ("PublicHolidayexp.csv" → "Public Holiday"). */
+/* OrderMate venues often put the order type in the size: "Regular TAKEAWAY", "Large TAKEAWAY", "Dine-In", "Large Dine-In".
+   Those become one size each (Regular, Large, Kids Size; a bare "Dine-In" is Regular): the dine-in price is the menu
+   price and the TAKEAWAY price goes in a "Takeaway" price list. A $0 dine-in price counts as none, and a size sold only
+   as takeaway uses its takeaway price as the menu price too. */
+const OM_TA=/\b(take ?away|t\/a)\b/i,OM_DI=/\bdine[- ]?in\b/i,OM_TAKE='Takeaway';
+function omSplit(items,note){const g=new Map(),out=[],szOf=v=>cap(clean(v.replace(OM_TA,' ').replace(OM_DI,' ')).toLowerCase())||'Regular',kOf=(it,sz)=>N(it.catSrc)+'|'+N(it.name)+'|'+N(sz);
+  // a plain size ("Kids Size") next to its TAKEAWAY twin ("Kids Size TAKEAWAY") is the dine-in one
+  const twins=new Set(items.filter(it=>OM_TA.test(it.variation||'')).map(it=>kOf(it,szOf(it.variation))));
+  items.forEach(it=>{const v=it.variation||'';if(!OM_TA.test(v)&&!OM_DI.test(v)&&!(v&&twins.has(kOf(it,szOf(v))))){out.push(it);return}
+    const ta=OM_TA.test(v),sz=szOf(v),k=kOf(it,sz);
+    if(!g.has(k)){const c=Object.assign({},it,{variation:sz,pl:Object.assign({},it.pl),_di:null,_ta:null});g.set(k,c);out.push(c)}
+    const c=g.get(k);if(ta){if(c._ta==null)c._ta=it.price}else if(c._di==null||!(+c._di>0))c._di=it.price;
+    if(selling(it.visible)==='Yes')c.visible=it.visible});
+  g.forEach(c=>{const di=c._di!=null&&+c._di>0?c._di:null,ta=c._ta!=null&&c._ta!==''?c._ta:null;
+    c.price=di!=null?di:ta!=null?ta:(c._di||'');if(ta!=null)c.pl[OM_TAKE]=ta;
+    if(note&&di==null&&ta!=null)note.push(c.name+' ('+c.variation+') $'+ta);delete c._di;delete c._ta});
+  if(note&&g.size)note.split=(note.split||0)+g.size;
+  return out}
+const plKey=it=>N(it.name)+'|'+N(it.variation),plKeyC=it=>N(it.catSrc||it.sub||it.screen||it.section)+'|'+plKey(it);
+function plName(file,taken){let s=String(file||'').replace(/\.[a-z0-9]+$/i,'').replace(/\d{1,4}[-_.]\d{1,2}[-_.]\d{1,4}|\(\d+\)/g,' ')
+    .replace(/(exp|export(ed)?)$/i,'').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[_-]+/g,' ')
+    .replace(/\b(exp|export(ed)?|ordermate|menu|products?|items?|price ?(list|level)s?|prices?)\b/gi,' ');
+  s=cap(clean(s).toLowerCase());let n=s||'Price list',i=2;while((taken||[]).some(x=>N(x)===N(n)))n=(s||'Price list')+' '+i++;return n}
+function autoPL(t){if(!t.a||t.a.kind!=='products'||t.doc)return'';
+  const names=x=>new Set(x.rows.slice(x.a.start).map(r=>N(r[x.a.map.name])).filter(Boolean)),mine=names(t);if(mine.size<5)return'';
+  const sig=x=>x.a.headers.map(N).join('|');
+  const twin=tables.find(x=>x.a&&!x.pl&&x.on&&x.a.src===t.a.src&&sig(x)===sig(t)&&(()=>{const o=names(x);let k=0;mine.forEach(n=>{if(o.has(n))k++});return k>=Math.min(mine.size,o.size)*0.6})());
+  return twin?plName(t.file,tables.map(x=>x.pl).filter(Boolean)):''}
 /* Reading a website through the viewer's Firecrawl connector (on the shared claude.ai page).
    Firecrawl loads the page in a real browser (so menus that load with JavaScript come through),
    returns it as markdown, and the markdown goes through the same menu parser as everything else. */
@@ -1532,18 +1578,34 @@ function renderSources(){
     const opts=['<option value="">—</option>',...t.a.headers.map((h,j)=>h?'<option value="'+j+'">'+esc(h)+'</option>':'')].join('');
     const fields=FIELDS.filter(([k])=>t.a.kind==='modifiers'?['name','mgroup','price','required','max','linked'].includes(k):!['mgroup','required','max','linked'].includes(k));
     return'<div class="src"><label class="ck"><input type="checkbox" data-t="'+t.id+'"'+(t.on?' checked':'')+'><span class="badge">'+SRCNAME[t.a.src]+'</span><span class="badge">'+(t.a.kind==='modifiers'?'modifiers':'products')+'</span>'+nm+'</label>'+
+      (t.a.kind==='products'&&!t.doc?'<div class="plrole">Use as <select data-pr="'+t.id+'"><option value="">the menu</option><option value="1"'+(t.pl?' selected':'')+'>a price list</option></select>'+
+        (t.pl?' named <input data-pn="'+t.id+'" value="'+esc(t.pl)+'">':'')+'</div>':'')+
       '<div class="warn" id="ti'+t.id+'" style="margin:2px 0 0"></div>'+
       '<details><summary>Columns</summary><div class="map">'+fields.map(([k,l])=>'<div><label>'+esc(l)+'</label><select data-m="'+t.id+'" data-k="'+k+'">'+opts.replace('value="'+t.a.map[k]+'"','value="'+t.a.map[k]+'" selected')+'</select></div>').join('')+'</div></details></div>';}).join('')+
     (tables.length?'<button class="sec" id="clr" type="button">Clear files</button>':'');
   $('srcs').querySelectorAll('input[data-t]').forEach(n=>n.addEventListener('change',()=>{tables[+n.dataset.t].on=n.checked;rebuild()}));
+  $('srcs').querySelectorAll('select[data-pr]').forEach(n=>n.addEventListener('change',()=>{const t=tables[+n.dataset.pr];t.pl=n.value?plName(t.file,tables.filter(x=>x!==t).map(x=>x.pl).filter(Boolean)):'';renderSources();rebuild()}));
+  $('srcs').querySelectorAll('input[data-pn]').forEach(n=>n.addEventListener('change',()=>{const t=tables[+n.dataset.pn];t.pl=clean(n.value)||plName(t.file);n.value=t.pl;rebuild()}));
   $('srcs').querySelectorAll('select[data-m]').forEach(n=>n.addEventListener('change',()=>{const a=tables[+n.dataset.m].a;if(n.value==='')delete a.map[n.dataset.k];else a.map[n.dataset.k]=+n.value;rebuild()}));
   const c=$('clr');if(c)c.addEventListener('click',()=>{tables=[];catCfg={};PX={};npSig='';$('file').value='';forgetSession();renderSources();rebuild()});}
 
 function rebuild(){
-  readSettings();base=[];mods=[];
-  tables.forEach(t=>{if(!t.on||!t.a)return;const r=extract(t);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods);
+  readSettings();base=[];mods=[];const OMN=[];
+  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);if(t.a.src==='ordermate')r.items=omSplit(r.items,OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods);
     const el=$('ti'+t.id);if(el)el.textContent=t.doc?r.items.length+' menu lines'+(NOPRICE()?'':' with prices')+' read from the '+t.doc.how+(t.doc.ignored.length?', '+t.doc.ignored.length+' other lines not used (listed in Checks)':'')+'. Check names and prices against the original.':
-      r.items.length+' products, '+r.mods.length+' modifiers read'+(t.a.marker?' (template examples above the “below this line” row were skipped)':'')+'.';});
+      r.items.length+' products, '+r.mods.length+' modifiers read'+(t.a.marker?' (template examples above the “below this line” row were skipped)':'')+(t.a.pl&&t.a.pl.length?'. Price lists in it: '+t.a.pl.map(c=>c.name).join(', '):'')+'.';});
+  // price lists: columns in Oolio files first, then files used as a price list
+  PLS=[];PLCHK=[];base.forEach(it=>Object.keys(it.pl||{}).forEach(n=>{if(!PLS.includes(n))PLS.push(n)}));
+  const byC=new Map(),byK=new Map();base.forEach(it=>{if(!byC.has(plKeyC(it)))byC.set(plKeyC(it),it);if(!byK.has(plKey(it)))byK.set(plKey(it),it)});
+  if(OMN.split)PLCHK.push({msg:'OrderMate sizes with the order type in them (“Regular TAKEAWAY”, “Dine-In”, “Large Dine-In”) were split: '+OMN.split+' items now have plain sizes, with the dine-in price as the menu price and the TAKEAWAY price in the “'+OM_TAKE+'” price list.',list:[],info:true});
+  if(OMN.length)PLCHK.push({msg:'sizes are only sold as takeaway in OrderMate, so their takeaway price is also used as the menu price. Check these with the venue.',list:OMN.slice()});
+  tables.forEach(t=>{if(!t.on||!t.a||!t.pl)return;const n=t.pl,r=extract(t),miss=[],seen=new Set();if(t.a.src==='ordermate')r.items=omSplit(r.items);if(!PLS.includes(n))PLS.push(n);let hit=0,same=0;
+    r.items.forEach(x=>{const it=byC.get(plKeyC(x))||byK.get(plKey(x));const lab=x.name+(x.variation?' ('+x.variation+')':'')+(x.price?' $'+x.price:'');
+      if(!it){miss.push(lab);return}if(x.price===''||seen.has(it))return;seen.add(it);(it.pl=it.pl||{})[n]=x.price;hit++;if(+x.price===+it.price)same++});
+    t.info={items:[],mods:[]};const el=$('ti'+t.id);
+    if(el)el.textContent=hit+' of '+r.items.length+' items matched to the menu. Their prices go in the “'+n+'” column.'+(hit&&same===hit?' Every one is the same as the menu price.':'');
+    if(hit&&same===hit)PLCHK.push({msg:'Every “'+n+'” price is the same as the menu price. If the venue charges differently for '+n+', export the menu again with that price level chosen.',list:[]});
+    if(miss.length)PLCHK.push({msg:'items in “'+t.file+'” (price list “'+n+'”) don’t match anything on the menu, so their prices aren’t used.',list:miss})});
   prep();
   const cats=[...new Set(base.map(i=>i.cat))];
   cats.forEach(c=>{if(catCfg[c])return;const its=base.filter(i=>i.cat===c),ps=its.filter(i=>i.printer!=null&&i.printer!=='').map(i=>normPrinter(i.printer));
@@ -1665,6 +1727,8 @@ function showPre(){
 
 /* ---------------- building the output ---------------- */
 function convert(){
+  {const i=OUTB.indexOf('Sell Price*');PLS=PLS.map(n=>OUTB.some(h=>N(h)===N(n))?n+' (price list)':n);OUT=OUTB.slice(0,i).concat(PLS,OUTB.slice(i))}
+  const plv=(o,n)=>{if(!o.pl)return null;const v=o.pl[n]!=null?o.pl[n]:o.pl[n.replace(/ \(price list\)$/,'')];return v!=null?v:null};
   const items=base.map(o=>({...o}));applyGroups(items,vg);
   items.forEach(it=>{if(it._np&&PX[it._k]!=null&&PX[it._k]!=='')it.price=PX[it._k]});
   const rows=[],checks=[],chk=(msg,list,info)=>{if(list.length)checks.push({msg,list,info})};
@@ -1685,6 +1749,7 @@ function convert(){
     r['Available Location']=o.location||'';
     if(type!=='Variant'){r['Barcode']=code(o.barcode,o);r['GTIN']=code(o.gtin,o);r['SKU']=o.sku||'';r['PLU']=o.plu||''}
     r['Sell Price*']=x.price!=null?x.price:(o.price===''?'0':o.price);r['Sell Tax*']=taxOf(o.tax);
+    if(type==='Product'&&x.price==null)PLS.forEach(n=>{const v=plv(o,n);r[n]=v!=null?v:''});
     r['Variable Pricing?']=yn(o.varp||'');r['Min Pricing']=o.minp||'';r['Max Pricing']=o.maxp||'';r['Image URL']=o.image||'';
     // stray line breaks, tabs and double spaces break CSV rows and POS buttons
     return OUT.map(h=>typeof r[h]==='string'?r[h].replace(/[\r\n\t]+/g,' ').replace(/ {2,}/g,' ').trim():r[h])};
@@ -1732,7 +1797,9 @@ function convert(){
   chk('items were only found on a delivery app. Delivery apps often charge more than the venue does in store, so check these prices with the venue.',deliveryOnly);
   chk('items have a price of 0. Check that this is right.',items.filter(i=>i.price==='0').map(i=>i.name),true);
   tables.forEach(t=>{if(t.on&&t.doc&&t.doc.ignored.length)checks.push({msg:'lines in “'+t.file+'” were not read as menu items (headings with no items, notes, opening hours, items with no price). Add any real items by hand.',list:t.doc.ignored,info:true})});
-  tables.forEach(t=>{if(t.on&&t.a&&t.info&&!t.info.items.length&&!t.info.mods.length)checks.push({msg:'“'+t.file+(t.sheet?' › '+t.sheet:'')+'” has no rows to convert'+(t.a.marker?'. It looks like an empty pre-work template.':'.'),list:[]})});
+  tables.forEach(t=>{if(t.on&&t.a&&!t.pl&&t.info&&!t.info.items.length&&!t.info.mods.length)checks.push({msg:'“'+t.file+(t.sheet?' › '+t.sheet:'')+'” has no rows to convert'+(t.a.marker?'. It looks like an empty pre-work template.':'.'),list:[]})});
+  PLS.forEach(n=>chk('items have no “'+n+'” price, so that column is left blank for them. Fill it in if their '+n+' price is different.',items.filter(i=>i.modOf==null&&plv(i,n)==null).map(i=>i.name+(i.variation?' ('+i.variation+')':'')),true));
+  checks.push(...PLCHK);
   chk('standard option groups were added in step 5. Check the options and prices with the venue.',preList,true);
   if(!S.mVol)checks.push({msg:'The Volume label in step 2 is blank, so poured drinks will have no Measured By.',list:[]});
   return{rows,nP,nV,nM,nG,nS:preList.length,checks,genMods,preMods,pre:preR};}
@@ -2026,7 +2093,7 @@ async function reReadNP(){
 const SESS='oolio.convSession',SETK='oolio.convSettings';
 const SET_IDS=['tax','taxfree','pgrp','catmode','comb','mVol','mWt','mVolU','mWtU','sizes'];
 function saveSession(){clearTimeout(saveSession.t);saveSession.t=setTimeout(()=>{if(!tables.length)return;
-  const ts=tables.map(t=>({file:t.file,sheet:t.sheet,rows:t.rows,doc:t.doc,on:t.on,err:t.err||'',map:t.a?t.a.map:null,rank:t.rank,srcLabel:t.srcLabel,delivery:t.delivery,urls:t.urls}));
+  const ts=tables.map(t=>({file:t.file,sheet:t.sheet,rows:t.rows,doc:t.doc,on:t.on,err:t.err||'',map:t.a?t.a.map:null,rank:t.rank,srcLabel:t.srcLabel,delivery:t.delivery,urls:t.urls,pl:t.pl||''}));
   try{localStorage.setItem(SESS,JSON.stringify({at:Date.now(),tables:ts,catCfg,PX,np:NOPRICE()}))}catch(e){/* too big for this browser's storage: not kept */}},800)}
 function forgetSession(){clearTimeout(saveSession.t);try{localStorage.removeItem(SESS)}catch(e){}$('rsbox').innerHTML=''}
 function offerRestore(){let s=null;try{s=JSON.parse(localStorage.getItem(SESS)||'null')}catch(e){}
