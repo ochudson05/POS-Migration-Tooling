@@ -2655,7 +2655,11 @@ function mergeKids(){kidsMerged=[];
     else if(a.mem.length===1&&N(a.mem[0].name)===N(a.b)){it.name=a.mem[0].name;it.variation='Kids Size';a.mem[0].variation='Regular'}
     else it.name='Kids '+a.b;
     it.cat=a.cat;it.catSrc=a.mem[0].catSrc;a.mem.push(it);
-    kidsMerged.push(from+' → Kids Size of '+a.b+(it.price?' $'+it.price:''))})}
+    kidsMerged.push(from+' → Kids Size of '+a.b+(it.price?' $'+it.price:''))});
+  /* With the box off, kids items stay products of their own, so they keep or get a "Kids" prefix ("Milkshake Chocolate"
+     on the Kids Menu → "Kids Milkshake Chocolate") to tell them apart from the adult one on the till (user's rule, 2026-11-16). */
+  if(!KIDSON())base.forEach(it=>{if(it.mod||!it.name||!KIDCAT.test(it.cat||'')||/\b(kids?|kid'?s|children'?s?|child'?s?|junior|jnr)\b/i.test(it.name))return;
+    it.name='Kids '+it.name})}
 
 /* Beers entered once per size category ("Coast P" under Pints, "Coast S" under Schooner)
    become one product with size variants in a single "Tap Beer" category. */
@@ -3463,7 +3467,7 @@ function run(){
   $('inaW').style.display=INACT.length?'block':'none';$('inaN').textContent=INACT.length;
   renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();drawKids();saveSession();}
 function drawKids(){const on=KIDSON(),n=kidsMerged.length,el=$('kidmsg');if(!el)return;
-  el.innerHTML=(on?'On: Milkshake Chocolate on the kids menu becomes the Kids Size of Chocolate Milkshake, next to Regular and Large. ':'Off: kids items stay as their own products on the kids menu. ')+
+  el.innerHTML=(on?'On: Milkshake Chocolate on the kids menu becomes the Kids Size of Chocolate Milkshake, next to Regular and Large. ':'Off: kids items stay as their own products on the kids menu, named with a “Kids” prefix (Kids Milkshake Chocolate). ')+
     (on?'Untick it for venues that want a separate kids menu.':'Tick it to merge them into the main products.')+(n?'<details><summary>'+n+' kids item'+(n===1?'':'s')+(on?' merged':' would be merged')+'</summary><ul>'+kidsMerged.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>':' No kids items on this menu match a main-menu product.')}
 
 /* ---------------- Claude's check (step 6) ----------------
