@@ -1044,6 +1044,7 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 <div id="findbox" style="display:none;margin-top:10px"></div>
 <div id="dmsg" class="warn"></div>
 <div id="srcs" style="margin-top:10px"></div>
+<div id="ombox" class="chk" style="display:none;margin-top:12px"></div>
 </div>
 
 <div class="card" id="scard" style="display:none">
@@ -3431,7 +3432,7 @@ function convert(){
   return{rows,nP,nV,nM,nG,nS:preList.length,checks,genMods,preMods,pre:preR,om};}
 
 function run(){
-  if(!tables.length){$('npfix').innerHTML='';npSig='';$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm','dlom'].forEach(i=>$(i).disabled=true);$('dlm').style.display=$('dlom').style.display=$('inaW').style.display='none';return}
+  if(!tables.length){$('npfix').innerHTML='';npSig='';$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm','dlom'].forEach(i=>$(i).disabled=true);$('dlm').style.display=$('dlom').style.display=$('inaW').style.display=$('ombox').style.display='none';return}
   readSettings();res=convert();
   // new menu: tick the presets that match it, except ones off by default or already in the files
   // and the ones the venue's type uses (Setup Tracker → Venue type), even if they're normally off
@@ -3440,7 +3441,7 @@ function run(){
   $('checks').innerHTML=res.checks.length?res.checks.map(c=>'<div class="chk'+(c.info?' i':'')+'">'+(c.list.length?'<details><summary><b>'+c.list.length+'</b> '+esc(c.msg)+'</summary><ul>'+c.list.slice(0,300).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>':esc(c.msg))+'</div>').join(''):'<div class="warn" style="margin:0">No problems found.</div>';
   $('q').style.display='block';renderPrev();
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
-  const hasM=mods.length||res.genMods.length||res.preMods.length||res.om.mods.length;$('dlom').style.display=res.om.rows.length?'inline-block':'none';$('dlom').disabled=!res.om.rows.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
+  const hasM=mods.length||res.genMods.length||res.preMods.length||res.om.mods.length;$('dlom').style.display=res.om.rows.length?'inline-block':'none';drawOM();$('dlom').disabled=!res.om.rows.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
   $('inaW').style.display=INACT.length?'block':'none';$('inaN').textContent=INACT.length;
   renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();saveSession();}
 
@@ -3775,6 +3776,13 @@ $('dlm').addEventListener('click',()=>{const r=[['Modifier Group','Modifier','Pr
   res.preMods.forEach(o=>r.push([o.group,o.name,o.price,o.req,o.max,o.links.join(', ')]));
   res.om.mods.forEach(o=>r.push([o.group,o.name,'0','','',o.links.join(', ')]));
   save(new Blob(['﻿'+csv(r)],{type:'text/csv;charset=utf-8'}),outName('csv','modifier groups'))});
+// OrderMate file found: say so near the top, with the modifier sheet button, so it isn't missed at the bottom of step 7
+function drawOM(){const b=$('ombox'),om=res&&res.om;if(!om||!om.rows.length){b.style.display='none';return}
+  const nR=om.rows.filter(r=>r.gR).length,nA=om.rows.filter(r=>r.gA).length;
+  b.style.display='block';b.innerHTML='<b>OrderMate file detected.</b> '+nR+' products need a Removals group and '+nA+' need an Additions group, across '+om.groups.length+' suggested groups ('+
+    om.groups.map(g=>esc(g.name)).join(', ')+'). The modifier sheet lists which products need which group, the Add / Remove modifiers in each, and the suggested group names.'+
+    '<div style="margin-top:8px"><button class="sec" id="dlom2">Download the OrderMate modifier sheet (XLSX)</button></div>';
+  $('dlom2').addEventListener('click',()=>$('dlom').click())}
 // the OrderMate modifier sheet: which products need which Additions / Removals group, and what goes in each group
 $('dlom').addEventListener('click',()=>{if(!res||!res.om.rows.length)return;const om=res.om,J=s=>[...s].join(', ');
   const p=[['Product','Category','Removal group to add','Remove options','Addition group to add','Add options','OrderMate plus group (items not in the export)','OrderMate option groups (set up separately)']]
