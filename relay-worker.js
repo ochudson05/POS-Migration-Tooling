@@ -34,6 +34,8 @@
      ABR_GUID        secret  ABN Lookup GUID, shared by the team
      FIRECRAWL_MONTHLY_CAP  text (optional)  Firecrawl credits the site may use per month, default 500
      ANTHROPIC_API_KEY secret (optional)  Claude API key (sk-ant-...). Without it Claude is simply off on the website.
+     ANTHROPIC_WORKSPACE_ID text (optional)  the Claude Console workspace to bill ("wrkspc_..."). Needed only when the key
+                     isn't scoped to a workspace (the API then answers "must include the anthropic-workspace-id header").
      CLAUDE_OFF      text (optional)  "1" turns Claude off for everyone, whatever /admin says (an emergency stop)
      SERVER_URL      text (optional)  the Menu Hauler server's address through its Cloudflare Tunnel, e.g. https://server.menuhauler.com
                      (server/README.md: any Linux VM with Docker; Google Cloud for now)
@@ -624,6 +626,8 @@ async function claude(req, env, user) {
   // fixed reference text goes first and is marked for the prompt cache (too-short text simply isn't cached)
   if (context) body.system = [{ type: 'text', text: context, cache_control: { type: 'ephemeral' } }];
   const headers = { 'Content-Type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY, 'anthropic-version': '2026-10-21' };
+  // a key that isn't scoped to one workspace must say which workspace to bill (ANTHROPIC_WORKSPACE_ID, "wrkspc_...")
+  if (env.ANTHROPIC_WORKSPACE_ID) headers['anthropic-workspace-id'] = String(env.ANTHROPIC_WORKSPACE_ID).trim();
   // if Claude declines a request on safety grounds, the API retries it on a suitable model (Opus and Sonnet only)
   if (model !== 'claude-haiku-5-5') { body.fallbacks = 'default'; headers['anthropic-beta'] = 'server-side-fallback-2026-07-01'; }
   let r, j;
