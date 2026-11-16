@@ -1627,7 +1627,7 @@ async function readFile(f){
   if(/\.md$/i.test(f.name)){const t=new TextDecoder('utf-8').decode(buf);return[docTable(f.name,markdownLines(t),'markdown')];}
   if(/\.(xlsx|xlsm|xls|ods)$/i.test(f.name)){
     const wb=XLSX.read(buf,{type:'array'});
-    return wb.SheetNames.map(s=>({file:f.name,sheet:s,rows:XLSX.utils.sheet_to_json(wb.Sheets[s],{header:1,raw:false,defval:''})}));}
+    return imposWb(f.name,wb.SheetNames.map(s=>({file:f.name,sheet:s,rows:XLSX.utils.sheet_to_json(wb.Sheets[s],{header:1,raw:false,defval:''})})));}
   let t;try{t=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){t=new TextDecoder('windows-1252').decode(buf)}
   return[{file:f.name,sheet:'',rows:parseCSV(t,delim(t))}];}
 
@@ -1940,6 +1940,58 @@ function docTable(name,lines,how){
   return mkDocTable(name,rows,ignored,how||'PDF');}
 function mkDocTable(name,rows,ignored,how){
   return{file:name,sheet:'',doc:{ignored,how,count:rows.length},rows:[['Category','Item Name','Variation','Price','Description','Dietary Tags'],...rows]};}
+/* IMPOS onboarding workbook. The MENU sheet has MAIN CATEGORY, SUB CATEGORY, BRANCH, ITEMS, DESCRIPTION, PRICING,
+   UBER/DOORDASH, PRINTER, SHOW ONLINE, REQUIRED, then OPTION 1 / COST OPTION 1 … OPTION 5 / COST OPTION 5.
+   - Main category fills down; sub category fills down until the main category changes. The category is the main
+     category, except under a catch-all (Bar, Drinks…) where the sub category (Beer, Scotch, Wine Red) is used.
+   - UBER/DOORDASH is a price list. "$$" is an open price (Variable Pricing).
+   - An item with no price whose options all have a cost (Glass 8.95 / Bottle 28.95) gets them as sizes.
+     Otherwise the options are a modifier group (pick one when REQUIRED); items with the same options share one group.
+   - The FREE TEXT sheet's notes become $0 "Kitchen Notes" / "Spice Level" groups (the payment-type row is left out).
+     The USERS sheet is staff, not menu, so it isn't read here. */
+const IMPOSH=['Category','Item Name','Variation','Price','Description','Printer','Variable Pricing','Uber/DoorDash','Location','Reporting Group'],IMPOS_PL='Uber/DoorDash';
+const IMPOS_BAR=/^(bar|drinks?|beverages?|alcohol|liquor|bottle ?shop)$/i,IMPOS_UP=/^(msg|bbq|blt|ipa|gf|df|nz|xl)$/i;
+// IMPOS sheets are in capitals: "CHICKEN 65 BIRYANI" -> "Chicken 65 Biryani", descriptions in sentence case
+const imposCase=(s,all)=>{s=clean(s);return s&&(all||s===s.toUpperCase())?properName(s.toLowerCase()).replace(/\b[a-z]+\b/gi,w=>IMPOS_UP.test(w)?w.toUpperCase():w):s};
+const imposDesc=s=>{s=clean(s);return s&&s===s.toUpperCase()?s.toLowerCase().replace(/(^|[.!?]\s+)([a-z])/g,(m,a,b)=>a+b.toUpperCase()):s};
+function imposHdr(rows){for(let i=0;i<Math.min(rows.length,15);i++){const n=(rows[i]||[]).map(N);if(n.includes('items')&&n.includes('pricing')&&n.includes('maincategory'))return i}return -1}
+function imposWb(file,sheets){
+  if(!sheets.some(s=>imposHdr(s.rows)>=0))return sheets;
+  const out=[],mb=modBuilder();
+  sheets.forEach(s=>{const h=imposHdr(s.rows);
+    if(h>=0)out.push(imposMenu(file,s,h,mb));
+    else if(/free ?text|notes/i.test(s.sheet))imposNotes(s.rows,mb);
+    else if(!/users?|staff/i.test(s.sheet))out.push(s)});
+  const rows=mb.rows();if(rows.length)out.push({file:file+' modifiers',sheet:'',rows:[MODHDR,...rows]});
+  return out;}
+function imposMenu(file,s,h,mb){
+  const H=s.rows[h].map(N),at=k=>H.indexOf(k),c={main:at('maincategory'),sub:at('subcategory'),name:at('items'),desc:at('description'),price:at('pricing'),ub:at('uberdoordash'),pr:at('printer'),req:at('required'),br:at('branch')};
+  const opt=[];for(let k=1;k<=12;k++){const j=at('option'+k);if(j>=0)opt.push([j,at('costoption'+k)])}
+  const g=(r,j)=>j>=0?clean(r[j]):'',rows=[IMPOSH];let main='',sub='';
+  for(let i=h+1;i<s.rows.length;i++){const r=s.rows[i]||[];
+    const m=g(r,c.main);if(m&&m!==main){main=m;sub=''}const sb=g(r,c.sub);if(sb)sub=sb;
+    const name=imposCase(g(r,c.name));if(!name)continue;
+    const cat=imposCase(IMPOS_BAR.test(main)&&sub?sub:main||sub),desc=imposDesc(g(r,c.desc)),pr=g(r,c.pr).split(/\s*[,;]\s*/).filter(Boolean).map(imposCase).join(', ');
+    let price=g(r,c.price);const varp=/^\$+$/.test(price)?'Yes':'';if(varp)price='';price=price&&num(price);
+    // drinks print at the bar or sit under a drinks category; the rest is food ("Sambar 440ml" is soup, not a drink)
+    const rg=/\b(bar|drinks?|bev\w*|barista|coffee)\b/i.test(pr)||BEV.test(cat)||IMPOS_BAR.test(main)?'Beverage':'Food';
+    const loc=imposCase(g(r,c.br)),ub=c.ub>=0?num(g(r,c.ub)):'',req=/^(required|yes|true|y|1)$/i.test(g(r,c.req));
+    const os=opt.map(([j,k])=>[imposCase(g(r,j)),k>=0?num(g(r,k)):'']).filter(o=>o[0]);
+    // no price, every option priced: the options are the sizes
+    if(price===''&&!varp&&os.length&&os.every(o=>o[1]!=='')){os.forEach(o=>rows.push([cat,name,o[0],String(o[1]),desc,pr,'','',loc,rg]));continue}
+    rows.push([cat,name,'',price===''?'':String(price),desc,pr,varp,ub===''?'':String(ub),loc,rg]);
+    if(os.length){const kind=req?'Choice':os.every(o=>/^(add|extra)\b/i.test(o[0]))?'Extras':'Options';
+      mb.add((req?'R|':'O|')+os.map(o=>N(o[0])+'='+o[1]).join('|'),(cat||'Menu')+' '+kind,req?1:0,req?1:0,os.map(o=>[o[0],o[1]===''?'0':String(o[1])]),name,kind)}}
+  // "Sambar 440ml" + "Sambar 700ml" in one category: one product with two sizes
+  const SZ_END=/^(.*?)\s+(\d+(?:\.\d+)?\s?(?:ml|l|ltr|litres?|oz|g|kg|pcs?|pieces?))$/i,cnt={};
+  rows.slice(1).forEach(r=>{const m=!r[2]&&r[1].match(SZ_END);if(m){const k=N(r[0])+'|'+N(m[1]);cnt[k]=(cnt[k]||0)+1}});
+  rows.slice(1).forEach(r=>{const m=!r[2]&&r[1].match(SZ_END);if(m&&cnt[N(r[0])+'|'+N(m[1])]>1){r[1]=m[1];r[2]=m[2]}});
+  return{file,sheet:s.sheet,rows};}
+function imposNotes(rows,mb){const notes=[],spice=[];
+  rows.forEach(r=>{const cs=(r||[]).map(clean).filter(Boolean);if(!cs.length||cs.some(x=>/^(cash|eft|eftpos|card|uber|doordash|menulog)$/i.test(x)))return;
+    cs.forEach(x=>{const n=imposCase(x,true);(/\b(mild|spicy|hot)\b/i.test(n)?spice:notes).push([n,'0'])})});
+  if(notes.length)mb.add('notes:kitchen','Kitchen Notes',0,0,notes,'','');
+  if(spice.length)mb.add('notes:spice','Spice Level',0,1,spice,'','');}
 
 /* ---------------- column recognition ---------------- */
 const FIELDS=[
@@ -1991,7 +2043,8 @@ function analyse(t){
   const kind=(map.mgroup!=null||N(headers[map.name])==='modifieritem')?'modifiers':'products';
   const text=(t.file+' '+t.sheet+' '+rows.slice(0,6).flat().join(' '));
   let src='custom';
-  if(H.has('producttype'))src='oolio';
+  if(headers.join('|')===IMPOSH.join('|'))src='impos';
+  else if(H.has('producttype'))src='oolio';
   else if(kind==='modifiers')src=/pre-?work/i.test(text)?'prework':'custom';
   else if(H.has('printergroup')&&(H.has('systemstate')||H.has('plusgroup')||H.has('optiongroups')))src='ordermate';
   else if(H.has('screenname')||H.has('subscreenname')||H.has('menuname'))src='lightspeed';
@@ -2004,9 +2057,10 @@ function analyse(t){
   const pl=[];if(src==='oolio'&&kind==='products'){const used=new Set(Object.values(map));
     headers.forEach((h,j)=>{if(!h||used.has(j)||OOLIOH.has(N(h)))return;const vs=rows.slice(hdr+1,hdr+201).map(r=>clean(r[j])).filter(Boolean);
       if(vs.length&&vs.filter(v=>/^-?\$?\d+(\.\d+)?$/.test(v)).length>=vs.length*0.6)pl.push({name:clean(h).replace(/\s*\*$/,''),j})})}
+  if(src==='impos'){const j=headers.indexOf(IMPOS_PL);if(j>=0&&rows.slice(hdr+1).some(r=>clean(r[j])))pl.push({name:IMPOS_PL,j})}
   return{hdr,headers,map,kind,src,pl,start:mk>=0?mk+1:hdr+1,marker:mk>=0};}
 const OOLIOH=new Set(OUTB.map(N).concat(['productid','measuredby']));
-const SRCNAME={ordermate:'OrderMate',square:'Square',lightspeed:'Lightspeed',prework:'Oolio pre-work',oolio:'Oolio import file',custom:'Custom spreadsheet',document:'Menu document'};
+const SRCNAME={impos:'IMPOS',ordermate:'OrderMate',square:'Square',lightspeed:'Lightspeed',prework:'Oolio pre-work',oolio:'Oolio import file',custom:'Custom spreadsheet',document:'Menu document'};
 
 /* ---------------- extracting rows ---------------- */
 const num=v=>{let s=String(v==null?'':v).trim();if(!s)return'';
