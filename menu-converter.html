@@ -174,7 +174,7 @@ Double Shot=60</textarea></div>
 <div class="scroll" id="prev" style="display:none"></div>
 <div id="pf"></div>
 <div id="mchg"></div>
-<button id="dlc" disabled>Download CSV</button><button id="dlx" disabled>Download XLSX</button><button id="dlm" class="sec" disabled style="display:none">Modifier groups (CSV)</button>
+<button id="dlc" disabled>Download CSV</button><button id="dlx" disabled>Download XLSX</button><button id="dlm" class="sec" disabled style="display:none">Modifier groups (CSV)</button><button id="dlom" class="sec" disabled style="display:none">OrderMate modifier sheet (XLSX)</button>
 <div class="warn">Modifiers are exported as Product Type “Modifier”. The modifier groups file lists each group with its modifiers, prices and linked products, so you can build the groups in Oolio.</div>
 </div>
 </main>
@@ -587,7 +587,7 @@ function analyse(t){
   else if(H.has('sellprice')||H.has('categorynames')||H.has('printerprofiles')||/pre-?work/i.test(text))src='prework';
   let mk=-1;rows.forEach((r,i)=>{if(i>hdr&&r.some(c=>MARK.test(c)))mk=i});
   // OrderMate: "Group" is the menu group (the category), "Category" is Food/Beverage, "Printer Group" the printer
-  if(src==='ordermate'){const at=k=>headers.findIndex(h=>N(h)===k);[['category','group'],['reporting','category'],['printer','printergroup'],['visible','systemstate'],['pos','shortname']].forEach(([k,h])=>{const j=at(h);if(j>=0)map[k]=j})}
+  if(src==='ordermate'){const at=k=>headers.findIndex(h=>N(h)===k);[['category','group'],['reporting','category'],['printer','printergroup'],['visible','systemstate'],['pos','shortname'],['minus','minuses'],['plus','plusgroup'],['optg','optiongroups']].forEach(([k,h])=>{const j=at(h);if(j>=0)map[k]=j})}
   // an Oolio file with more columns than the template: the extra price columns are price lists
   const pl=[];if(src==='oolio'&&kind==='products'){const used=new Set(Object.values(map));
     headers.forEach((h,j)=>{if(!h||used.has(j)||OOLIOH.has(N(h)))return;const vs=rows.slice(hdr+1,hdr+201).map(r=>clean(r[j])).filter(Boolean);
@@ -624,7 +624,7 @@ function extract(t){
       price:num(v('price')),tax:v('tax'),desc:v('description'),sku:v('sku'),barcode:v('barcode'),gtin:v('gtin'),plu:v('plu'),
       pos:v('pos'),kitchen:v('kitchen'),printer:v('printer'),reporting:v('reporting'),dietary:v('dietary'),allergens:v('allergens'),
       image:v('image'),location:v('location'),visible:v('visible'),varp:v('varp'),minp:num(v('minp')),maxp:num(v('maxp')),
-      src:a.src,file:t.file,row:i+1,tid:t.id,rank:t.rank||3,srcLabel:t.srcLabel||t.file,delivery:!!t.delivery,pl:{}};
+      src:a.src,file:t.file,row:i+1,tid:t.id,rank:t.rank||3,srcLabel:t.srcLabel||t.file,delivery:!!t.delivery,pl:{},minus:v('minus'),plus:v('plus'),optg:v('optg')};
     (a.pl||[]).forEach(c=>{const p=num(r[c.j]);if(p!=='')it.pl[c.name]=p});
     if(m.printer==null)it.printer=null;
     if(pt==='modifier'||/^(1|true|yes)$/i.test(v('ismod'))){mods.push({name,price:it.price,group:it.catSrc||it.sub||it.screen||'Modifiers',g:null,src:a.src,file:t.file,row:i+1});continue}
@@ -1726,6 +1726,23 @@ function showPre(){
     l.querySelectorAll('[data-x]').forEach(n=>n.addEventListener('change',()=>{if(n.checked)p.ex.delete(n.dataset.x);else p.ex.add(n.dataset.x);run()}));});}
 
 /* ---------------- building the output ---------------- */
+/* OrderMate pluses and minuses. OrderMate keeps them on each product: "Minuses" lists what can be taken off
+   ("Bacon, Tomato"), "Plus Group" names the add-on group (or lists the add-ons), "Option Groups" names choice groups.
+   The export doesn't hold what's inside a plus group or option group. The user's way (2026-11-16): plain modifiers named
+   "Remove Bacon" / "Add Bacon" ($0), in one Removals and one Additions group per category ("Breakfast Removals"),
+   which they build by hand in Oolio from the OrderMate modifier sheet. */
+const omList=v=>[...new Set(String(v||'').split(/\s*[,;]\s*/).map(x=>{const t=clean(x).toLowerCase().replace(/\bdariy\b/g,'dairy').replace(/\bfro ?yo\b/g,'frozen yoghurt').replace(/\byogurt\b/g,'yoghurt');return t?cap(t):''}).filter(Boolean))];
+function omPlan(items,catName,rgOf){const P=new Map(),G=new Map();
+  items.forEach(it=>{if(it.src!=='ordermate')return;const cat=catName(it.cat)||'Menu',k=it.name.toLowerCase()+'|'+cat.toLowerCase(),pr=clean(it.plus),list=/[,;]/.test(pr);
+    if(!P.has(k))P.set(k,{name:it.name,cat,rg:rgOf(it),rem:new Set(),add:new Set(),plus:new Set(),opt:new Set()});const r=P.get(k);
+    omList(it.minus).forEach(x=>r.rem.add(x));if(list)omList(pr).forEach(x=>r.add.add(x));else if(pr)r.plus.add(pr);
+    String(it.optg||'').split(/\s*[,;]\s*/).map(clean).filter(Boolean).forEach(x=>r.opt.add(x))});
+  const rows=[...P.values()].filter(r=>r.rem.size||r.add.size||r.plus.size||r.opt.size);
+  rows.forEach(r=>{r.gR=r.rem.size?r.cat+' Removals':'';r.gA=r.add.size||r.plus.size?r.cat+' Additions':'';
+    [[r.gR,r.rem,'Remove '],[r.gA,r.add,'Add ']].forEach(([g,set,pre])=>{if(!g)return;if(!G.has(g))G.set(g,{name:g,kind:pre==='Add '?'Additions':'Removals',rg:r.rg,items:new Set(),links:new Set(),plus:new Set()});
+      const e=G.get(g);set.forEach(x=>e.items.add(pre+x));e.links.add(r.name);if(pre==='Add ')r.plus.forEach(x=>e.plus.add(x))})});
+  const mods=[];G.forEach(e=>e.items.forEach(n=>mods.push({name:n,price:'0',group:e.name,rgx:e.rg,links:[...e.links]})));
+  return{rows,groups:[...G.values()],mods}}
 function convert(){
   {const i=OUTB.indexOf('Sell Price*');PLS=PLS.map(n=>OUTB.some(h=>N(h)===N(n))?n+' (price list)':n);OUT=OUTB.slice(0,i).concat(PLS,OUTB.slice(i))}
   const plv=(o,n)=>{if(!o.pl)return null;const v=o.pl[n]!=null?o.pl[n]:o.pl[n.replace(/ \(price list\)$/,'')];return v!=null?v:null};
@@ -1780,8 +1797,10 @@ function convert(){
       os.forEach(o=>{preMods.push({name:o.name,price:o.price,group:g,rgx:p.rg,req:p.req==='Yes'?'Yes':'',max:clean(p.max),links:linked.map(x=>x.name)});n++});
       if(n){preList.push(g+': '+os.map(o=>o.name+(+o.price?' +$'+(+o.price).toFixed(2):'')).join(', ')+' → '+linked.length+' product'+(linked.length===1?'':'s'))}}
     return{m,linked}});
-  // modifiers (from modifier sheets, from groups above and from standard option groups)
-  const all=[...mods,...genMods,...preMods],mm=new Map(),clash=new Map();
+  // OrderMate pluses and minuses → Add / Remove modifiers
+  const om=omPlan(items,catName,rgOf);
+  // modifiers (from modifier sheets, from groups above, from standard option groups and OrderMate)
+  const all=[...mods,...genMods,...preMods,...om.mods],mm=new Map(),clash=new Map();
   all.forEach(o=>{const k=o.name.toLowerCase()+'|'+(o.price||'0');if(!mm.has(k))mm.set(k,o);const n=o.name.toLowerCase();if(!clash.has(n))clash.set(n,new Set());clash.get(n).add(o.price||'0')});
   mm.forEach(o=>{rows.push(mk(o,'Modifier'));nM++});
   const noPrice=items.filter(i=>i.price==='').map(i=>i.name+(i.opt?' '+i.opt:'')+' ('+(catName(i.cat)||'no category')+')');
@@ -1800,12 +1819,13 @@ function convert(){
   tables.forEach(t=>{if(t.on&&t.a&&!t.pl&&t.info&&!t.info.items.length&&!t.info.mods.length)checks.push({msg:'“'+t.file+(t.sheet?' › '+t.sheet:'')+'” has no rows to convert'+(t.a.marker?'. It looks like an empty pre-work template.':'.'),list:[]})});
   PLS.forEach(n=>chk('items have no “'+n+'” price, so that column is left blank for them. Fill it in if their '+n+' price is different.',items.filter(i=>i.modOf==null&&plv(i,n)==null).map(i=>i.name+(i.variation?' ('+i.variation+')':'')),true));
   checks.push(...PLCHK);
+  if(om.rows.length)checks.push({msg:'OrderMate pluses and minuses: '+om.mods.length+' Add / Remove modifiers in '+om.groups.length+' suggested groups, for '+om.rows.length+' products. Download the OrderMate modifier sheet (step 6) for which products need which groups.'+(om.rows.some(r=>r.plus.size&&!r.add.size)?' The export only names the plus groups (“'+[...new Set(om.rows.flatMap(r=>[...r.plus]))].join('”, “')+'”), not what’s in them, so add those items to the Additions groups by hand.':''),list:[],info:true});
   chk('standard option groups were added in step 5. Check the options and prices with the venue.',preList,true);
   if(!S.mVol)checks.push({msg:'The Volume label in step 2 is blank, so poured drinks will have no Measured By.',list:[]});
-  return{rows,nP,nV,nM,nG,nS:preList.length,checks,genMods,preMods,pre:preR};}
+  return{rows,nP,nV,nM,nG,nS:preList.length,checks,genMods,preMods,pre:preR,om};}
 
 function run(){
-  if(!tables.length){$('npfix').innerHTML='';npSig='';$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm'].forEach(i=>$(i).disabled=true);$('dlm').style.display='none';return}
+  if(!tables.length){$('npfix').innerHTML='';npSig='';$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm','dlom'].forEach(i=>$(i).disabled=true);$('dlm').style.display=$('dlom').style.display='none';return}
   readSettings();res=convert();
   // new menu: tick the presets that match it, except ones off by default or already in the files
   // and the ones the venue's type uses (Setup Tracker → Venue type), even if they're normally off
@@ -1814,7 +1834,7 @@ function run(){
   $('checks').innerHTML=res.checks.length?res.checks.map(c=>'<div class="chk'+(c.info?' i':'')+'">'+(c.list.length?'<details><summary><b>'+c.list.length+'</b> '+esc(c.msg)+'</summary><ul>'+c.list.slice(0,300).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>':esc(c.msg))+'</div>').join(''):'<div class="warn" style="margin:0">No problems found.</div>';
   $('q').style.display='block';renderPrev();
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
-  const hasM=mods.length||res.genMods.length||res.preMods.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
+  const hasM=mods.length||res.genMods.length||res.preMods.length||res.om.mods.length;$('dlom').style.display=res.om.rows.length?'inline-block':'none';$('dlom').disabled=!res.om.rows.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
   renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();saveSession();}
 
 /* ---------------- Claude's check (step 6) ----------------
@@ -2146,7 +2166,21 @@ $('dlm').addEventListener('click',()=>{const r=[['Modifier Group','Modifier','Pr
   const lk=new Map();res.genMods.forEach(o=>{const k=o.group+'|'+o.name;if(!lk.has(k))lk.set(k,{...o,links:new Set()});lk.get(k).links.add(o.linked)});
   lk.forEach(o=>r.push([o.group,o.name,o.price,'','',[...o.links].join(', ')]));
   res.preMods.forEach(o=>r.push([o.group,o.name,o.price,o.req,o.max,o.links.join(', ')]));
+  res.om.mods.forEach(o=>r.push([o.group,o.name,'0','','',o.links.join(', ')]));
   save(new Blob(['﻿'+csv(r)],{type:'text/csv;charset=utf-8'}),outName('csv','modifier groups'))});
+// the OrderMate modifier sheet: which products need which Additions / Removals group, and what goes in each group
+$('dlom').addEventListener('click',()=>{if(!res||!res.om.rows.length)return;const om=res.om,J=s=>[...s].join(', ');
+  const p=[['Product','Category','Removal group to add','Remove options','Addition group to add','Add options','OrderMate plus group (items not in the export)','OrderMate option groups (set up separately)']]
+    .concat(om.rows.map(r=>[r.name,r.cat,r.gR,J([...r.rem].map(x=>'Remove '+x)),r.gA,J([...r.add].map(x=>'Add '+x)),J(r.plus),J(r.opt)]));
+  const g=[['Suggested modifier group','Type','Modifiers (price $0)','Number of products','Link to products','OrderMate plus groups to add items from']]
+    .concat(om.groups.map(e=>[e.name,e.kind,J(e.items),e.links.size,J(e.links),J(e.plus)]));
+  const og=new Map();om.rows.forEach(r=>r.opt.forEach(o=>{if(!og.has(o))og.set(o,[]);og.get(o).push(r.name)}));
+  const o=[['OrderMate option group','Number of products','Products']].concat([...og].map(([n,l])=>[n,l.length,l.join(', ')]));
+  const wb=XLSX.utils.book_new(),sh=(rows,w)=>{const s=XLSX.utils.aoa_to_sheet(rows);s['!cols']=w.map(x=>({wch:x}));return s};
+  XLSX.utils.book_append_sheet(wb,sh(g,[28,11,60,10,60,30]),'Groups to create');
+  XLSX.utils.book_append_sheet(wb,sh(p,[30,18,26,50,26,40,26,26]),'Products');
+  if(og.size)XLSX.utils.book_append_sheet(wb,sh(o,[28,10,80]),'Option groups');
+  save(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),outName('xlsx','OrderMate modifier sheet'))});
 
 $('file').addEventListener('change',e=>{if(e.target.files.length)handleFiles([...e.target.files])});
 $('comb').addEventListener('change',rebuild);
