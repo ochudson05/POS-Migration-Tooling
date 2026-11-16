@@ -3352,7 +3352,7 @@ function showPre(){
 /* OrderMate pluses and minuses. OrderMate keeps them on each product: "Minuses" lists what can be taken off
    ("Bacon, Tomato"), "Plus Group" names the add-on group (or lists the add-ons), "Option Groups" names choice groups.
    The export doesn't hold what's inside a plus group or option group. The user's way (2026-11-16): plain modifiers named
-   "Remove Bacon" / "Add Bacon" ($0), in one Removals and one Additions group per category ("Breakfast Removals"),
+   "No Bacon" / "Add Bacon" ($0; "No", not "Remove", for brevity: user's rule), in one Removals and one Additions group per category ("Breakfast Removals"),
    which they build by hand in Oolio from the OrderMate modifier sheet. */
 const omList=v=>[...new Set(String(v||'').split(/\s*[,;]\s*/).map(x=>{const t=clean(x).toLowerCase().replace(/\bdariy\b/g,'dairy').replace(/\bfro ?yo\b/g,'frozen yoghurt').replace(/\byogurt\b/g,'yoghurt');return t?cap(t):''}).filter(Boolean))];
 function omPlan(items,catName,rgOf){const P=new Map(),G=new Map();
@@ -3362,7 +3362,7 @@ function omPlan(items,catName,rgOf){const P=new Map(),G=new Map();
     String(it.optg||'').split(/\s*[,;]\s*/).map(clean).filter(Boolean).forEach(x=>r.opt.add(x))});
   const rows=[...P.values()].filter(r=>r.rem.size||r.add.size||r.plus.size||r.opt.size);
   rows.forEach(r=>{r.gR=r.rem.size?r.cat+' Removals':'';r.gA=r.add.size||r.plus.size?r.cat+' Additions':'';
-    [[r.gR,r.rem,'Remove '],[r.gA,r.add,'Add ']].forEach(([g,set,pre])=>{if(!g)return;if(!G.has(g))G.set(g,{name:g,kind:pre==='Add '?'Additions':'Removals',rg:r.rg,items:new Set(),links:new Set(),plus:new Set()});
+    [[r.gR,r.rem,'No '],[r.gA,r.add,'Add ']].forEach(([g,set,pre])=>{if(!g)return;if(!G.has(g))G.set(g,{name:g,kind:pre==='Add '?'Additions':'Removals',rg:r.rg,items:new Set(),links:new Set(),plus:new Set()});
       const e=G.get(g);set.forEach(x=>e.items.add(pre+x));e.links.add(r.name);if(pre==='Add ')r.plus.forEach(x=>e.plus.add(x))})});
   const mods=[];G.forEach(e=>e.items.forEach(n=>mods.push({name:n,price:'0',group:e.name,rgx:e.rg,links:[...e.links]})));
   return{rows,groups:[...G.values()],mods}}
@@ -3420,7 +3420,7 @@ function convert(){
       os.forEach(o=>{preMods.push({name:o.name,price:o.price,group:g,rgx:p.rg,req:p.req==='Yes'?'Yes':'',max:clean(p.max),links:linked.map(x=>x.name)});n++});
       if(n){preList.push(g+': '+os.map(o=>o.name+(+o.price?' +$'+(+o.price).toFixed(2):'')).join(', ')+' → '+linked.length+' product'+(linked.length===1?'':'s'))}}
     return{m,linked}});
-  // OrderMate pluses and minuses → Add / Remove modifiers
+  // OrderMate pluses and minuses → Add / No modifiers
   const om=omPlan(items,catName,rgOf);
   // modifiers (from modifier sheets, from groups above, from standard option groups and OrderMate)
   const all=[...mods,...genMods,...preMods,...om.mods],mm=new Map(),clash=new Map();
@@ -3443,7 +3443,7 @@ function convert(){
   tables.forEach(t=>{if(t.on&&t.a&&!t.pl&&t.info&&!t.info.items.length&&!t.info.mods.length)checks.push({msg:'“'+t.file+(t.sheet?' › '+t.sheet:'')+'” has no rows to convert'+(t.a.marker?'. It looks like an empty pre-work template.':'.'),list:[]})});
   PLS.forEach(n=>chk('items have no “'+n+'” price, so that column is left blank for them. Fill it in if their '+n+' price is different.',items.filter(i=>i.modOf==null&&plv(i,n)==null).map(i=>i.name+(i.variation?' ('+i.variation+')':'')),true));
   checks.push(...PLCHK);
-  if(om.rows.length)checks.push({msg:'OrderMate pluses and minuses: '+om.mods.length+' Add / Remove modifiers in '+om.groups.length+' suggested groups, for '+om.rows.length+' products. Download the OrderMate modifier sheet (step 6) for which products need which groups.'+(om.rows.some(r=>r.plus.size&&!r.add.size)?' The export only names the plus groups (“'+[...new Set(om.rows.flatMap(r=>[...r.plus]))].join('”, “')+'”), not what’s in them, so add those items to the Additions groups by hand.':''),list:[],info:true});
+  if(om.rows.length)checks.push({msg:'OrderMate pluses and minuses: '+om.mods.length+' Add / No modifiers in '+om.groups.length+' suggested groups, for '+om.rows.length+' products. Download the OrderMate modifier sheet (step 6) for which products need which groups.'+(om.rows.some(r=>r.plus.size&&!r.add.size)?' The export only names the plus groups (“'+[...new Set(om.rows.flatMap(r=>[...r.plus]))].join('”, “')+'”), not what’s in them, so add those items to the Additions groups by hand.':''),list:[],info:true});
   chk('standard option groups were added in step 5. Check the options and prices with the venue.',preList,true);
   if(!S.mVol)checks.push({msg:'The Volume label in step 2 is blank, so poured drinks will have no Measured By.',list:[]});
   return{rows,nP,nV,nM,nG,nS:preList.length,checks,genMods,preMods,pre:preR,om};}
@@ -3800,13 +3800,13 @@ $('dlm').addEventListener('click',()=>{const r=[['Modifier Group','Modifier','Pr
 function drawOM(){const b=$('ombox'),om=res&&res.om;if(!om||!om.rows.length){b.style.display='none';return}
   const nR=om.rows.filter(r=>r.gR).length,nA=om.rows.filter(r=>r.gA).length;
   b.style.display='block';b.innerHTML='<b>OrderMate file detected.</b> '+nR+' products need a Removals group and '+nA+' need an Additions group, across '+om.groups.length+' suggested groups ('+
-    om.groups.map(g=>esc(g.name)).join(', ')+'). The modifier sheet lists which products need which group, the Add / Remove modifiers in each, and the suggested group names.'+
+    om.groups.map(g=>esc(g.name)).join(', ')+'). The modifier sheet lists which products need which group, the Add / No modifiers in each, and the suggested group names.'+
     '<div style="margin-top:8px"><button class="sec" id="dlom2">Download the OrderMate modifier sheet (XLSX)</button></div>';
   $('dlom2').addEventListener('click',()=>$('dlom').click())}
 // the OrderMate modifier sheet: which products need which Additions / Removals group, and what goes in each group
 $('dlom').addEventListener('click',()=>{if(!res||!res.om.rows.length)return;const om=res.om,J=s=>[...s].join(', ');
-  const p=[['Product','Category','Removal group to add','Remove options','Addition group to add','Add options','OrderMate plus group (items not in the export)','OrderMate option groups (set up separately)']]
-    .concat(om.rows.map(r=>[r.name,r.cat,r.gR,J([...r.rem].map(x=>'Remove '+x)),r.gA,J([...r.add].map(x=>'Add '+x)),J(r.plus),J(r.opt)]));
+  const p=[['Product','Category','Removal group to add','No options','Addition group to add','Add options','OrderMate plus group (items not in the export)','OrderMate option groups (set up separately)']]
+    .concat(om.rows.map(r=>[r.name,r.cat,r.gR,J([...r.rem].map(x=>'No '+x)),r.gA,J([...r.add].map(x=>'Add '+x)),J(r.plus),J(r.opt)]));
   const g=[['Suggested modifier group','Type','Modifiers (price $0)','Number of products','Link to products','OrderMate plus groups to add items from']]
     .concat(om.groups.map(e=>[e.name,e.kind,J(e.items),e.links.size,J(e.links),J(e.plus)]));
   const og=new Map();om.rows.forEach(r=>r.opt.forEach(o=>{if(!og.has(o))og.set(o,[]);og.get(o).push(r.name)}));
