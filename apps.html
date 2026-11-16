@@ -3237,13 +3237,13 @@ function convert(){
     // unit items leave all three measure columns blank, as the Oolio setup wizard expects
     if(ms.k!=='unit'){r['Measured By*']=mLabel(ms.k);r['Default Value']=ms.amt;r['Unit']=mUnit(ms.k)}
     r['POS Name']=o.pos||'';r['Kitchen Name']=o.kitchen||'';r['Printer Profiles']=type==='Modifier'?'':printerOf(o);
-    r['Description']=o.desc||'';r['Is Selling?']=(x.selling||selling(o.visible))==='Yes'?'true':'false';/* Oolio's own exports use true / false (user's rule) */r['Dietary Tags']=o.dietary||'';r['Allergens']=o.allergens||'';
+    r['Description']=o.desc||'';r['Is Selling?']=(x.selling||selling(o.visible))==='Yes'?'TRUE':'FALSE';r['Print On Receipt?']='TRUE';/* yes/no columns are TRUE / FALSE in capitals (user's rule, Oolio's current standard) */r['Dietary Tags']=o.dietary||'';r['Allergens']=o.allergens||'';
     r['Available Location']=o.location||'';
     if(type!=='Variant'){r['Barcode']=code(o.barcode,o);r['GTIN']=code(o.gtin,o);r['SKU']=o.sku||'';r['PLU']=o.plu||''}
     r['Sell Price*']=x.price!=null?x.price:(o.price===''?'0':o.price);r['Sell Tax*']=taxOf(o.tax);
     // a price list with no price for this item uses the sell price (user's rule), listed in the checks
     if(type==='Product')PLS.forEach(n=>{const v=x.price==null?plv(o,n):null;r[n]=v!=null&&v!==''?v:r['Sell Price*']});
-    r['Variable Pricing?']=yn(o.varp||'');r['Min Pricing']=o.minp||'';r['Max Pricing']=o.maxp||'';r['Image URL']=o.image||'';
+    r['Variable Pricing?']=yn(o.varp||'')==='Yes'?'TRUE':'FALSE';r['Min Pricing']=o.minp||'';r['Max Pricing']=o.maxp||'';r['Image URL']=o.image||'';
     // stray line breaks, tabs and double spaces break CSV rows and POS buttons
     return OUT.map(h=>typeof r[h]==='string'?r[h].replace(/[\r\n\t]+/g,' ').replace(/ {2,}/g,' ').trim():r[h])};
   // products that carry a modifier group
