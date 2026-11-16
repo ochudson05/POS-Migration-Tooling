@@ -82,10 +82,8 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
       </label>
       <ul class="iw-list" id="iw-list"></ul>
       <div class="iw-opts">
-        <fieldset id="iw-how"><legend>Read with</legend>
-          <label><input type="radio" name="iw-how" value="auto" checked><span>Best available <span class="iw-muted" id="iw-howhint"></span></span></label>
-          <label><input type="radio" name="iw-how" value="ocr"><span>Text recognition in this browser (free, works offline once loaded, plainer layout)</span></label>
-        </fieldset>
+        <label><input type="checkbox" id="iw-ai"><span><b>Read with AI</b> <span class="iw-muted" id="iw-aihint">Claude reads the picture and sorts the text into headings and lists, so related items sit together. Slower, uses your Claude allowance.</span></span></label>
+        <p class="iw-small iw-muted" id="iw-howhint" style="margin:0"></p>
         <label><input type="checkbox" id="iw-pb" checked><span>Start each picture and PDF page on a new page</span></label>
       </div>
       <div class="iw-row"><button type="button" id="iw-go" disabled>Read text</button><button type="button" class="iw-sec" id="iw-stop" hidden>Stop</button><button type="button" class="iw-sec" id="iw-clear" hidden>Remove all</button></div>
@@ -177,9 +175,16 @@ async function serverOcrOn(){if(SRVON!==undefined)return SRVON;SRVON=false;
   try{if(window.OOLIO_HOSTED&&window.MH_SERVER){const s=await window.MH_SERVER.on();SRVON=!!(s&&s.ocr)}}catch(e){}
   return SRVON}
 const engName=e=>e==='server'?'the team’s server':e==='claude'?'Claude':'text recognition';
-// "Best available" (auto) prefers the team server when the website has one, then Claude, then in-browser text recognition
-Promise.all([serverOcrOn(),getSample()]).then(([srv,s])=>{
-  $('iw-howhint').textContent=srv?'(the team’s server reads it: best for layout, tables and columns)':s?'(Claude reads the picture: best for layout, tables and handwriting)':'(text recognition in this browser)'});
+// "Read with AI" off (the quick way): the team server's text recognition when the website has one, else text recognition in this browser.
+// On: Claude reads every picture and PDF page and groups the text into lists. Remembered per browser.
+const lsGet=k=>{try{return localStorage.getItem(k)}catch(e){return null}},lsSet=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
+$('iw-ai').checked=lsGet('iw.ai')==='1';
+$('iw-ai').addEventListener('change',e=>{lsSet('iw.ai',e.target.checked?'1':'0');howHint()});
+function howHint(){Promise.all([serverOcrOn(),getSample()]).then(([srv,s])=>{const ai=$('iw-ai');
+  ai.disabled=!s;if(!s)ai.checked=false;
+  $('iw-aihint').textContent=s?'Claude reads the picture and sorts the text into headings and lists, so related items sit together. Slower, uses your Claude allowance.':'Not available: Claude isn’t switched on for this account.';
+  $('iw-howhint').textContent=ai.checked?'Reading with AI.':'Quick read: '+(srv?'the team’s server picks out the text':'text recognition in this browser (the first picture takes longer while it loads)')+'. Tick Read with AI for tidier lists.'})}
+howHint();
 const toJpeg=c=>new Promise(r=>c.toBlob(r,'image/jpeg',0.92));
 // Claude sees each image at about 1.2 megapixels, so tall pages are cut into overlapping bands to keep small print readable
 async function tiles(file){const img=await createImageBitmap(file),w=img.width,h=img.height;
@@ -189,19 +194,19 @@ async function tiles(file){const img=await createImageBitmap(file),w=img.width,h
     c.getContext('2d').drawImage(img,0,y0,w,y1-y0,0,0,w,y1-y0);out.push(await toJpeg(c))}
   return out}
 const PROMPT=n=>(n>1?'These '+n+' images are overlapping horizontal slices of ONE page, from top to bottom. Text cut off at the edge of one slice appears whole in the next: transcribe it once.':'This image contains a page of text (a document, letter, screenshot, sign, form, notes or similar).')+
-  '\n\nTranscribe ALL the text and describe its layout so it can be rebuilt as a Word document. Reply with only this JSON:\n'+
-  '{"blocks":[{"type":"heading","level":1,"text":""},{"type":"paragraph","text":"","align":"left"},{"type":"bullets","items":[""]},{"type":"numbered","items":[""]},{"type":"table","header":true,"rows":[["",""]]}],"notes":[]}\n\nRules:\n'+
-  '- Keep the reading order of the page (for two-column pages, the whole left column, then the right).\n'+
-  '- heading: titles and section headings, shown larger, bolder or set apart. level 1 = the main title (usually one), 2 = section headings, 3 = smaller subheadings.\n'+
-  '- paragraph: join lines that only wrap because the line ran out of room into one paragraph; keep real paragraph breaks as separate blocks. Rejoin words hyphenated at a line end. For lines that must stay separate inside one block (an address, a signature, a poem), put "\\n" between them. align is "left", "center" or "right" as printed; justified text is "left".\n'+
-  '- bullets / numbered: list items without their bullet or number. A sub-item starts with two spaces per level.\n'+
-  '- table: every row as an array of cell texts, all rows the same length; header true when the first row is a heading row. Use a table only for text that is really laid out in a grid.\n'+
-  '- Inside any text, mark words printed in bold as **bold**, italics as *italic*, underlined as __underlined__.\n'+
-  '- Copy the text exactly as printed, including spelling, numbers and punctuation. Do not summarise, correct, translate or add anything. Write [unreadable] where text cannot be read.\n'+
+  '\n\nPull out ALL the text so it is quick to read and copy. Organise it into plain, simple lists: do NOT try to copy how the page looks (columns, alignment, spacing, fonts, decoration). Reply with only this JSON:\n'+
+  '{"blocks":[{"type":"heading","level":2,"text":""},{"type":"bullets","items":[""]},{"type":"numbered","items":[""]},{"type":"paragraph","text":""},{"type":"table","header":true,"rows":[["",""]]}],"notes":[]}\n\nRules:\n'+
+  '- Group things that belong together: each section, group or category gets a heading (level 2; level 3 for a group inside it; level 1 only for the one main title, if there is one), followed by a bullets list of its items. Put items that belong to the same group in ONE list even when the page scatters them across columns, boxes or panels.\n'+
+  '- Prefer bullets. One item per bullet; keep an item\'s own details on the same bullet (for example "Flat white, $5.50" or "Name: Jane Smith"). A sub-item starts with two spaces per level. Use numbered only for steps or items numbered on the page.\n'+
+  '- Labels and values (forms, receipts, specs, contact details) become bullets as "Label: value".\n'+
+  '- Use paragraph only for real running prose (sentences that read on from each other). Join lines that only wrap, and rejoin words hyphenated at a line end.\n'+
+  '- Use a table only for data that is clearly a grid with several columns that would make no sense as a list (a timetable, a price grid). Otherwise use bullets.\n'+
+  '- No bold, italic or underline markers. No alignment.\n'+
+  '- Keep the words, spelling, numbers and prices exactly as printed. Do not summarise, correct, translate or add anything; only reorder and group them. Write [unreadable] where text cannot be read.\n'+
   '- Leave out page numbers, running headers and footers, and the user interface around a screenshot (menus, buttons, browser bars) unless they are part of the content.\n'+
   '- notes: anything you could not read or were unsure about, in a few words each. Use [] if none.';
 function claudeErr(e){const c=e&&e.code;return({not_granted:'Reading pictures with Claude needs permission. Reload the page and choose Allow when asked.',
-  sampling_disabled:'Claude isn’t available on this account. Choose “Text recognition in this browser” instead.',
+  sampling_disabled:'Claude isn’t available on this account. Untick Read with AI to use text recognition.',
   rate_limited:'Claude is busy or your usage limit was reached. Try again in a few minutes, or use text recognition.',
   session_expired:'Your claude.ai session has expired. Sign in again and retry.',image_rejected:'That picture couldn’t be used. Try a JPG or PNG under 20 MB.',
   invalid_json:'Claude’s answer couldn’t be read. Try again.',refused:'Claude couldn’t read this picture.',cancelled:'Stopped.'})[c]||('Claude couldn’t read the picture ('+((e&&(e.message||e.code))||'unknown error')+').')}
@@ -348,7 +353,8 @@ async function pdfRead(file,chain,setStatus){
     setStatus&&setStatus('page '+pg+' of '+doc.numPages);
     const page=await doc.getPage(pg),vp=page.getViewport({scale:1}),tc=await page.getTextContent();
     const items=tc.items.filter(i=>i.str&&i.str.trim()),chars=items.reduce((a,i)=>a+i.str.trim().length,0);
-    if(chars>=25){
+    // with AI on, every page (text layer or not) goes to Claude as a picture so it is grouped into lists the same way
+    if(chars>=25&&chain[0]!=='claude'){
       // text layer: embedded text with its positions (PDF y grows upwards, so flip it to y-down for the layout rebuild)
       const segs=items.map(i=>{const h=Math.abs(i.transform[3])||i.height||10,x=i.transform[4],f=i.transform[5];
         return{text:i.str,x0:x,x1:x+(i.width||h*0.5*i.str.length),y0:vp.height-f-h,y1:vp.height-f}});
@@ -363,10 +369,9 @@ async function pdfRead(file,chain,setStatus){
 $('iw-go').addEventListener('click',async()=>{if(busy||!pics.length)return;
   const page=$('iw-page');if(hasDoc&&page.textContent.trim()&&!confirm('Read the files again? This replaces the text in the document, including your edits.'))return;
   busy=true;ctl=new AbortController();$('iw-stop').hidden=false;draw();msg('');
-  // "Best available" picks the team server first, then Claude, then in-browser text recognition; "ocr" forces the browser only
-  const how=document.querySelector('input[name=iw-how]:checked').value;
-  const srv=how==='auto'&&await serverOcrOn(),cla=how==='auto'&&!!(await getSample());
-  const chain=how==='ocr'?['ocr']:[].concat(srv?['server']:[],cla?['claude']:[],['ocr']),primary=chain[0];
+  // AI on: Claude first, falling back to text recognition. Off: the team server, then text recognition in this browser (no AI)
+  const srv=await serverOcrOn(),cla=$('iw-ai').checked&&!!(await getSample());
+  const chain=cla?['claude'].concat(srv?['server']:[],['ocr']):[].concat(srv?['server']:[],['ocr']),primary=chain[0];
   const parts=[],notes=[];
   for(let n=0;n<pics.length;n++){const p=pics[n];if(ctl.signal.aborted)break;
     const tag=pics.length>1?' ('+(n+1)+' of '+pics.length+')':'';
