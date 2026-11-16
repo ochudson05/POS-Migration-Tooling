@@ -2501,6 +2501,16 @@ function omSplit(items,note){const g=new Map(),out=[],szOf=v=>cap(clean(v.replac
     if(note&&di==null&&ta!=null)note.push(c.name+' ('+c.variation+') $'+ta);delete c._di;delete c._ta});
   if(note&&g.size)note.split=(note.split||0)+g.size;
   return out}
+/* OrderMate won't save an item without a size, so venues type a filler one ("Serve", "SIDE OF", "Retail", "Each").
+   When that is an item's only size it isn't a real size: it's removed so the item is a plain product, and a filler
+   left on the end of the name ("Bacon SIDE OF") goes too. Categories are worked out as usual. */
+const FILLER_SZ=/^(serve|serving|side ?of|side|retail|each|ea|item|unit|standard|std|default|normal|one ?size|n\/?a|-)$/i;
+function plainSizes(items,note){const n=new Map(),k=it=>N(it.catSrc||it.sub||it.screen||it.section)+'|'+N(it.name);
+  items.forEach(it=>n.set(k(it),(n.get(k(it))||0)+1));
+  items.forEach(it=>{const v=clean(it.variation||'');if(!v||n.get(k(it))!==1)return;
+    if(!FILLER_SZ.test(v)&&N(v)!==N(it.catSrc))return;
+    it.variation='';const nm=clean(String(it.name).replace(/\s*\bside of\b\s*$/i,''));if(nm)it.name=nm;if(note)note.plain=(note.plain||0)+1});
+  return items}
 const plKey=it=>N(it.name)+'|'+N(it.variation),plKeyC=it=>N(it.catSrc||it.sub||it.screen||it.section)+'|'+plKey(it);
 function plName(file,taken){let s=String(file||'').replace(/\.[a-z0-9]+$/i,'').replace(/\d{1,4}[-_.]\d{1,2}[-_.]\d{1,4}|\(\d+\)/g,' ')
     .replace(/(exp|export(ed)?)$/i,'').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[_-]+/g,' ')
@@ -2995,15 +3005,16 @@ function renderSources(){
 
 function rebuild(){
   readSettings();base=[];mods=[];const OMN=[];
-  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);r.items=omSplit(r.items,OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods);
+  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);r.items=plainSizes(omSplit(r.items,OMN),OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods);
     const el=$('ti'+t.id);if(el)el.textContent=t.doc?r.items.length+' menu lines'+(NOPRICE()?'':' with prices')+' read from the '+t.doc.how+(t.doc.ignored.length?', '+t.doc.ignored.length+' other lines not used (listed in Checks)':'')+'. Check names and prices against the original.':
       r.items.length+' products, '+r.mods.length+' modifiers read'+(t.a.marker?' (template examples above the “below this line” row were skipped)':'')+(t.a.pl&&t.a.pl.length?'. Price lists in it: '+t.a.pl.map(c=>c.name).join(', '):'')+'.';});
   // price lists: columns in Oolio files first, then files used as a price list
   PLS=[];PLCHK=[];base.forEach(it=>Object.keys(it.pl||{}).forEach(n=>{if(!PLS.includes(n))PLS.push(n)}));
   const byC=new Map(),byK=new Map();base.forEach(it=>{if(!byC.has(plKeyC(it)))byC.set(plKeyC(it),it);if(!byK.has(plKey(it)))byK.set(plKey(it),it)});
   if(OMN.split)PLCHK.push({msg:'Sizes with the order type in them (“Regular TAKEAWAY”, “Dine-In”, “Large Dine-In”) were split: '+OMN.split+' items now have plain sizes, with the dine-in price as the menu price and the TAKEAWAY price in the “'+OM_TAKE+'” price list.',list:[],info:true});
+  if(OMN.plain)PLCHK.push({msg:OMN.plain+' items had a filler size (“Serve”, “SIDE OF”, “Retail”…) as their only size, which OrderMate needs but Oolio doesn’t. The size was removed so they are plain products.',list:[],info:true});
   if(OMN.length)PLCHK.push({msg:'sizes are only sold as takeaway, so their takeaway price is also used as the menu price. Check these with the venue.',list:OMN.slice()});
-  tables.forEach(t=>{if(!t.on||!t.a||!t.pl)return;const n=t.pl,r=extract(t),miss=[],seen=new Set();r.items=omSplit(r.items);if(!PLS.includes(n))PLS.push(n);let hit=0,same=0;
+  tables.forEach(t=>{if(!t.on||!t.a||!t.pl)return;const n=t.pl,r=extract(t),miss=[],seen=new Set();r.items=plainSizes(omSplit(r.items));if(!PLS.includes(n))PLS.push(n);let hit=0,same=0;
     r.items.forEach(x=>{const it=byC.get(plKeyC(x))||byK.get(plKey(x));const lab=x.name+(x.variation?' ('+x.variation+')':'')+(x.price?' $'+x.price:'');
       if(!it){miss.push(lab);return}if(x.price===''||seen.has(it))return;seen.add(it);(it.pl=it.pl||{})[n]=x.price;hit++;if(+x.price===+it.price)same++});
     t.info={items:[],mods:[]};const el=$('ti'+t.id);
