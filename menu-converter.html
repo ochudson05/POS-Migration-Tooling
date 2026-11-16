@@ -1833,7 +1833,7 @@ function convert(){
     // unit items leave all three measure columns blank, as the Oolio setup wizard expects
     if(ms.k!=='unit'){r['Measured By*']=mLabel(ms.k);r['Default Value']=ms.amt;r['Unit']=mUnit(ms.k)}
     r['POS Name']=o.pos||'';r['Kitchen Name']=o.kitchen||'';r['Printer Profiles']=type==='Modifier'?'':printerOf(o);
-    r['Description']=o.desc||'';r['Is Selling?']=x.selling||selling(o.visible);r['Dietary Tags']=o.dietary||'';r['Allergens']=o.allergens||'';
+    r['Description']=o.desc||'';r['Is Selling?']=(x.selling||selling(o.visible))==='Yes'?'true':'false';/* Oolio's own exports use true / false (user's rule) */r['Dietary Tags']=o.dietary||'';r['Allergens']=o.allergens||'';
     r['Available Location']=o.location||'';
     if(type!=='Variant'){r['Barcode']=code(o.barcode,o);r['GTIN']=code(o.gtin,o);r['SKU']=o.sku||'';r['PLU']=o.plu||''}
     r['Sell Price*']=x.price!=null?x.price:(o.price===''?'0':o.price);r['Sell Tax*']=taxOf(o.tax);
