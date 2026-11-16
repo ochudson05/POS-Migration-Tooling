@@ -28,8 +28,8 @@ const effective=()=>{const t=root.getAttribute('data-theme');return t==='dark'||
 function applyTheme(){const t=S.theme;
   if(t==='light'||t==='dark')root.setAttribute('data-theme',t);else if(HOST)root.setAttribute('data-theme',HOST);else root.removeAttribute('data-theme');
   syncFrame();drawQuick()}
-// the Photo Finder runs in its own frame; give it the same theme
-function syncFrame(){const f=g('lx-pfframe');try{const d=f&&f.contentDocument;if(d&&d.documentElement){const t=root.getAttribute('data-theme');if(t)d.documentElement.setAttribute('data-theme',t);else d.documentElement.removeAttribute('data-theme');d.documentElement.classList.toggle('mh-still',root.classList.contains('mh-still'))}}catch(e){}}
+// the Photo Finder and the tool map run in their own frames; give them the same theme
+function syncFrame(){['lx-pfframe','lx-mapframe'].forEach(id=>{const f=g(id);try{const d=f&&f.contentDocument;if(d&&d.documentElement){const t=root.getAttribute('data-theme');if(t)d.documentElement.setAttribute('data-theme',t);else d.documentElement.removeAttribute('data-theme');d.documentElement.classList.toggle('mh-still',root.classList.contains('mh-still'))}}catch(e){}})}
 // switching themes grows the new one out of the button that was pressed (where the browser can animate it)
 // t is a theme, or a function that picks one when the change actually happens (so quick repeated toggles stay in step)
 let vtBusy=false;
@@ -136,6 +136,7 @@ function drawSettings(){const body=g('mh-set-body');if(!body)return;const m=Obje
       '<p class="mh-note">'+(nm?'Written for <b>'+esc(nm)+'</b>. ':'Set your display name above so the prompts use it. ')+'Click a prompt to copy it, then paste it into Breeze in HubSpot.</p>'+
       BREEZE.map((b,i)=>'<div class="mh-bz-item"><div class="mh-line"><div><b>'+esc(b.t)+'</b><small>'+esc(b.d)+'</small></div><button type="button" class="mh-btn" data-s="bz-copy" data-i="'+i+'">'+ic('copy')+'Copy</button></div>'+
         '<button type="button" class="mh-bz-text" data-s="bz-copy" data-i="'+i+'" title="Click to copy">'+esc(breezeText(i,nm))+'</button></div>').join('')+'</details></section>'+
+    (g('lx-map')?'<section><h3>'+ic('map')+'Help</h3><div class="mh-line"><div><b>Tool map</b><small>Every tool: where it runs, what it can do, how it works and what it costs. Includes what’s new.</small></div><a class="mh-btn" href="#map" data-s="close">'+ic('map')+'Open</a></div></section>':'')+
     '<section><h3>'+ic('hard-drive')+'Data on this device</h3><div class="mh-line"><div><b>Saved lookups and page reads</b><small>'+(ck.length?ck.length+' saved, so repeat lookups are free. Clearing them doesn’t touch shared venues.':'Nothing saved yet.')+'</small></div><button type="button" class="mh-btn sec" data-s="clear"'+(ck.length?'':' disabled')+'>'+ic('trash-2')+'Clear</button></div>'+
       '<div class="mh-line"><div><b>These settings</b><small>Theme, text size, motion and start page are kept in this browser only.</small></div><button type="button" class="mh-btn sec" data-s="reset">'+ic('rotate-ccw')+'Reset</button></div></section>'+
     '<section><h3>'+ic('info')+'About</h3><p class="mh-note">Menu Hauler'+(m.version?' · version '+esc(m.version):'')+'. Press <kbd>Ctrl</kbd> + <kbd>,</kbd> to open these settings.</p><nav class="mh-links" aria-label="Policies">'+legal+'</nav></section>';
@@ -233,7 +234,7 @@ let hookN=0;const hookV=()=>{if(window.OolioVenues&&window.OolioVenues.on)window
 document.addEventListener('click',e=>{const t=e.target.closest('#mh-theme,#mh-open,#mh-bell');if(!t)return;
   if(t.id==='mh-bell')togglePop();else if(t.id==='mh-theme')setTheme(()=>effective()==='dark'?'light':'dark',t);else openSettings()});
 addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key===','){e.preventDefault();open?close():openSettings()}});
-const fr=g('lx-pfframe');if(fr)fr.addEventListener('load',syncFrame);
+['lx-pfframe','lx-mapframe'].forEach(id=>{const fr=g(id);if(fr)fr.addEventListener('load',syncFrame)});
 drawQuick();drawMe();
 if(canInbox())setTimeout(poll,600);
 })();

@@ -75,6 +75,8 @@ def ic(name, cls=""):
 FONT = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">'
 pf = pf.replace("</head>", FONT + "\n<style>" + THEME + "</style>\n</head>", 1)
 pf_js = json.dumps(pf, ensure_ascii=False).replace("</", "<\\/")
+# the tool map (Settings > Help): its own page in a frame, so its styles never touch the tools
+map_js = json.dumps((HERE / "tool-map.html").read_text(encoding="utf-8"), ensure_ascii=False).replace("</", "<\\/")
 
 # ---------- legal and compliance pages (legal.html; see COMPLIANCE.md) ----------
 # The business details shown in the footer and on every legal page. Blank values are left out and the build warns.
@@ -252,6 +254,7 @@ html.oolio-hosted .claude-only,html.oolio-hosted #rf-setbox{display:none!importa
 html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude .ocr-note{display:none!important}
 .oh-banner{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px));background:var(--warn);color:var(--card);font-size:.92rem}
 .oh-banner button{font:inherit;font-weight:600;background:var(--card);color:var(--text);border:0;border-radius:6px;padding:4px 12px;cursor:pointer;margin:0}
+#lx-mapframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
 #lx-pfframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
 """
 
@@ -343,6 +346,7 @@ LAUNCHER_HTML = SPRITE + """
   </div>
   <iframe id="lx-pfframe" title="Photo Finder"></iframe>
 </div>
+<div id="lx-map" hidden><iframe id="lx-mapframe" title="Tool map"></iframe></div>
 <div id="lx-legal" class="lx-legal" hidden>
 <nav class="lx-lnav" aria-label="Policies">""" + LEGAL_NAV + """</nav>
 <div>""" + legal + """</div>
@@ -351,10 +355,10 @@ LAUNCHER_HTML = SPRITE + """
 
 LAUNCHER_JS = r"""
 (()=>{
-  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),word:g('lx-iw')};
+  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),word:g('lx-iw'),map:g('lx-map')};
   const LEGAL=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>a.id.slice(3));LEGAL.forEach(k=>{views[k]=g('lx-legal')});
   const onClaude=!!(window.claude&&window.claude.use)||/(^|\.)claude(usercontent)?\.(ai|com)$/.test(location.hostname);
-  let pfReady=false,checked=false;
+  let pfReady=false,checked=false,mapReady=false;
   // the Photo Finder is only built the first time it's opened, so its libraries don't load until needed
   function openPF(){
     if(!pfReady){pfReady=true;g('lx-pfframe').srcdoc=PF_HTML}
@@ -367,7 +371,7 @@ LAUNCHER_JS = r"""
     const cur=views[v];new Set(Object.values(views)).forEach(el=>{el.hidden=el!==cur});
     if(LEGAL.includes(v)){document.querySelectorAll('#lx-legal .lg-doc').forEach(a=>{a.hidden=a.id!=='lg-'+v});document.querySelectorAll('.lx-lnav a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});document.title=g('lg-'+v).dataset.title+' · Menu Hauler'}else document.title='Menu Hauler';
     document.querySelectorAll('.lx-tab').forEach(b=>{if(b.dataset.go===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
-    if(v==='photos')openPF();window.scrollTo(0,0);if(window.mhAfterShow)window.mhAfterShow(v,cur)}
+    if(v==='photos')openPF();if(v==='map'){if(!mapReady){mapReady=true;g('lx-mapframe').srcdoc=MAP_HTML}document.title='Tool map · Menu Hauler'}window.scrollTo(0,0);if(window.mhAfterShow)window.mhAfterShow(v,cur)}
   document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;const v=b.dataset.go;
     if(location.hash.slice(1)===v)return;if(v)location.hash=v;else{history.pushState?history.pushState(null,'',location.pathname+location.search):location.hash='';show()}});
   window.addEventListener('hashchange',show);window.addEventListener('popstate',show);
@@ -394,7 +398,7 @@ page = (
     + "<script>" + rl_js + "</script>\n"
     + "<script>" + st_js + "</script>\n"
     + "<script>" + iw_js + "</script>\n"
-    + "<script>\nconst PF_HTML=" + pf_js + ";\n" + LAUNCHER_JS + "</script>\n"
+    + "<script>\nconst PF_HTML=" + pf_js + ";\nconst MAP_HTML=" + map_js + ";\n" + LAUNCHER_JS + "</script>\n"
     + "<script>" + (HERE / "venue-link.js").read_text(encoding="utf-8") + "</script>\n"
     + "<script>" + (HERE / "venue-search.js").read_text(encoding="utf-8") + "</script>\n"
 )

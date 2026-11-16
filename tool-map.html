@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<!-- Tool map: the page under Settings > Help. build_apps.py loads it into the launcher in a frame (view #map).
+     Also published as a claude.ai artifact. Update both when tools change. -->
+<title>Menu Hauler Tool Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap">
+<style>
+/* Layout: one column; system map up top, then the venue journey, tool cards in a 2-up grid, then helpers and the three-places table. Colours follow the Menu Hauler app (purple bar, one tint per tool). */
+:root{
+  --bg:#f5f3f9; --surface:#ffffff; --fg:#1d1729; --muted:#5f5872; --line:#ddd7ea; --soft:#ece7f6;
+  --accent:#673ab6; --bar:#4a2a96; --bar-text:#ffffff;
+  --t-converter:#673ab6; --t-photos:#c2185b; --t-venue:#1e6fd9; --t-setup:#2e7d32; --t-word:#d35400; --t-venues:#00838f;
+  --cf:#e8710a; --gc:#1a73e8; --pc:#5f5872; --warn:#a15c00; --warn-soft:#fdf1dc;
+  --f-display:"Space Grotesk","Segoe UI",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:ui-monospace,SFMono-Regular,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141119; --surface:#1d1826; --fg:#ece8f4; --muted:#a69fb8; --line:#352d44; --soft:#262033;
+  --accent:#b39ddb; --bar:#251b3d; --bar-text:#ece8f4;
+  --t-converter:#b39ddb; --t-photos:#f48fb1; --t-venue:#90caf9; --t-setup:#81c784; --t-word:#ffb74d; --t-venues:#80deea;
+  --cf:#ffa95c; --gc:#8ab4f8; --pc:#a69fb8; --warn:#ffcc80; --warn-soft:#3a2c14; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141119; --surface:#1d1826; --fg:#ece8f4; --muted:#a69fb8; --line:#352d44; --soft:#262033;
+  --accent:#b39ddb; --bar:#251b3d; --bar-text:#ece8f4;
+  --t-converter:#b39ddb; --t-photos:#f48fb1; --t-venue:#90caf9; --t-setup:#81c784; --t-word:#ffb74d; --t-venues:#80deea;
+  --cf:#ffa95c; --gc:#8ab4f8; --pc:#a69fb8; --warn:#ffcc80; --warn-soft:#3a2c14; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1120px;margin:0 auto;padding-block:0 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+header.top{background:var(--bar);color:var(--bar-text)}
+header.top .wrap{padding-block:28px 30px;display:flex;flex-direction:column;gap:8px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:30px;font-weight:700;letter-spacing:-.01em}
+header.top p{margin:0;max-width:68ch;opacity:.85}
+.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.09em;font-weight:600;opacity:.75}
+section{display:flex;flex-direction:column;gap:16px;margin-top:44px}
+h2{font-size:22px;font-weight:600}
+.lede{margin:0;color:var(--muted);max-width:70ch}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+code{background:var(--soft);padding:1px 5px;border-radius:4px}
+
+/* system map */
+.mapbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow-x:auto}
+.mapbox svg{display:block;min-width:820px;width:100%;height:auto}
+svg text{font-family:var(--f-body);fill:var(--fg)}
+svg .t-h{font-family:var(--f-display);font-weight:600;font-size:15px}
+svg .t-s{font-size:12.5px;fill:var(--muted)}
+svg .t-xs{font-size:11.5px;fill:var(--muted)}
+svg .lbl{font-size:11.5px;font-weight:600;fill:var(--accent)}
+.keys{display:flex;flex-wrap:wrap;gap:10px 22px;font-size:13px;color:var(--muted)}
+.keys span{display:inline-flex;align-items:center;gap:7px}
+.sw{width:12px;height:12px;border-radius:3px;border:2px solid}
+.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.three div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px}
+.three b{display:block;font-family:var(--f-display);font-size:15px;margin-bottom:2px}
+
+/* journey */
+.journey{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px}
+.step{flex:1 1 150px;min-width:0;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--tint);border-radius:10px;padding:10px 12px}
+.step .n{font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tint)}
+.step b{display:block;font-family:var(--f-display);font-size:15px}
+.step span{font-size:13px;color:var(--muted)}
+.arrow{align-self:center;color:var(--muted);font-size:18px}
+.side{flex-basis:100%;font-size:13.5px;color:var(--muted)}
+
+/* tool cards */
+.tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.tool{--tint:var(--accent);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}
+.t-converter{--tint:var(--t-converter)}.t-photos{--tint:var(--t-photos)}.t-venue{--tint:var(--t-venue)}.t-setup{--tint:var(--t-setup)}.t-word{--tint:var(--t-word)}.t-venues{--tint:var(--t-venues)}
+.tool-head{display:flex;align-items:center;gap:12px}
+.tile{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:var(--tint);color:var(--surface);font-family:var(--f-display);font-weight:700;font-size:15px;flex:none}
+.tool h3{font-size:18px}
+.tool .sub{font-size:13px;color:var(--muted)}
+.where{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--soft);color:var(--fg);white-space:nowrap}
+.chip.loc{border:1px solid var(--tint);background:transparent;color:var(--tint);font-weight:600}
+.lab{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--muted);margin:0 0 4px}
+.tool ul{margin:0;padding-left:18px;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px}
+.flow .f{background:var(--soft);border-left:3px solid var(--tint);padding:4px 9px;border-radius:5px}
+.flow .f.out{background:var(--tint);color:var(--surface);border-left-color:var(--tint);font-weight:600}
+.flow .to{color:var(--muted)}
+.flow .or{font-size:11.5px;color:var(--muted);font-style:italic}
+.cost{font-size:13px;color:var(--muted);border-top:1px dashed var(--line);padding-top:10px;margin-top:auto}
+.cost b{color:var(--fg);font-weight:600}
+.note{font-size:12.5px;background:var(--warn-soft);color:var(--warn);padding:6px 10px;border-radius:6px}
+
+/* tables */
+.tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:640px}
+th,td{text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--soft)}
+tr:last-child td{border-bottom:none}
+td:first-child{font-weight:600;white-space:nowrap}
+.na{color:var(--muted)}
+
+.pages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.pg{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.pg b{font-family:var(--f-display);font-size:15px}
+.pg code{align-self:flex-start}
+footer{margin-top:40px;font-size:13px;color:var(--muted)}
+.new{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:4px;background:var(--accent);color:var(--surface);vertical-align:1px;margin-right:4px}
+.tbl td:first-child{white-space:normal;min-width:120px}
+
+@media (max-width:860px){.tools{grid-template-columns:1fr}.pages{grid-template-columns:repeat(2,minmax(0,1fr))}.three{grid-template-columns:1fr}}
+@media (max-width:480px){.pages{grid-template-columns:1fr}h1{font-size:25px}.arrow{display:none}}
+</style>
+</head>
+<body>
+
+<header class="top"><div class="wrap">
+  <div class="eyebrow">menuhauler.com · system map</div>
+  <h1>Menu Hauler Tool Map</h1>
+  <p>Every tool in Menu Hauler: where it lives, what it can do and how it gets there. It's a set of web tools for setting a hospitality venue up on Oolio One, from looking the venue up to the import spreadsheet and the go-live pack.</p>
+</div></header>
+
+<div class="wrap">
+
+<section>
+  <h2>What's new</h2>
+  <p class="lede">Added on 16–17 November 2026. Each change also appears on its tool's card below, marked <span class="new">New</span>.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>What changed</th></tr></thead>
+    <tbody>
+      <tr><td style="color:var(--t-converter)">Menu Converter</td><td>Reads <b>IMPOS onboarding workbooks</b>: categories fill down, Uber/DoorDash becomes a price list, options become shared modifier groups or sizes, and FREE TEXT becomes Kitchen Notes / Spice Level.</td></tr>
+      <tr><td style="color:var(--t-converter)">Menu Converter</td><td><b>Price lists</b> as extra columns between GTIN and Sell Price*. They come from Oolio files with extra price columns or from repeated OrderMate exports (one per price level). A missing price list price uses the sell price and is listed in the checks.</td></tr>
+      <tr><td style="color:var(--t-converter)">Menu Converter</td><td><b>OrderMate exports</b>: Group, Category, Printer Group and System State are mapped. Inactive items are left out. Pluses become "Add X" modifiers and minuses become "No X". An OrderMate modifier sheet (XLSX) lists the groups to create.</td></tr>
+      <tr><td style="color:var(--t-converter)">Menu Converter</td><td><b>Sizes</b>: "Regular TAKEAWAY" / "Dine-In" are split into plain sizes plus a Takeaway price list. Filler sizes (Serve, SIDE OF, Retail) are dropped. Kids items become a Kids Size variant, with a step 4 tick box to turn that off (a Kids prefix is used instead). More size words are recognised.</td></tr>
+      <tr><td style="color:var(--t-converter)">Menu Converter</td><td>Every word of item names gets a capital (BLT and IPA stay as they are). Is Selling?, Print On Receipt? and Variable Pricing? are written as TRUE / FALSE, as in Oolio's own exports.</td></tr>
+      <tr><td style="color:var(--t-setup)">Setup Tracker</td><td>Hardware diagrams are read <b>by server OCR and rules, not AI</b>. They also recognise everything sold on shop.oolio.com, including shorthand like "s80", "Cash Draw" and "oPad". A <b>Read with AI</b> tick box sends pictures straight to Claude.</td></tr>
+      <tr><td style="color:var(--t-word)">Image to Word</td><td>A <b>Read with AI</b> tick box (off by default). With AI on, text is grouped into headings, bullet lists and tables, rather than copying the page layout.</td></tr>
+      <tr><td>Website (Worker)</td><td>Sends the Anthropic workspace ID when <code>ANTHROPIC_WORKSPACE_ID</code> is set, so workspace-scoped API keys work.</td></tr>
+      <tr><td>Claude Code</td><td>New <b>hardware-parser</b> agent writes the Setup Tracker hardware CSV from a diagram.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Where everything runs</h2>
+  <p class="lede">The website and all shared data live on Cloudflare. The Google server is optional: it makes reading menus from websites and photos better, and if it's off every tool falls back to its built-in readers.</p>
+  <div class="mapbox">
+  <svg viewBox="0 0 1000 560" role="img" aria-label="System map: browser and customer connect to the Cloudflare Worker, which stores data in D1, calls outside services with team keys and reaches the Google Cloud server through a tunnel. This PC pushes code to GitHub, which deploys the Worker.">
+    <defs>
+      <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--muted)"/></marker>
+    </defs>
+    <!-- people -->
+    <rect x="20" y="50" width="190" height="82" rx="10" style="fill:var(--surface);stroke:var(--accent);stroke-width:2"/>
+    <text x="36" y="76" class="t-h">Your browser</text>
+    <text x="36" y="96" class="t-s">menuhauler.com</text>
+    <text x="36" y="114" class="t-xs">email code sign-in</text>
+    <rect x="20" y="150" width="190" height="72" rx="10" style="fill:var(--surface);stroke:var(--line);stroke-width:1.5"/>
+    <text x="36" y="176" class="t-h">Venue's customer</text>
+    <text x="36" y="196" class="t-s">/intake/&lt;token&gt; link</text>
+    <text x="36" y="212" class="t-xs">uploads menus, staff list</text>
+
+    <!-- cloudflare -->
+    <rect x="250" y="20" width="430" height="320" rx="14" style="fill:none;stroke:var(--cf);stroke-width:2;stroke-dasharray:6 4"/>
+    <text x="268" y="44" class="t-h" style="fill:var(--cf)">Cloudflare (free plan)</text>
+    <rect x="270" y="58" width="390" height="166" rx="10" style="fill:var(--soft);stroke:var(--line)"/>
+    <text x="288" y="84" class="t-h">Worker "menurunner"</text>
+    <text x="510" y="84" class="t-xs mono">relay-worker.js</text>
+    <text x="288" y="108" class="t-s">• serves the launcher + all six tools (public/)</text>
+    <text x="288" y="128" class="t-s">• sign-in, /admin, roles, blocking, activity log</text>
+    <text x="288" y="148" class="t-s">• /api/db shared records · /api/me · /api/fetch</text>
+    <text x="288" y="168" class="t-s">• /api/fc Firecrawl (monthly cap) · /api/claude</text>
+    <text x="288" y="188" class="t-s">• holds every API key, records spend</text>
+    <text x="288" y="208" class="t-s">• /api/server/* → Google server</text>
+    <rect x="270" y="250" width="390" height="74" rx="10" style="fill:var(--surface);stroke:var(--cf);stroke-width:1.5"/>
+    <text x="288" y="275" class="t-h">D1 database "oolio-tools"</text>
+    <text x="288" y="295" class="t-s">venues, organisations, menu versions, users,</text>
+    <text x="288" y="313" class="t-s">activity, settings, Claude costs, intake files</text>
+    <line x1="465" y1="224" x2="465" y2="248" style="stroke:var(--muted);stroke-width:1.5" marker-end="url(#ah)"/>
+
+    <!-- browser arrows -->
+    <line x1="210" y1="91" x2="268" y2="91" style="stroke:var(--muted);stroke-width:1.5" marker-end="url(#ah)"/>
+    <line x1="210" y1="186" x2="268" y2="186" style="stroke:var(--muted);stroke-width:1.5" marker-end="url(#ah)"/>
+
+    <!-- services -->
+    <rect x="730" y="20" width="250" height="320" rx="14" style="fill:var(--surface);stroke:var(--line);stroke-width:1.5"/>
+    <text x="748" y="46" class="t-h">Outside services</text>
+    <text x="748" y="64" class="t-xs">called with the team's keys</text>
+    <text x="748" y="94" class="t-s">Google Places</text><text x="962" y="94" class="t-xs" text-anchor="end">lookups</text>
+    <text x="748" y="122" class="t-s">ABN Lookup</text><text x="962" y="122" class="t-xs" text-anchor="end">ABN, legal name</text>
+    <text x="748" y="150" class="t-s">Firecrawl</text><text x="962" y="150" class="t-xs" text-anchor="end">hard websites</text>
+    <text x="748" y="178" class="t-s">Claude / Gemini</text><text x="962" y="178" class="t-xs" text-anchor="end">off until enabled</text>
+    <text x="748" y="206" class="t-s">Resend</text><text x="962" y="206" class="t-xs" text-anchor="end">sign-in emails</text>
+    <text x="748" y="234" class="t-s">Photo libraries</text><text x="962" y="234" class="t-xs" text-anchor="end">Pexels, Pixabay…</text>
+    <text x="748" y="262" class="t-s">Venue sites + apps</text><text x="962" y="262" class="t-xs" text-anchor="end">via /api/fetch</text>
+    <text x="748" y="290" class="t-xs">Hungry Hungry, me&amp;u/Mr Yum,</text>
+    <text x="748" y="306" class="t-xs">DoorDash, Uber Eats</text>
+    <line x1="660" y1="140" x2="728" y2="140" style="stroke:var(--muted);stroke-width:1.5" marker-end="url(#ah)"/>
+    <text x="694" y="132" class="lbl" text-anchor="middle">keys</text>
+
+    <!-- google vm -->
+    <rect x="250" y="400" width="430" height="140" rx="14" style="fill:var(--surface);stroke:var(--gc);stroke-width:2"/>
+    <text x="268" y="426" class="t-h" style="fill:var(--gc)">Google Cloud server (optional)</text>
+    <text x="268" y="446" class="t-xs">VM "menu-hauler-main", e2-small, Sydney · server.menuhauler.com</text>
+    <rect x="268" y="460" width="120" height="62" rx="8" style="fill:var(--soft);stroke:var(--line)"/>
+    <text x="328" y="486" class="t-s" text-anchor="middle">Gateway</text>
+    <text x="328" y="504" class="t-xs" text-anchor="middle">key check</text>
+    <rect x="410" y="460" width="252" height="62" rx="8" style="fill:var(--soft);stroke:var(--line)"/>
+    <text x="536" y="486" class="t-s" text-anchor="middle">Menu scraper + OCR</text>
+    <text x="536" y="504" class="t-xs" text-anchor="middle">menu-scraper/ · keeps no data</text>
+    <line x1="388" y1="491" x2="408" y2="491" style="stroke:var(--muted);stroke-width:1.5" marker-end="url(#ah)"/>
+    <line x1="465" y1="340" x2="465" y2="398" style="stroke:var(--gc);stroke-width:1.5;stroke-dasharray:4 3" marker-end="url(#ah)"/>
+    <text x="475" y="374" class="lbl" style="fill:var(--gc)">Cloudflare Tunnel</text>
+
+    <!-- this pc + github -->
+    <rect x="20" y="262" width="190" height="150" rx="10" style="fill:var(--surface);stroke:var(--pc);stroke-width:1.5"/>
+    <text x="36" y="288" class="t-h">This PC</text>
+    <text x="36" y="308" class="t-xs">Claude Code + source files</text>
+    <text x="36" y="328" class="t-xs">build_apps.py → public/</text>
+    <text x="36" y="346" class="t-xs">site-viewer (read-only data)</text>
+    <text x="36" y="364" class="t-xs">training/ → menu-knowledge.js</text>
+    <text x="36" y="382" class="t-xs">monthly menu scan task</text>
+    <text x="36" y="400" class="t-xs">parser agents</text>
+    <rect x="20" y="452" width="190" height="62" rx="10" style="fill:var(--surface);stroke:var(--pc);stroke-width:1.5"/>
+    <text x="36" y="478" class="t-h">GitHub (private)</text>
+    <text x="36" y="498" class="t-xs">POS-Migration-Tooling · main</text>
+    <line x1="115" y1="412" x2="115" y2="450" style="stroke:var(--muted);stroke-width:1.5" marker-end="url(#ah)"/>
+    <text x="124" y="436" class="lbl">git push</text>
+    <path d="M210 483 H232 V300 H268" style="fill:none;stroke:var(--muted);stroke-width:1.5" marker-end="url(#ah)"/>
+    <text x="238" y="390" class="lbl" transform="rotate(-90 238 390)" text-anchor="middle">auto-deploy 1–2 min</text>
+
+    <!-- claude.ai copy -->
+    <rect x="730" y="400" width="250" height="140" rx="14" style="fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:5 4"/>
+    <text x="748" y="426" class="t-h">claude.ai copy</text>
+    <text x="748" y="446" class="t-xs">"Oolio Menu Tools" artifact</text>
+    <text x="748" y="470" class="t-s">same tool code, own database</text>
+    <text x="748" y="490" class="t-s">viewer's own Firecrawl + Claude</text>
+    <text x="748" y="514" class="t-xs">republished by hand; move records</text>
+    <text x="748" y="530" class="t-xs">with Setup Tracker backup/restore</text>
+  </svg>
+  </div>
+  <div class="keys">
+    <span><i class="sw" style="border-color:var(--cf)"></i>Cloudflare: website, API, data</span>
+    <span><i class="sw" style="border-color:var(--gc)"></i>Google Cloud: optional reading server</span>
+    <span><i class="sw" style="border-color:var(--pc)"></i>Local: where changes are made</span>
+  </div>
+</section>
+
+<section>
+  <h2>A venue's path through the tools</h2>
+  <p class="lede">The launcher has a venue picker at the top. Pick a venue once and it flows into every tool (<code>venue-link.js</code>). The home hub walks each venue through four stages.</p>
+  <div class="journey">
+    <div class="step t-venues"><div class="n">Start</div><b>Venues</b><span>find or add the venue</span></div>
+    <div class="arrow">→</div>
+    <div class="step t-venue"><div class="n">Stage 1 · lookup</div><b>Restaurant Lookup</b><span>build its profile</span></div>
+    <div class="arrow">→</div>
+    <div class="step t-converter"><div class="n">Stage 2 · menu</div><b>Menu Converter</b><span>menu to Oolio CSV</span></div>
+    <div class="arrow">→</div>
+    <div class="step t-photos"><div class="n">Stage 3 · photos</div><b>Photo Finder</b><span>a photo per product</span></div>
+    <div class="arrow">→</div>
+    <div class="step t-setup"><div class="n">Stage 4 · checklist</div><b>Setup Tracker</b><span>setup to go-live</span></div>
+    <div class="side"><b style="color:var(--t-word)">Image to Word</b> sits beside the path and can be used at any time.</div>
+  </div>
+</section>
+
+<section>
+  <h2>The six tools</h2>
+  <p class="lede">All six ship in one page, the launcher, as banner tabs. Each card shows where the tool lives, what it can do, the steps it runs through and what it costs.</p>
+  <div class="tools">
+
+    <article class="tool t-venues">
+      <div class="tool-head"><div class="tile">Ve</div><div><h3>Venues</h3><div class="sub">Search the venues the team has already saved</div></div></div>
+      <div class="where"><span class="chip loc">Launcher tab 1</span><span class="chip mono">venue-search.js</span><span class="chip">reads D1 records</span></div>
+      <div><p class="lab">What it can do</p><ul>
+        <li>Search by name, organisation, suburb, ABN, legal name, owner, phone or email</li>
+        <li>Filter by stage, go-live soon, overdue steps and "mine"</li>
+        <li>Open a venue in any tool</li>
+        <li>Not found: add it, or send it to Restaurant Lookup</li>
+      </ul></div>
+      <div><p class="lab">How it works</p><div class="flow">
+        <span class="f">Type a search</span><span class="to">→</span><span class="f">Saved records <code>/api/db</code></span><span class="to">→</span><span class="f">Filters</span><span class="to">→</span><span class="f out">Active venue in every tool</span>
+      </div></div>
+      <div class="cost"><b>Cost:</b> free. It only reads saved records.</div>
+    </article>
+
+    <article class="tool t-venue">
+      <div class="tool-head"><div class="tile">RL</div><div><h3>Restaurant Lookup</h3><div class="sub">A venue profile from a name and a suburb</div></div></div>
+      <div class="where"><span class="chip loc">Launcher tab</span><span class="chip mono">restaurant-lookup.html</span><span class="chip">Worker calls Google, ABN, Firecrawl</span></div>
+      <div><p class="lab">What it can do</p><ul>
+        <li>Google listing, opening hours, reviews and website</li>
+        <li>ABN and legal name</li>
+        <li>POS and online-ordering tech the venue uses</li>
+        <li>Delivery-app links, plus a short Claude summary when AI is on</li>
+      </ul></div>
+      <div><p class="lab">How it works</p><div class="flow">
+        <span class="f">Name + suburb</span><span class="to">→</span><span class="f">Google Places</span><span class="to">→</span><span class="f">Website via <code>/api/fetch</code></span><span class="to">→</span><span class="f">ABN Lookup</span><span class="to">→</span><span class="f">Firecrawl last resort</span><span class="to">→</span><span class="f out">Saved venue profile</span>
+      </div></div>
+      <div class="cost"><b>Cost:</b> Google Places 1,000 free a month · ABN free · Firecrawl about 13–23 credits, only when nothing else works. Results cached 14 days.</div>
+    </article>
+
+    <article class="tool t-converter">
+      <div class="tool-head"><div class="tile">MC</div><div><h3>Menu Converter</h3><div class="sub">Menu Reader 2.0: any menu into the Oolio One import CSV</div></div></div>
+      <div class="where"><span class="chip loc">Launcher tab</span><span class="chip mono">menu-converter.html</span><span class="chip mono">menu-knowledge.js</span><span class="chip">server scraper + OCR</span></div>
+      <div><p class="lab">What it can do</p><ul>
+        <li>Read PDF, Word, Excel, photos and web addresses</li>
+        <li>"Find all menus": website, Hungry Hungry, me&amp;u/Mr Yum, DoorDash, Uber Eats</li>
+        <li><span class="new">New</span>Read IMPOS onboarding workbooks (MENU and FREE TEXT sheets)</li>
+        <li><span class="new">New</span>Read OrderMate exports: inactive items left out, pluses → "Add X", minuses → "No X", plus a modifier sheet (XLSX)</li>
+        <li><span class="new">New</span>Price lists as extra columns, from Oolio files or one OrderMate export per price level</li>
+        <li><span class="new">New</span>Takeaway / dine-in sizes split into a Takeaway price list; filler sizes dropped; kids items become a Kids Size (tick box)</li>
+        <li>Sort into categories, food/drink, printers, sizes and modifier groups</li>
+        <li>Pre-flight check, menu changes vs last version, spirit brands, standard option groups</li>
+        <li>Price editor, price request sheet, no-price override, session restore</li>
+      </ul></div>
+      <div><p class="lab">How it works</p><div class="flow">
+        <span class="f">Files, POS exports (Oolio, OrderMate, IMPOS) or web addresses</span><span class="to">→</span><span class="f">Built-in parsers</span><span class="or">or</span><span class="f">Server scraper + OCR</span><span class="or">or</span><span class="f">Firecrawl (capped)</span><span class="to">→</span><span class="f">Trained rules from ~220 venues</span><span class="to">→</span><span class="f">Review + checks</span><span class="to">→</span><span class="f out">Oolio import CSV</span>
+      </div></div>
+      <div class="note">"Check against the original" (AI flags differences between a photo and the list; it never fixes) is built but hidden until an API key is set.</div>
+      <div class="cost"><b>Cost:</b> free readers first · Firecrawl capped per search · AI only if the owner switches it on.</div>
+    </article>
+
+    <article class="tool t-photos">
+      <div class="tool-head"><div class="tile">PF</div><div><h3>Photo Finder</h3><div class="sub">A photo for every product on the menu</div></div></div>
+      <div class="where"><span class="chip loc">Launcher tab (in a frame)</span><span class="chip mono">photo-finder.html</span><span class="chip">browser + <code>/api/fetch</code></span></div>
+      <div><p class="lab">What it can do</p><ul>
+        <li>Take an Oolio product export and find one photo per product</li>
+        <li>Prefer the venue's own photos over stock</li>
+        <li>Fall back to free photo libraries</li>
+        <li>Save a folder or a ZIP, with a credits file for each photo</li>
+      </ul></div>
+      <div><p class="lab">How it works</p><div class="flow">
+        <span class="f">Product export</span><span class="to">→</span><span class="f">Venue's own: Hungry Hungry, website, Uber Eats, DoorDash</span><span class="to">→</span><span class="f">Pexels, Pixabay, Openverse, Wikimedia</span><span class="to">→</span><span class="f out">Folder or ZIP + credits</span>
+      </div></div>
+      <div class="cost"><b>Cost:</b> free libraries · DoorDash about 5 Firecrawl credits. Searches cached 14 days.</div>
+    </article>
+
+    <article class="tool t-setup">
+      <div class="tool-head"><div class="tile">ST</div><div><h3>Setup Tracker</h3><div class="sub">The Config Recap Checklist for each venue, through to go-live</div></div></div>
+      <div class="where"><span class="chip loc">Launcher tab</span><span class="chip mono">setup-tracker.html</span><span class="chip">records in D1</span></div>
+      <div><p class="lab">What it can do</p><ul>
+        <li>Steps, owners and due dates, with links to help.oolio.com guides</li>
+        <li><span class="new">New</span>Devices and printers read from a hardware diagram without AI, recognising everything on shop.oolio.com</li>
+        <li><span class="new">New</span>"Read with AI" tick box to send diagram pictures straight to Claude</li>
+        <li>Staff list, brand, Board view, organisations (groups of venues)</li>
+        <li>Go-live pack as a Word file</li>
+        <li>Customer intake link (30 days) and backup / restore of records</li>
+      </ul></div>
+      <div><p class="lab">How it works (hardware diagram)</p><div class="flow">
+        <span class="f">.drawio labels</span><span class="or">or</span><span class="f">Server OCR</span><span class="to">→</span><span class="f">Diagram rules + Oolio shop catalogue</span><span class="to">→</span><span class="f">Claude only if rules find nothing (or Read with AI is ticked)</span><span class="to">→</span><span class="f out">Device plan in the checklist</span>
+      </div></div>
+      <div class="cost"><b>Cost:</b> free.</div>
+    </article>
+
+    <article class="tool t-word">
+      <div class="tool-head"><div class="tile">IW</div><div><h3>Image to Word</h3><div class="sub">Photos, scans and PDFs into an editable Word file</div></div></div>
+      <div class="where"><span class="chip loc">Launcher tab</span><span class="chip mono">image-to-word.html</span><span class="chip">pdf.js for PDFs</span></div>
+      <div><p class="lab">What it can do</p><ul>
+        <li>Turn a photo or scan of a document into formatted text</li>
+        <li>Read PDFs page by page</li>
+        <li>Save a .docx you can edit</li>
+        <li><span class="new">New</span>"Read with AI" tick box (off by default). With AI on, text is grouped into headings, bullet lists and tables</li>
+      </ul></div>
+      <div><p class="lab">How it works</p><div class="flow">
+        <span class="f">Image or PDF</span><span class="to">→</span><span class="f">AI off: server OCR, else Tesseract in the browser</span><span class="or">or</span><span class="f">AI on: Claude, falling back to OCR</span><span class="to">→</span><span class="f out">.docx</span>
+      </div></div>
+      <div class="cost"><b>Cost:</b> free, unless Claude is switched on for you.</div>
+    </article>
+
+  </div>
+</section>
+
+<section>
+  <h2>Other pages on the website</h2>
+  <div class="pages">
+    <div class="pg"><b>Sign-in</b><code>/login</code><span>Anyone with an allowed email gets a 6-digit code.</span></div>
+    <div class="pg"><b>Admin</b><code>/admin</code><span>Owner and admins: people, roles, tool access, view-only, blocking, Firecrawl on/off, AI settings and spend, activity.</span></div>
+    <div class="pg"><b>Customer intake</b><code>/intake/&lt;token&gt;</code><span>Public. The venue's customer uploads menus, staff list and files. Lasts 30 days.</span></div>
+    <div class="pg"><b>Legal</b><code>/legal/</code><span>Public: privacy, terms and the other policy pages.</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>Helpers on this PC</h2>
+  <p class="lede">These don't touch the live site. They're for changing the software, checking data, or doing a job from chat in Claude Code.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Helper</th><th>What it does</th><th>How to use it</th></tr></thead>
+    <tbody>
+      <tr><td>build_apps.py</td><td>Rebuilds <code>apps.html</code> and everything in <code>public/</code> from the tool sources</td><td><code>python build_apps.py</code>, then push to main</td></tr>
+      <tr><td>site-viewer/</td><td>Read-only view of live data: users, venues, activity, AI spend</td><td><code>start.cmd</code> → http://127.0.0.1:8790</td></tr>
+      <tr><td>menu-scraper/</td><td>The scraper the server runs; can also run here on port 8787</td><td>venv in <code>%USERPROFILE%\.menu-scraper\venv</code></td></tr>
+      <tr><td>training/</td><td>Rebuilds the converter's rules from the team's finished pre-work</td><td><code>harvest.py</code> → <code>build_knowledge.py</code></td></tr>
+      <tr><td>menu-parser agent</td><td>Parses a menu into Oolio pre-work with the same rules</td><td>Ask Claude Code to "parse this menu"</td></tr>
+      <tr><td>hardware-parser agent</td><td>Reads a hardware diagram into the Setup Tracker hardware CSV</td><td>Ask Claude Code to read a hardware diagram</td></tr>
+      <tr><td>Monthly menu scan</td><td>Scheduled task that follows <code>menu-scan-task.md</code></td><td>1st of the month, 9am, while this PC and Claude are on</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Same tools, three places</h2>
+  <p class="lede"><code>hosted.js</code> translates what the tools ask for into the website's own API, so the tool code is identical everywhere. The website is the main home.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>The tool asks for</th><th>menuhauler.com</th><th>claude.ai copy</th><th>Local file (apps.html)</th></tr></thead>
+    <tbody>
+      <tr><td>Shared records</td><td><code>/api/db</code> → D1</td><td>the artifact's own database</td><td>browser storage, just you</td></tr>
+      <tr><td>Who you are</td><td><code>/api/me</code></td><td>claude.ai account</td><td class="na">not signed in</td></tr>
+      <tr><td>Firecrawl</td><td>team key, monthly cap</td><td>viewer's own connector</td><td class="na">not available</td></tr>
+      <tr><td>Fetching pages and photos</td><td><code>/api/fetch</code>, free</td><td>Claude browser or Firecrawl</td><td>direct only (many sites block it)</td></tr>
+      <tr><td>AI reading and summaries</td><td><code>/api/claude</code>, off unless enabled for you</td><td>viewer's own Claude usage</td><td>Tesseract and built-in parsers</td></tr>
+      <tr><td>Scraper + OCR server</td><td><code>/api/server/*</code> → Google server</td><td class="na">not available</td><td class="na">not available</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Who can do what</h2>
+  <div class="three">
+    <div><b>Owner</b>Everything. The only one who can make admins, change allowed domains, turn AI on and choose who may use it.</div>
+    <div><b>Admin</b>Opens <code>/admin</code> and manages members.</div>
+    <div><b>Member</b>Uses the tools. Can be limited to some tools, set to view-only, have Firecrawl off, or be blocked.</div>
+  </div>
+</section>
+
+<footer>Drawn from SYSTEM-GUIDE.md, the project notes and the commit history. Updated 17 November 2026. If this disagrees with the code, the code wins.</footer>
+</div>
+
+</body>
+</html>
