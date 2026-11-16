@@ -977,7 +977,8 @@ Double Shot=60</textarea></div>
 <div class="scroll" id="prev" style="display:none"></div>
 <div id="pf"></div>
 <div id="mchg"></div>
-<button id="dlc" disabled>Download CSV</button><button id="dlx" disabled>Download XLSX</button><button id="dlm" class="sec" disabled style="display:none">Modifier groups (CSV)</button><button id="dlom" class="sec" disabled style="display:none">OrderMate modifier sheet (XLSX)</button>
+<button id="dlc" disabled>Download CSV</button><button id="dlx" disabled>Download XLSX</button><button id="dlm" class="sec" disabled style="display:none">Modifier names &amp; prices (CSV)</button><button id="dlom" class="sec" disabled style="display:none">OrderMate modifier sheet (XLSX)</button>
+<label id="inaW" class="warn" style="display:none;margin-top:8px"><input type="checkbox" id="inaDl"> Also download the <b id="inaN">0</b> inactive OrderMate items as a separate sheet</label>
 <div class="warn">Modifiers are exported as Product Type “Modifier”. The modifier groups file lists each group with its modifiers, prices and linked products, so you can build the groups in Oolio.</div>
 </div>
 </main>
@@ -1587,7 +1588,7 @@ const MENU_KNOWLEDGE={"v":1,"tokens":{"aberlour":"22|5","agnes":"22|5","alize":"
 const OUTB=['Product ID','Product Name*','Product Type*','Product Group*','Reporting Group*','Category*','Variant Group','Variant Name','Measured By*','Default Value','Unit','POS Name','Kitchen Name','Printer Profiles','Description','Is Selling?','Print On Receipt?','Dietary Tags','Allergens','Available Location','Barcode','SKU','PLU','GTIN','Sell Price*','Sell Tax*','Recipe','Variable Pricing?','Min Pricing','Max Pricing','Image URL'];
 // price lists (Oolio Back Office → Items → Price Lists) go in as extra columns between GTIN and Sell Price*, one per list,
 // headed with the price list's name, the way Oolio's own product export has them
-let OUT=OUTB.slice(),PLS=[],PLCHK=[];
+let OUT=OUTB.slice(),PLS=[],PLCHK=[],INACT=[];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const clean=s=>String(s==null?'':s).replace(/ /g,' ').replace(/\s+/g,' ').trim();
@@ -2511,6 +2512,13 @@ function plainSizes(items,note){const n=new Map(),k=it=>N(it.catSrc||it.sub||it.
     if(!FILLER_SZ.test(v)&&N(v)!==N(it.catSrc))return;
     it.variation='';const nm=clean(String(it.name).replace(/\s*\bside of\b\s*$/i,''));if(nm)it.name=nm;if(note)note.plain=(note.plain||0)+1});
   return items}
+/* OrderMate's System State is ACTIVE or INACTIVE. Inactive items aren't sold any more, so they're left out of the import
+   (user's rule, 2026-11-16); they're kept in INACT for the optional "inactive items" sheet. */
+function omActive(t,items,keep){if(t.a.src!=='ordermate')return items;
+  return items.filter(it=>{if(!/^inactive$/i.test(clean(it.visible)))return true;if(keep)keep.push([it.name,it.catSrc||'',it.variation||'',it.price,t.file]);return false})}
+function saveInactive(){if(!INACT.length||!$('inaDl').checked)return;const wb=XLSX.utils.book_new(),sh=XLSX.utils.aoa_to_sheet([['Product','OrderMate group','Size','Price','File']].concat(INACT));
+  sh['!cols']=[{wch:34},{wch:22},{wch:18},{wch:9},{wch:28}];XLSX.utils.book_append_sheet(wb,sh,'Inactive items');
+  save(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),outName('xlsx','inactive items'))}
 const plKey=it=>N(it.name)+'|'+N(it.variation),plKeyC=it=>N(it.catSrc||it.sub||it.screen||it.section)+'|'+plKey(it);
 function plName(file,taken){let s=String(file||'').replace(/\.[a-z0-9]+$/i,'').replace(/\d{1,4}[-_.]\d{1,2}[-_.]\d{1,4}|\(\d+\)/g,' ')
     .replace(/(exp|export(ed)?)$/i,'').replace(/([a-z])([A-Z])/g,'$1 $2').replace(/[_-]+/g,' ')
@@ -3004,17 +3012,18 @@ function renderSources(){
   const c=$('clr');if(c)c.addEventListener('click',()=>{tables=[];catCfg={};PX={};npSig='';$('file').value='';forgetSession();renderSources();rebuild()});}
 
 function rebuild(){
-  readSettings();base=[];mods=[];const OMN=[];
-  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);r.items=plainSizes(omSplit(r.items,OMN),OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods);
+  readSettings();base=[];mods=[];const OMN=[];INACT=[];
+  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);r.items=omActive(t,r.items,INACT);r.items=plainSizes(omSplit(r.items,OMN),OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods);
     const el=$('ti'+t.id);if(el)el.textContent=t.doc?r.items.length+' menu lines'+(NOPRICE()?'':' with prices')+' read from the '+t.doc.how+(t.doc.ignored.length?', '+t.doc.ignored.length+' other lines not used (listed in Checks)':'')+'. Check names and prices against the original.':
       r.items.length+' products, '+r.mods.length+' modifiers read'+(t.a.marker?' (template examples above the “below this line” row were skipped)':'')+(t.a.pl&&t.a.pl.length?'. Price lists in it: '+t.a.pl.map(c=>c.name).join(', '):'')+'.';});
   // price lists: columns in Oolio files first, then files used as a price list
   PLS=[];PLCHK=[];base.forEach(it=>Object.keys(it.pl||{}).forEach(n=>{if(!PLS.includes(n))PLS.push(n)}));
   const byC=new Map(),byK=new Map();base.forEach(it=>{if(!byC.has(plKeyC(it)))byC.set(plKeyC(it),it);if(!byK.has(plKey(it)))byK.set(plKey(it),it)});
+  if(INACT.length)PLCHK.push({msg:'items are set to INACTIVE in OrderMate (System State), so they were left out of the import. Tick “Also download the inactive items” in step 7 for a sheet of them.',list:INACT.map(x=>x[0]+(x[2]?' ('+x[2]+')':'')+(x[1]?' – '+x[1]:'')),info:true});
   if(OMN.split)PLCHK.push({msg:'Sizes with the order type in them (“Regular TAKEAWAY”, “Dine-In”, “Large Dine-In”) were split: '+OMN.split+' items now have plain sizes, with the dine-in price as the menu price and the TAKEAWAY price in the “'+OM_TAKE+'” price list.',list:[],info:true});
   if(OMN.plain)PLCHK.push({msg:OMN.plain+' items had a filler size (“Serve”, “SIDE OF”, “Retail”…) as their only size, which OrderMate needs but Oolio doesn’t. The size was removed so they are plain products.',list:[],info:true});
   if(OMN.length)PLCHK.push({msg:'sizes are only sold as takeaway, so their takeaway price is also used as the menu price. Check these with the venue.',list:OMN.slice()});
-  tables.forEach(t=>{if(!t.on||!t.a||!t.pl)return;const n=t.pl,r=extract(t),miss=[],seen=new Set();r.items=plainSizes(omSplit(r.items));if(!PLS.includes(n))PLS.push(n);let hit=0,same=0;
+  tables.forEach(t=>{if(!t.on||!t.a||!t.pl)return;const n=t.pl,r=extract(t),miss=[],seen=new Set();r.items=omActive(t,r.items);r.items=plainSizes(omSplit(r.items));if(!PLS.includes(n))PLS.push(n);let hit=0,same=0;
     r.items.forEach(x=>{const it=byC.get(plKeyC(x))||byK.get(plKey(x));const lab=x.name+(x.variation?' ('+x.variation+')':'')+(x.price?' $'+x.price:'');
       if(!it){miss.push(lab);return}if(x.price===''||seen.has(it))return;seen.add(it);(it.pl=it.pl||{})[n]=x.price;hit++;if(+x.price===+it.price)same++});
     t.info={items:[],mods:[]};const el=$('ti'+t.id);
@@ -3240,7 +3249,7 @@ function convert(){
   return{rows,nP,nV,nM,nG,nS:preList.length,checks,genMods,preMods,pre:preR,om};}
 
 function run(){
-  if(!tables.length){$('npfix').innerHTML='';npSig='';$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm','dlom'].forEach(i=>$(i).disabled=true);$('dlm').style.display=$('dlom').style.display='none';return}
+  if(!tables.length){$('npfix').innerHTML='';npSig='';$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm','dlom'].forEach(i=>$(i).disabled=true);$('dlm').style.display=$('dlom').style.display=$('inaW').style.display='none';return}
   readSettings();res=convert();
   // new menu: tick the presets that match it, except ones off by default or already in the files
   // and the ones the venue's type uses (Setup Tracker → Venue type), even if they're normally off
@@ -3250,6 +3259,7 @@ function run(){
   $('q').style.display='block';renderPrev();
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
   const hasM=mods.length||res.genMods.length||res.preMods.length||res.om.mods.length;$('dlom').style.display=res.om.rows.length?'inline-block':'none';$('dlom').disabled=!res.om.rows.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
+  $('inaW').style.display=INACT.length?'block':'none';$('inaN').textContent=INACT.length;
   renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();saveSession();}
 
 /* ---------------- Claude's check (step 6) ----------------
@@ -3573,9 +3583,9 @@ function announce(file){if(!res)return;const ix=h=>OUT.indexOf(h),iN=ix('Product
     items:res.rows.filter(r=>r[iT]==='Product').map(r=>[r[iN],r[iC],r[iV]||'',r[iS]===''?'':+r[iS]]).slice(0,1500),
     sources:tables.filter(t=>t.on&&t.a&&t.a.kind!=='modifiers').map(t=>t.srcLabel||t.file),
     urls:FA.okUrls&&FA.okUrls.length&&tables.some(t=>t.on&&t.srcLabel)?FA.okUrls.slice():[]}}));}
-$('dlc').addEventListener('click',()=>{if(!pfGo())return;const n=outName('csv','Oolio One import');save(new Blob(['﻿'+csv([OUT].concat(res.rows))],{type:'text/csv;charset=utf-8'}),n);announce(n)});
+$('dlc').addEventListener('click',()=>{if(!pfGo())return;const n=outName('csv','Oolio One import');save(new Blob(['﻿'+csv([OUT].concat(res.rows))],{type:'text/csv;charset=utf-8'}),n);announce(n);saveInactive()});
 $('dlx').addEventListener('click',()=>{if(!pfGo())return;const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([OUT].concat(res.rows)),'in');
-  const n=outName('xlsx','Oolio One import');save(new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),n);announce(n)});
+  const n=outName('xlsx','Oolio One import');save(new Blob([XLSX.write(wb,{type:'array',bookType:'xlsx'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),n);announce(n);saveInactive()});
 $('dlm').addEventListener('click',()=>{const r=[['Modifier Group','Modifier','Price','Required?','Maximum','Linked Product(s)']];
   mods.forEach(o=>r.push([o.group,o.name,o.price||'0',o.g?o.g.required:'',o.g?o.g.max:'',o.g?o.g.linked:'']));
   const lk=new Map();res.genMods.forEach(o=>{const k=o.group+'|'+o.name;if(!lk.has(k))lk.set(k,{...o,links:new Set()});lk.get(k).links.add(o.linked)});
