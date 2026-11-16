@@ -2229,7 +2229,7 @@ function knowKey(s){s=String(s||'').toLowerCase()
   .replace(/\b\d+(\.\d+)?\s?(ml|l|lt|oz|g|kg|cl|"|inch|in|pc|pcs|pce|pieces?)\b/g,' ')
   .replace(/\b(gfo?|vgo?|veo?|vo|dfo?|nfo?|v|gf|df|vg|ve|h|halal)\b\s*$/,' ')
   .replace(/^\s*(\d+[.)]|[a-z]\d+[.)]?|#\d+)\s+/,' ').replace(/[’']/g,'').replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ')
-  .replace(/\b(sml|small|reg|regular|med|medium|lrg|large|lge|ta|t a|takeaway|take away|dine in|glass|bottle|btl|can|cup|mug|jug|pint|pot|schooner|middy|nip|single|double|dbl)\s*$/,' ');
+  .replace(/\b(sml|small|reg|regular|med|medium|lrg|large|lge|ta|t a|takeaway|take away|dine in|glass|bottle|btl|can|cup|mug|jug|pint|pot|schooner|middy|nip|single|double|dbl|triple|jumbo|mega|tiny|mini|kids?|kids size|junior)\s*$/,' ');
   return s.replace(/\s+/g,' ').trim()}
 const knRG=g=>g==='B'?'Beverage':g==='F'?'Food':'';
 // {cat, rg, pr, how:'name'|'word'} or null
@@ -2478,16 +2478,20 @@ const mLabel=k=>k==='volume'?S.mVol:k==='weight'?S.mWt:S.mUnit;
 const mUnit=k=>k==='volume'?S.mVolU:k==='weight'?S.mWtU:'';
 
 /* ---------------- variant & modifier group detection ---------------- */
-const SZ=/^(extra[- ]large|x-?large|xxl|xl|small|sml?|medium|med|large|lg|regular|reg|mini|tall|short|grande|venti|jumbo|cup|mug|bowl|single|double|triple|half|full|kids?|pint|schooner|middy|pot|jug|pitcher|carafe|glass|bottle|can|shot|nip)$/i;
-const isSize=v=>SZ.test(v)||/^\d+(\.\d+)?\s*(ml|l|lt|ltr|oz|g|gm|kg|inch|in|"|cm|pcs?|pieces?|pack)$/i.test(v)||/\b(glass|bottle|pint|schooner|middy|pot|jug|pitcher|carafe|can|cup|bowl|half|full|dozen|rack|order|serve|shot|nip|small|medium|large|regular|piece|pieces)\b/i.test(v);
+const SZ=/^(extra[- ]large|x-?large|xxl|xl|extra[- ]small|x-?small|xs|small|sml?|medium|med|large|lg|regular|reg|standard|mini|tiny|petite|tall|short|grande|venti|jumbo|mega|giant|king|king size|family|sharing|share|snack|single|double|triple|quad|half|full|whole|footlong|kids?|kids? size|kid'?s|kid'?s size|children'?s|child|child'?s|junior|jnr|(single|double|triple) shot|pint|schooner|middy|pot|jug|pitcher|carafe|glass|bottle|can|shot|nip)$/i;
+/* one spelling per size, so "kids", "Kid's" and "Junior" all end up as the same variant: "Kids Size" (user's rule, North & Eight) */
+const KIDSZ=/^(kids?|kid'?s|children'?s|child|child'?s|junior|jnr)( size)?$/i;
+const sizeName=v=>{const t=clean(String(v||''));if(KIDSZ.test(t))return'Kids Size';
+  return({sml:'Small',sm:'Small',reg:'Regular',med:'Medium',lge:'Large',lrg:'Large',lg:'Large',xl:'Extra Large','x-large':'Extra Large',xs:'Extra Small','x-small':'Extra Small'})[t.toLowerCase()]||cap(t.toLowerCase())};
+const isSize=v=>SZ.test(v)||/^\d+(\.\d+)?\s*(ml|l|lt|ltr|oz|g|gm|kg|inch|in|"|cm|pcs?|pieces?|pack)$/i.test(v)||/\b(glass|bottle|pint|schooner|middy|pot|jug|pitcher|carafe|can|cup|bowl|half|full|dozen|rack|order|serve|shot|nip|small|medium|large|regular|piece|pieces|jumbo|mega|tiny|mini|petite|kids?|kid'?s|junior|size)\b/i.test(v);
 const FLAVB=/^(milkshakes?|shakes?|thickshakes?|smoothies?|frapp[eé]s?|frappuccinos?|juices?|syrups?|flavou?r shots?|gelatos?|sorbets?|ice creams?|iced teas?|slush(y|ies)|spiders?|floats?|lemonades?|kombuchas?)$/i;
 const mgName=b=>b+(FLAVB.test(b)||/shake|smoothie|syrup|flavou?r|gelato|sorbet|ice cream|juice|soda/i.test(b)?' Flavours':' Options');
 function splitSize(name){
   const t=name.replace(/[()]/g,' ').replace(/ [-–:] /g,' ').split(' ').filter(Boolean);
   for(const k of [2,1]){if(t.length>k){
     const a=t.slice(0,k).join(' '),b=t.slice(-k).join(' ');
-    if(SZ.test(a))return{base:t.slice(k).join(' '),size:cap(a)};
-    if(SZ.test(b))return{base:t.slice(0,-k).join(' '),size:cap(b)};}}
+    if(SZ.test(a))return{base:t.slice(k).join(' '),size:sizeName(a)};
+    if(SZ.test(b))return{base:t.slice(0,-k).join(' '),size:sizeName(b)};}}
   return null;}
 const uniq=a=>new Set(a.map(x=>x.v.toLowerCase())).size===a.length;
 // variant groups are shared by drink type, as in Oolio set-ups: Coffee Sizes, Wine Sizes, Beer Sizes
@@ -2535,7 +2539,7 @@ function applyGroups(items,gs){
     else if(g.type==='file'){it.name=it.name+' - '+mb.v;it.variation=''}})});}
 
 /* ---------------- state ---------------- */
-let tables=[],base=[],mods=[],vg=[],catCfg={},res=null,dropped=[],merged=[],deliveryOnly=[];
+let tables=[],base=[],mods=[],vg=[],catCfg={},res=null,dropped=[],merged=[],deliveryOnly=[],kidsMerged=[];
 let PX={},npSig='';// prices typed in step 6 for items with none
 const S={};
 function readSettings(){S.tax=clean($('tax').value)||'GST';S.free=clean($('taxfree').value)||'GST Free';S.pgrp=clean($('pgrp').value);S.comb=$('comb').checked;
@@ -2601,10 +2605,39 @@ function prep(){
     it.cat=clean(cs)||(it.sub?(S.comb?lsCat(it.sub,it.screen):it.sub):it.screen)||it.section||'';});
   mergeSources();
   mergeSizeCats();
+  mergeKids();
   regroup();
   base=base.filter(it=>{const k=[it.name,it.cat,it.variation,it.price].map(x=>String(x).toLowerCase()).join('|');if(seen.has(k)){dropped.push(it);return false}seen.set(k,1);return true});
   const cnt=new Map();base.forEach(it=>{const k=it.name.toLowerCase()+'|'+it.cat.toLowerCase();cnt.set(k,(cnt.get(k)||0)+1)});
   base.forEach(it=>{if(it.variation&&cnt.get(it.name.toLowerCase()+'|'+it.cat.toLowerCase())===1){it.vhint=it.variation;it.variation=''}});}
+
+/* Kids sizes: venues often list the kids version of a drink in a Kids Menu category ("Milkshake Chocolate" $6) or as
+   "Kids Hot Chocolate", apart from the Regular / Large product. That's the same product in a smaller size, so it
+   becomes a "Kids Size" variant of the product it matches (user's rule, North & Eight 2026-11-16). Matching ignores word
+   order and the kids word; a shorter kids name matches a longer one ("Green Patch" → "Green Patch Kale Juice") when only
+   one product fits. Items with no adult match (kids meals, Babychino) stay as they are. */
+const KIDCAT=/\b(kids?|kid'?s|children'?s?|child|junior|little ones?|bambini)\b/i;
+const KIDNM=/^(kids?|kid'?s|children'?s|child'?s?|junior|jnr)\s+|\s+(kids?|kid'?s|junior)( size)?$|\s*\((kids?|kid'?s|junior)( size)?\)/i;
+const KIDGEN=new Set(['juice','smoothie','shake','milkshake','thickshake','drink','frappe','frappé','cup','glass']);
+function mergeKids(){kidsMerged=[];
+  const W=t=>new Set(String(t).toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9 ]+/g,' ').split(' ').filter(w=>w&&w!=='and'&&w!=='the'));
+  const kid=it=>!it.mod&&!it.variation&&it.name&&(KIDCAT.test(it.cat)||KIDNM.test(it.name));
+  const adults=new Map();
+  base.forEach(it=>{if(it.mod||!it.name||KIDCAT.test(it.cat)||KIDNM.test(it.name))return;const sp=!it.variation&&splitSize(it.name);
+    const b=sp&&sp.base?sp.base:it.name,k=b.toLowerCase()+'|'+it.cat.toLowerCase();
+    if(!adults.has(k))adults.set(k,{b,cat:it.cat,w:W(b),mem:[]});adults.get(k).mem.push(it)});
+  const A=[...adults.values()];
+  base.forEach(it=>{if(!kid(it))return;const nm=clean(it.name.replace(KIDNM,' ')),w=W(nm);if(!w.size)return;
+    const same=(a,b)=>a.size===b.size&&[...a].every(x=>b.has(x)),sub=(a,b)=>a.size<b.size&&[...a].every(x=>b.has(x));
+    let m=A.filter(a=>same(w,a.w));
+    if(!m.length)m=A.filter(a=>sub(w,a.w)&&(w.size>=2||[...a.w].filter(x=>!w.has(x)).every(x=>KIDGEN.has(x))));
+    if(m.length!==1)return;const a=m[0];if(a.mem.some(x=>N(x.variation)==='kidssize'))return;
+    const from=it.name+' ('+(it.cat||'no category')+')';
+    if(a.mem.some(x=>x.variation)){it.name=a.mem[0].name;it.variation='Kids Size'}
+    else if(a.mem.length===1&&N(a.mem[0].name)===N(a.b)){it.name=a.mem[0].name;it.variation='Kids Size';a.mem[0].variation='Regular'}
+    else it.name='Kids '+a.b;
+    it.cat=a.cat;it.catSrc=a.mem[0].catSrc;a.mem.push(it);
+    kidsMerged.push(from+' → Kids Size of '+a.b+(it.price?' $'+it.price:''))})}
 
 /* Beers entered once per size category ("Coast P" under Pints, "Coast S" under Schooner)
    become one product with size variants in a single "Tap Beer" category. */
@@ -3384,6 +3417,7 @@ function convert(){
   chk('barcodes or GTINs were not valid numbers and were left blank.',badCodes);
   chk('items are measured by volume or weight. Check that these are right.',vol,true);
   chk('duplicate rows (same name, category, size and price) were removed.',dropped.map(i=>i.name+' ('+(i.cat||'no category')+')'),true);
+  chk('kids items match a product on the main menu, so they became its “Kids Size” variant instead of a product of their own.',kidsMerged,true);
   chk('items were on more than one menu source and were merged into one. The kept version is shown first; check none of these are really different items.',merged,true);
   chk('items were only found on a delivery app. Delivery apps often charge more than the venue does in store, so check these prices with the venue.',deliveryOnly);
   chk('items have a price of 0. Check that this is right.',items.filter(i=>i.price==='0').map(i=>i.name),true);
