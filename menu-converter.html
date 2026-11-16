@@ -1816,7 +1816,7 @@ function omPlan(items,catName,rgOf){const P=new Map(),G=new Map();
   return{rows,groups:[...G.values()],mods}}
 function convert(){
   {const i=OUTB.indexOf('Sell Price*');PLS=PLS.map(n=>OUTB.some(h=>N(h)===N(n))?n+' (price list)':n);OUT=OUTB.slice(0,i).concat(PLS,OUTB.slice(i))}
-  const plv=(o,n)=>{if(!o.pl)return null;const v=o.pl[n]!=null?o.pl[n]:o.pl[n.replace(/ \(price list\)$/,'')];return v!=null?v:null};
+  const plv=(o,n)=>{if(!o.pl)return null;const v=o.pl[n]!=null&&o.pl[n]!==''?o.pl[n]:o.pl[n.replace(/ \(price list\)$/,'')];return v!=null&&v!==''?v:null};
   const items=base.map(o=>({...o}));applyGroups(items,vg);
   items.forEach(it=>{if(it._np&&PX[it._k]!=null&&PX[it._k]!=='')it.price=PX[it._k]});
   const rows=[],checks=[],chk=(msg,list,info)=>{if(list.length)checks.push({msg,list,info})};
@@ -1837,7 +1837,8 @@ function convert(){
     r['Available Location']=o.location||'';
     if(type!=='Variant'){r['Barcode']=code(o.barcode,o);r['GTIN']=code(o.gtin,o);r['SKU']=o.sku||'';r['PLU']=o.plu||''}
     r['Sell Price*']=x.price!=null?x.price:(o.price===''?'0':o.price);r['Sell Tax*']=taxOf(o.tax);
-    if(type==='Product'&&x.price==null)PLS.forEach(n=>{const v=plv(o,n);r[n]=v!=null?v:''});
+    // a price list with no price for this item uses the sell price (user's rule), listed in the checks
+    if(type==='Product')PLS.forEach(n=>{const v=x.price==null?plv(o,n):null;r[n]=v!=null&&v!==''?v:r['Sell Price*']});
     r['Variable Pricing?']=yn(o.varp||'');r['Min Pricing']=o.minp||'';r['Max Pricing']=o.maxp||'';r['Image URL']=o.image||'';
     // stray line breaks, tabs and double spaces break CSV rows and POS buttons
     return OUT.map(h=>typeof r[h]==='string'?r[h].replace(/[\r\n\t]+/g,' ').replace(/ {2,}/g,' ').trim():r[h])};
@@ -1889,7 +1890,7 @@ function convert(){
   chk('items have a price of 0. Check that this is right.',items.filter(i=>i.price==='0').map(i=>i.name),true);
   tables.forEach(t=>{if(t.on&&t.doc&&t.doc.ignored.length)checks.push({msg:'lines in “'+t.file+'” were not read as menu items (headings with no items, notes, opening hours, items with no price). Add any real items by hand.',list:t.doc.ignored,info:true})});
   tables.forEach(t=>{if(t.on&&t.a&&!t.pl&&t.info&&!t.info.items.length&&!t.info.mods.length)checks.push({msg:'“'+t.file+(t.sheet?' › '+t.sheet:'')+'” has no rows to convert'+(t.a.marker?'. It looks like an empty pre-work template.':'.'),list:[]})});
-  PLS.forEach(n=>chk('items have no “'+n+'” price, so that column is left blank for them. Fill it in if their '+n+' price is different.',items.filter(i=>i.modOf==null&&plv(i,n)==null).map(i=>i.name+(i.variation?' ('+i.variation+')':'')),true));
+  PLS.forEach(n=>chk('items have no “'+n+'” price, so their “'+n+'” price is set to the default sell price. Change it if their '+n+' price is different.',items.filter(i=>i.modOf==null&&plv(i,n)==null).map(i=>i.name+(i.variation?' ('+i.variation+')':'')),true));
   checks.push(...PLCHK);
   if(om.rows.length)checks.push({msg:'OrderMate pluses and minuses: '+om.mods.length+' Add / No modifiers in '+om.groups.length+' suggested groups, for '+om.rows.length+' products. Download the OrderMate modifier sheet (step 6) for which products need which groups.'+(om.rows.some(r=>r.plus.size&&!r.add.size)?' The export only names the plus groups (“'+[...new Set(om.rows.flatMap(r=>[...r.plus]))].join('”, “')+'”), not what’s in them, so add those items to the Additions groups by hand.':''),list:[],info:true});
   chk('standard option groups were added in step 5. Check the options and prices with the venue.',preList,true);
