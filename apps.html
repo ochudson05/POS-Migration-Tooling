@@ -49,6 +49,10 @@ button:disabled{opacity:.4;cursor:not-allowed}
 .two{display:grid;gap:8px;grid-template-columns:1fr auto;margin:6px 0}
 .ck{display:flex;gap:8px;align-items:center;color:var(--text);margin:0}
 .ck input{width:auto}
+.kidbox{border:2px solid var(--accent);border-radius:10px;padding:10px 12px;margin:0 0 12px}
+.kidbox .ck input{width:18px;height:18px}
+.kidmsg{color:var(--muted);font-size:.85rem;margin:6px 0 0 26px}
+.kidmsg ul{margin:4px 0 0;padding-left:18px;max-height:140px;overflow:auto}
 #vg{max-height:460px;overflow:auto;margin-bottom:10px}
 .scroll{overflow:auto;max-height:440px;border:1px solid var(--line);border-radius:8px;margin:10px 0}
 table{border-collapse:collapse;width:100%;font-size:.8rem}
@@ -951,6 +955,8 @@ Double Shot=60</textarea></div>
 <div class="card" id="vcard" style="display:none">
 <h2>4. Variants &amp; modifier groups</h2>
 <div class="warn" style="margin:0 0 10px">Variants are for sizes only (Small / Medium / Large Latte, Pint / Schooner). Anything else becomes one product with a modifier group: Vanilla, Chocolate and Strawberry Milkshake become a Milkshake product with a “Milkshake Flavours” group. When options cost different amounts, the product takes the lowest price and each modifier adds the difference. Change how any group is handled, rename the product or the group, or add a group by keyword.</div>
+<div id="kidbox" class="kidbox"><label class="ck"><input type="checkbox" id="kidsz" checked><b>Kids sizes: make kids items a “Kids Size” variant of the main product</b></label>
+<div id="kidmsg" class="kidmsg"></div></div>
 <label class="ck" style="margin:0 0 10px"><input type="checkbox" id="flavvar">Override: make flavours variants too, not just sizes (Chocolate, Vanilla and Strawberry Milkshake become variants of a Milkshake product in a “Milkshake Flavours” variant group). Off by default.</label>
 <div id="vg"></div>
 <div class="two"><input id="kw" placeholder="Make a modifier group by keyword, e.g. milkshake"><button id="kwb" type="button" class="sec" style="margin:0">Add group</button></div>
@@ -2459,6 +2465,7 @@ function prep(){
   mergeSources();
   mergeSizeCats();
   mergeKids();
+  base.forEach(it=>{it.name=properName(it.name);if(it.variation)it.variation=properName(it.variation)});
   regroup();
   base=base.filter(it=>{const k=[it.name,it.cat,it.variation,it.price].map(x=>String(x).toLowerCase()).join('|');if(seen.has(k)){dropped.push(it);return false}seen.set(k,1);return true});
   const cnt=new Map();base.forEach(it=>{const k=it.name.toLowerCase()+'|'+it.cat.toLowerCase();cnt.set(k,(cnt.get(k)||0)+1)});
@@ -2469,9 +2476,18 @@ function prep(){
    becomes a "Kids Size" variant of the product it matches (user's rule, North & Eight 2026-11-16). Matching ignores word
    order and the kids word; a shorter kids name matches a longer one ("Green Patch" → "Green Patch Kale Juice") when only
    one product fits. Items with no adult match (kids meals, Babychino) stay as they are. */
+/* Item names get a capital on every word before export: "Bacon on side" → "Bacon On Side", "PUPPY CINO" → "Puppy Cino"
+   (user's rule, 2026-11-16). Short all-caps words stay (BLT, IPA, GF), as do words with capitals inside (McFlurry) and
+   anything starting with a number (300ml, 2x). */
+function properName(s){return String(s||'').split(/([\s\-\/(]+)/).map(w=>{if(!w||/^[\s\-\/(]+$/.test(w)||/^\W*\d/.test(w))return w;
+  const L=w.replace(/[^A-Za-z]/g,'');if(!L)return w;
+  if(L===L.toUpperCase())return L.length<=3?w:w.replace(/[A-Za-z][A-Za-z']*/,x=>x[0]+x.slice(1).toLowerCase());
+  if(/[A-Z]/.test(L.slice(1)))return w.replace(/[A-Za-z]/,c=>c.toUpperCase());
+  return w.replace(/[A-Za-z]/,c=>c.toUpperCase())}).join('')}
 const KIDCAT=/\b(kids?|kid'?s|children'?s?|child|junior|little ones?|bambini)\b/i;
 const KIDNM=/^(kids?|kid'?s|children'?s|child'?s?|junior|jnr)\s+|\s+(kids?|kid'?s|junior)( size)?$|\s*\((kids?|kid'?s|junior)( size)?\)/i;
 const KIDGEN=new Set(['juice','smoothie','shake','milkshake','thickshake','drink','frappe','frappé','cup','glass']);
+const KIDSON=()=>{const e=document.getElementById('kidsz');return!e||e.checked};
 function mergeKids(){kidsMerged=[];
   const W=t=>new Set(String(t).toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9 ]+/g,' ').split(' ').filter(w=>w&&w!=='and'&&w!=='the'));
   const kid=it=>!it.mod&&!it.variation&&it.name&&(KIDCAT.test(it.cat)||KIDNM.test(it.name));
@@ -2486,6 +2502,7 @@ function mergeKids(){kidsMerged=[];
     if(!m.length)m=A.filter(a=>sub(w,a.w)&&(w.size>=2||[...a.w].filter(x=>!w.has(x)).every(x=>KIDGEN.has(x))));
     if(m.length!==1)return;const a=m[0];if(a.mem.some(x=>N(x.variation)==='kidssize'))return;
     const from=it.name+' ('+(it.cat||'no category')+')';
+    if(!KIDSON()){kidsMerged.push(from+' → would be the Kids Size of '+a.b+(it.price?' $'+it.price:''));return}
     if(a.mem.some(x=>x.variation)){it.name=a.mem[0].name;it.variation='Kids Size'}
     else if(a.mem.length===1&&N(a.mem[0].name)===N(a.b)){it.name=a.mem[0].name;it.variation='Kids Size';a.mem[0].variation='Regular'}
     else it.name='Kids '+a.b;
@@ -3047,7 +3064,7 @@ function renderSources(){
 
 function rebuild(){
   readSettings();base=[];mods=[];const OMN=[];INACT=[];
-  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);r.items=omActive(t,r.items,INACT);r.items=plainSizes(omSplit(r.items,OMN),OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods);
+  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);r.items=omActive(t,r.items,INACT);r.items=plainSizes(omSplit(r.items,OMN),OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods.map(m=>(m.name=properName(m.name),m)));
     const el=$('ti'+t.id);if(el)el.textContent=t.doc?r.items.length+' menu lines'+(NOPRICE()?'':' with prices')+' read from the '+t.doc.how+(t.doc.ignored.length?', '+t.doc.ignored.length+' other lines not used (listed in Checks)':'')+'. Check names and prices against the original.':
       r.items.length+' products, '+r.mods.length+' modifiers read'+(t.a.marker?' (template examples above the “below this line” row were skipped)':'')+(t.a.pl&&t.a.pl.length?'. Price lists in it: '+t.a.pl.map(c=>c.name).join(', '):'')+'.';});
   // price lists: columns in Oolio files first, then files used as a price list
@@ -3270,7 +3287,7 @@ function convert(){
   chk('barcodes or GTINs were not valid numbers and were left blank.',badCodes);
   chk('items are measured by volume or weight. Check that these are right.',vol,true);
   chk('duplicate rows (same name, category, size and price) were removed.',dropped.map(i=>i.name+' ('+(i.cat||'no category')+')'),true);
-  chk('kids items match a product on the main menu, so they became its “Kids Size” variant instead of a product of their own.',kidsMerged,true);
+  if(KIDSON())chk('kids items match a product on the main menu, so they became its “Kids Size” variant instead of a product of their own. Untick “Kids sizes” in step 4 to keep a separate kids menu.',kidsMerged,true);
   chk('items were on more than one menu source and were merged into one. The kept version is shown first; check none of these are really different items.',merged,true);
   chk('items were only found on a delivery app. Delivery apps often charge more than the venue does in store, so check these prices with the venue.',deliveryOnly);
   chk('items have a price of 0. Check that this is right.',items.filter(i=>i.price==='0').map(i=>i.name),true);
@@ -3295,7 +3312,10 @@ function run(){
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
   const hasM=mods.length||res.genMods.length||res.preMods.length||res.om.mods.length;$('dlom').style.display=res.om.rows.length?'inline-block':'none';drawOM();$('dlom').disabled=!res.om.rows.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
   $('inaW').style.display=INACT.length?'block':'none';$('inaN').textContent=INACT.length;
-  renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();saveSession();}
+  renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();drawKids();saveSession();}
+function drawKids(){const on=KIDSON(),n=kidsMerged.length,el=$('kidmsg');if(!el)return;
+  el.innerHTML=(on?'On: Milkshake Chocolate on the kids menu becomes the Kids Size of Chocolate Milkshake, next to Regular and Large. ':'Off: kids items stay as their own products on the kids menu. ')+
+    (on?'Untick it for venues that want a separate kids menu.':'Tick it to merge them into the main products.')+(n?'<details><summary>'+n+' kids item'+(n===1?'':'s')+(on?' merged':' would be merged')+'</summary><ul>'+kidsMerged.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>':' No kids items on this menu match a main-menu product.')}
 
 /* ---------------- Claude's check (step 6) ----------------
    The finished list goes to the cheaper "small jobs" model (chosen on /admin), item by item, with what ~220 venues'
@@ -3675,6 +3695,7 @@ $('scard').insertAdjacentHTML('beforeend','<div class="warn" style="margin:12px 
 $('setrst').addEventListener('click',resetSettings);
 $('noprice').addEventListener('change',reReadNP);
 $('flavvar').addEventListener('change',toggleFlavVar);
+$('kidsz').addEventListener('change',()=>{rebuild();if(window.mhToast)window.mhToast($('kidsz').checked?'Kids items are Kids Size variants again.':'Kids items stay on their own kids menu.')});
 (function(){const ov=document.createElement('div');ov.id='dropov';ov.innerHTML='<div>Drop menu files to add them</div>';document.body.appendChild(ov);
   let n=0,pn=0;const vis=()=>$('file').offsetParent!==null,hasF=e=>!!(e.dataTransfer&&[...e.dataTransfer.types].includes('Files'));
   document.addEventListener('dragenter',e=>{if(!hasF(e)||!vis())return;n++;ov.classList.add('on')});
