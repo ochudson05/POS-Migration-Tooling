@@ -647,7 +647,7 @@ window.__stDiagRules={dgRead,dgDrawio};
 function profileList(o){const fromDev=(o.devices||[]).map(d=>clean(d.profile)).filter(Boolean),typed=val(o,'prof-split','list').split(/\s*,\s*/).filter(Boolean);return[...new Set(typed.concat(fromDev))]}
 function diagramPanel(o){const d=o.diagram;
   return '<div class="st-check"><b>Read the diagram</b>: upload the site map (image, PDF or .drawio file) and Menu Hauler proposes device names, device profiles and printer names from it, for you to check before they’re added.'+
-    (READONLY?'':'<div class="st-tools" style="margin-top:6px"><label class="st-sec st-sm" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer;font-weight:600;color:var(--text)">Upload diagram<input type="file" id="st-dfile" accept="image/*,.pdf,.drawio,.xml" style="display:none"></label><span id="st-dmsg" class="st-small st-muted"></span></div>')+
+    (READONLY?'':'<div class="st-tools" style="margin-top:6px"><label class="st-sec st-sm" style="display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:8px;padding:5px 10px;cursor:pointer;font-weight:600;color:var(--text)">Upload diagram<input type="file" id="st-dfile" accept="image/*,.pdf,.drawio,.xml" style="display:none"></label><label class="st-small" title="Skip the server’s text recognition and have Claude read the picture. Uses your Claude allowance. .drawio files are still read from their own labels." style="display:inline-flex;align-items:center;gap:5px;cursor:pointer"><input type="checkbox" id="st-dai"'+(ls.get('st.diagAI')==='1'?' checked':'')+'>Read with AI</label><span id="st-dmsg" class="st-small st-muted"></span></div>')+
     (d?'<div class="st-small st-muted" style="margin-top:6px">Last read: '+esc(d.file||'diagram')+', '+esc(when(d.at))+(d.by?' by '+esc(who(d.by)):'')+'. '+esc(d.summary||'')+'</div>':'')+'</div>'}
 let PDFLIB=null;function loadPdf(){return PDFLIB||(PDFLIB=new Promise((res,rej)=>{if(window.pdfjsLib)return res(window.pdfjsLib);const W='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';s.onload=()=>{const w=document.createElement('script');w.src=W;w.onload=()=>{window.pdfjsLib.GlobalWorkerOptions.workerSrc=W;res(window.pdfjsLib)};w.onerror=()=>res(window.pdfjsLib);document.head.appendChild(w)};
@@ -668,8 +668,8 @@ async function readDiagram(f){const say=x=>{if(g('st-dmsg'))g('st-dmsg').textCon
       say('This draw.io file has no “location | …” lists or port schedule to read. Export it as a PNG or PDF and upload that instead.')}
     catch(e){say('The draw.io file couldn’t be read ('+((e&&e.message)||'error')+'). Export it as a PNG or PDF and upload that instead.')}
     return}
-  let why='';
-  if(window.OOLIO_HOSTED&&window.MH_SERVER){let on=null;try{on=await window.MH_SERVER.on()}catch(e){}
+  let why='';const ai=ls.get('st.diagAI')==='1';
+  if(!ai&&window.OOLIO_HOSTED&&window.MH_SERVER){let on=null;try{on=await window.MH_SERVER.on()}catch(e){}
     if(on&&on.ocr)try{say('Preparing '+f.name+'…');const imgs=await diagramImages(f,4,3000),lines=[];
       for(let i=0;i<imgs.length;i++){say('Reading the text on '+(imgs.length>1?'page '+(i+1)+' of '+imgs.length:f.name)+'…');const d=await window.MH_SERVER.ocr(imgs[i]);
         (d.lines||[]).forEach(l=>{const b=l.box||[0,0,0,0];lines.push({t:l.text,x0:b[0],y0:b[1]+i*1e5,x1:b[2],y1:b[3]+i*1e5})})}
@@ -1402,7 +1402,7 @@ function onField(t,final){const id=VIEW.org;
   clearTimeout(textT[key]);
   if(final)save(id,patch);else{const o=ORGS[id];ORGS[id]=deepMerge(o,patch);textT[key]=setTimeout(()=>save(id,patch),700)}}
 root.addEventListener('input',e=>{const t=e.target;if(t.type==='checkbox'||t.tagName==='SELECT')return;onField(t,false)});
-root.addEventListener('change',e=>{const t=e.target;if(t.id==='st-restore'){const f=t.files&&t.files[0];t.value='';if(f)restore(f);return}if(t.id==='st-dfile'){const f=t.files&&t.files[0];t.value='';if(f)readDiagram(f);return}if(t.id==='st-stagef'){VIEW.stage=t.value;render();return}if(t.id==='st-mine'){VIEW.mine=t.checked;render();return}if(t.id==='st-sfile'){const f=t.files&&t.files[0];t.value='';if(f)staffFile(f);return}if(t.id==='st-q')return;onField(t,true);if(t.type==='checkbox'||t.tagName==='SELECT'){held=false;render()}});
+root.addEventListener('change',e=>{const t=e.target;if(t.id==='st-restore'){const f=t.files&&t.files[0];t.value='';if(f)restore(f);return}if(t.id==='st-dfile'){const f=t.files&&t.files[0];t.value='';if(f)readDiagram(f);return}if(t.id==='st-dai'){ls.set('st.diagAI',t.checked?'1':'0');return}if(t.id==='st-stagef'){VIEW.stage=t.value;render();return}if(t.id==='st-mine'){VIEW.mine=t.checked;render();return}if(t.id==='st-sfile'){const f=t.files&&t.files[0];t.value='';if(f)staffFile(f);return}if(t.id==='st-q')return;onField(t,true);if(t.type==='checkbox'||t.tagName==='SELECT'){held=false;render()}});
 // leaving a field redraws, so checks and badges catch up
 root.addEventListener('focusout',e=>{const t=e.target;if(t.dataset&&(t.dataset.step||t.dataset.tbl||t.dataset.note||t.dataset.gk)||t.id==='st-name'||t.id==='st-gname')setTimeout(()=>{if(!root.contains(document.activeElement)||!/^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName))render()},0)});
 
