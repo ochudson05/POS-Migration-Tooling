@@ -2631,7 +2631,7 @@ function addTables(ts){ts.forEach(t=>{t.a=analyse(t);if(t.a&&t.doc)t.a.src='docu
    with Takeaway and Public Holiday prices sends the whole menu two or three times. A file with the same columns and
    mostly the same items as one already added is a price list: its prices are matched to the menu's items by group,
    name and size and go in a column of their own, named after the file ("PublicHolidayexp.csv" → "Public Holiday"). */
-/* OrderMate venues often put the order type in the size: "Regular TAKEAWAY", "Large TAKEAWAY", "Dine-In", "Large Dine-In".
+/* Venues (OrderMate exports and pre-work sheets made from them) often put the order type in the size: "Regular TAKEAWAY", "Large TAKEAWAY", "Dine-In", "Large Dine-In".
    Those become one size each (Regular, Large, Kids Size; a bare "Dine-In" is Regular): the dine-in price is the menu
    price and the TAKEAWAY price goes in a "Takeaway" price list. A $0 dine-in price counts as none, and a size sold only
    as takeaway uses its takeaway price as the menu price too. */
@@ -3143,15 +3143,15 @@ function renderSources(){
 
 function rebuild(){
   readSettings();base=[];mods=[];const OMN=[];
-  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);if(t.a.src==='ordermate')r.items=omSplit(r.items,OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods);
+  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);r.items=omSplit(r.items,OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods);
     const el=$('ti'+t.id);if(el)el.textContent=t.doc?r.items.length+' menu lines'+(NOPRICE()?'':' with prices')+' read from the '+t.doc.how+(t.doc.ignored.length?', '+t.doc.ignored.length+' other lines not used (listed in Checks)':'')+'. Check names and prices against the original.':
       r.items.length+' products, '+r.mods.length+' modifiers read'+(t.a.marker?' (template examples above the “below this line” row were skipped)':'')+(t.a.pl&&t.a.pl.length?'. Price lists in it: '+t.a.pl.map(c=>c.name).join(', '):'')+'.';});
   // price lists: columns in Oolio files first, then files used as a price list
   PLS=[];PLCHK=[];base.forEach(it=>Object.keys(it.pl||{}).forEach(n=>{if(!PLS.includes(n))PLS.push(n)}));
   const byC=new Map(),byK=new Map();base.forEach(it=>{if(!byC.has(plKeyC(it)))byC.set(plKeyC(it),it);if(!byK.has(plKey(it)))byK.set(plKey(it),it)});
-  if(OMN.split)PLCHK.push({msg:'OrderMate sizes with the order type in them (“Regular TAKEAWAY”, “Dine-In”, “Large Dine-In”) were split: '+OMN.split+' items now have plain sizes, with the dine-in price as the menu price and the TAKEAWAY price in the “'+OM_TAKE+'” price list.',list:[],info:true});
-  if(OMN.length)PLCHK.push({msg:'sizes are only sold as takeaway in OrderMate, so their takeaway price is also used as the menu price. Check these with the venue.',list:OMN.slice()});
-  tables.forEach(t=>{if(!t.on||!t.a||!t.pl)return;const n=t.pl,r=extract(t),miss=[],seen=new Set();if(t.a.src==='ordermate')r.items=omSplit(r.items);if(!PLS.includes(n))PLS.push(n);let hit=0,same=0;
+  if(OMN.split)PLCHK.push({msg:'Sizes with the order type in them (“Regular TAKEAWAY”, “Dine-In”, “Large Dine-In”) were split: '+OMN.split+' items now have plain sizes, with the dine-in price as the menu price and the TAKEAWAY price in the “'+OM_TAKE+'” price list.',list:[],info:true});
+  if(OMN.length)PLCHK.push({msg:'sizes are only sold as takeaway, so their takeaway price is also used as the menu price. Check these with the venue.',list:OMN.slice()});
+  tables.forEach(t=>{if(!t.on||!t.a||!t.pl)return;const n=t.pl,r=extract(t),miss=[],seen=new Set();r.items=omSplit(r.items);if(!PLS.includes(n))PLS.push(n);let hit=0,same=0;
     r.items.forEach(x=>{const it=byC.get(plKeyC(x))||byK.get(plKey(x));const lab=x.name+(x.variation?' ('+x.variation+')':'')+(x.price?' $'+x.price:'');
       if(!it){miss.push(lab);return}if(x.price===''||seen.has(it))return;seen.add(it);(it.pl=it.pl||{})[n]=x.price;hit++;if(+x.price===+it.price)same++});
     t.info={items:[],mods:[]};const el=$('ti'+t.id);
