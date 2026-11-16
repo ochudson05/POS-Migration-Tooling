@@ -512,13 +512,61 @@ function warnings(o){const w=[];stepsFor(o).forEach(x=>{if(x.check){const c=x.ch
    - one device profile per location and type: "Bar POS", "Host Stand POS", "Roaming POS", "Kitchen KDS", "MPOS", "Kiosk"
    - printers named after what staff call them ("Pizza", "Coffee", "Smoothie") or their location, numbered when there are
      several ("Kitchen 1", "Kitchen 2"), impact or thermal, paired as fallbacks; their names go to the Menu Converter */
+/* What Oolio sells into venues: shop.oolio.com, read 2026-11-17 (shop:0 = seen on Oolio diagrams but not in the shop).
+   Used by the diagram rules to recognise shorthand and OCR-mangled names ("1 x s80", "15.6\" Oolio-B", "Cash Draw") and by Claude's prompt.
+   k: pos, tablet (POS, or handheld when roaming), screen (POS, or KDS at a pass / kitchen), handheld, printer, eftpos, customer_display,
+   drawer, network, other (accessories and parts: noted, not set up). Order matters: accessories come before the devices they mention. */
+const DG_SHOP=[
+  {n:'Printer 24V power supply',k:'other',re:/printer.*(psu|power supply)|\b24v\b/},
+  {n:'Terminal 19V power supply',k:'other',re:/\b19v\b|(terminal|till).*(psu|power supply)/},
+  {n:'Serial printer cable',k:'other',re:/serial (printer )?cable|rj45 to 9 ?pin/},
+  {n:'Replacement SSD',k:'other',re:/\bssd\b|\bhdd\b/},
+  {n:'Cash drawer splitter',k:'other',re:/drawer splitter|cd ?kick/},
+  {n:'USB cash drawer trigger',k:'other',re:/drawer trigger/},
+  {n:'Cash drawer key',k:'other',re:/drawer key/},
+  {n:'Swing arm VESA mount',k:'other',re:/swing ?arm|262bs/},
+  {n:'Flush wall mount bracket',k:'other',re:/flush wall|wall mount bracket/},
+  {n:'POS pole with VESA head',k:'other',re:/pos pole|pole with top mount/},
+  {n:'Tablet stand',k:'other',re:/tablet stand|pivot|bosstab/},
+  {n:'Tablet hand strap',k:'other',re:/hand ?strap/},
+  {n:'Tablet adapter',k:'other',re:/tablet (vesa )?adapter|universal (connect |tablet )?adapter/},
+  {n:'Barcode scanner',k:'other',re:/barcode|scanner|image reader/},
+  {n:'Caller ID unit',k:'other',re:/caller ?id|vertex/},
+  {n:'Proximity / swipe card reader',k:'other',re:/proximity|rfid|\bmsr\b|swipe card|wrist ?band/},
+  {n:'Paper rolls',k:'other',re:/paper rolls?|ribbon/},
+  {n:'UPS',k:'network',re:/\bups\b|uninterruptible|powershield|650 ?va/},
+  {n:'Mini U7 Server',k:'network',re:/\bserver\b|zotac|mini ?u7|mini pc/},
+  {n:'Ubiquiti UniFi U6 Pro access point',k:'network',re:/\bu6\b|unifi|ubiquiti|access ?point|\bwap\b/},
+  {n:'Network switch',k:'network',re:/\d+[- ]?port|\bswitch\b/},
+  {n:'Modem / router',k:'network',shop:0,re:/modem|router/},
+  {n:'10.1" Customer Facing Display',k:'customer_display',re:/10\.1"|customer[- ]?facing|\bcfd\b/},
+  {n:'Flip Top Cash Drawer',k:'drawer',re:/flip ?top/},
+  {n:'Heavy Duty Cash Drawer',k:'drawer',shop:0,re:/heavy ?duty/},
+  {n:'Cash Drawer 12V',k:'drawer',re:/cash ?draw|till drawer/},
+  {n:'S80 Thermal Printer',k:'printer',pt:'thermal',re:/\bs ?8[0o]\b/},
+  {n:'S70 Thermal Printer',k:'printer',pt:'thermal',re:/\bs ?7[0o]\b/},
+  {n:'M300 Impact Printer',k:'printer',pt:'impact',re:/\bm ?3[0o][0o]\b/},
+  {n:'Epson TM-U220B Impact Printer',k:'printer',pt:'impact',re:/u ?22[0o]|\btm-?u\b/},
+  {n:'Epson TM-m30III Thermal Printer',k:'printer',pt:'thermal',re:/\b(tm-?)?m ?3[0o](?: ?(iii|3))?\b/},
+  {n:'Epson TM-T82IV Receipt Printer',k:'printer',pt:'thermal',re:/\b(tm-?)?t ?82/},
+  {n:'21.5" All-in-One Touch Screen',k:'screen',re:/21\.5/},
+  {n:'15.6" Oolio Black Touch PC',k:'pos',re:/15\.6|oolio[- ]?b\b|oolio black|black touch/},
+  {n:'Oolio CPad 8.7" with NFC',k:'handheld',re:/8\.7|[cgo] ?pad ?8/},
+  {n:'Oolio CPad 11" with NFC',k:'tablet',re:/\b[cgo] ?pad\b/},
+  {n:'12.7" Android Tablet',k:'tablet',re:/12\.7/},
+  {n:'11" Android Tablet',k:'tablet',re:/11" ?(android )?tablet|android tablet|lenovo/},
+  {n:'Oolio Android S1F2 Terminal',k:'eftpos',shop:0,re:/\bs ?1 ?f ?2\b/}];
+const dgShop=t=>{const s=String(t||'').toLowerCase().replace(/[×✕✖]/g,'x');return DG_SHOP.find(c=>c.re.test(s))||null};
+// the cleaned name first (no brackets or mount notes), then as written ("Oolio-B" is cleaned to "Oolio")
+const dgCat=t=>dgShop(dgHw(t))||dgShop(t);
 const DIAG_PROMPT='These images are a site map / hardware diagram for a hospitality venue being set up on Oolio POS. Read every device on it and reply with only this JSON:\n'+
   '{"venue":"","locations":[{"name":"","items":[{"kind":"","count":1,"hardware":"","printer_type":"","purpose":"","spare":false}]}],"notes":[]}\n\nRules:\n'+
   '- locations: each labelled area, e.g. "location | bar", "Host stand", "Coffee area", "Kitchen", "Roaming", "Spare", or labels under devices such as "Bar 1" / "Kitchen". Use the label wording without "location |". Keep floors, e.g. "Bar (upstairs)". Devices with no area label go in the area written next to them, else "Main".\n'+
   '- kind, one of: pos (fixed POS terminal: touch PC, all-in-one, tablet on a stand used as a POS), handheld (phone-sized ordering device: L3, Sunmi handheld, roaming order device), mpos (payment terminal running the mPOS app or used for pay at table on its own), eftpos (payment terminal paired with a POS), kds (kitchen/bar/pass display screen, including a NUC PC + monitor + bump bar station or a "bump screen"), kiosk, customer_display, printer, cash_drawer, scanner, network (router, switch, access point), other.\n'+
   '- count: the number in "2 x", else the number of pictures of it in that area, else 1.\n'+
   '- hardware: the model or size as written, e.g. "15.6\" Touch PC", "11\" Android Tablet", "21.5\" KDS screen", "NUC PC", "L3".\n'+
-  '- printer_type: printers only: "impact" when it says impact or TM-U220, else "thermal".\n'+
+  '- Oolio sells: '+DG_SHOP.filter(c=>c.k!=='other').map(c=>c.n).join('; ')+'. Shorthand on diagrams: "Oolio-B" = 15.6" Oolio Black Touch PC, "s80" = S80 Thermal Printer, "S1F2" = Oolio Android S1F2 payment terminal, "oPad"/"CPad" = Oolio CPad tablet. When a device is one of these, use that name as hardware. Accessories (power supplies, cables, mounts, stands, straps, scanners, paper) go in notes, not items.\n'+
+  '- printer_type: printers only: "impact" when it says impact, TM-U220 or M300, else "thermal".\n'+
   '- purpose: what it is for when written, e.g. "smoothie printer", "coffee bump printer", "pass", "bump printer from pizza KDS", "receipt", else "".\n'+
   '- spare: true for spare or backup devices.\n'+
   '- One entry per kind per location using count, but list printers or screens with different purposes separately.\n'+
@@ -565,9 +613,15 @@ window.__stPlanFromDiagram=planFromDiagram;
 const dgFix=s=>clean(String(s==null?'':s).replace(/&nbsp;| /g,' ')).replace(/[×✕✖]/g,'x').replace(/\bOo(?:ll|il|li|l1|i1|ii)o\b/gi,'Oolio')
   .replace(/(\d{1,2}(?:\.\d)?)\s?[*”″“°]/g,'$1"').replace(/\s*(?:\.{2,}|…)\s*$/,'').trim();
 const DG_HEAD=/^location\s*(?:[|lI!:\/]|\s)\s*(?=\S)/i;
-function dgKind(t,area){const s=(t||'').toLowerCase(),a=(area||'').toLowerCase();
+function dgKind(t,area){const s=(t||'').toLowerCase(),a=(area||'').toLowerCase(),c=dgCat(t),kds=/\bkds\b|bump|kitchen display/.test(s);
+  if(c){// a product Oolio sells: its own kind, placed by the area it's in
+    if(c.k==='eftpos')return/\bmpos\b|pay ?@ ?table|pay at table/.test(s)&&!/integrated|paired/.test(s)?'mpos':'eftpos';
+    if(c.k==='tablet')return kds?'kds':/roaming/.test(a)?'handheld':'pos';
+    if(c.k==='screen')return kds||/pick ?up|\bpass\b|expo|kds|kitchen/.test(a)?'kds':'pos';
+    if(c.k==='pos')return kds?'kds':'pos';
+    return c.k}
   if(/access ?point|\bwap\b|\bswitch\b|modem|router|network|\bups\b|patch panel|unifi|ubiquiti/.test(s)||(/wireless|wi-?fi\b/.test(s)&&!/printer|terminal|eftpos|tablet|pc\b/.test(s)))return'network';
-  if(/cash ?drawer|till drawer/.test(s))return'drawer';
+  if(/cash ?draw|till drawer/.test(s))return'drawer';
   if(/kiosk/.test(s))return'kiosk';
   if(/customer[- ]?(facing )?display|\bcfd\b|second screen|pole display/.test(s))return'customer_display';
   if(/printer/.test(s))return'printer';
@@ -604,22 +658,32 @@ function dgRead(lines){const L=(lines||[]).map(l=>({t:dgFix(l.t),x0:+l.x0||0,y0:
   const notes=[],locs=[],by={},used=new Set(),heads=L.filter(l=>DG_HEAD.test(l.t));
   const isHead=l=>DG_HEAD.test(l.t)||/^(install notes|notes|legend|summary|port schedule)$/i.test(l.t);
   const loc=n=>{const k=n.toLowerCase();if(!by[k]){by[k]={name:n,items:[]};locs.push(by[k])}return by[k]};
-  const add=(Lc,n,desc,src)=>{const k=dgKind(desc,Lc.name),hw=dgHw(desc),A=TC(Lc.name);
+  const add=(Lc,n,desc,src)=>{const k=dgKind(desc,Lc.name),c=dgCat(desc),hw=c?c.n:dgHw(desc),A=TC(Lc.name);
     const own=/existing|customer[- ](owned|supplied)|already on site/i.test(desc.replace(/existing mounts?|mounts? (are )?(already )?on site/gi,'')),sp=/\bspare\b|backup/i.test(desc+' '+Lc.name);
-    if(!k||k==='network'||k==='drawer'){if(src!=='port'||!k)notes.push(A+': '+n+' x '+hw+(own?' (customer owned)':'')+(k?'':' – not sure what this is, add it by hand if it’s needed')+'.');return}
+    if(!k||k==='network'||k==='drawer'||k==='other'){if(src!=='port'||!k)notes.push(A+': '+n+' x '+hw+(own?' (customer owned)':'')+(k?'':' – not sure what this is, add it by hand if it’s needed')+'.');return}
     if(own&&src!=='port')notes.push(A+': the '+hw+(n>1?' ('+n+')':'')+' is customer owned.');
     const pm=(desc.match(PURP)||[''])[0],purpose=k==='printer'?(/receipt/i.test(desc)?'receipt':pm.toLowerCase()):k==='kds'?pm.toLowerCase():'';
-    const it={kind:k,count:n,hardware:hw,printer_type:k==='printer'?(/impact|u220/i.test(desc)?'impact':'thermal'):'',purpose,spare:sp};
+    const it={kind:k,count:n,hardware:hw,printer_type:k==='printer'?(c&&c.pt||(/impact|u220|m300/i.test(desc)?'impact':'thermal')):'',purpose,spare:sp,cat:!!c};
     const same=Lc.items.find(x=>x.kind===it.kind&&x.hardware.toLowerCase()===it.hardware.toLowerCase()&&x.purpose===it.purpose&&x.spare===it.spare&&x.printer_type===it.printer_type);
     if(same)same.count+=n;else Lc.items.push(it)};
   const tl=L.find(l=>/install\s*[—–-]+\s*\S/i.test(l.t)),venue=tl?clean(tl.t.replace(/^.*install\s*[—–-]+\s*/i,'')):'';
-  heads.forEach(h=>{used.add(h);const name=clean(h.t.replace(DG_HEAD,'')),Lc=loc(name);
-    dgBlock(L,h,isHead).forEach(l=>{used.add(l);const m=l.t.match(/^(\d{1,3})\s*x\s*(.+)$/i),r=l.t.match(/^req\b[:.\s]*(.+)$/i);
+  heads.forEach(h=>{used.add(h);let name=clean(h.t.replace(DG_HEAD,''));const bl=dgBlock(L,h,isHead);
+    // a long heading wraps: "location | Takeaway (Same bar area - Mainly used" + "for TA, Phone Orders etc)"
+    if((name.match(/\(/g)||[]).length>(name.match(/\)/g)||[]).length&&bl[0]&&!/^\d{1,3}\s*x\s*/i.test(bl[0].t)&&!/^req\b/i.test(bl[0].t)){name=clean(name+' '+bl[0].t);used.add(bl.shift())}
+    // a long note in brackets is a note, not part of the area's name: "Takeaway (Same bar area - Mainly used for TA…)"
+    const pn=name.match(/^(.+?)\s*\(([^()]{12,})\)$/);if(pn){name=pn[1];notes.push(TC(name)+': '+pn[2]+'.')}
+    const Lc=loc(name);
+    bl.forEach(l=>{used.add(l);const m=l.t.match(/^(\d{1,3})\s*x\s*(.+)$/i),r=l.t.match(/^req\b[:.\s]*(.+)$/i);
       if(r){notes.push(TC(name)+': electrician needs '+r[1].replace(/\bPOWER\b/g,'power').replace(/\bDATA\b/g,'data')+'.');return}
       if(m)add(Lc,Math.min(20,+m[1]),m[2],'list');else if(/[a-z]{3}/i.test(l.t))notes.push(TC(name)+': '+l.t)})});
   const ports=dgPorts(L),fromLists=locs.some(l=>l.items.length);
+  // the location list says "Oolio Receipt Printers"; the port schedule for that area says "Oolio S80 Thermal Printer": take the model from there
+  if(fromLists&&ports.length){const areaOf=r=>clean((r.loc||'').split(/\s*[—–]\s*|\s+-\s+/)[0]).toLowerCase(),same=(a,b)=>!!a&&!!b&&(a.startsWith(b)||b.startsWith(a));
+    locs.forEach(Lc=>Lc.items.forEach(it=>{if(it.cat)return;
+      const r=ports.find(r=>same(areaOf(r),Lc.name.toLowerCase())&&dgKind(r.dev,r.loc)===it.kind&&(dgCat(r.dev)||/impact/i.test(r.dev)));if(!r)return;
+      const c=dgCat(r.dev);if(c){it.hardware=c.n;it.cat=true}if(it.kind==='printer')it.printer_type=c&&c.pt||(/impact/i.test(r.dev)?'impact':it.printer_type)}))}
   if(!fromLists)ports.forEach(r=>{const area=clean((r.loc||'Main').split(/\s*[—–]\s*|\s+-\s+/)[0])||'Main';add(loc(area),1,r.dev,'port')});
-  else if(ports.length){const tally=it=>{const c={pos:0,printer:0,kds:0};it.forEach(x=>{const k=x.kind==='handheld'?'pos':x.kind;if(k in c&&!x.spare)c[k]+=x.count});return c};
+  else if(ports.length){const tally=it=>{const c={pos:0,printer:0,kds:0};it.forEach(x=>{const k=x.kind;if(k in c&&!x.spare)c[k]+=x.count});return c};// handhelds are on Wi-Fi, never in the port schedule
     const a=tally([].concat(...locs.map(l=>l.items))),b=tally(ports.map(r=>({kind:dgKind(r.dev,r.loc),count:1}))),W={pos:'POS',printer:'printers',kds:'kitchen screens'};
     Object.keys(a).forEach(k=>{if(b[k]&&a[k]!==b[k])notes.push('The port schedule lists '+b[k]+' '+W[k]+' but the location lists add up to '+a[k]+'. Check the diagram.')})}
   L.filter(l=>!used.has(l)&&/^\d{1,3}\s*x\s+\S/i.test(l.t)&&!ports.some(r=>r.dev===l.t)).forEach(l=>notes.push('Also on the diagram: '+l.t+'.'));
@@ -642,7 +706,7 @@ async function dgDrawio(text){const doc=new DOMParser().parseFromString(text,'te
     Object.keys(cells).forEach(id=>{const c=cells[id];if(c.edge||!c.v)return;const a=abs(id,0),Y=a.y+p*1e5;let i=0,blank=false;
       plain(c.v).split('\n').forEach(s=>{s=clean(s);if(!s){if(i&&!blank){i++;blank=true}return}blank=false;out.push({t:s,x0:a.x,y0:Y+i*14,x1:a.x+Math.max(c.w,s.length*6),y1:Y+i*14+12});i++})})}
   return out}
-window.__stDiagRules={dgRead,dgDrawio};
+window.__stDiagRules={dgRead,dgDrawio,dgShop,dgKind};
 /*/DIAGRULES*/
 function profileList(o){const fromDev=(o.devices||[]).map(d=>clean(d.profile)).filter(Boolean),typed=val(o,'prof-split','list').split(/\s*,\s*/).filter(Boolean);return[...new Set(typed.concat(fromDev))]}
 function diagramPanel(o){const d=o.diagram;

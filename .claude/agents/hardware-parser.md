@@ -30,6 +30,28 @@ reader does (rules in `setup-tracker.html`: `dgRead` / `planFromDiagram`, betwee
 Cross-check: the port schedule's POS, printer and KDS counts must match the location lists (spares aren't cabled,
 Wi-Fi terminals have no port). Report any mismatch.
 
+## What Oolio sells (shop.oolio.com, read 2026-11-17)
+Use these to recognise devices, including shorthand and OCR-mangled names, and to fill the Hardware column with
+the full model when the diagram only gives shorthand or a vague name. The same list is `DG_SHOP` in
+`setup-tracker.html`. If the shop has changed, re-read `https://shop.oolio.com/products.json?limit=250`.
+
+| Type | Products (shorthand seen on diagrams) |
+|---|---|
+| POS | All In One Terminal - Oolio Black 15.6" ("Oolio-B 15.6\" Black Touch PC", "15.6\" Oolio-B") |
+| POS or KDS | All In One Terminal 21.5" Touch Screen, no base (SKU OOLIOKDS21: usually a KDS at a pass / pick-up) |
+| Tablets | Android Tablet 11", Android Tablet 12.7", Oolio CPad 11" with NFC ("oPad 11\""), Oolio CPad 8.7" with NFC (handheld). Tablets in a Roaming area are handhelds |
+| Printers, thermal | S80 ("s80"), S70, Epson TM-m30III, Epson TM-T82IV (receipt) |
+| Printers, impact | M300 (kitchen, serial), Epson TM-U220B. "Impact" anywhere = impact |
+| Customer display | Oolio Black Customer Facing Display 10.1" |
+| Cash drawers | Flip Top Cash Drawer, CashDrawer 12V ("Cash Draw"); diagrams also show "Heavy Duty Cash Drawer" |
+| Network | Ubiquiti UniFi U6 Pro access point; 5 / 8 / 16 / 24-port network switch; PowerShield 650VA UPS; Mini U7 Server |
+| Notes only (not devices) | Barcode scanners, CallerID (analog 2-line, VoIP Vertex), USB proximity reader, swipe cards, RFID wristbands, cash drawer splitter / USB trigger / key, 19V terminal and 24V printer PSUs, serial cables, RJ45-to-9-pin adapters, SSD, swing arm / flush wall / pole VESA mounts, tablet stands (Proper Pivot, Bosstab), hand straps, tablet adapters, paper rolls, ink ribbons |
+
+Not in the shop but on Oolio diagrams: "Oolio Android S1F2 Terminal" ("S1F2") is the integrated EFTPOS terminal,
+and the modem / router is usually customer supplied.
+When the location list is vague ("4 x Oolio Receipt Printers") and the port schedule names the model for that
+area ("Oolio S80 Thermal Printer"), use the port schedule's model.
+
 ## Naming (as the Setup Tracker does)
 - Locations in Title Case without "location |": "Restaurant Floor", "Food Pick Up Area".
 - POS (touch PCs, tablets on stands, all-in-ones used for ordering, handhelds/L3/8.7" NFC roaming devices - Sunmi
@@ -40,8 +62,8 @@ Wi-Fi terminals have no port). Report any mismatch.
 - MPOS only for a terminal running the mPOS app or pay-at-table on its own. "Integrated EFTPOS" (even with the
   Pay@Table app) is an EFTPOS terminal paired with a POS: Type EFTPOS, name `EFTPOS <station>`.
 - Printers: named after what staff call them (Coffee, Pizza, Pass) or their location/station, numbered when there
-  are several ("Kitchen 1", "Kitchen 2"; "Bar 1".."Bar 4" following the stations). Impact when it says impact or
-  TM-U220, else thermal. Receipt printers note "receipts"; kitchen printers "dockets".
+  are several ("Kitchen 1", "Kitchen 2"; "Bar 1".."Bar 4" following the stations). Impact when it says impact,
+  TM-U220 or M300, else thermal. Receipt printers note "receipts"; kitchen printers "dockets".
 - Cash drawers: `Cash Drawer <station>`, note which printer it's connected to. Network: AP, switch, modem.
 - Always say when something is existing / customer owned / customer supplied, and when it's a spare.
 
