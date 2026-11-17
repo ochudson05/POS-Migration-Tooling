@@ -165,19 +165,38 @@ const INBOX={items:[],byVenue:{},loaded:false},known=new Set(),ikey=x=>x.token+'
 window.MH_INBOX=INBOX;
 let bellT=null,dismissed=new Set();
 const canInbox=()=>HOSTED&&allowed('setup');
-function bell(){let b=g('mh-bell');if(b||!canInbox())return b;const acts=document.querySelector('.lx-acts');if(!acts)return null;
+// bug / error reports from the converter's "Report a bug / error" button: the owner's bell only (/api/report/inbox)
+const REP={items:[],loaded:false},knownR=new Set(),readR=new Set(),canRep=()=>HOSTED&&!!(window.MH_ME&&window.MH_ME.role==='owner');
+const canBell=()=>canInbox()||canRep(),repUnseen=()=>REP.items.filter(x=>x.unseen);let repOpen=null;
+function bell(){let b=g('mh-bell');if(b||!canBell())return b;const acts=document.querySelector('.lx-acts');if(!acts)return null;
   b=document.createElement('button');b.type='button';b.className='lx-ib';b.id='mh-bell';b.setAttribute('aria-haspopup','dialog');b.setAttribute('aria-expanded','false');
   acts.insertBefore(b,acts.firstChild);drawBell();return b}
 function unseen(){return INBOX.items.filter(x=>x.unseen)}
 function vname(x){try{const v=window.OolioVenues&&window.OolioVenues.get(x.venue);if(v&&v.name)return v.name}catch(e){}return x.venueName||'A venue'}
-function drawBell(){const b=g('mh-bell');if(!b)return;const n=unseen().length;
+function drawBell(){const b=g('mh-bell');if(!b)return;const ni=unseen().length,nr=repUnseen().length,n=ni+nr;
+  const say=[ni?ni+' new intake form'+(ni===1?'':'s'):'',nr?nr+' new bug report'+(nr===1?'':'s'):''].filter(Boolean).join(', ');
   b.innerHTML=ic('bell')+(n?'<span class="mh-badge">'+(n>9?'9+':n)+'</span>':'');b.classList.toggle('has',!!n);
-  b.setAttribute('aria-label',n?n+' new intake form'+(n===1?'':'s')+' sent in':'Notifications');b.title=n?n+' new intake form'+(n===1?'':'s'):'Notifications'}
+  b.setAttribute('aria-label',say||'Notifications');b.title=say||'Notifications'}
 function pop(){let d=g('mh-bellpop');if(d)return d;d=document.createElement('div');d.id='mh-bellpop';d.className='mh-pop';d.setAttribute('role','dialog');d.setAttribute('aria-label','Notifications');d.hidden=true;document.body.appendChild(d);
   d.addEventListener('click',e=>{const t=e.target.closest('[data-nb]');if(!t)return;const a=t.dataset.nb;
-    if(a==='open')openIntake(t.dataset.v);else if(a==='all')seenAll();else if(a==='desk')askDesk()});return d}
-function drawPop(){const d=g('mh-bellpop');if(!d||d.hidden)return;const L=INBOX.items,n=unseen().length;
-  let h='<div class="mh-pop-h"><b>Intake forms sent in</b>'+(n?'<button type="button" class="mh-lnk" data-nb="all">Mark all as read</button>':'')+'</div>';
+    if(a==='open')openIntake(t.dataset.v);else if(a==='all')seenAll();else if(a==='desk')askDesk();else if(a==='rep')openRep(+t.dataset.id);else if(a==='repall')repSeen(null)});return d}
+function drawRep(){const L=REP.items,n=repUnseen().length;
+  let h='<div class="mh-pop-h"><b>Bug reports</b>'+(n?'<button type="button" class="mh-lnk" data-nb="repall">Mark all as read</button>':'')+'</div>';
+  if(!L.length)return h+'<p class="mh-note" style="padding:12px 14px">No bug reports yet. When someone uses “Report a bug / error” in the converter, it shows up here and in your email.</p>';
+  return h+'<ul class="mh-nl">'+L.slice(0,25).map(x=>{const c=x.context||{},on=repOpen===x.id;
+    return'<li><button type="button" data-nb="rep" data-id="'+x.id+'" aria-expanded="'+on+'" class="'+(x.unseen?'new':'')+'">'+ic(x.unseen?'bug':'circle-check')+
+      '<span><b>'+esc(x.kind)+(x.items?': '+esc(x.items.slice(0,60)):'')+'</b><small>'+(x.unseen?'New · ':'')+esc(x.name)+' · '+esc(ago(x.at))+(c.venue?' · '+esc(c.venue):'')+'</small></span></button>'+
+      (on?'<div class="mh-rep"><p><b>What happened</b>'+esc(x.what)+'</p>'+(x.want?'<p><b>What it should be</b>'+esc(x.want)+'</p>':'')+(c.files&&c.files.length?'<p><b>Files</b>'+esc(c.files.join(', '))+'</p>':'')+
+        (c.errors&&c.errors.length?'<p><b>Page errors</b>'+esc(c.errors.join('\n'))+'</p>':'')+(c.rows&&c.rows.length?'<p><b>Rows attached</b>'+c.rows.length+' (in the email)</p>':'')+
+        '<p class="mh-note">'+(x.mailed?'Emailed to you':'Not emailed (check RESEND_KEY)')+' · <a href="mailto:'+esc(x.email)+'?subject='+encodeURIComponent('Re: your Menu Hauler report #'+x.id)+'">Reply to '+esc(x.name)+'</a></p></div>':'')+'</li>'}).join('')+'</ul>'}
+function openRep(id){repOpen=repOpen===id?null:id;const x=REP.items.find(y=>y.id===id);drawPop();if(x&&x.unseen)repSeen(id)}
+// marked read here first, so a list fetched while the POST is on its way doesn't bring it back as unread
+async function repSeen(id){REP.items.forEach(x=>{if(id==null||x.id===id)readR.add(x.id)});try{await fetch('/api/report/seen',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(id==null?{all:true}:{id})});
+  REP.items.forEach(x=>{if(id==null||x.id===id)x.unseen=false});drawBell();drawPop();if(id==null)toast('All bug reports marked as read.')}catch(e){toast('Couldn’t mark that as read. Try again.','err')}}
+function drawPop(){const d=g('mh-bellpop');if(!d||d.hidden)return;
+  if(!canInbox()){d.innerHTML=drawRep();return}
+  const L=INBOX.items,n=unseen().length;
+  let h=(canRep()?drawRep():'')+'<div class="mh-pop-h"><b>Intake forms sent in</b>'+(n?'<button type="button" class="mh-lnk" data-nb="all">Mark all as read</button>':'')+'</div>';
   h+=L.length?'<ul class="mh-nl">'+L.slice(0,25).map(x=>'<li><button type="button" data-nb="open" data-v="'+esc(x.venue)+'" class="'+(x.unseen?'new':'')+'">'+ic(x.unseen?'mail':'circle-check')+
       '<span><b>'+esc(vname(x))+'</b><small>'+(x.unseen?'New · ':'')+'Sent '+esc(ago(x.submittedAt))+(x.files?' · '+x.files+' file'+(x.files===1?'':'s'):'')+(x.submits>1?' · sent '+x.submits+' times':'')+'</small></span></button></li>').join('')+'</ul>'
     :'<p class="mh-note" style="padding:12px 14px">No intake forms sent in during the last 60 days. When a venue sends theirs, it shows up here.</p>';
@@ -185,7 +204,8 @@ function drawPop(){const d=g('mh-bellpop');if(!d||d.hidden)return;const L=INBOX.
   d.innerHTML=h}
 function togglePop(force){const d=pop(),b=g('mh-bell'),show=force!=null?force:d.hidden;d.hidden=!show;if(b)b.setAttribute('aria-expanded',String(show));
   if(show){closeNotice();const r=b.getBoundingClientRect();d.style.top=(r.bottom+8)+'px';d.style.right=Math.max(8,innerWidth-r.right-4)+'px';drawPop();poll()}}
-document.addEventListener('click',e=>{const d=g('mh-bellpop');if(!d||d.hidden)return;if(e.target.closest('#mh-bellpop,#mh-bell'))return;togglePop(false)});
+// a click outside closes it (not one on a notice: its buttons open the list, and the notice is gone by the time this runs)
+document.addEventListener('click',e=>{const d=g('mh-bellpop');if(!d||d.hidden)return;if(!e.target.isConnected||e.target.closest('#mh-bellpop,#mh-bell,#mh-notices'))return;togglePop(false)});
 addEventListener('keydown',e=>{if(e.key==='Escape'){const d=g('mh-bellpop');if(d&&!d.hidden){togglePop(false);const b=g('mh-bell');if(b)b.focus()}}});
 const ago=t=>{const m=Math.round((Date.now()-t)/6e4);if(m<1)return'just now';if(m<60)return m+' min ago';const h=Math.round(m/60);if(h<24)return h+' hour'+(h===1?'':'s')+' ago';
   return new Date(t).toLocaleDateString('en-AU',{day:'numeric',month:'short'})+' at '+new Date(t).toLocaleTimeString('en-AU',{hour:'numeric',minute:'2-digit'})};
@@ -199,18 +219,36 @@ async function seenAll(){try{await fetch('/api/intake/seen',{method:'POST',crede
 window.mhInboxSeen=token=>{let hit=false;INBOX.items.forEach(x=>{if(x.token===token&&x.unseen){x.unseen=false;hit=true;closeNotice(x.venue)}});if(hit)changed()};
 window.mhInboxRefresh=()=>poll();
 function changed(){INBOX.byVenue={};INBOX.items.forEach(x=>{INBOX.byVenue[x.venue]=x});drawBell();drawPop();dispatchEvent(new CustomEvent('mh:inbox'))}
-async function poll(){if(!canInbox())return;bell();
+async function poll(){if(!canBell())return;bell();
+  try{await Promise.all([pollIntake(),pollRep()])}catch(e){}finally{clearTimeout(bellT);bellT=setTimeout(poll,document.hidden?180000:60000)}}
+async function pollIntake(){if(!canInbox())return;
   try{const r=await fetch('/api/intake/inbox',{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;const j=await r.json();if(!j||!Array.isArray(j.items))return;
     const first=!INBOX.loaded,fresh=j.items.filter(x=>x.unseen&&!known.has(ikey(x)));
     INBOX.items=j.items;INBOX.loaded=true;j.items.forEach(x=>known.add(ikey(x)));changed();
     if(first){const u=unseen();if(u.length)notice(u,false)}
     else if(fresh.length){notice(fresh,true);desk(fresh)}}
-  catch(e){}finally{clearTimeout(bellT);bellT=setTimeout(poll,document.hidden?180000:60000)}}
+  catch(e){}}
+async function pollRep(){if(!canRep())return;
+  try{const r=await fetch('/api/report/inbox',{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;const j=await r.json();if(!j||!Array.isArray(j.items))return;
+    j.items.forEach(x=>{if(readR.has(x.id))x.unseen=false});const first=!REP.loaded,fresh=j.items.filter(x=>x.unseen&&!knownR.has(x.id));
+    REP.items=j.items;REP.loaded=true;j.items.forEach(x=>knownR.add(x.id));drawBell();drawPop();
+    const show=first?repUnseen():fresh;if(show.length)repNotice(show,!first);
+    if(!first&&fresh.length&&'Notification' in window&&Notification.permission==='granted')fresh.slice(0,3).forEach(x=>{try{const n=new Notification('Bug report from '+x.name,{body:x.kind+(x.items?': '+x.items:''),tag:'mh-rep-'+x.id,icon:'/favicon.ico'});n.onclick=()=>{try{window.focus()}catch(e){}repOpen=x.id;togglePop(true);n.close()}}catch(e){}})}
+  catch(e){}}
+// the notice under the top bar for new reports (same look as the intake one)
+function repNotice(list,live){list=list.filter(x=>!dismissed.has('r'+x.id));if(!list.length)return;const w=notices(),one=list.length===1,x=list[0];
+  const el=document.createElement('div');el.className='mh-notice'+(live?' live':'');el.dataset.ks=list.map(y=>'r'+y.id).join('|');
+  el.innerHTML='<span class="mh-nic">'+ic('bug')+'</span><div><b>'+(one?esc(x.name)+(live?' just sent':' sent')+' a bug report':list.length+' new bug reports')+'</b>'+
+    '<small>'+(one?esc(x.kind)+(x.items?': '+esc(x.items.slice(0,60)):''):list.slice(0,3).map(y=>esc(y.kind)).join(', ')+(list.length>3?' and '+(list.length-3)+' more':''))+'</small>'+
+    '<div class="mh-btns"><button type="button" class="mh-btn" data-nn="rep" data-id="'+(one?x.id:'')+'">'+(one?'Read it':'See them')+'</button><button type="button" class="mh-btn sec" data-nn="x">Later</button></div></div>'+
+    '<button type="button" class="mh-x" data-nn="x" aria-label="Close">'+ic('x')+'</button>';
+  w.prepend(el);while(w.children.length>3)w.lastChild.remove();placeNotices()}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&INBOX.loaded)poll()});
 // a notice that stays until it's opened or closed: when the page opens with unread forms, and when a new one arrives
 function notices(){let w=g('mh-notices');if(!w){w=document.createElement('div');w.id='mh-notices';w.className='mh-notices';w.setAttribute('role','status');w.setAttribute('aria-live','polite');document.body.appendChild(w);
   w.addEventListener('click',e=>{const t=e.target.closest('[data-nn]');if(!t)return;const card=t.closest('.mh-notice');
-    if(t.dataset.nn==='open')openIntake(t.dataset.v);else if(t.dataset.nn==='list'){card.remove();togglePop(true)}else{(card.dataset.ks||'').split('|').forEach(k=>dismissed.add(k));card.remove()}})}return w}
+    if(t.dataset.nn==='open')openIntake(t.dataset.v);else if(t.dataset.nn==='list'){card.remove();togglePop(true)}
+    else if(t.dataset.nn==='rep'){card.remove();const id=+t.dataset.id;if(id){repOpen=id;const x=REP.items.find(y=>y.id===id);if(x&&x.unseen)repSeen(id)}togglePop(true)}else{(card.dataset.ks||'').split('|').forEach(k=>dismissed.add(k));card.remove()}})}return w}
 function notice(list,live){list=list.filter(x=>!dismissed.has(ikey(x)));if(!list.length)return;const w=notices(),one=list.length===1,x=list[0];
   const el=document.createElement('div');el.className='mh-notice'+(live?' live':'');el.dataset.vs=list.map(x=>x.venue).join('|');el.dataset.ks=list.map(ikey).join('|');
   el.innerHTML='<span class="mh-nic">'+ic('mail')+'</span><div><b>'+(one?esc(vname(x))+(live?' just sent in':' sent in')+' their intake form':list.length+' venues'+(live?' just sent in':' have sent in')+' their intake forms')+'</b>'+
@@ -226,7 +264,7 @@ function askDesk(){try{Notification.requestPermission().then(p=>{drawPop();if(p=
 function desk(list){if(!('Notification' in window)||Notification.permission!=='granted')return;
   list.slice(0,3).forEach(x=>{try{const n=new Notification('Intake form sent in',{body:vname(x)+' just sent in their intake form'+(x.files?' with '+x.files+' file'+(x.files===1?'':'s'):'')+'.',tag:'mh-intake-'+x.token,icon:'/favicon.ico'});
     n.onclick=()=>{try{window.focus()}catch(e){}openIntake(x.venue);n.close()}}catch(e){}})}
-addEventListener('mh:me',()=>{if(canInbox()){bell();if(!INBOX.loaded)poll()}else{const b=g('mh-bell');if(b)b.remove()}});
+addEventListener('mh:me',()=>{if(canBell()){bell();if(!INBOX.loaded||(canRep()&&!REP.loaded))poll()}else{const b=g('mh-bell');if(b)b.remove()}});
 // the tracker's venue names arrive after the first poll; redraw the names then
 let hookN=0;const hookV=()=>{if(window.OolioVenues&&window.OolioVenues.on)window.OolioVenues.on(drawPop);else if(hookN++<40)setTimeout(hookV,500)};setTimeout(hookV,0);
 

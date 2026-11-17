@@ -10,6 +10,7 @@
      /api/intake/*            customer intake links for a venue (signed in); /api/public/intake/<token> is the form's own API
      /intake/<token>          the customer intake form (public/intake.html), open to anyone with the link
      /api/db/list|get|set|update|delete   the shared venue records (D1 database "oolio-tools", table docs)
+     /api/report              "Report a bug / error": saved, emailed to the owner; /api/report/inbox|seen is the owner's bell
      /api/fc                  Firecrawl scrape / search with the team's key, capped per month
      /api/fetch?url=...       downloads a web page, PDF, menu feed or picture for the page (free; the browser can't)
    and the original relay endpoints, which the claude.ai version still uses:
@@ -62,7 +63,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-13.1';
+const VERSION = '2026-11-17.1';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -860,6 +861,83 @@ async function server(path, req, env) {
   return api(r.ok ? j : { error: (j && (j.message || (typeof j.detail === 'string' && j.detail))) || 'The Menu Hauler server answered ' + r.status + '.', code: r.status === 401 ? 'unavailable' : 'tool_error' }, r.ok ? 200 : 502);
 }
 
+/* ---------- bug / error reports (the converter's "Report a bug / error" button) ----------
+   People can't change the converter themselves: they describe what's wrong and the owner decides. Each report is kept
+   in D1 (table reports, REPORT_DAYS) with what the converter produced for the items named, so it can feed the next
+   retrain, then emailed to the OWNER (reply-to the person who sent it) and shown in the owner's bell on the site. */
+const REPORT_DAYS = 180, REPORTS_PER_HOUR = 10;
+const REPORT_KINDS = ['Wrong or missing item', 'Wrong price', 'Wrong category or reporting group', 'Wrong size or variant', 'Wrong modifier group', 'Wrong printer', 'The page broke or showed an error', 'Something else'];
+let RTABLES = false;
+async function reportTables(env) {
+  if (RTABLES) return;
+  await env.DB.batch([
+    env.DB.prepare('CREATE TABLE IF NOT EXISTS reports (id INTEGER PRIMARY KEY AUTOINCREMENT, at INTEGER NOT NULL, email TEXT NOT NULL, name TEXT, tool TEXT, kind TEXT, items TEXT, what TEXT, want TEXT, context TEXT, mailed INTEGER NOT NULL DEFAULT 0, seen_at INTEGER)'),
+    env.DB.prepare('CREATE INDEX IF NOT EXISTS reports_at ON reports (at)'),
+  ]);
+  RTABLES = true;
+}
+const hesc = t => String(t == null ? '' : t).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const reportOut = r => { let context = null; try { context = r.context ? JSON.parse(r.context) : null; } catch (e) { }
+  return { id: r.id, at: r.at, email: r.email, name: r.name || nameOf(r.email), tool: r.tool, kind: r.kind, items: r.items || '', what: r.what || '', want: r.want || '', context, mailed: !!r.mailed, unseen: !r.seen_at }; };
+async function mailReport(env, rep) {
+  if (!env.RESEND_KEY) return false;
+  const c = rep.context || {}, rows = Array.isArray(c.rows) ? c.rows : [];
+  const line = (k, v) => v ? '<tr><td style="padding:4px 12px 4px 0;color:#777;vertical-align:top">' + hesc(k) + '</td><td style="padding:4px 0;white-space:pre-wrap">' + hesc(v) + '</td></tr>' : '';
+  const html = '<h2 style="margin:0 0 8px">' + hesc(rep.kind) + '</h2><table style="border-collapse:collapse;font:14px sans-serif">' +
+    line('From', rep.name + ' <' + rep.email + '>') + line('Tool', rep.tool) + line('Venue', c.venue) + line('Item(s)', rep.items) +
+    line('What happened', rep.what) + line('What it should be', rep.want) + line('Files', (c.files || []).join(', ')) + line('Converter said', c.stats) +
+    line('Page errors', (c.errors || []).join('\n')) + line('Browser', c.ua) + '</table>' +
+    (rows.length && Array.isArray(c.head) ? '<p style="margin:16px 0 4px"><b>What the converter produced for those items</b></p><table style="border-collapse:collapse;font:12px sans-serif" border="1" cellpadding="4">' +
+      '<tr>' + c.head.map(h => '<th>' + hesc(h) + '</th>').join('') + '</tr>' + rows.slice(0, 30).map(r => '<tr>' + r.map(x => '<td>' + hesc(x) + '</td>').join('') + '</tr>').join('') + '</table>' : '') +
+    '<p style="color:#777;margin-top:16px">Report #' + rep.id + ' · also in the bell on <a href="https://menuhauler.com/#converter">menuhauler.com</a>. Reply to this email to answer ' + hesc(rep.name) + '.</p>';
+  const text = rep.kind + '\n\nFrom: ' + rep.name + ' <' + rep.email + '>\nTool: ' + rep.tool + (c.venue ? '\nVenue: ' + c.venue : '') + (rep.items ? '\nItem(s): ' + rep.items : '') +
+    '\n\nWhat happened:\n' + rep.what + (rep.want ? '\n\nWhat it should be:\n' + rep.want : '') + (c.files && c.files.length ? '\n\nFiles: ' + c.files.join(', ') : '') + '\n\nReport #' + rep.id;
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + env.RESEND_KEY, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: env.MAIL_FROM || 'Menu Hauler <login@menuhauler.com>', to: [OWNER], reply_to: rep.email,
+      subject: 'Menu Hauler report: ' + rep.kind + (rep.items ? ' (' + rep.items.slice(0, 60) + ')' : ''), text, html }),
+  }).catch(() => null);
+  return !!(r && r.ok);
+}
+async function reports(path, req, env, user) {
+  await reportTables(env);
+  const DB = env.DB, now = Date.now();
+  // anyone signed in may send one (view-only people too: a report changes nothing)
+  if (path === '' || path === 'send') {
+    if (req.method !== 'POST') return api({ error: 'Use POST.' }, 405);
+    const b = await req.json().catch(() => ({}));
+    const s = (v, n) => String(v == null ? '' : v).replace(/\r\n?/g, '\n').trim().slice(0, n);
+    const kind = REPORT_KINDS.includes(b.kind) ? b.kind : 'Something else', what = s(b.what, 4000), want = s(b.want, 4000), items = s(b.items, 500), tool = s(b.tool, 40) || 'converter';
+    if (what.length < 5) return api({ error: 'Say what went wrong (a sentence is fine).' }, 400);
+    let context = '';
+    try { context = b.context ? JSON.stringify(b.context) : ''; } catch (e) { }
+    if (context.length > 40000) context = JSON.stringify({ ...b.context, rows: [], note: 'rows left out (too big)' }).slice(0, 40000);
+    const recent = await DB.prepare('SELECT COUNT(*) AS n FROM reports WHERE email = ?1 AND at > ?2').bind(user.email, now - 3600e3).first();
+    if (recent && recent.n >= REPORTS_PER_HOUR) return api({ error: 'You’ve sent a lot of reports this hour. Try again later, or add to one you already sent by replying to it.' }, 429);
+    const row = await DB.prepare('INSERT INTO reports (at, email, name, tool, kind, items, what, want, context) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9) RETURNING id')
+      .bind(now, user.email, user.name, tool, kind, items, what, want, context || null).first();
+    const rep = { id: row.id, email: user.email, name: user.name, tool, kind, items, what, want, context: context ? JSON.parse(context) : null };
+    const mailed = await mailReport(env, rep);
+    await DB.batch([DB.prepare('UPDATE reports SET mailed = ?2 WHERE id = ?1').bind(row.id, mailed ? 1 : 0), log(env, user.email, 'report', kind + (items ? ': ' + items : '')),
+      DB.prepare('DELETE FROM reports WHERE at < ?1').bind(now - REPORT_DAYS * 864e5)]);
+    return api({ ok: true, id: row.id, mailed });
+  }
+  // the owner's side: the bell's list, and marking them read
+  if (user.role !== 'owner') return api({ error: 'Only the owner sees reports.' }, 403);
+  if (path === 'inbox') {
+    const rows = (await DB.prepare('SELECT * FROM reports WHERE at > ?1 ORDER BY at DESC LIMIT 50').bind(now - REPORT_DAYS * 864e5).all()).results || [];
+    return api({ now, items: rows.map(reportOut) });
+  }
+  if (path === 'seen') {
+    if (req.method !== 'POST') return api({ error: 'Use POST.' }, 405);
+    const b = await req.json().catch(() => ({}));
+    if (b.all) await DB.prepare('UPDATE reports SET seen_at = ?1 WHERE seen_at IS NULL').bind(now).run();
+    else await DB.prepare('UPDATE reports SET seen_at = ?2 WHERE id = ?1').bind(+b.id || 0, now).run();
+    return api({ ok: true });
+  }
+  return api({ error: 'Unknown address.' }, 404);
+}
+
 // baseline security headers added to every response (set here, not in Cloudflare, so they ship with the code)
 const SEC = {
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
@@ -923,6 +1001,7 @@ async function handle(req, env) {
         }
         if (route === 'fetch') return fetchFor(p, env);
         if (route.startsWith('intake/')) return intakeStaff(route.slice(7), req, env, user, p, u);
+        if (route === 'report' || route.startsWith('report/')) return reports(route.slice(7), req, env, user);
         return api({ error: 'Unknown address.' }, 404);
       }
 

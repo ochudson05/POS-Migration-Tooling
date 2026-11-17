@@ -69,6 +69,12 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 #dropov div{background:var(--card);color:var(--text);border:2px dashed var(--accent);padding:28px 40px;border-radius:14px;font-weight:600}
 #npfix table input{width:90px;margin:0;padding:4px 6px}#npfix tr.npc td{background:var(--bg)}#rsbox button{margin:0 0 0 8px;padding:4px 12px}
 .chk ul{margin:4px 0 0;padding-left:18px;font-size:.82rem;color:var(--muted);max-height:180px;overflow:auto}
+/* "Report a bug / error" at the bottom of the page */
+.rb-foot{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;padding:4px 0 0}.rb-foot button{margin:0}
+#rbDlg{width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:14px;padding:20px}
+#rbDlg::backdrop{background:rgba(0,0,0,.45)}#rbDlg h2{font-size:1.1rem;margin:0 0 4px}
+#rbDlg .rb-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}#rbDlg .rb-btns button{margin:0}
+#rbMsg.err{color:var(--bad,#c62828)}#rbMsg.ok{color:var(--ok)}
 </style>
 </head>
 <body>
@@ -185,6 +191,24 @@ Double Shot=60</textarea></div>
 <label id="inaW" class="warn" style="display:none;margin-top:8px"><input type="checkbox" id="inaDl"> Also download the <b id="inaN">0</b> inactive OrderMate items as a separate sheet</label>
 <div class="warn">Modifiers are exported as Product Type “Modifier”. The modifier groups file lists each group with its modifiers, prices and linked products, so you can build the groups in Oolio.</div>
 </div>
+<div class="rb-foot"><button type="button" id="rbOpen" class="sec">Report a bug / error</button><span class="warn" style="margin:0">Converter read something wrong, or the page broke? Tell us and it gets fixed for everyone.</span></div>
+<dialog id="rbDlg" aria-labelledby="rbH">
+<form id="rbForm" method="dialog" novalidate>
+<h2 id="rbH">Report a bug / error</h2>
+<p class="warn" style="margin:0 0 12px">This goes to the Menu Hauler owner. You can’t break anything by sending one.</p>
+<label for="rbKind">What kind of problem?</label>
+<select id="rbKind"><option>Wrong or missing item</option><option>Wrong price</option><option>Wrong category or reporting group</option><option>Wrong size or variant</option><option>Wrong modifier group</option><option>Wrong printer</option><option>The page broke or showed an error</option><option>Something else</option></select>
+<label for="rbItems" style="margin-top:12px">Which item(s)? <span style="font-weight:400">(optional)</span></label>
+<input id="rbItems" list="rbItemList" autocomplete="off" placeholder="e.g. Flat White, Margherita Pizza"><datalist id="rbItemList"></datalist>
+<label for="rbWhat" style="margin-top:12px">What happened?</label>
+<textarea id="rbWhat" required style="min-height:84px" placeholder="e.g. Flat White came out in the Food category with the kitchen printer."></textarea>
+<label for="rbWant" style="margin-top:12px">What should it be instead? <span style="font-weight:400">(optional)</span></label>
+<textarea id="rbWant" style="min-height:64px" placeholder="e.g. Hot Coffee category, Coffee printer."></textarea>
+<label class="ck" style="margin-top:12px"><input type="checkbox" id="rbCtx" checked> Include the file names, venue and what the converter made for those items</label>
+<p id="rbMsg" class="warn" role="status" aria-live="polite"></p>
+<div class="rb-btns"><button type="submit" id="rbSend">Send report</button><button type="button" class="sec" id="rbCancel">Cancel</button></div>
+</form>
+</dialog>
 </main>
 
 <script>
@@ -2363,6 +2387,39 @@ $('kidsz').addEventListener('change',()=>{rebuild();if(window.mhToast)window.mhT
       .map(f=>/^image\//.test(f.type)&&(!f.name||/^image\.\w+$/i.test(f.name))?new File([f],'Pasted screenshot '+(++pn)+'.'+((f.type.split('/')[1]||'png').replace('jpeg','jpg')),{type:f.type}):f);
     if(!fs.length)return;e.preventDefault();handleFiles(fs)});})();
 offerRestore();
+
+/* ---------- "Report a bug / error": people describe what's wrong instead of changing the converter ----------
+   On the website it goes to /api/report (saved, emailed to the owner, shown in the owner's bell). With "include" ticked it
+   carries the file names, venue, the step 7 summary and the rows the converter made for the items named: the "before"
+   a retrain needs. Anywhere else (claude.ai, a local file) the report is copied so it can be pasted into an email. */
+(()=>{const ERRS=[];
+  addEventListener('error',e=>{ERRS.push(String(e.message||'Error').slice(0,200));if(ERRS.length>5)ERRS.shift()});
+  addEventListener('unhandledrejection',e=>{const r=e.reason;ERRS.push(String((r&&r.message)||r||'Error').slice(0,200));if(ERRS.length>5)ERRS.shift()});
+  const d=$('rbDlg'),msg=(t,k)=>{const m=$('rbMsg');m.textContent=t||'';m.className='warn'+(k?' '+k:'')};
+  const iN=()=>OUT.indexOf('Product Name*'),iT=()=>OUT.indexOf('Product Type*');
+  function names(){if(!res||!res.rows)return[];const n=iN(),t=iT(),s=new Set();res.rows.forEach(r=>{if(r[t]==='Product'||r[t]==='Modifier')s.add(String(r[n]))});return[...s].slice(0,800)}
+  function rowsFor(txt){if(!res||!res.rows||!txt)return[];const want=txt.split(/[,;\n]+/).map(x=>N(x)).filter(x=>x.length>1);if(!want.length)return[];const n=iN();
+    return res.rows.filter(r=>{const k=N(r[n]);return want.some(w=>k===w||k.includes(w)||w.includes(k)&&k.length>3)}).slice(0,30)}
+  function context(){const OV=window.OolioVenues,a=OV&&OV.active?OV.active():null;
+    return{venue:a&&a.name||'',files:tables.filter(t=>t.on).map(t=>t.file+(t.sheet?' ('+t.sheet+')':'')+(t.a&&t.a.src?' · '+(SRCNAME[t.a.src]||t.a.src):'')).slice(0,20),
+      stats:$('stats')?$('stats').textContent.slice(0,300):'',errors:ERRS.slice(),ua:navigator.userAgent.slice(0,200),head:OUT.slice(),rows:rowsFor($('rbItems').value)}}
+  function asText(b){const c=b.context||{};return'Menu Hauler report: '+b.kind+'\n\n'+(b.items?'Item(s): '+b.items+'\n':'')+'What happened:\n'+b.what+'\n'+(b.want?'\nWhat it should be:\n'+b.want+'\n':'')+
+    (c.venue?'\nVenue: '+c.venue:'')+(c.files&&c.files.length?'\nFiles: '+c.files.join(', '):'')+(c.stats?'\nConverter said: '+c.stats:'')+(c.errors&&c.errors.length?'\nPage errors: '+c.errors.join(' | '):'')}
+  $('rbOpen').addEventListener('click',()=>{$('rbItemList').innerHTML=names().map(x=>'<option value="'+esc(x)+'">').join('');msg('');$('rbSend').disabled=false;
+    if(d.showModal)d.showModal();else d.setAttribute('open','');setTimeout(()=>$('rbWhat').focus(),30)});
+  $('rbCancel').addEventListener('click',()=>d.close());
+  $('rbForm').addEventListener('submit',async e=>{e.preventDefault();const what=$('rbWhat').value.trim();
+    if(what.length<5){msg('Say what went wrong (a sentence is fine).','err');$('rbWhat').focus();return}
+    const b={tool:'converter',kind:$('rbKind').value,items:$('rbItems').value.trim(),what,want:$('rbWant').value.trim(),context:$('rbCtx').checked?context():null};
+    const done=t=>{if(window.mhToast)window.mhToast(t);$('rbForm').reset();d.close()};
+    if(!window.OOLIO_HOSTED){try{await navigator.clipboard.writeText(asText(b));msg('Reports send from menuhauler.com. This one has been copied: paste it into an email to the Menu Hauler owner.','ok')}
+      catch(err){msg('Reports send from menuhauler.com. Open the converter there to send this one.','err')}return}
+    $('rbSend').disabled=true;msg('Sending…');
+    try{const r=await fetch('/api/report',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(b)}),j=await r.json().catch(()=>({}));
+      if(!r.ok)throw new Error(j.error||'error '+r.status);
+      done(j.mailed?'Thanks, your report was sent to the owner.':'Thanks, your report was saved. The owner will see it on the site.')}
+    catch(err){msg('Couldn’t send it ('+err.message+'). Try again.','err');$('rbSend').disabled=false}});
+})();
 </script>
 </body>
 </html>
