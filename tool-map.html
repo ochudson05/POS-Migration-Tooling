@@ -128,7 +128,7 @@ footer{margin-top:40px;font-size:13px;color:var(--muted)}
   <div class="tbl"><table>
     <thead><tr><th>Tool</th><th>What changed</th></tr></thead>
     <tbody>
-      <tr><td style="color:var(--t-converter)">Menu Converter</td><td>Reads <b>IMPOS onboarding workbooks</b>: categories fill down, Uber/DoorDash becomes a price list, options become shared modifier groups or sizes, and FREE TEXT becomes Kitchen Notes / Spice Level.</td></tr>
+      <tr><td style="color:var(--t-converter)">Menu Converter</td><td>Reads <b>Redcat onboarding workbooks</b>: categories fill down, Uber/DoorDash becomes a price list, options become shared modifier groups or sizes, and FREE TEXT becomes Kitchen Notes / Spice Level.</td></tr>
       <tr><td style="color:var(--t-converter)">Menu Converter</td><td><b>Price lists</b> as extra columns between GTIN and Sell Price*. They come from Oolio files with extra price columns or from repeated OrderMate exports (one per price level). A missing price list price uses the sell price and is listed in the checks.</td></tr>
       <tr><td style="color:var(--t-converter)">Menu Converter</td><td><b>OrderMate exports</b>: Group, Category, Printer Group and System State are mapped. Inactive items are left out. Pluses become "Add X" modifiers and minuses become "No X". An OrderMate modifier sheet (XLSX) lists the groups to create.</td></tr>
       <tr><td style="color:var(--t-converter)">Menu Converter</td><td><b>Sizes</b>: "Regular TAKEAWAY" / "Dine-In" are split into plain sizes plus a Takeaway price list. Filler sizes (Serve, SIDE OF, Retail) are dropped. Kids items become a Kids Size variant, with a step 4 tick box to turn that off (a Kids prefix is used instead). More size words are recognised.</td></tr>
@@ -303,7 +303,7 @@ footer{margin-top:40px;font-size:13px;color:var(--muted)}
       <div><p class="lab">What it can do</p><ul>
         <li>Read PDF, Word, Excel, photos and web addresses</li>
         <li>"Find all menus": website, Hungry Hungry, me&amp;u/Mr Yum, DoorDash, Uber Eats</li>
-        <li><span class="new">New</span>Read IMPOS onboarding workbooks (MENU and FREE TEXT sheets)</li>
+        <li><span class="new">New</span>Read Redcat onboarding workbooks (MENU and FREE TEXT sheets)</li>
         <li><span class="new">New</span>Read OrderMate exports: inactive items left out, pluses → "Add X", minuses → "No X", plus a modifier sheet (XLSX)</li>
         <li><span class="new">New</span>Price lists as extra columns, from Oolio files or one OrderMate export per price level</li>
         <li><span class="new">New</span>Takeaway / dine-in sizes split into a Takeaway price list; filler sizes dropped; kids items become a Kids Size (tick box)</li>
@@ -312,7 +312,7 @@ footer{margin-top:40px;font-size:13px;color:var(--muted)}
         <li>Price editor, price request sheet, no-price override, session restore</li>
       </ul></div>
       <div><p class="lab">How it works</p><div class="flow">
-        <span class="f">Files, POS exports (Oolio, OrderMate, IMPOS) or web addresses</span><span class="to">→</span><span class="f">Built-in parsers</span><span class="or">or</span><span class="f">Server scraper + OCR</span><span class="or">or</span><span class="f">Firecrawl (capped)</span><span class="to">→</span><span class="f">Trained rules from ~220 venues</span><span class="to">→</span><span class="f">Review + checks</span><span class="to">→</span><span class="f out">Oolio import CSV</span>
+        <span class="f">Files, POS exports (Oolio, OrderMate, Redcat) or web addresses</span><span class="to">→</span><span class="f">Built-in parsers</span><span class="or">or</span><span class="f">Server scraper + OCR</span><span class="or">or</span><span class="f">Firecrawl (capped)</span><span class="to">→</span><span class="f">Trained rules from ~220 venues</span><span class="to">→</span><span class="f">Review + checks</span><span class="to">→</span><span class="f out">Oolio import CSV</span>
       </div></div>
       <div class="note">"Check against the original" (AI flags differences between a photo and the list; it never fixes) is built but hidden until an API key is set.</div>
       <div class="cost"><b>Cost:</b> free readers first · Firecrawl capped per search · AI only if the owner switches it on.</div>
