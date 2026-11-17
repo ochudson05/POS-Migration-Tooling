@@ -13,7 +13,8 @@
      sample -> /api/claude, but only for people the owner has switched Claude on for (see /admin); everyone else gets
                nothing, so each tool falls back to its built-in readers and OCR exactly as before.
                json(prompt, {task:'light'}) asks for the cheaper model the owner picked for small jobs, and
-               {task:'check'} for the model picked to check OCR readings against the original photos; {context} is
+               {task:'check'} for the model picked to check OCR readings against the original photos, {task:'shelf'}
+               for fridge / shelf photos (always Sonnet); {context} is
                fixed reference text sent first (Anthropic's prompt cache); a repeated question is answered from a
                saved reading unless {fresh:true}. On claude.ai these options are simply ignored.
      window.MH_SERVER -> the Menu Hauler server through /api/server/* (menu scraper, OCR), when the website has one
@@ -100,7 +101,7 @@ const SAMPLE={
       images.push({type:blob.type==='image/jpg'?'image/jpeg':(blob.type||'image/jpeg'),data:await b64(blob)})}
     let r;try{r=await fetch('/api/claude',{method:'POST',credentials:'same-origin',redirect:'manual',signal:o.signal,headers:{'content-type':'application/json'},
       // task "light" = a small job for the cheaper model, "check" = the check model; context = fixed reference text (prompt-cached); fresh = skip saved readings
-      body:JSON.stringify({prompt:String(prompt),images,tool:location.hash.slice(1),task:o.task==='light'||o.task==='check'?o.task:undefined,context:typeof o.context==='string'?o.context:undefined,fresh:o.fresh===true||undefined})})}
+      body:JSON.stringify({prompt:String(prompt),images,tool:location.hash.slice(1),task:['light','check','shelf'].includes(o.task)?o.task:undefined,context:typeof o.context==='string'?o.context:undefined,fresh:o.fresh===true||undefined})})}
     catch(e){if(o.signal&&o.signal.aborted)throw err('Stopped.','cancelled');throw err('The website couldn’t be reached. Check the connection.','unavailable')}
     if(r.type==='opaqueredirect'||r.status===401){signinBanner('Your sign-in session has ended. Reload the page to sign in again.');throw err('Your sign-in session has ended.','session_expired')}
     let j={};try{j=await r.json()}catch(e){}
@@ -1051,6 +1052,7 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 <p class="lx-cn" style="margin:0 0 6px">Files are read in your browser and aren’t kept unless you save the result to a venue. Don’t include personal or payment details. <a href="#privacy">Privacy Policy</a> · <a href="#ai">Use of AI</a></p>
 <input type="file" id="file" accept=".csv,.tsv,.txt,.md,.docx,.xlsx,.xlsm,.xls,.ods,.pdf,.html,.htm,.png,.jpg,.jpeg,.webp,.gif" multiple>
 <label class="ck" style="margin-top:8px"><input type="checkbox" id="noprice">Include items without prices (for menus that don’t show them). Their price is set to 0 and they are listed in Checks. Tick this before you add the file, read the page or paste the text.</label>
+<label class="ck" style="margin-top:4px"><input type="checkbox" id="shelf">These are fridge or shelf photos (drinks or products priced on shelf tags, not a printed menu). Claude reads every product, matches it to the price tag under its shelf and sorts it into types like Soft Drinks, Water and Juices. Tick this before you add the photos.</label>
 <div class="warn hosted-only site-claude" style="margin-top:6px">Menu photos, PDFs and Word documents are read by Claude, which the site owner has switched on for your account. Check names and prices against the menu. Take photos straight on, in good light, one page at a time.</div>
 <div class="warn hosted-only ocr-note" style="margin-top:6px">Menu photos and scanned PDFs are read with text recognition (OCR) in your browser, which can take a minute. Check names and prices carefully against the photo. Take photos straight on, in good light, one page at a time.</div>
 <div class="warn claude-only" style="margin-top:6px">Menu photos, PDFs and Word documents are read by Claude, which uses a little of your own Claude usage and also picks up add-ons and choices (e.g. “Add bacon +$4”) as modifier groups. The first time, you’re asked to allow it. Take photos straight on, in good light, one page at a time.</div>
@@ -1840,6 +1842,7 @@ function parseCSV(t,d){
 async function readFile(f){
   const buf=await f.arrayBuffer();
   if(/\.pdf$/i.test(f.name))return[await pdfTable(f.name,buf)];
+  if(/\.(png|jpe?g|webp|gif)$/i.test(f.name)&&SHELF())return[await shelfRead(f)];
   if(/\.(png|jpe?g|webp|gif)$/i.test(f.name))return[(await aiPhotos())?await claudeRead(f.name,[f],'photo'):withImg(docTable(f.name,await ocrLines([f]),'photo (OCR)'),[f])];
   if(/\.(html?|txt)$/i.test(f.name)){let t;try{t=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(e){t=new TextDecoder('windows-1252').decode(buf)}
     return[/\.txt$/i.test(f.name)?docTable(f.name,textLines(t),'text'):htmlTable(f.name,t)];}
@@ -1990,6 +1993,50 @@ async function claudeRead(name,sources,how){
   if(O.ocr)notes.push(...(ocrs.length?secondOpinion(rows,ocrs):['The OCR second opinion wasn’t available this time, so check prices against the original as usual.']));
   say('');readCtl=null;
   const t=mkDocTable(name,rows,notes,how+' (read by Claude)');t.extra=optTable(name,opts);return t;}
+/* ---------------- fridge and shelf photos (step 1 tick box "shelf") ----------------
+   A drinks fridge or a shop shelf isn't a menu: names are on the products and prices are on tags under each shelf,
+   so OCR can't pair them. Claude (task "shelf", Sonnet on the website) reads the photo cut into overlapping bands,
+   one or two shelves each, so small labels and tags stay legible. It always uses Claude, whatever /admin says
+   about menu photos, because OCR can't do this job. */
+const SHELF=()=>{const e=document.getElementById('shelf');return!!(e&&e.checked)};
+async function shelfTiles(src){
+  const img=await createImageBitmap(src),w=img.width,h=img.height,n=Math.max(1,Math.min(4,IMGMAX));
+  if(n===1)return[src];
+  // a tall photo (one fridge) is cut into horizontal bands; a wide one (several doors) into a 2 x 2 grid
+  const cols=w>h*1.15&&n>=4?2:1,rows=Math.floor(n/cols),tw=w/cols,th=h/rows,out=[];
+  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
+    const x0=Math.max(0,c*tw-tw*0.06),x1=Math.min(w,(c+1)*tw+tw*0.06),y0=Math.max(0,r*th-th*0.18),y1=Math.min(h,(r+1)*th+th*0.18);
+    // Claude sees about 1,568 pixels on the long side, so anything bigger is only a bigger upload
+    const k=Math.min(1,1568/Math.max(x1-x0,y1-y0)),cv=document.createElement('canvas');cv.width=Math.round((x1-x0)*k);cv.height=Math.round((y1-y0)*k);
+    cv.getContext('2d').drawImage(img,x0,y0,x1-x0,y1-y0,0,0,cv.width,cv.height);out.push(await toBlob(cv))}
+  out.grid=cols>1;return out;}
+const SHELF_PROMPT=(n,grid)=>(n>1?'These '+n+' images are overlapping slices of ONE photo of a drinks fridge or shop shelf, in order ('+(grid?'top left, top right, bottom left, bottom right':'top to bottom')+'). A shelf cut off at the edge of one slice appears whole in the next: list each product once.':'This image is a photo of a drinks fridge or shop shelf.')+
+  '\n\nList every different product you can see for sale, and reply with only this JSON:\n{"items":[{"category":"","name":"","size":"","price":0}],"notes":[]}\n\nRules:\n'+
+  '- name: brand and flavour or variety, as printed on the product, with each word capitalised, e.g. "Coca-Cola Zero Sugar", "Kirks Lemon Squash", "Mount Franklin Lightly Sparkling", "Bundaberg Ginger Beer". Use the product\'s own name for its flavour (e.g. "Monster Ultra Zero Sugar", "Powerade Mountain Blast"). Do not put the size in the name.\n'+
+  '- One entry per different product and size. Several facings of the same product are ONE entry.\n'+
+  '- size: the pack, e.g. "Can 375ml", "600ml", "390ml", "1.25L", "1.5L", "1L", "350ml". Judge it from the container and its shelf if not printed. Use "" when there is only one size of that product and you can\'t tell.\n'+
+  '- price: the price on the shelf tag directly under that product\'s shelf. A tag covers the products above it from where it sits to the next tag along the same shelf; when a shelf has one tag, it covers the whole shelf. Use null if no tag can be read for it.\n'+
+  '- category: one of "Soft Drinks", "Water", "Juices", "Energy Drinks", "Sports Drinks", "Iced Tea", "Iced Coffee & Milk", "Kombucha", "Beer", "Wine", "Cider", "Snacks", "Confectionery", "Food", or another short type of product if none fits. Flavoured mineral water and coconut water go under "Water"; smoothies under "Juices"; vitamin water and iced tea under "Iced Tea".\n'+
+  '- Include fridges or shelves next to the main one only when their products and tags are clearly visible.\n'+
+  '- notes: list each product whose name, flavour, size or price you had to guess, saying what to check (e.g. "Fanta Raspberry 600ml: label not readable, named from colour"). Also list deals printed on signs or tags (e.g. "2 for $8.00 on Coca-Cola 600ml").\n'+
+  '- Do not invent products you cannot see.';
+async function shelfRead(f){
+  const s=await getSample();
+  if(!s)throw new Error('Fridge and shelf photos are read by Claude, which isn’t available here. Untick “fridge or shelf photos” to read it with OCR as a menu.');
+  readCtl=new AbortController();
+  const tiles=await shelfTiles(f);
+  sayStop('Claude is reading the fridge / shelf photo '+f.name+'. This can take up to a minute…');
+  let data;try{data=await s.json(SHELF_PROMPT(tiles.length,tiles.grid),{images:tiles.length===1?tiles[0]:tiles,task:'shelf',signal:readCtl.signal})}
+  catch(e){say('');readCtl=null;throw new Error(claudeErr(e))}
+  const rows=[],notes=[],seen=new Set();
+  const items=Array.isArray(data)?data:(data&&Array.isArray(data.items)?data.items:[]);
+  items.forEach(it=>{if(!it||typeof it!=='object')return;const nm=clean(it.name);if(!nm)return;
+    const sz=clean(it.size),k=(nm+'|'+sz).toLowerCase();if(seen.has(k))return;seen.add(k);
+    rows.push([clean(it.category),nm,sz,it.price==null||it.price===''?'':num(it.price),'',''])});
+  if(data&&Array.isArray(data.notes))data.notes.forEach(n=>{if(clean(n))notes.push(clean(n))});
+  if(!rows.length)notes.push('Claude found no products in this photo. Check it shows the shelves and price tags clearly.');
+  say('');readCtl=null;
+  return withImg(mkDocTable(f.name,rows,notes,'fridge / shelf photo (read by Claude)'),[f]);}
 /* ---------------- the Menu Hauler server (website only): OCR second opinion ----------------
    While Claude reads a photo or scanned page, the server's OCR (RapidOCR) reads it too. Prices Claude listed that
    OCR never saw, and lines with a price that no item has, are listed in Checks for a look at the original.

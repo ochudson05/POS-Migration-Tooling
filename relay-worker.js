@@ -451,6 +451,7 @@ const GEMINI_PRICES = { 'gemini-2.5-flash-lite': [0.10, 0.40], 'gemini-3.1-flash
 const geminiModel = env => String(env.GEMINI_MODEL || GEMINI_DEFAULT).trim();
 const localOn = env => serverOn(env) && env.LOCAL_MODEL_ON === '1';
 const CLAUDE_CACHE_DAYS = 30;
+const SHELF_MODEL = 'claude-sonnet-5-5'; // reads fridge / shelf photos (owner's choice, 2026-11-17)
 const PHOTO_READERS = ['ocr', 'ai'];
 const CLAUDE_DEFAULTS = { enabled: false, model: 'claude-opus-5-5', lightModel: 'claude-haiku-5-5', checkModel: 'claude-sonnet-5-5', photoReader: 'ocr', effort: 'medium', siteMonthUsd: 10, userMonthUsd: 2, userDayCalls: 25, userMinuteCalls: 4 };
 // ceilings the admin page can't go past
@@ -547,17 +548,18 @@ async function claude(req, env, user) {
   }
   const tool = TOOLS.includes(b.tool) ? b.tool : '', now = Date.now(), DB = env.DB;
   // small jobs go to the light model, at low effort; checks to the check model, at medium effort; the local model can't see pictures
-  const light = b.task === 'light', check = b.task === 'check', anth = !!env.ANTHROPIC_API_KEY;
+  // task "shelf": the converter's fridge / shelf photos (products on shelves, prices on tags), always Sonnet at medium effort
+  const light = b.task === 'light', check = b.task === 'check', shelf = b.task === 'shelf', anth = !!env.ANTHROPIC_API_KEY;
   // with only a Gemini key, Gemini answers whatever Claude model was chosen
   const viaKey = m => anth || !CLAUDE_PRICES[m] ? m : geminiModel(env);
-  let model = light ? s.lightModel : check ? s.checkModel : s.model;
-  const effort = light ? 'low' : check ? 'medium' : s.effort;
+  let model = light ? s.lightModel : check ? s.checkModel : shelf ? SHELF_MODEL : s.model;
+  const effort = light ? 'low' : check || shelf ? 'medium' : s.effort;
   if (model === LOCAL_MODEL && (imgs.length || !localOn(env))) model = LOCAL_FALLBACK;
   if (model === GEMINI) model = env.GEMINI_KEY ? geminiModel(env) : LOCAL_FALLBACK;
   model = viaKey(model);
 
   // the same question asked before (by anyone, within CLAUDE_CACHE_DAYS) is answered from the saved reading, free
-  const key = await askKey([light ? 'light:' + model : check ? 'check:' + model : model, effort, context, b.prompt, ...imgs.map(i => i.type + ':' + i.data)]);
+  const key = await askKey([light ? 'light:' + model : check ? 'check:' + model : shelf ? 'shelf:' + model : model, effort, context, b.prompt, ...imgs.map(i => i.type + ':' + i.data)]);
   if (b.fresh !== true) {
     const hit = await DB.prepare('SELECT text, model FROM claude_cache WHERE key = ?1 AND at > ?2').bind(key, now - CLAUDE_CACHE_DAYS * 864e5).first();
     if (hit) {
