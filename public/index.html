@@ -519,6 +519,10 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .st-swatches{display:flex;flex-wrap:wrap;gap:6px}
 .st .st-sw{display:inline-flex;align-items:center;gap:6px;background:var(--card)!important;color:var(--text)!important;border:1px solid var(--line)!important;padding:4px 10px!important;font-size:.82rem;font-family:ui-monospace,Consolas,monospace}
 .st-sw i{width:16px;height:16px;border-radius:4px;border:1px solid rgb(0 0 0/.15)}
+.st-bhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 12px}
+.st-logow{position:relative}.st .st-logow .st-bx{position:absolute;top:2px;right:2px;background:var(--card)!important;border:1px solid var(--line)!important;border-radius:50%;width:24px;height:24px;display:grid;place-items:center;padding:0!important;font-size:1rem!important}
+.st-sww{display:inline-flex;align-items:center}.st .st-sww .st-bx{padding:2px 4px!important}
+.st .st-bx:hover{color:var(--bad,#c62828)!important}
 .st-intake{border-top:1px solid var(--line);padding-top:10px;display:grid;gap:8px}
 /* intake: a clear "sent in" banner, the answers page, and "new" markers */
 .st-chip.new{color:#fff;background:var(--accent);border-color:var(--accent);font-weight:700}
@@ -5395,10 +5399,20 @@ async function fetchBrand(id){const o=ORGS[id],site=val(o,'prep-gmb','website')|
   catch(e){flash('Couldn’t read the website ('+((e&&(e.message||e.code))||'error')+').',true);return}
   if(!b.logos.length&&!b.colors.length){flash('No logo or brand colours were found on '+u+'. Ask the venue for their logo.',true);return}
   save(id,{brand:{logos:b.logos,colors:b.colors,site:u,at:Date.now(),via}});render();flash('Found '+b.logos.length+' logo option'+(b.logos.length===1?'':'s')+' and '+b.colors.length+' colour'+(b.colors.length===1?'':'s')+'. Check them below.')}
+// each logo and colour has a × to remove it, and "Remove all" clears the lot (not for view-only people)
 function brandPanel(o){const B=o.brand;if(!B)return'';
-  return '<div class="st-brand"><div class="st-small st-muted">Logo and brand colours from '+esc(B.site||'the website')+' · '+esc(when(B.at))+'</div><div class="st-logos">'+
-    (B.logos||[]).map(l=>'<a class="st-logo" href="'+esc(l.url)+'" target="_blank" rel="noopener" title="'+esc(l.why)+' (opens the image to save it)"><img src="'+esc(l.url)+'" alt="'+esc(l.why)+'" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{textContent:\'Open image\'}))"><small>'+esc(l.why)+'</small></a>').join('')+'</div>'+
-    ((B.colors||[]).length?'<div class="st-swatches">'+B.colors.map(c=>'<button type="button" class="st-sw" data-copy="'+esc(c)+'" title="Copy '+esc(c)+'"><i style="background:'+esc(c)+'"></i>'+esc(c)+'</button>').join('')+'</div>':'')+'</div>'}
+  const x=(k,what)=>READONLY?'':'<button type="button" class="st-x st-bx" data-bdel="'+k+'" aria-label="Remove '+esc(what)+'" title="Remove '+esc(what)+'">×</button>';
+  return '<div class="st-brand"><div class="st-bhead"><span class="st-small st-muted">Logo and brand colours from '+esc(B.site||'the website')+' · '+esc(when(B.at))+'</span>'+
+    (READONLY?'':'<button type="button" class="st-link st-sm" data-bdel="all">Remove all</button>')+'</div>'+
+    ((B.logos||[]).length?'<div class="st-logos">'+B.logos.map((l,i)=>'<div class="st-logow"><a class="st-logo" href="'+esc(l.url)+'" target="_blank" rel="noopener" title="'+esc(l.why)+' (opens the image to save it)"><img src="'+esc(l.url)+'" alt="'+esc(l.why)+'" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement(\'span\'),{textContent:\'Open image\'}))"><small>'+esc(l.why)+'</small></a>'+x('l'+i,'this logo')+'</div>').join('')+'</div>':'')+
+    ((B.colors||[]).length?'<div class="st-swatches">'+B.colors.map((c,i)=>'<span class="st-sww"><button type="button" class="st-sw" data-copy="'+esc(c)+'" title="Copy '+esc(c)+'"><i style="background:'+esc(c)+'"></i>'+esc(c)+'</button>'+x('c'+i,'colour '+c)+'</span>').join('')+'</div>':'')+'</div>'}
+function brandDel(k){const id=VIEW.org,o=ORGS[id],B=o&&o.brand;if(!B||READONLY)return;
+  if(k==='all'){if(!confirm('Remove the logo and brand colours for '+(o.name||'this venue')+'? You can find them again with the brand lookup.'))return;save(id,{brand:null});render();setTimeout(()=>flash('Logo and brand colours removed.'),60);return}
+  const logos=(B.logos||[]).slice(),colors=(B.colors||[]).slice(),i=+k.slice(1);
+  if(k[0]==='l')logos.splice(i,1);else colors.splice(i,1);
+  save(id,{brand:logos.length||colors.length?{logos,colors}:null});render();
+  // after the redraw that save() queues, which would wipe the message
+  setTimeout(()=>flash(k[0]==='l'?'Logo removed.':'Colour removed.'),60)}
 
 /* ---------- go-live pack: one Word document for the venue (Image to Word's library) ---------- */
 const DOCXLIB='https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js';
@@ -5648,6 +5662,7 @@ root.addEventListener('click',e=>{const t=e.target;
     const blob=new Blob([rows.map(r=>r.map(q).join(',')).join('\r\n')],{type:'text/csv'}),fn=(o.name||'venue').replace(/[^\w\- ]+/g,'')+' menu history.csv';
     (async()=>{const dl=await use('downloads');if(dl){try{await dl.save({filename:fn,data:blob})}catch(e){}}else{const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fn;document.body.appendChild(a);a.click();a.remove()}})();return}
   const sd=t.closest('[data-sdel]');if(sd){const o=ORGS[VIEW.org],rows=(o.staff||[]).slice();rows.splice(+sd.dataset.sdel,1);save(VIEW.org,{staff:rows});render();return}
+  const bd=t.closest('[data-bdel]');if(bd){brandDel(bd.dataset.bdel);return}
   const cp=t.closest('[data-copy]');if(cp){const c=cp.dataset.copy;(navigator.clipboard?navigator.clipboard.writeText(c):Promise.reject()).then(()=>flash('Copied '+c+'.'),()=>flash(c));return}
   const jump=t.closest('[data-jump]');if(jump){e.preventDefault();const el=g('st-'+jump.dataset.jump);if(el)el.scrollIntoView({behavior:'smooth',block:'start'});return}
   const a=t.closest('[data-a]');if(!a)return;const act=a.dataset.a,o=VIEW.org&&ORGS[VIEW.org];
