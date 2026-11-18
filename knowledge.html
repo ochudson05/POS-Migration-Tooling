@@ -1,0 +1,750 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knowledge · Menu Hauler</title>
+<!-- Source of public/knowledge.html (build_apps.py adds the theme boot). Served at /knowledge by relay-worker.js to the
+     PLANNER accounts and people the owner ticks on /admin. Notes come from /api/kg/list (D1 kg_notes); the PLANNER accounts can
+     connect their Obsidian vault folder to sync it both ways. Based on the vault's own Knowledge Viewer (_help-db/viewer.html). -->
+<style>
+:root{
+  --bg:#f6f7f9;--panel:#fff;--panel2:#f1f3f5;--text:#1d2329;--muted:#66707a;--line:#e2e6ea;
+  --accent:#1f6feb;--accent-soft:#e7f0ff;--mark:#fff1a8;--danger:#c92a2a;
+  --g-reference:#495057;--g-clients:#e03131;--g-people:#e67700;--g-processes:#2f9e44;
+  --g-oolio-one-features:#1971c2;--g-products:#9c36b5;--g-organisation:#0c8599;--g-help-centre:#9aa5b1;--g-notebook:#d6336c;--g-menu-hauler:#e8590c;
+  --shadow:0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#111418;--panel:#181c21;--panel2:#1f242a;--text:#e6e9ec;--muted:#98a2ad;--line:#2b3138;
+  --accent:#5b9dff;--accent-soft:#1b2a40;--mark:#5c4b00;--danger:#ff6b6b;
+  --g-reference:#adb5bd;--g-clients:#ff6b6b;--g-people:#ffa94d;--g-processes:#69db7c;
+  --g-oolio-one-features:#4dabf7;--g-products:#da77f2;--g-organisation:#3bc9db;--g-help-centre:#5f6b78;--g-notebook:#f783ac;--g-menu-hauler:#ff922b;
+  --shadow:none;}}
+:root[data-theme="dark"]{
+  --bg:#111418;--panel:#181c21;--panel2:#1f242a;--text:#e6e9ec;--muted:#98a2ad;--line:#2b3138;
+  --accent:#5b9dff;--accent-soft:#1b2a40;--mark:#5c4b00;--danger:#ff6b6b;
+  --g-reference:#adb5bd;--g-clients:#ff6b6b;--g-people:#ffa94d;--g-processes:#69db7c;
+  --g-oolio-one-features:#4dabf7;--g-products:#da77f2;--g-organisation:#3bc9db;--g-help-centre:#5f6b78;--g-notebook:#f783ac;--g-menu-hauler:#ff922b;
+  --shadow:none;}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{background:var(--bg);color:var(--text);font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
+button{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:5px 10px;cursor:pointer}
+button:hover{border-color:var(--accent)}button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+header{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
+header h1{font-size:15px;margin:0;white-space:nowrap}
+header h1 a{color:var(--text)}
+#q{flex:1;min-width:180px;max-width:520px;padding:7px 11px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);font:inherit}
+#q:focus{outline:2px solid var(--accent);outline-offset:-1px}
+nav{display:flex;gap:6px;flex-wrap:wrap}
+.wrap{flex:1;display:flex;min-height:0}
+aside#side{width:260px;flex:none;overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:10px 8px 30px}
+main{flex:1;overflow:auto;min-width:0}
+.content{max-width:1180px;margin:0 auto;padding:20px 24px 60px}
+details{margin:2px 0}summary{cursor:pointer;padding:3px 6px;border-radius:6px;font-weight:600;font-size:13px;list-style:none;display:flex;align-items:center;gap:6px}
+summary::-webkit-details-marker{display:none}summary:before{content:"▸";color:var(--muted);font-size:10px;transition:transform .15s}details[open]>summary:before{transform:rotate(90deg)}
+summary:hover{background:var(--panel2)}
+.count{color:var(--muted);font-weight:400;font-size:12px;margin-left:auto}
+.tree a{display:block;padding:2px 8px 2px 22px;border-radius:6px;color:var(--text);font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree a:hover{background:var(--panel2);text-decoration:none}.tree a.cur{background:var(--accent-soft);color:var(--accent)}
+.tree details details summary{font-weight:500;padding-left:16px}.tree details details a{padding-left:34px}
+.dot{width:9px;height:9px;border-radius:50%;flex:none;display:inline-block}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;box-shadow:var(--shadow)}
+.grid{display:grid;gap:12px}
+.stats{grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.stat b{display:block;font-size:26px;line-height:1.2}.stat span{color:var(--muted);font-size:12.5px}
+h2{font-size:15px;margin:26px 0 10px}
+.cards{grid-template-columns:repeat(auto-fill,minmax(230px,1fr))}
+.ccard{display:block;color:var(--text)}.ccard:hover{border-color:var(--accent);text-decoration:none}
+.ccard .t{font-weight:600}.ccard .s{color:var(--muted);font-size:13px;margin-top:3px}.ccard .m{font-size:12px;color:var(--muted);margin-top:8px}
+.pill{display:inline-block;font-size:11.5px;padding:1px 8px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);margin:0 4px 4px 0}
+.pill.warn{color:var(--danger);border-color:var(--danger)}
+.note{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:20px;align-items:start}
+.crumb{color:var(--muted);font-size:12.5px;display:flex;align-items:center;gap:6px}
+.note h1{font-size:24px;margin:6px 0 4px;line-height:1.25}
+.note .sum{color:var(--muted);margin:0 0 10px}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 16px}
+.actions a{font-size:12.5px;padding:4px 10px;border:1px solid var(--line);border-radius:7px;background:var(--panel)}
+.md{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px 22px;box-shadow:var(--shadow);overflow-wrap:anywhere}
+.md h1,.md h2,.md h3{margin:1.2em 0 .45em;line-height:1.3}.md h2{font-size:17px}.md h3{font-size:15px}
+.md>:first-child{margin-top:0}
+.md img{max-width:100%;height:auto;border:1px solid var(--line);border-radius:8px;margin:6px 0}
+.md table{border-collapse:collapse;width:100%;margin:10px 0;font-size:13.5px}.md th,.md td{border:1px solid var(--line);padding:6px 9px;text-align:left;vertical-align:top}.md th{background:var(--panel2)}
+.md code{background:var(--panel2);padding:1px 5px;border-radius:4px;font-size:12.5px}
+.md pre{background:var(--panel2);padding:10px;border-radius:8px;overflow:auto}
+.md blockquote{margin:8px 0;padding:4px 12px;border-left:3px solid var(--line);color:var(--muted)}
+.md li{margin:2px 0}.md input[type=checkbox]{margin-right:6px}
+a.wl{background:var(--accent-soft);padding:0 4px;border-radius:4px}
+.wl.broken{color:var(--danger);border-bottom:1px dashed var(--danger);cursor:help}
+.side{position:sticky;top:0;display:flex;flex-direction:column;gap:12px}
+.side .card{padding:12px}
+.side h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 8px;display:flex;align-items:center;gap:6px}
+.side h3 .seg{margin-left:auto;display:flex;gap:4px}.side h3 .seg button{padding:1px 7px;font-size:11px;text-transform:none;letter-spacing:0}
+.links a{display:flex;align-items:center;gap:7px;padding:3px 4px;border-radius:6px;color:var(--text);font-size:13px}
+.links a:hover{background:var(--panel2);text-decoration:none}
+.links .empty{color:var(--muted);font-size:12.5px}
+svg.lg{width:100%;height:280px;display:block;background:var(--panel2);border-radius:8px}
+.res{display:block;color:var(--text);padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);margin-bottom:8px}
+.res:hover{border-color:var(--accent);text-decoration:none}
+.res .t{font-weight:600;display:flex;align-items:center;gap:7px}.res .p{color:var(--muted);font-size:12px}.res .x{font-size:13px;margin-top:4px;color:var(--text)}
+mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
+#graphview{position:relative;height:100%}
+#graphview svg{width:100%;height:100%;display:block}
+.gbar{position:absolute;top:12px;left:12px;right:12px;display:flex;gap:6px;flex-wrap:wrap;align-items:center;pointer-events:none}
+.gbar>*{pointer-events:auto}
+.gbar input{padding:5px 9px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--text);font:inherit;width:170px}
+.chip{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px 10px;font-size:12px;cursor:pointer;user-select:none}
+.chip.off{opacity:.4}
+.ghint{position:absolute;bottom:10px;left:12px;color:var(--muted);font-size:12px}
+.node{stroke:var(--panel);stroke-width:1.2px;cursor:pointer}
+.edge{stroke:var(--muted);stroke-opacity:.32}
+.glabel{fill:var(--text);font-size:10.5px;pointer-events:none;paint-order:stroke;stroke:var(--bg);stroke-width:3px;stroke-linejoin:round}
+.dim{opacity:.12}
+.qgroup{margin-bottom:14px}.qgroup .h{font-weight:600;margin-bottom:4px}
+.qrow{display:flex;gap:8px;padding:3px 0;align-items:baseline}.qrow.done{color:var(--muted);text-decoration:line-through}
+.qrow input,.md input.tick{margin:0 6px 0 0;flex:none;position:relative;top:2px;cursor:pointer;accent-color:var(--accent);width:15px;height:15px}
+.qrow.busy,.md li.busy{opacity:.5}
+.toast{position:fixed;bottom:16px;right:16px;background:var(--text);color:var(--bg);padding:9px 14px;border-radius:8px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;max-width:460px;display:flex;gap:12px;align-items:center}
+.toast.show{opacity:1;pointer-events:auto}
+.live{color:var(--g-processes);font-size:11px;position:relative;top:-1px}
+.toast button{background:transparent;color:inherit;border-color:currentColor;padding:2px 10px;font-size:12.5px}
+.muted{color:var(--muted)}
+.drop{border:2px dashed var(--line);border-radius:12px;padding:30px 16px;text-align:center;color:var(--muted);cursor:pointer;transition:background .15s,border-color .15s}
+.drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-soft);color:var(--text)}
+.thumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin-top:12px}
+.thumbs:empty{display:none}
+.thumbs figure{margin:0;position:relative}
+.thumbs img,.thumbs .ph{width:100%;height:104px;object-fit:cover;border-radius:8px;border:1px solid var(--line);display:block;background:var(--panel2)}
+.thumbs .ph{display:flex;align-items:center;justify-content:center;font-size:12px;color:var(--muted)}
+.thumbs button{position:absolute;top:4px;right:4px;padding:0 7px;font-size:12px;line-height:20px}
+.field{display:block;margin-top:12px}.field span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
+.field input,.field textarea{width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);font:inherit;resize:vertical}
+button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}button.primary:disabled{opacity:.45;cursor:default}
+.ibox{margin-bottom:8px}.ibox .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ibox .top .when{font-weight:600}
+.pill.ok{color:var(--g-processes);border-color:var(--g-processes)}
+#menu{display:none}
+.back{color:var(--muted);font-weight:500;font-size:13px;margin-right:4px}
+#syncb .when{color:var(--muted);font-size:12px}
+.pill.img{cursor:default}
+@media (max-width:900px){.note{grid-template-columns:1fr}.side{position:static}}
+@media (max-width:720px){aside#side{position:fixed;z-index:5;top:0;bottom:0;left:0;transform:translateX(-100%);transition:transform .2s;box-shadow:var(--shadow)}
+  body.side-open aside#side{transform:none}#menu{display:inline-block}.content{padding:16px}}
+</style>
+</head>
+<body>
+<header>
+  <button id="menu" aria-label="Show notes list">☰</button>
+  <h1><a class="back" href="/" title="Back to Menu Hauler">← Menu Hauler</a> <a href="#/">Knowledge</a></h1>
+  <input id="q" type="search" placeholder="Search notes and help guides  ( / )" autocomplete="off">
+  <nav>
+    <button data-go="#/">Home</button>
+    <button data-go="#/graph">Graph</button>
+    <button data-go="#/questions">Open questions</button>
+    <button data-go="#/add" id="nav-add" hidden>Add notes</button>
+    <button id="refresh" title="Re-read the notes from your vault folder" hidden>Connect to vault</button>
+    <button id="syncb" hidden title="Sync with menuhauler.com now">Sync</button>
+    <button id="theme" title="Light / dark">◐</button>
+  </nav>
+</header>
+<div class="wrap">
+  <aside id="side"></aside>
+  <main id="main"></main>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<script>
+"use strict";
+const EXCLUDE_DIRS=new Set([".obsidian",".claude","_help-db","_claude-commands",".git",".trash"]);
+const EXCLUDE_FILES=new Set(["CLAUDE.md","README for Claude.md"]);
+const GROUP_ORDER=["Reference","Menu Hauler","Notebook","Clients","Processes","Oolio One Features","Products","Organisation","People","Help Centre"];
+const STOP=new Set("a an and are can do does for from how i in is it my of on or the to what when where which who why with you your we our".split(" "));
+const WIKI=/\[\[([^\]|#\\]+)(?:#[^\]|\\]*)?(?:\\?\|([^\]]*))?\]\]/g;
+const HELPURL=/https?:\/\/help\.oolio\.com\/([a-z0-9-]+)/gi;
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const slug=g=>g.toLowerCase().replace(/[^a-z]+/g,"-").replace(/^-|-$/g,"");
+const href=n=>"#/note/"+encodeURIComponent(n.id);
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let RAW={built:new Date().toISOString(),files:[],live:false}, DB=null, sim=null, ROOT_PRE="";
+const TASK=/^(\s*(?:[-*+]|\d+[.)])\s+)\[( |x|X)\]\s+(.*)$/;
+
+/* ---------- parsing ---------- */
+function parseFront(text){
+  if(!text.startsWith("---"))return[{},text];
+  const end=text.indexOf("\n---",3); if(end<0)return[{},text];
+  const meta={}; let key=null;
+  for(const line of text.slice(3,end).split("\n")){
+    let m=line.match(/^([\w-]+):\s*(.*)$/);
+    if(m){key=m[1];let v=m[2].trim();if(v.startsWith('"')){try{v=JSON.parse(v)}catch(e){}}meta[key]=v;continue}
+    m=line.match(/^\s*-\s+(.*)$/);
+    if(m&&key){if(!Array.isArray(meta[key]))meta[key]=meta[key]?[meta[key]]:[];meta[key].push(m[1].trim())}
+  }
+  return[meta,text.slice(end+4).replace(/^\n/,"")];
+}
+function plain(md){return md.replace(/!\[[^\]]*\]\([^)]*\)/g," ").replace(/\[\[([^\]|]+)(?:\\?\|([^\]]*))?\]\]/g,(m,a,b)=>b||a)
+  .replace(/\[([^\]]*)\]\([^)]*\)/g,"$1").replace(/[*_`#>|]+/g," ").replace(/\s+/g," ").trim()}
+
+function build(raw){
+  let files=raw.files.map(f=>({path:f.path.replace(/\\/g,"/"),text:f.text.replace(/\r\n/g,"\n")}));
+  // if the picked folder is a parent of the vault, strip down to the folder holding "00 Index.md"
+  const idx=files.find(f=>/(^|\/)00 Index\.md$/.test(f.path));ROOT_PRE="";
+  if(idx&&idx.path!=="00 Index.md"){const pre=idx.path.slice(0,-"00 Index.md".length);ROOT_PRE=pre;files=files.filter(f=>f.path.startsWith(pre)).map(f=>({...f,path:f.path.slice(pre.length)}))}
+  const notes=[],inbox=[];
+  for(const f of files){
+    if(!f.path.endsWith(".md"))continue;
+    const parts=f.path.split("/");
+    if(parts[0]==="_inbox"){if(parts.length===3&&parts[2]==="request.md"){const[meta]=parseFront(f.text);inbox.push({dir:parts[1],meta})}continue}
+    if(parts.some(p=>EXCLUDE_DIRS.has(p)))continue;
+    if(parts.length===1&&EXCLUDE_FILES.has(parts[0]))continue;
+    const[meta,b0]=parseFront(f.text);
+    let body=b0.replace(/^\s+/,""); const h=body.match(/^#\s+(.+)\n+/); if(h)body=body.slice(h[0].length);
+    const name=parts[parts.length-1].slice(0,-3), isHelp=parts[0]==="Help Centre";
+    const group=parts.length===1?"Reference":parts[0];
+    notes.push({id:f.path.slice(0,-3),path:f.path,name,title:h?h[1].trim():name,meta,body,group,isHelp,
+      sub:isHelp?(typeof meta.category==="string"?meta.category:(parts.length>2?parts.slice(1,-1).join(" / "):"Overview")):"",
+      summary:typeof meta.summary==="string"?meta.summary:"",type:typeof meta.type==="string"?meta.type:"",
+      source:typeof meta.source==="string"?meta.source:"",tags:Array.isArray(meta.tags)?meta.tags:[],out:[],inn:[],broken:[]});
+  }
+  notes.sort((a,b)=>(a.isHelp-b.isHelp)||a.path.localeCompare(b.path));
+  const byName=new Map(),byId=new Map(),bySlug=new Map();
+  for(const n of notes){byId.set(n.id,n);const k=n.name.toLowerCase();if(!byName.has(k))byName.set(k,n);
+    const m=n.source.match(/help\.oolio\.com\/([a-z0-9-]+)/i);if(m&&n.isHelp)bySlug.set(m[1].toLowerCase(),n)}
+  const db={notes,byId,byName,bySlug,built:raw.built,live:!!raw.live,tasks:[],inbox};
+  DB=db;
+  for(const n of notes){
+    const outs=new Set(),broken=new Set();
+    for(const m of n.body.matchAll(WIKI)){if(n.body[m.index-1]==="!")continue;const t=resolve(m[1]);if(t){if(t!==n)outs.add(t.id)}else broken.add(m[1].trim())}
+    for(const m of n.body.matchAll(HELPURL)){const t=bySlug.get(m[1].toLowerCase());if(t&&t!==n)outs.add(t.id)}
+    n.out=[...outs];n.broken=[...broken];n.plain=plain(n.body);n.lplain=n.plain.toLowerCase();
+    if(!n.isHelp)for(const line of n.body.split("\n")){const m=line.match(TASK);if(m)db.tasks.push({note:n,done:m[2]!==" ",text:m[3]})}
+  }
+  for(const n of notes)for(const o of n.out)byId.get(o).inn.push(n.id);
+  for(const n of notes)n.deg=new Set([...n.out,...n.inn]).size;
+  return db;
+}
+function resolve(name){name=name.trim();const base=name.split("/").pop().replace(/\.md$/i,"");return DB.byName.get(base.toLowerCase())||null}
+
+/* ---------- markdown ---------- */
+function wikiToHtml(src){return src.replace(WIKI,(m,t,alias)=>{const n=resolve(t),label=esc((alias||t).trim());
+  return n?`<a class="wl" href="${href(n)}">${label}</a>`:`<span class="wl broken" title="No note called “${esc(t.trim())}”">${label}</span>`})}
+function clean(html,self){
+  const d=document.createElement("div");d.innerHTML=html;
+  d.querySelectorAll("script,iframe,object,embed,style,form").forEach(e=>e.remove());
+  d.querySelectorAll("*").forEach(e=>{for(const a of[...e.attributes])if(/^on/i.test(a.name))e.removeAttribute(a.name)});
+  d.querySelectorAll("a[href]").forEach(a=>{const h=a.getAttribute("href");if(/^\s*javascript:/i.test(h)){a.removeAttribute("href");return}
+    const m=h.match(/help\.oolio\.com\/([a-z0-9-]+)/i);const t=m&&DB.bySlug.get(m[1].toLowerCase());
+    if(t&&t!==self){a.setAttribute("href",href(t));a.classList.add("wl");a.title="Help Centre: "+t.title;return}
+    if(/^https?:/i.test(h)){a.target="_blank";a.rel="noopener"}});
+  d.querySelectorAll("img").forEach(i=>{i.loading="lazy";i.referrerPolicy="no-referrer"});
+  return d.innerHTML;
+}
+// turn each to-do line into a real checkbox that knows which to-do it is
+function withTicks(body){let k=0;return body.split("\n").map(l=>{const m=l.match(TASK);if(!m)return l;
+  return m[1]+`<input type="checkbox" class="tick" data-t="${k++}"${m[2]!==" "?" checked":""}${SYNC?"":" disabled"}> `+m[3]}).join("\n")}
+// Obsidian image embeds ![[Notebook/images/x.jpg]] -> <img>, path relative to this page (it sits in the vault root)
+const embeds=src=>src.replace(/!\[\[([^\]|]+?\.(?:png|jpe?g|webp|gif|heic|heif))(?:\|[^\]]*)?\]\]/gi,(m,p)=>`<span class="pill img" data-vault="${esc(p.trim())}">Photo: ${esc(p.split("/").pop())}</span>`);
+// with the vault folder connected, swap each photo label for the photo itself
+async function vaultImages(){if(!HANDLE)return;for(const s of main().querySelectorAll("[data-vault]")){try{const f=await(await fileHandle(HANDLE,s.dataset.vault)).getFile();
+  const i=new Image();i.alt=s.textContent;i.src=URL.createObjectURL(f);s.replaceWith(i)}catch(e){s.title="Not found in your vault folder"}}}
+function md(src,self){const s=wikiToHtml(embeds(src));return clean(window.marked?marked.parse(s,{gfm:true}):"<pre>"+esc(src)+"</pre>",self)}
+function mdInline(src){const s=wikiToHtml(src);return clean(window.marked?marked.parseInline(s,{gfm:true}):esc(src))}
+
+/* ---------- search ---------- */
+function terms(q){return q.toLowerCase().split(/[^a-z0-9&]+/).filter(w=>w.length>1&&!STOP.has(w))}
+function count(h,w){let c=0,i=0;while((i=h.indexOf(w,i))>=0&&c<20){c++;i+=w.length}return c}
+function search(q){
+  const ts=terms(q);if(!ts.length)return[];
+  return DB.notes.map(n=>{const t=n.title.toLowerCase(),s=n.summary.toLowerCase();let score=0,hit=0;
+    for(const w of ts){let any=0;if(t.includes(w)){score+=10;any=1}if(s.includes(w)){score+=4;any=1}const c=count(n.lplain,w);if(c){score+=Math.min(c,8);any=1}hit+=any}
+    if(!hit)return null;score*=Math.pow(hit/ts.length,2);if(!n.isHelp)score*=1.15;return{n,score}})
+    .filter(Boolean).sort((a,b)=>b.score-a.score).slice(0,60).map(r=>({...r,snip:snippet(r.n,ts)}));
+}
+function snippet(n,ts){const L=n.lplain;let best=-1;for(const w of ts){const i=L.indexOf(w);if(i>=0&&(best<0||i<best))best=i}
+  if(best<0)return esc(n.summary||n.plain.slice(0,180));
+  const a=Math.max(0,best-70),txt=(a?"…":"")+n.plain.slice(a,a+220)+"…";
+  const re=new RegExp("("+ts.map(w=>w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")).join("|")+")","gi");
+  return esc(txt).replace(re,"<mark>$1</mark>")}
+
+/* ---------- sidebar ---------- */
+function groupsOf(){const g=new Map();for(const n of DB.notes){if(!g.has(n.group))g.set(n.group,[]);g.get(n.group).push(n)}
+  return[...g.entries()].sort((a,b)=>{const ia=GROUP_ORDER.indexOf(a[0]),ib=GROUP_ORDER.indexOf(b[0]);return(ia<0?50:ia)-(ib<0?50:ib)||a[0].localeCompare(b[0])})}
+function renderSide(){
+  const open=JSON.parse(store.get("okv-open")||'["Reference","Clients"]');
+  let h='<div class="tree">';
+  for(const[g,list]of groupsOf()){
+    const dot=`<span class="dot" style="background:var(--g-${slug(g)},var(--g-reference))"></span>`;
+    h+=`<details data-g="${esc(g)}"${open.includes(g)?" open":""}><summary>${dot}${esc(g)}<span class="count">${list.length}</span></summary>`;
+    if(g==="Help Centre"){const subs=new Map();for(const n of list){const s=n.sub||"Overview";if(!subs.has(s))subs.set(s,[]);subs.get(s).push(n)}
+      for(const s of[...subs.keys()].sort()){const l=subs.get(s).sort((a,b)=>a.title.localeCompare(b.title));
+        h+=`<details><summary>${esc(s)}<span class="count">${l.length}</span></summary>${l.map(n=>`<a href="${href(n)}" data-id="${esc(n.id)}" title="${esc(n.title)}">${esc(n.title)}</a>`).join("")}</details>`}}
+    else h+=list.sort((a,b)=>a.title.localeCompare(b.title)).map(n=>`<a href="${href(n)}" data-id="${esc(n.id)}" title="${esc(n.summary||n.title)}">${esc(n.title)}</a>`).join("");
+    h+="</details>";
+  }
+  $("#side").innerHTML=h+"</div>";
+  $("#side").querySelectorAll(":scope .tree>details").forEach(d=>d.addEventListener("toggle",()=>{
+    store.set("okv-open",JSON.stringify([...$("#side").querySelectorAll(".tree>details[open]")].map(x=>x.dataset.g)))}));
+}
+function markSide(id){$("#side").querySelectorAll("a.cur").forEach(a=>a.classList.remove("cur"));
+  const a=id&&[...$("#side").querySelectorAll("a[data-id]")].find(x=>x.dataset.id===id);
+  if(a){a.classList.add("cur");let p=a.parentElement;while(p&&p.tagName==="DETAILS"){p.open=true;p=p.parentElement}a.scrollIntoView({block:"nearest"})}}
+
+/* ---------- views ---------- */
+const main=()=>$("#main");
+function stopSim(){if(sim){sim.stop();sim=null}}
+function noteLink(n){return`<a href="${href(n)}"><span class="dot" style="background:var(--g-${slug(n.group)})"></span>${esc(n.title)}</a>`}
+
+function viewHome(){
+  const mine=DB.notes.filter(n=>!n.isHelp),help=DB.notes.filter(n=>n.isHelp&&n.type!=="index");
+  const links=DB.notes.reduce((s,n)=>s+n.out.length,0),openQ=DB.tasks.filter(t=>!t.done).length;
+  const clients=mine.filter(n=>n.group==="Clients").sort((a,b)=>a.title.localeCompare(b.title));
+  const hubs=DB.notes.filter(n=>n.type!=="index").sort((a,b)=>b.deg-a.deg).slice(0,10);
+  const broken=DB.notes.filter(n=>n.broken.length);
+  const orphans=mine.filter(n=>!n.inn.length&&n.type!=="index");
+  main().innerHTML=`<div class="content">
+    <div class="grid stats">
+      <div class="card stat"><b>${mine.length}</b><span>My notes</span></div>
+      <div class="card stat"><b>${help.length}</b><span>Help Centre articles</span></div>
+      <div class="card stat"><b>${links}</b><span>Links between notes</span></div>
+      <a class="card stat ccard" href="#/questions"><b>${openQ}</b><span>Open questions and to-dos</span></a>
+    </div>
+    <p class="muted" style="font-size:12.5px;margin:10px 2px 0">${DB.live?`Live from your vault folder (last read ${esc(fmtDate(DB.built))}), synced with menuhauler.com${LAST_SYNC?" "+esc(ago(LAST_SYNC)):""}. Venue notes from Setup Tracker are in <a href="#/note/${encodeURIComponent("Menu Hauler/Venues/Menu Hauler Venues")}">Menu Hauler/Venues</a>.`:`The copy on menuhauler.com (loaded ${esc(fmtDate(DB.built))}).${SYNC?" Click <b>Connect to vault</b> to sync it with your Obsidian folder: your notes go up, venue notes from Setup Tracker come down.":""}`}</p>
+    <h2>Clients</h2>
+    <div class="grid cards">${clients.map(n=>{const open=DB.tasks.filter(t=>t.note===n&&!t.done).length;
+      return`<a class="card ccard" href="${href(n)}"><div class="t">${esc(n.title)}</div><div class="s">${esc(n.summary)}</div>
+      <div class="m">${n.deg} link${n.deg===1?"":"s"}${open?` · <span style="color:var(--danger)">${open} open</span>`:""}</div></a>`}).join("")||'<p class="muted">No client notes.</p>'}</div>
+    <h2>Most connected</h2>
+    <div class="card links">${hubs.map(n=>`<div style="display:flex;align-items:center">${noteLink(n)}<span class="count">${n.deg} links</span></div>`).join("")}</div>
+    ${broken.length?`<h2>Broken links <span class="muted" style="font-weight:400">(link to a note that doesn't exist)</span></h2>
+      <div class="card">${broken.map(n=>`<div style="margin:3px 0">${noteLink(n)} → ${n.broken.map(b=>`<span class="pill warn">${esc(b)}</span>`).join("")}</div>`).join("")}</div>`:""}
+    ${orphans.length?`<h2>Not linked from anywhere</h2><div class="card">${orphans.map(n=>`<span class="pill"><a href="${href(n)}">${esc(n.title)}</a></span>`).join("")}</div>`:""}
+  </div>`;
+}
+function fmtDate(s){const d=new Date(s);return isNaN(d)?s:d.toLocaleString("en-AU",{dateStyle:"medium",timeStyle:"short"})}
+
+function viewNote(id){
+  const n=DB.byId.get(id);
+  if(!n){main().innerHTML=`<div class="content"><div class="card">No note “${esc(id)}”. <a href="#/">Home</a></div></div>`;return}
+  markSide(n.id);
+  const ext=n.isHelp?(n.source.match(/https?:\/\/\S+/)||[])[0]:null;
+  const obs="obsidian://open?vault="+encodeURIComponent(vaultName())+"&file="+encodeURIComponent(n.id);
+  const outs=n.out.map(i=>DB.byId.get(i)).sort((a,b)=>a.isHelp-b.isHelp||a.title.localeCompare(b.title));
+  const inns=n.inn.map(i=>DB.byId.get(i)).sort((a,b)=>a.isHelp-b.isHelp||a.title.localeCompare(b.title));
+  const list=(arr,empty)=>arr.length?arr.map(noteLink).join(""):`<div class="empty">${empty}</div>`;
+  main().innerHTML=`<div class="content"><div class="note">
+    <div>
+      <div class="crumb"><span class="dot" style="background:var(--g-${slug(n.group)})"></span>${esc(n.group)}${n.sub?" / "+esc(n.sub):""}</div>
+      <h1>${esc(n.title)}</h1>
+      ${n.summary?`<p class="sum">${esc(n.summary)}</p>`:""}
+      <div>${n.type?`<span class="pill">${esc(n.type)}</span>`:""}${n.tags.map(t=>`<span class="pill">#${esc(t)}</span>`).join("")}${n.isHelp?"":n.source?`<span class="pill" title="Source">${esc(n.source)}</span>`:""}</div>
+      <div class="actions"><a href="${obs}">Open in Obsidian</a>${ext?`<a href="${esc(ext)}" target="_blank" rel="noopener">Open on help.oolio.com ↗</a>`:""}</div>
+      <div class="md">${md(n.isHelp?n.body:withTicks(n.body),n)}</div>
+    </div>
+    <div class="side">
+      <div class="card"><h3>Connections<span class="seg"><button data-depth="1">1 step</button><button data-depth="2">2 steps</button></span></h3><svg class="lg" id="lg"></svg></div>
+      <div class="card links"><h3>Links to · ${outs.length}</h3>${list(outs,"No outgoing links.")}</div>
+      <div class="card links"><h3>Linked from · ${inns.length}</h3>${list(inns,"Nothing links here yet.")}</div>
+      ${n.broken.length?`<div class="card"><h3>Broken links</h3>${n.broken.map(b=>`<span class="pill warn">${esc(b)}</span>`).join("")}</div>`:""}
+    </div></div></div>`;
+  main().scrollTop=0;vaultImages();
+  // checkboxes inside the note: the nth box is the nth task line
+  const mine=DB.tasks.filter(t=>t.note===n);
+  main().querySelectorAll(".md input.tick[data-t]").forEach(b=>{const t=mine[+b.dataset.t];if(!t)return;b.title="Tick to save into the note";
+    b.onchange=()=>{const li=b.closest("li");if(li)li.classList.add("busy");setTask(n.id,t.text,b.checked)}});
+  let depth=+(store.get("okv-depth")||1);
+  const draw=()=>{main().querySelectorAll("[data-depth]").forEach(b=>b.classList.toggle("on",+b.dataset.depth===depth));localGraph(n,depth)};
+  main().querySelectorAll("[data-depth]").forEach(b=>b.onclick=()=>{depth=+b.dataset.depth;store.set("okv-depth",depth);draw()});
+  draw();
+}
+function vaultName(){return store.get("okv-vault")||"OOLIO"}
+
+function viewSearch(q){
+  const r=search(q);markSide(null);
+  main().innerHTML=`<div class="content"><h2 style="margin-top:0">${r.length} result${r.length===1?"":"s"} for “${esc(q)}”</h2>
+    ${r.map(({n,snip})=>`<a class="res" href="${href(n)}"><div class="t"><span class="dot" style="background:var(--g-${slug(n.group)})"></span>${esc(n.title)}</div>
+      <div class="p">${esc(n.group)}${n.sub?" / "+esc(n.sub):""}</div><div class="x">${snip}</div></a>`).join("")||'<div class="card muted">Nothing matched. Try fewer or different words.</div>'}</div>`;
+}
+
+function viewQuestions(){
+  markSide(null);
+  let f=store.get("okv-qf")||"open";
+  const draw=()=>{
+    const ts=DB.tasks.filter(t=>f==="all"||(f==="open"?!t.done:t.done));
+    const by=new Map();for(const t of ts){if(!by.has(t.note))by.set(t.note,[]);by.get(t.note).push(t)}
+    const notes=[...by.keys()].sort((a,b)=>(a.name==="Open Questions"?-1:0)-(b.name==="Open Questions"?-1:0)||a.title.localeCompare(b.title));
+    main().innerHTML=`<div class="content">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="margin:0 auto 0 0">Open questions and to-dos</h2>
+      ${["open","done","all"].map(k=>`<button data-f="${k}" class="${f===k?"on":""}">${k[0].toUpperCase()+k.slice(1)} (${DB.tasks.filter(t=>k==="all"||(k==="open"?!t.done:t.done)).length})</button>`).join("")}</div>
+      <p class="muted" style="font-size:12.5px">Every checkbox across the notes.${SYNC?` Tick one and it's saved straight into the note${DB.live?"":" (the first time, pick your C:\\obsidian\\OOLIO folder and allow edits)"}.`:" Read-only: only the vault's owner can tick them."}</p>
+      ${notes.map(n=>`<div class="card qgroup"><div class="h">${noteLink(n)}</div>${by.get(n).map(t=>`<label class="qrow${t.done?" done":""}"><input type="checkbox" data-i="${ts.indexOf(t)}"${t.done?" checked":""}${SYNC?"":" disabled"}><span>${mdInline(t.text)}</span></label>`).join("")}</div>`).join("")||'<div class="card muted">Nothing here.</div>'}
+    </div>`;
+    main().querySelectorAll(".qrow input").forEach(c=>c.onchange=()=>{const t=ts[+c.dataset.i];c.closest(".qrow").classList.add("busy");setTask(t.note.id,t.text,c.checked)});
+    main().querySelectorAll(".qrow a").forEach(a=>a.onclick=e=>e.stopPropagation());
+    main().querySelectorAll("[data-f]").forEach(b=>b.onclick=()=>{f=b.dataset.f;store.set("okv-qf",f);draw()});
+  };draw();
+}
+
+/* ---------- add notes from photos (saved to _inbox, filed by Claude) ---------- */
+let PICKED=[],FORM={ctx:"",about:""},INBOX_URLS=[];
+function viewAdd(){
+  markSide(null);
+  INBOX_URLS.forEach(u=>URL.revokeObjectURL(u));INBOX_URLS=[];
+  const inbox=DB.inbox.slice().sort((a,b)=>b.dir.localeCompare(a.dir));
+  const recent=DB.notes.filter(n=>n.group==="Notebook").sort((a,b)=>b.name.localeCompare(a.name)).slice(0,12);
+  const when=r=>{const d=new Date(r.meta.uploaded);return isNaN(d)?r.dir:d.toLocaleString("en-AU",{weekday:"short",day:"numeric",month:"short",hour:"numeric",minute:"2-digit"})};
+  const st=r=>{const s=(typeof r.meta.status==="string"?r.meta.status:"pending").toLowerCase();
+    return s==="error"?`<span class="pill warn" title="${esc(r.meta.error||"")}">couldn't file: ${esc(r.meta.error||"see request.md")}</span>`:s==="processing"?'<span class="pill ok">being filed now</span>':'<span class="pill">waiting</span>'};
+  main().innerHTML=`<div class="content" style="max-width:920px">
+    <h2 style="margin-top:0">Add notes from photos</h2>
+    <p class="muted" style="margin-top:0">Photos go into your vault's inbox. Every hour on weekdays (8am–6pm, while the Claude app is open) Claude reads them, writes a Notebook page with the photos and a transcription, and files each fact into the right notes. Nothing leaves your PC.</p>
+    <div class="card">
+      <div class="drop" id="drop" tabindex="0">Drop photos here, paste with <b>Ctrl+V</b>, or <b>click to choose</b><br><small>Several pages at once is fine. Take them straight on, in good light.</small></div>
+      <input type="file" id="files" accept="image/*,.heic,.heif" multiple hidden>
+      <div class="thumbs" id="thumbs"></div>
+      <label class="field"><span>What's this about? (optional, helps Claude file it)</span><textarea id="ctx" rows="2" placeholder="e.g. Reporting training, 18 Nov">${esc(FORM.ctx)}</textarea></label>
+      <label class="field"><span>Related note (optional)</span><input id="about" list="notenames" placeholder="e.g. a client, a feature or a person" value="${esc(FORM.about)}"></label>
+      <datalist id="notenames">${DB.notes.filter(n=>!n.isHelp).map(n=>`<option value="${esc(n.name)}">`).join("")}</datalist>
+      <div style="margin-top:14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><button class="primary" id="send" disabled>Send to inbox</button><span class="muted" id="sendmsg"></span></div>
+    </div>
+    <h2>Waiting in the inbox · ${inbox.length}</h2>
+    ${inbox.length?inbox.map((r,i)=>{const files=Array.isArray(r.meta.files)?r.meta.files:[];
+      return`<div class="card ibox"><div class="top"><span class="when">${esc(when(r))}</span>${st(r)}<span class="muted">${files.length} photo${files.length===1?"":"s"}</span>
+        ${r.meta.about?`<span class="pill">${esc(r.meta.about)}</span>`:""}<button style="margin-left:auto" data-rm="${i}">Remove</button></div>
+        ${r.meta.context?`<div style="margin-top:6px">${esc(r.meta.context)}</div>`:""}
+        <div class="thumbs" data-dir="${esc(r.dir)}">${files.map(f=>`<figure><div class="ph" data-f="${esc(f)}">${esc(f)}</div></figure>`).join("")}</div></div>`}).join("")
+      :'<div class="card muted">Nothing waiting. New uploads show here until Claude files them.</div>'}
+    <h2>Recently filed</h2>
+    ${recent.length?`<div class="card links">${recent.map(n=>`<div style="display:flex;align-items:center;gap:8px">${noteLink(n)}<span class="count">${esc(n.summary)}</span></div>`).join("")}</div>`
+      :'<div class="card muted">No notebook pages yet.</div>'}
+  </div>`;
+  const input=$("#files"),drop=$("#drop");
+  drop.onclick=()=>input.click();drop.onkeydown=e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();input.click()}};
+  input.onchange=()=>{addPicked(input.files);input.value=""};
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add("over")};drop.ondragleave=()=>drop.classList.remove("over");
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove("over");addPicked(e.dataTransfer.files)};
+  $("#ctx").oninput=e=>FORM.ctx=e.target.value;$("#about").oninput=e=>FORM.about=e.target.value;
+  $("#send").onclick=sendToInbox;
+  main().querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>removeUpload(inbox[+b.dataset.rm]));
+  renderPicked();loadInboxThumbs();
+}
+function isImage(f){return/^image\//.test(f.type)||/\.(heic|heif|jpe?g|png|webp|gif)$/i.test(f.name)}
+function addPicked(list){const add=[...list].filter(isImage);if(!add.length){toast("Those weren't photos.");return}
+  for(const f of add)PICKED.push({file:f,url:URL.createObjectURL(f)});renderPicked()}
+function renderPicked(){const box=$("#thumbs");if(!box)return;
+  box.innerHTML=PICKED.map((p,i)=>`<figure><img src="${p.url}" alt="" data-ext="${esc((p.file.name.split(".").pop()||"").toUpperCase())}"><button data-x="${i}" title="Remove">×</button></figure>`).join("");
+  box.querySelectorAll("img[data-ext]").forEach(im=>im.onerror=()=>{const d=document.createElement("div");d.className="ph";d.textContent=im.dataset.ext||"photo";im.replaceWith(d)});
+  box.querySelectorAll("[data-x]").forEach(b=>b.onclick=e=>{e.stopPropagation();const p=PICKED.splice(+b.dataset.x,1)[0];URL.revokeObjectURL(p.url);renderPicked()});
+  const s=$("#send");if(s){s.disabled=!PICKED.length;s.textContent=PICKED.length?`Send ${PICKED.length} photo${PICKED.length===1?"":"s"} to inbox`:"Send to inbox"}}
+async function loadInboxThumbs(){if(!HANDLE)return;
+  for(const box of main().querySelectorAll(".thumbs[data-dir]"))for(const ph of box.querySelectorAll(".ph[data-f]")){
+    try{const f=await(await fileHandle(HANDLE,"_inbox/"+box.dataset.dir+"/"+ph.dataset.f)).getFile();const u=URL.createObjectURL(f);INBOX_URLS.push(u);
+      const img=new Image();img.src=u;img.alt="";img.onload=()=>ph.replaceWith(img)}catch(e){}}}
+async function shrink(file){
+  const slow=new Promise(r=>setTimeout(()=>r(null),20000)); // never hang on an odd photo: fall back to the original
+  const out=await Promise.race([shrinkJpg(file),slow]);
+  return out||{blob:file,ext:((file.name.split(".").pop()||"").toLowerCase().replace(/[^a-z0-9]/g,""))||"jpg"};
+}
+async function shrinkJpg(file){
+  try{const bmp=await createImageBitmap(file,{imageOrientation:"from-image"});const s=Math.min(1,2400/Math.max(bmp.width,bmp.height));
+    const c=document.createElement("canvas");c.width=Math.round(bmp.width*s);c.height=Math.round(bmp.height*s);c.getContext("2d").drawImage(bmp,0,0,c.width,c.height);
+    const blob=await new Promise(r=>c.toBlob(r,"image/jpeg",.86));if(blob)return{blob,ext:"jpg"}}catch(e){}
+  return{blob:file,ext:((file.name.split(".").pop()||"").toLowerCase().replace(/[^a-z0-9]/g,""))||"jpg"};
+}
+async function writeFile(dir,name,blob){const fh=await dir.getFileHandle(name,{create:true});const w=await fh.createWritable();await w.write(blob);await w.close()}
+async function vaultDir(root){let d=root;for(const p of ROOT_PRE.split("/").filter(Boolean))d=await d.getDirectoryHandle(p);return d}
+async function sendToInbox(){
+  if(!PICKED.length)return;
+  if(!window.showDirectoryPicker){toast("Uploading needs Chrome or Edge.");return}
+  const btn=$("#send");btn.disabled=true;$("#sendmsg").textContent="Saving…";writing=true;
+  try{
+    const root=await writableRoot(),inbox=await(await vaultDir(root)).getDirectoryHandle("_inbox",{create:true});
+    const now=new Date(),z=n=>String(n).padStart(2,"0");
+    const stamp=`${now.getFullYear()}-${z(now.getMonth()+1)}-${z(now.getDate())} ${z(now.getHours())}${z(now.getMinutes())}${z(now.getSeconds())}`;
+    const dir=await inbox.getDirectoryHandle(stamp,{create:true}),names=[];let odd=0;
+    for(const[i,p]of PICKED.entries()){$("#sendmsg").textContent=`Saving photo ${i+1} of ${PICKED.length}…`;
+      const{blob,ext}=await shrink(p.file);if(ext!=="jpg")odd++;const name=`p${i+1}.${ext}`;await writeFile(dir,name,blob);names.push(name)}
+    const md=["---","status: pending",`uploaded: ${now.toISOString()}`,`context: ${JSON.stringify(FORM.ctx.trim())}`,`about: ${JSON.stringify(FORM.about.trim())}`,
+      "files:",...names.map(n=>"  - "+n),"---","","Notebook photos waiting to be filed by Claude (see _claude-commands/process-inbox.md).",""].join("\n");
+    await writeFile(dir,"request.md",new Blob([md],{type:"text/markdown"})); // written last, so a half-saved upload is never picked up
+    PICKED.forEach(p=>URL.revokeObjectURL(p.url));PICKED=[];FORM={ctx:"",about:""};
+    await loadFrom(root,true);
+    toast(`Sent ${names.length} photo${names.length===1?"":"s"} to the inbox. Claude files them within the hour on weekdays.`+(odd?` ${odd} couldn't be converted to JPG (HEIC?), so Claude may not be able to read them.`:""),null,9000);
+  }catch(e){console.error(e);if(e.name!=="AbortError")toast("Couldn't save the photos: "+e.message,null,12000);const m=$("#sendmsg");if(m)m.textContent="";renderPicked()}
+  finally{writing=false}
+}
+async function removeUpload(r){
+  if(!r||!confirm("Remove this upload from the inbox? Its photos haven't been filed, so they'll be deleted."))return;
+  writing=true;
+  try{const root=await writableRoot();await(await(await vaultDir(root)).getDirectoryHandle("_inbox")).removeEntry(r.dir,{recursive:true});await loadFrom(root,true);toast("Removed from the inbox")}
+  catch(e){toast("Couldn't remove it: "+e.message,null,10000)}finally{writing=false}
+}
+document.addEventListener("paste",e=>{if(location.hash!=="#/add"||/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
+  const fs=[...(e.clipboardData?.files||[])];if(fs.length){e.preventDefault();addPicked(fs)}});
+
+/* ---------- graphs ---------- */
+function graphData(nodes){
+  const ids=new Set(nodes.map(n=>n.id)),seen=new Set(),links=[];
+  for(const n of nodes)for(const o of n.out){if(!ids.has(o))continue;const k=n.id<o?n.id+"\u0000"+o:o+"\u0000"+n.id;if(seen.has(k))continue;seen.add(k);links.push({source:n.id,target:o})}
+  return{nodes:nodes.map(n=>({id:n.id,n})),links};
+}
+function drawForce(svgEl,data,o){
+  stopSim();
+  const svg=d3.select(svgEl);svg.selectAll("*").remove();
+  const W=svgEl.clientWidth||600,H=svgEl.clientHeight||400;
+  const g=svg.append("g");let k=1;
+  const zoom=d3.zoom().scaleExtent([.15,6]).on("zoom",e=>{g.attr("transform",e.transform);k=e.transform.k;
+    if(label)label.style("font-size",(o.small?11:10.5)/k+"px").attr("dy",-7/k).style("stroke-width",3/k).style("display",d=>showLabel(d)?null:"none");
+    if(link)link.style("stroke-width",1/k)});
+  let link;
+  svg.call(zoom);
+  let label;
+  const r=d=>(o.small?3.5:2.6)+Math.sqrt(d.n.deg)*(o.small?1.3:1.35)+(d.id===o.focus?3:0);
+  const degs=data.nodes.map(d=>d.n.deg).sort((a,b)=>b-a),hubCut=Math.max(4,degs[Math.min(7,degs.length-1)]||0);
+  link=g.append("g").selectAll("line").data(data.links).join("line").attr("class","edge");
+  const node=g.append("g").selectAll("circle").data(data.nodes).join("circle").attr("class",d=>"node").attr("r",r)
+    .style("fill",d=>`var(--g-${slug(d.n.group)},var(--g-reference))`).style("stroke",d=>d.id===o.focus?"var(--text)":null).style("stroke-width",d=>d.id===o.focus?2:null);
+  node.append("title").text(d=>d.n.title+(d.n.summary?" — "+d.n.summary:""));
+  // like Obsidian: only the biggest hubs are labelled at first; more appear as you zoom in
+  let k0=1;const showLabel=d=>{const z=k/k0;return o.small||d.id===o.focus||d.n.deg>=hubCut||z>=2.4||(z>=1.5&&!d.n.isHelp)};
+  label=g.append("g").selectAll("text").data(data.nodes).join("text").attr("class","glabel").attr("dy",-7).attr("text-anchor","middle")
+    .text(d=>d.n.title.length>32?d.n.title.slice(0,30)+"…":d.n.title).style("display",d=>showLabel(d)?null:"none");
+  const nb=new Map(data.nodes.map(d=>[d.id,new Set([d.id])]));
+  for(const l of data.links){const s=l.source.id||l.source,t=l.target.id||l.target;nb.get(s).add(t);nb.get(t).add(s)}
+  node.on("click",(e,d)=>{location.hash=href(d.n)})
+    .on("mouseenter",(e,d)=>{const s=nb.get(d.id);node.classed("dim",x=>!s.has(x.id));link.classed("dim",l=>l.source.id!==d.id&&l.target.id!==d.id);
+      label.classed("dim",x=>!s.has(x.id)).style("display",x=>s.has(x.id)||showLabel(x)?null:"none")})
+    .on("mouseleave",()=>{node.classed("dim",false);link.classed("dim",false);label.classed("dim",false).style("display",d=>showLabel(d)?null:"none");if(o.onReset)o.onReset()});
+  node.call(d3.drag().on("start",(e,d)=>{if(!e.active)s.alphaTarget(.2).restart();d.fx=d.x;d.fy=d.y})
+    .on("drag",(e,d)=>{d.fx=e.x;d.fy=e.y}).on("end",(e,d)=>{if(!e.active)s.alphaTarget(0);d.fx=null;d.fy=null}));
+  const s=d3.forceSimulation(data.nodes)
+    .force("link",d3.forceLink(data.links).id(d=>d.id).distance(o.small?45:30))
+    .force("charge",d3.forceManyBody().strength(o.small?-140:-40).distanceMax(o.small?400:220))
+    .force("x",d3.forceX(W/2).strength(o.small?.08:.1)).force("y",d3.forceY(H/2).strength(o.small?.1:.1))
+    .force("collide",d3.forceCollide(d=>r(d)+1.5))
+    .on("tick",()=>{link.attr("x1",d=>d.source.x).attr("y1",d=>d.source.y).attr("x2",d=>d.target.x).attr("y2",d=>d.target.y);
+      node.attr("cx",d=>d.x).attr("cy",d=>d.y);label.attr("x",d=>d.x).attr("y",d=>d.y)});
+  if(o.focus){const f=data.nodes.find(d=>d.id===o.focus);if(f){f.fx=W/2;f.fy=H/2}}
+  // settle the layout before showing it, then fit it to the box
+  s.stop();for(let i=0;i<300;i++)s.tick();s.on("tick")();
+  if(data.nodes.length){const xs=data.nodes.map(d=>d.x),ys=data.nodes.map(d=>d.y),pad=o.small?55:60,top=o.small?0:50;
+    const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+    const sc=Math.min(o.small?1.3:2,(W-pad*2)/Math.max(x1-x0,1),(H-pad*2-top)/Math.max(y1-y0,1));
+    k0=sc;svg.call(zoom.transform,d3.zoomIdentity.translate(W/2-sc*(x0+x1)/2,(H+top)/2-sc*(y0+y1)/2).scale(sc))}
+  sim=s;return{node,label,link};
+}
+function localGraph(n,depth){
+  const el=$("#lg");if(!el)return;
+  if(!window.d3){el.outerHTML='<p class="muted">Graph needs an internet connection (d3 library).</p>';return}
+  let ids=new Set([n.id]),frontier=[n];
+  for(let i=0;i<depth;i++){const next=[];for(const x of frontier)for(const y of[...x.out,...x.inn])if(!ids.has(y)){const z=DB.byId.get(y);if(z.type==="index"&&z!==n)continue;ids.add(y);next.push(z)}frontier=next}
+  if(ids.size>80){ids=new Set([...ids].slice(0,80))}
+  drawForce(el,graphData([...ids].map(i=>DB.byId.get(i))),{small:true,focus:n.id});
+}
+function viewGraph(){
+  markSide(null);
+  if(!window.d3){main().innerHTML='<div class="content"><div class="card">The graph needs an internet connection to load its drawing library (d3).</div></div>';return}
+  const groups=groupsOf().map(g=>g[0]);
+  let off=new Set(JSON.parse(store.get("okv-goff")||"[]")),showIdx=store.get("okv-gidx")!=="0",showLone=store.get("okv-glone")==="1";
+  main().innerHTML=`<div id="graphview"><svg id="bigg"></svg>
+    <div class="gbar"><input id="gfind" placeholder="Highlight…" type="search">
+    ${groups.map(g=>`<span class="chip${off.has(g)?" off":""}" data-g="${esc(g)}"><span class="dot" style="background:var(--g-${slug(g)})"></span>${esc(g)}</span>`).join("")}
+    <span class="chip${showIdx?"":" off"}" id="gidx">Index notes</span><span class="chip${showLone?"":" off"}" id="glone">Unlinked notes</span></div>
+    <div class="ghint">Scroll to zoom · drag to move · hover to see connections · click to open</div></div>`;
+  let parts;
+  const draw=()=>{let nodes=DB.notes.filter(n=>!off.has(n.group)&&(showIdx||n.type!=="index"));
+    if(!showLone){const ids=new Set(nodes.map(n=>n.id));nodes=nodes.filter(n=>[...n.out,...n.inn].some(i=>ids.has(i)))}
+    parts=drawForce($("#bigg"),graphData(nodes),{onReset:find});find()};
+  const find=()=>{if(!parts)return;const ts=terms($("#gfind").value);if(!ts.length){parts.node.classed("dim",false);return}
+    const hit=d=>ts.every(w=>d.n.title.toLowerCase().includes(w)||d.n.lplain.includes(w));
+    parts.node.classed("dim",d=>!hit(d));parts.link.classed("dim",true);parts.label.style("display",d=>hit(d)?null:"none")};
+  main().querySelectorAll(".chip[data-g]").forEach(c=>c.onclick=()=>{const g=c.dataset.g;off.has(g)?off.delete(g):off.add(g);c.classList.toggle("off");store.set("okv-goff",JSON.stringify([...off]));draw()});
+  $("#gidx").onclick=()=>{showIdx=!showIdx;$("#gidx").classList.toggle("off");store.set("okv-gidx",showIdx?"1":"0");draw()};
+  $("#glone").onclick=()=>{showLone=!showLone;$("#glone").classList.toggle("off");store.set("okv-glone",showLone?"1":"0");draw()};
+  $("#gfind").oninput=find;
+  draw();
+}
+
+/* ---------- routing ---------- */
+function route(){
+  stopSim();document.body.classList.remove("side-open");
+  const h=location.hash||"#/";
+  document.querySelectorAll("nav [data-go]").forEach(b=>b.classList.toggle("on",b.dataset.go===h||(h.startsWith("#/note/")&&false)));
+  if(h.startsWith("#/note/"))return viewNote(decodeURIComponent(h.slice(7)));
+  if(h.startsWith("#/search/")){const q=decodeURIComponent(h.slice(9));if($("#q").value!==q)$("#q").value=q;return viewSearch(q)}
+  if(h==="#/graph")return viewGraph();
+  if(h==="#/questions")return viewQuestions();
+  if(h==="#/add"&&SYNC)return viewAdd();
+  markSide(null);viewHome();
+}
+let qt;
+$("#q").addEventListener("input",e=>{clearTimeout(qt);qt=setTimeout(()=>{const v=e.target.value.trim();
+  const target=v?"#/search/"+encodeURIComponent(v):"#/";if(location.hash!==target){history.replaceState(null,"",target);route()}},160)});
+$("#q").addEventListener("keydown",e=>{if(e.key==="Enter"){const r=search(e.target.value);if(r[0])location.hash=href(r[0].n)}});
+document.addEventListener("keydown",e=>{if(e.key==="/"&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){e.preventDefault();$("#q").focus()}});
+document.querySelectorAll("nav [data-go]").forEach(b=>b.onclick=()=>{location.hash=b.dataset.go});
+$("#menu").onclick=()=>document.body.classList.toggle("side-open");
+window.addEventListener("hashchange",route);
+
+/* ---------- theme ---------- */
+function setTheme(t){if(t)document.documentElement.dataset.theme=t;else delete document.documentElement.dataset.theme}
+if(store.get("okv-theme"))setTheme(store.get("okv-theme"));
+$("#theme").onclick=()=>{const dark=document.documentElement.dataset.theme?document.documentElement.dataset.theme==="dark":matchMedia("(prefers-color-scheme: dark)").matches;
+  const t=dark?"light":"dark";setTheme(t);store.set("okv-theme",t)};
+
+/* ---------- live refresh from the vault folder ---------- */
+function toast(m,act,ms){const t=$("#toast");t.textContent=m;
+  if(act){const b=document.createElement("button");b.textContent=act.label;b.onclick=()=>{t.classList.remove("show");act.fn()};t.appendChild(b)}
+  t.classList.add("show");clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove("show"),ms||(act?7000:3500))}
+function idb(){return new Promise((res,rej)=>{const r=indexedDB.open("okv",1);r.onupgradeneeded=()=>r.result.createObjectStore("h");r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+async function idbGet(k){try{const d=await idb();return await new Promise(r=>{const q=d.transaction("h").objectStore("h").get(k);q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)})}catch(e){return null}}
+async function idbSet(k,v){try{const d=await idb();d.transaction("h","readwrite").objectStore("h").put(v,k)}catch(e){}}
+async function walk(dir,pre,out){for await(const[name,h]of dir.entries()){
+  if(h.kind==="directory"){if(!EXCLUDE_DIRS.has(name))await walk(h,pre+name+"/",out)}
+  else if(name.endsWith(".md"))out.push({path:pre+name,file:await h.getFile()})}}
+const sigOf=list=>list.map(x=>x.path+":"+x.file.lastModified+":"+x.file.size).sort().join("|");
+let HANDLE=null,SIG="",WATCH=null,checking=false,writing=false,CAN_WRITE=false;
+const perm=async(h,mode,ask)=>{let p=await h.queryPermission({mode});if(p!=="granted"&&ask)p=await h.requestPermission({mode});return p==="granted"};
+async function loadFrom(h,quiet,walked){const list=walked||[];if(!walked)await walk(h,"",list);
+  if(!list.some(f=>/(^|\/)00 Index\.md$/.test(f.path)))throw new Error("that folder has no “00 Index.md”. Pick C:\\obsidian\\OOLIO");
+  const files=await Promise.all(list.map(async x=>({path:x.path,text:await x.file.text()})));
+  RAW={built:new Date().toISOString(),files,live:true};store.set("okv-vault",h.name==="obsidian"?"OOLIO":h.name);
+  HANDLE=h;SIG=sigOf(list);startWatch();
+  const y=main().scrollTop;start();main().scrollTop=y;setStatus();if(!quiet)toast(`Connected: ${DB.notes.length} notes, updating automatically`);
+  if(SYNC&&!SYNCING)syncSoon()}
+
+/* ---------- auto-update: re-check the folder every few seconds ---------- */
+function startWatch(){if(WATCH)return;WATCH=setInterval(checkVault,3000);
+  window.addEventListener("focus",checkVault);document.addEventListener("visibilitychange",checkVault)}
+function stopWatch(){clearInterval(WATCH);WATCH=null;HANDLE=null;setStatus()}
+async function checkVault(){
+  if(!HANDLE||document.hidden||checking||writing)return;checking=true;
+  try{
+    if(!await perm(HANDLE,"read")){stopWatch();return}
+    CAN_WRITE=await perm(HANDLE,"readwrite");
+    const list=[];await walk(HANDLE,"",list);
+    if(sigOf(list)!==SIG){await loadFrom(HANDLE,true,list);toast("Updated from your vault")}
+  }catch(e){stopWatch();toast("Lost access to the vault folder. Click Connect to vault.")}
+  finally{checking=false}
+}
+function setStatus(){const b=$("#refresh");if(!b)return;
+  if(HANDLE&&CAN_WRITE){b.innerHTML='<span class="live">●</span> Live';b.title="Auto-updating from your vault folder, ticks save into your notes. Click to reload now."}
+  else if(HANDLE){b.innerHTML='<span class="live">●</span> Live · allow ticking';b.title="Reading your notes but not allowed to edit them yet. Click and choose Allow / Edit files."}
+  else{b.textContent="Connect to vault";b.title=window.showDirectoryPicker?"Pick C:\\obsidian\\OOLIO once; the page then updates itself when notes change":"Needs Chrome or Edge"}
+  b.classList.toggle("on",!HANDLE&&!!window.showDirectoryPicker)}
+
+/* ---------- ticking boxes: write straight into the note file ---------- */
+async function writableRoot(){
+  let h=HANDLE||await idbGet("vault");
+  if(h){
+    if(!await perm(h,"readwrite",true))throw new Error("your browser didn't give permission to edit files. Click the Live button at the top and choose Allow / Edit files");
+    CAN_WRITE=true;setStatus();if(!DB.live||h!==HANDLE)await loadFrom(h,true);return h}
+  h=await window.showDirectoryPicker({id:"oolio-vault",mode:"readwrite"});await idbSet("vault",h);CAN_WRITE=true;await loadFrom(h,true);return h;
+}
+async function fileHandle(root,path){const parts=(ROOT_PRE+path).split("/");let d=root;
+  for(const p of parts.slice(0,-1))d=await d.getDirectoryHandle(p);return d.getFileHandle(parts[parts.length-1])}
+async function setTask(noteId,text,done,quiet){
+  if(!SYNC){toast("Read-only: only the vault's owner can tick these.");route();return}
+  if(!window.showDirectoryPicker){toast("Ticking needs Chrome or Edge.");route();return}
+  writing=true;
+  try{
+    const root=await writableRoot(),n=DB.byId.get(noteId);if(!n)throw new Error("that note is gone");
+    const fh=await fileHandle(root,n.path),cur=await(await fh.getFile()).text();
+    const nl=cur.includes("\r\n")?"\r\n":"\n",lines=cur.split(/\r?\n/),want=text.trim();
+    let i=lines.findIndex(l=>{const m=l.match(TASK);return m&&m[3].trim()===want&&(m[2]!==" ")!==done});
+    if(i<0)i=lines.findIndex(l=>{const m=l.match(TASK);return m&&m[3].trim()===want});
+    if(i<0)throw new Error("couldn't find that line. The note may have changed; Refresh from vault");
+    lines[i]=lines[i].replace(TASK,(m,a,b,c)=>a+(done?"[x] ":"[ ] ")+c);
+    const w=await fh.createWritable();await w.write(lines.join(nl));await w.close();
+    await loadFrom(root,true);
+    if(!quiet)toast((done?"Ticked: ":"Unticked: ")+plain(want).slice(0,70),{label:"Undo",fn:()=>setTask(noteId,text,!done,true)});
+  }catch(e){console.error("tick failed",e);if(e.name!=="AbortError")toast("Couldn't save the tick: "+e.message,null,12000);route()}
+  finally{writing=false}
+}
+async function refresh(){
+  try{
+    if(HANDLE&&CAN_WRITE){await loadFrom(HANDLE,true);toast("Reloaded");return}
+    let h=HANDLE||await idbGet("vault");
+    if(h&&!await perm(h,"read",true))h=null;
+    if(!h){h=await window.showDirectoryPicker({id:"oolio-vault",mode:"readwrite"});await idbSet("vault",h)}
+    CAN_WRITE=await perm(h,"readwrite",true);
+    await loadFrom(h,true);
+    toast(CAN_WRITE?`Connected: ${DB.notes.length} notes. Updates automatically and ticks save into your notes`:"Connected read-only: ticking needs you to choose Allow / Edit files",null,6000);
+  }catch(e){console.error(e);if(e.name!=="AbortError")toast("Couldn't open the folder: "+e.message,null,10000)}
+}
+if(!window.showDirectoryPicker){$("#refresh").title="Needs Chrome or Edge.";$("#refresh").onclick=()=>toast("Connecting your vault needs Chrome or Edge.")}
+else $("#refresh").onclick=refresh;
+
+/* ---------- menuhauler.com: load the notes, and sync them with the vault folder ----------
+   Up: every vault note (except Menu Hauler/Venues/, _inbox/ and the root CLAUDE.md files) whose text differs from the website's copy.
+   Down: the venue notes the website writes from Setup Tracker (Menu Hauler/Venues/), whenever the vault's copy differs.
+   Notes deleted from the vault are removed from the website. Nothing is ever deleted from the vault. */
+let ME=null,SYNC=false,KG_DIR="Menu Hauler/Venues/",SYNCING=false,LAST_SYNC=+(store.get("kg-last")||0),SYNC_T=null;
+const SYNC_EVERY=120e3,UP_MAX=380000,BATCH_N=40,BATCH_BYTES=1200000;
+const skipUp=p=>!p.endsWith(".md")||p.startsWith(KG_DIR)||p.startsWith("_inbox/")||(!p.includes("/")&&EXCLUDE_FILES.has(p));
+const norm=s=>s.replace(/\r\n?/g,"\n");
+async function sha(s){const b=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return[...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("")}
+function ago(t){const s=Math.round((Date.now()-t)/1e3);return s<60?"just now":s<3600?Math.round(s/60)+" min ago":s<86400?Math.round(s/3600)+" h ago":fmtDate(new Date(t).toISOString())}
+async function apiCall(u,body){
+  const r=await fetch(u,body?{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),credentials:"same-origin"}:{credentials:"same-origin",cache:"no-store"});
+  if(r.status===401){location.href="/login?next="+encodeURIComponent(location.pathname+location.hash);throw new Error("You're signed out.")}
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||"Error "+r.status);return j}
+async function writeText(root,path,text){const parts=(ROOT_PRE+path).split("/");let d=root;
+  for(const p of parts.slice(0,-1))d=await d.getDirectoryHandle(p,{create:true});
+  const fh=await d.getFileHandle(parts[parts.length-1],{create:true}),w=await fh.createWritable();await w.write(text);await w.close()}
+function setSync(label,title){const b=$("#syncb");if(!b)return;b.hidden=!SYNC;
+  b.innerHTML=label||(LAST_SYNC?`Synced <span class="when">${esc(ago(LAST_SYNC))}</span>`:"Sync");b.title=title||"Sync with menuhauler.com now"}
+function syncSoon(ms){clearTimeout(SYNC_T);SYNC_T=setTimeout(()=>syncNow(false),ms||1500)}
+async function syncNow(manual){
+  if(!SYNC||SYNCING)return;
+  if(!HANDLE){if(manual)toast("Click Connect to vault first, and pick your C:\\obsidian\\OOLIO folder.");return}
+  if(!await perm(HANDLE,"readwrite",!!manual)){setSync("Sync · allow editing","The browser needs permission to edit your vault folder: click, then choose Allow / Edit files");return}
+  SYNCING=true;writing=true;setSync("Syncing…");
+  try{
+    const list=[];await walk(HANDLE,"",list);
+    const files=new Map(list.filter(x=>x.path.startsWith(ROOT_PRE)).map(x=>[x.path.slice(ROOT_PRE.length),x.file]));
+    const idx=await apiCall("/api/kg/index");KG_DIR=idx.venueDir||KG_DIR;
+    const server=new Map(idx.notes.map(n=>[n.path,n]));
+    // down: the venue notes written from Setup Tracker
+    const want=[];
+    for(const n of idx.notes){if(n.src!=="site")continue;const f=files.get(n.path);if(!f||await sha(norm(await f.text()))!==n.hash)want.push(n.path)}
+    let pulled=0;
+    if(want.length){const full=await apiCall("/api/kg/list?src=site"),w=new Set(want);for(const n of full.notes)if(w.has(n.path)){await writeText(HANDLE,n.path,n.md);pulled++}}
+    // up: my notes
+    const up=[],big=[];
+    for(const[p,f]of files){if(skipUp(p))continue;const s=norm(await f.text());if(s.length>UP_MAX){big.push(p);continue}const h=await sha(s),x=server.get(p);if(!x||x.hash!==h)up.push({path:p,md:s})}
+    const remove=idx.notes.filter(n=>n.src==="vault"&&!files.has(n.path)).map(n=>n.path);
+    const batches=[];let cur=[],size=0;
+    for(const n of up){if(cur.length&&(cur.length>=BATCH_N||size+n.md.length>BATCH_BYTES)){batches.push(cur);cur=[];size=0}cur.push(n);size+=n.md.length}
+    if(cur.length)batches.push(cur);if(!batches.length&&remove.length)batches.push([]);
+    let pushed=0;const skipped=[...big];
+    for(const[i,b]of batches.entries()){setSync(`Syncing… ${i+1}/${batches.length}`);const r=await apiCall("/api/kg/push",{notes:b,remove:i===0?remove:[]});pushed+=r.saved;skipped.push(...(r.skipped||[]))}
+    LAST_SYNC=Date.now();store.set("kg-last",String(LAST_SYNC));
+    if(pulled){const y=main().scrollTop;await loadFrom(HANDLE,true);main().scrollTop=y}
+    const bits=[pushed?`${pushed} note${pushed===1?"":"s"} up`:"",remove.length?`${remove.length} removed from the website`:"",pulled?`${pulled} venue note${pulled===1?"":"s"} down`:""].filter(Boolean);
+    if(manual||bits.length)toast(bits.length?"Synced: "+bits.join(", "):"Already in sync",null,5000);
+    if(skipped.length)toast(`Not sent (too big or not allowed): ${skipped.slice(0,3).join(", ")}${skipped.length>3?"…":""}`,null,9000);
+  }catch(e){console.error("sync failed",e);setSync("Sync failed","Click to try again: "+e.message);if(manual)toast("Couldn't sync: "+e.message,null,10000);return}
+  finally{SYNCING=false;writing=false}
+  setSync()}
+
+function start(){build(RAW);renderSide();route()}
+(async()=>{
+  try{ME=await apiCall("/api/me")}catch(e){main().innerHTML=`<div class="content"><div class="card">${esc(e.message)}</div></div>`;return}
+  SYNC=!!ME.kgSync;
+  $("#refresh").hidden=!SYNC;$("#nav-add").hidden=!SYNC;setSync();
+  $("#syncb").onclick=()=>syncNow(true);
+  try{const r=await apiCall("/api/kg/list");KG_DIR=r.venueDir||KG_DIR;RAW={built:new Date(r.now).toISOString(),files:r.notes.map(n=>({path:n.path,text:n.md})),live:false}}
+  catch(e){toast("Couldn't load the notes: "+e.message,null,10000)}
+  start();setStatus();
+  if(SYNC){
+    setInterval(()=>{if(!document.hidden&&HANDLE)syncNow(false);setSync(SYNCING?"Syncing…":undefined)},SYNC_EVERY);
+    const h=window.showDirectoryPicker&&await idbGet("vault");
+    if(h){try{if(await perm(h,"read")){CAN_WRITE=await perm(h,"readwrite");await loadFrom(h,true)}}catch(e){}}
+  }
+})();
+</script>
+</body>
+</html>

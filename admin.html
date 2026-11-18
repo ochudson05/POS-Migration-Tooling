@@ -154,6 +154,9 @@ html.mh-still *{animation:none!important;transition:none!important}
     <label class="opt"><input type="checkbox" id="f-edit" checked><span>Can add, change and delete venues<small>Off: they can see venues but not change them.</small></span></label>
     <label class="opt"><input type="checkbox" id="f-fc" checked><span>Can use the team’s Firecrawl credits<small>Off: web pages are read without Firecrawl.</small></span></label>
   </fieldset>
+  <fieldset id="f-kg" hidden><legend>Knowledge graph (owner only)</legend>
+    <label class="opt"><input type="checkbox" id="f-knowledge"><span>Can read the knowledge graph<small>Your Obsidian notes at /knowledge, including people and client notes. Read-only: only you sync it.</small></span></label>
+  </fieldset>
   <fieldset id="f-cl" hidden><legend>Claude (owner only)</legend>
     <label class="opt"><input type="checkbox" id="f-claude"><span>Can use Claude on the website<small>Paid from the team’s API key, within the limits on the admin page.</small></span></label>
     <label class="f">Their monthly limit, US$ (blank = the default)<input type="number" id="f-cap" min="0" step="0.5" style="width:160px"></label>
@@ -190,7 +193,7 @@ function draw(){const U=D.users,wk=Date.now()-7*864e5;
   const rows=U.filter(u=>(!q||u.email.includes(q)||nm(u).toLowerCase().includes(q))&&(!sh||(sh==='live'?u.live:sh==='admin'?u.role!=='member':u.status==='blocked')));
   $('people').innerHTML=rows.map(u=>{const fixed=u.role==='owner'||u.email===D.me.email||(D.me.role!=='owner'&&u.role==='admin');
     const tools=u.tools?(u.tools.length?u.tools.map(t=>TOOLNAME[t]).join(', '):'None'):'All tools';
-    const perms=[u.canEdit?'':'View only',u.firecrawl?'':'No Firecrawl',u.claude&&u.role!=='owner'?'Claude':''].filter(Boolean);
+    const perms=[u.canEdit?'':'View only',u.firecrawl?'':'No Firecrawl',u.claude&&u.role!=='owner'?'Claude':'',u.knowledge?'Knowledge graph':''].filter(Boolean);
     return'<tr data-e="'+esc(u.email)+'"><td class="who"><b>'+(u.live?'<span class="dot" title="Signed in"></span>':'')+esc(nm(u))+(u.email===D.me.email?' (you)':'')+'</b><span>'+esc(u.email)+'</span>'+(u.note?'<span>'+esc(u.note)+'</span>':'')+'</td>'+
       '<td><span class="pill '+u.role+'">'+(u.role==='owner'?'Owner':u.role==='admin'?'Admin':'Member')+'</span> '+(u.status==='blocked'?'<span class="pill blocked">Blocked</span>':'')+(perms.length?'<div class="small muted">'+perms.join(' · ')+'</div>':'')+'</td>'+
       '<td class="hide-s small">'+esc(tools)+'</td><td class="small">'+ago(u.lastSeen)+(u.lastTool?'<div class="muted">'+esc(TOOLNAME[u.lastTool]||'')+'</div>':'')+'</td><td class="hide-s num">'+u.signIns+'</td>'+
@@ -242,6 +245,7 @@ function open(u){editing=u;$('fmsg').textContent='';$('dtitle').textContent=u?'E
   document.querySelector('input[name=status][value='+(u&&u.status==='blocked'?'blocked':'active')+']').checked=true;
   $('f-tools').querySelectorAll('input').forEach(c=>{c.checked=!u||!u.tools||u.tools.includes(c.value)});
   $('f-edit').checked=!u||u.canEdit;$('f-fc').checked=!u||u.firecrawl;$('f-note').value=u?u.note:'';
+  $('f-kg').hidden=D.me.role!=='owner';$('f-knowledge').checked=!!(u&&u.knowledge);
   $('f-cl').hidden=D.me.role!=='owner';$('f-claude').checked=!!(u&&u.claude);$('f-cap').value=u&&u.claudeCap!=null?u.claudeCap:'';
   $('f-hist').hidden=!u;if(u){$('f-feed').innerHTML='<li><span></span><span class="muted">Loading…</span></li>';
     call('activity?'+new URLSearchParams({email:u.email,limit:30})).then(r=>{$('f-feed').innerHTML=r.items.map(a=>'<li><time>'+when(a.at)+'</time><span>'+line(a)+'</span></li>').join('')||'<li><span></span><span class="muted">Nothing yet.</span></li>'}).catch(()=>{})}
@@ -255,7 +259,8 @@ $('form').addEventListener('submit',async e=>{e.preventDefault();const email=$('
   $('save').disabled=true;try{await call('user',body);
     // Claude is saved separately and only by the owner, and only when it changed
     if(D.me.role==='owner'){const on=$('f-claude').checked,cap=$('f-cap').value===''?null:+$('f-cap').value;
-      if(on!==!!(editing&&editing.claude)||cap!==(editing&&editing.claudeCap!=null?editing.claudeCap:null))await call('claude-user',{email,claude:on,cap})}
+      if(on!==!!(editing&&editing.claude)||cap!==(editing&&editing.claudeCap!=null?editing.claudeCap:null))await call('claude-user',{email,claude:on,cap});
+      const kg=$('f-knowledge').checked;if(kg!==!!(editing&&editing.knowledge))await call('knowledge-user',{email,knowledge:kg})}
     $('dlg').close();msg((editing?'Saved changes for ':'Added ')+email+'.'+(!editing?' They can now sign in at menuhauler.com with that email.':''),'ok');load()}
   catch(err){$('fmsg').textContent=err.message;$('fmsg').className='msg err'}$('save').disabled=false});
 $('people').addEventListener('click',async e=>{const b=e.target.closest('button[data-a]');if(!b)return;const email=b.closest('tr').dataset.e,u=D.users.find(x=>x.email===email),a=b.dataset.a;

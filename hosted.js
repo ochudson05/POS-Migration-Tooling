@@ -135,6 +135,8 @@ function applyAccess(m){ME_NOW=m;window.MH_ME=m;const ok=t=>!m.tools||m.tools.in
   window.addEventListener('hashchange',guard);guard();
   if(m.admin){const f=document.querySelector('.lx-foot .hosted-only');if(f&&!f.querySelector('a[href="/admin"]')){const a=document.createElement('a');a.href='/admin';a.innerHTML=(window.mhIcon?window.mhIcon('shield-check'):'')+'Admin';f.prepend(a,' · ')}}
   // the Page Planner is its own page (/planner), which the website only serves to the two planner accounts
+  // the knowledge graph is its own page (/knowledge): the planner accounts, plus anyone the owner ticks on /admin
+  if(m.knowledge){const nav=document.querySelector('.lx-tab')&&document.querySelector('.lx-tab').parentElement;if(nav&&!nav.querySelector('a[href="/knowledge"]')){const a=document.createElement('a');a.className='lx-tab';a.href='/knowledge';a.style.textDecoration='none';a.innerHTML=(window.mhIcon?window.mhIcon('share-2'):'')+'<span>Knowledge</span>';nav.append(a)}}
   if(m.planner){const nav=document.querySelector('.lx-tab')&&document.querySelector('.lx-tab').parentElement;if(nav&&!nav.querySelector('a[href="/planner"]')){const a=document.createElement('a');a.className='lx-tab';a.href='/planner';a.style.textDecoration='none';a.innerHTML=(window.mhIcon?window.mhIcon('layout-grid'):'')+'<span>Page Planner</span>';nav.append(a)}}
   if(m.canEdit===false){const b=document.createElement('div');b.className='oh-banner';b.style.background='var(--accent)';b.innerHTML=(window.mhIcon?window.mhIcon('eye'):'')+'<span>Your access is view-only: you can look at venues but not change them.</span>';document.body.prepend(b)}
   // shell.js redraws the account button and the tab marker
