@@ -131,6 +131,8 @@ function applyAccess(m){ME_NOW=m;window.MH_ME=m;const ok=t=>!m.tools||m.tools.in
   const guard=()=>{const v=location.hash.slice(1);if(TOOLKEYS.includes(v)&&!ok(v)){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}window.dispatchEvent(new HashChangeEvent('hashchange'))}};
   window.addEventListener('hashchange',guard);guard();
   if(m.admin){const f=document.querySelector('.lx-foot .hosted-only');if(f&&!f.querySelector('a[href="/admin"]')){const a=document.createElement('a');a.href='/admin';a.innerHTML=(window.mhIcon?window.mhIcon('shield-check'):'')+'Admin';f.prepend(a,' · ')}}
+  // the Page Planner is its own page (/planner), which the website only serves to the two planner accounts
+  if(m.planner){const nav=document.querySelector('.lx-tab')&&document.querySelector('.lx-tab').parentElement;if(nav&&!nav.querySelector('a[href="/planner"]')){const a=document.createElement('a');a.className='lx-tab';a.href='/planner';a.style.textDecoration='none';a.innerHTML=(window.mhIcon?window.mhIcon('layout-grid'):'')+'<span>Page Planner</span>';nav.append(a)}}
   if(m.canEdit===false){const b=document.createElement('div');b.className='oh-banner';b.style.background='var(--accent)';b.innerHTML=(window.mhIcon?window.mhIcon('eye'):'')+'<span>Your access is view-only: you can look at venues but not change them.</span>';document.body.prepend(b)}
   // shell.js redraws the account button and the tab marker
   window.dispatchEvent(new CustomEvent('mh:me',{detail:m}))}

@@ -11,6 +11,8 @@
      /intake/<token>          the customer intake form (public/intake.html), open to anyone with the link
      /api/db/list|get|set|update|delete   the shared venue records (D1 database "oolio-tools", table docs)
      /api/report              "Report a bug / error": saved, emailed to the owner; /api/report/inbox|seen is the owner's bell
+     /planner, /api/planner/list|get|save|delete   the POS Page Planner and its saved plans (D1 table planner_plans);
+                              only the PLANNER accounts, everyone else gets 403
      /api/fc                  Firecrawl scrape / search with the team's key, capped per month
      /api/fetch?url=...       downloads a web page, PDF, menu feed or picture for the page (free; the browser can't)
    and the original relay endpoints, which the claude.ai version still uses:
@@ -63,7 +65,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-17.1';
+const VERSION = '2026-11-18.1';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -73,6 +75,9 @@ const RELAY = new Set(['/ping', '/place', '/page', '/search']);
 
 /* ---------- sign-in: a 6-digit code by email, then a 30-day session cookie ---------- */
 const OWNER = 'ochudson05@gmail.com';
+// the POS Page Planner (/planner and /api/planner/*) is for these accounts only; admins and the per-tool list on /admin don't change it
+const PLANNER = [OWNER, 'oscar.hudson@oolio.com'];
+const canPlan = user => !!user && PLANNER.includes(user.email);
 const CODE_MIN = 10, SESSION_DAYS = 30, MAX_TRIES = 5, MAX_SENDS_PER_HOUR = 5;
 const enc = new TextEncoder();
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
@@ -989,8 +994,9 @@ async function handle(req, env) {
           const ss = await claudeSettings(env), cs = claudeState(env, ss, user);
           return api({ email: user.email, name: user.name, version: VERSION, role: user.role, tools: user.tools, canEdit: user.canEdit, firecrawl: user.firecrawl, admin: isAdmin(user),
             claude: cs.ok, photoReader: ss.photoReader, claudeLimits: cs.ok ? { maxImages: CLAUDE_HARD.maxImages, maxPromptChars: CLAUDE_HARD.maxPromptChars } : null,
-            scraper: serverOn(env), ocr: serverOn(env) });
+            scraper: serverOn(env), ocr: serverOn(env), planner: canPlan(user) });
         }
+        if (route === 'planner' || route.startsWith('planner/')) return canPlan(user) ? planner(route.slice(8), req, env, user, p) : api({ error: 'The Page Planner isn’t available on your account.' }, 403);
         if (route.startsWith('server/')) return server(route.slice(7), req, env);
         if (route === 'claude') return req.method === 'POST' ? claude(req, env, user) : api({ error: 'Use POST.' }, 405);
         if (route === 'seen' && req.method === 'POST') return seen(req, env, user);
@@ -1069,6 +1075,40 @@ async function handle(req, env) {
       // passed through as asked: the asset server serves admin.html at /admin and redirects /admin.html to /admin
       // (asking it for /admin.html when /admin was opened made a redirect loop)
     }
+    // the Page Planner (public/planner.html) is for the PLANNER accounts only
+    if (/^\/planner(\.html)?\/?$/.test(u.pathname) && !canPlan(viewer))
+      return new Response('<!DOCTYPE html><meta charset="utf-8"><title>Not allowed · Menu Hauler</title><p style="font:16px system-ui;padding:24px">This page isn’t available on your account. <a href="/">Back to Menu Hauler</a></p>', { status: 403, headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' } });
     if (env.ASSETS) return env.ASSETS.fetch(req);
     return out({ error: 'Unknown address.' }, 404);
+}
+
+/* ---------- Page Planner: saved POS page plans, private to the PLANNER accounts (not in the shared docs table) ---------- */
+const PLAN_MAX = 1500000;
+async function planner(path, req, env, user, q) {
+  await env.DB.prepare('CREATE TABLE IF NOT EXISTS planner_plans (id TEXT PRIMARY KEY, name TEXT NOT NULL, data TEXT NOT NULL, updated_at INTEGER NOT NULL, updated_by TEXT)').run();
+  if (path === 'list') {
+    const r = await env.DB.prepare('SELECT id, name, updated_at, updated_by FROM planner_plans ORDER BY updated_at DESC LIMIT 500').all();
+    return api({ plans: r.results || [] });
+  }
+  if (path === 'get') {
+    const r = await env.DB.prepare('SELECT data FROM planner_plans WHERE id = ?1').bind(q.get('id') || '').first();
+    return r ? api({ plan: JSON.parse(r.data) }) : api({ error: 'That plan doesn’t exist any more.' }, 404);
+  }
+  if (req.method !== 'POST') return api({ error: 'Use POST.' }, 405);
+  const b = await req.json().catch(() => null);
+  if (!b) return api({ error: 'Bad request.' }, 400);
+  if (path === 'save') {
+    const id = ID.test(b.id || '') ? b.id : crypto.randomUUID();
+    const name = String(b.name || 'Untitled').slice(0, 200);
+    const data = JSON.stringify({ id, name, settings: b.settings, source: b.source, pages: b.pages });
+    if (data.length > PLAN_MAX) return api({ error: 'This plan is too big to save (' + Math.round(data.length / 1e6 * 10) / 10 + ' MB, limit 1.5 MB).' }, 413);
+    await env.DB.prepare('INSERT INTO planner_plans (id, name, data, updated_at, updated_by) VALUES (?1, ?2, ?3, ?4, ?5) ON CONFLICT(id) DO UPDATE SET name = ?2, data = ?3, updated_at = ?4, updated_by = ?5')
+      .bind(id, name, data, Date.now(), user.email).run();
+    return api({ ok: true, id });
+  }
+  if (path === 'delete') {
+    await env.DB.prepare('DELETE FROM planner_plans WHERE id = ?1').bind(String(b.id || '')).run();
+    return api({ ok: true });
+  }
+  return api({ error: 'Unknown address.' }, 404);
 }

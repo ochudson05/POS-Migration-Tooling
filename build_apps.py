@@ -505,6 +505,12 @@ adm = adm.replace("<style>", FONT + "\n" + BOOT + "\n<style>" + THEME, 1).replac
 (HERE / "public" / "admin.html").write_bytes(adm.replace("\r\n", "\n").encode("utf-8"))
 print("wrote", HERE / "public" / "admin.html")
 
+# public/planner.html: the POS Page Planner (page-planner.html; relay-worker.js serves it at /planner to the PLANNER accounts only)
+ppl = (HERE / "page-planner.html").read_text(encoding="utf-8")
+ppl = ppl.replace("<style>", FONT + "\n" + BOOT + "\n<style>" + THEME, 1).replace("<body>", "<body>\n" + SPRITE, 1)
+(HERE / "public" / "planner.html").write_bytes(ppl.replace("\r\n", "\n").encode("utf-8"))
+print("wrote", HERE / "public" / "planner.html")
+
 # public/intake.html: the customer intake form (intake.html; relay-worker.js serves it at /intake/<token> without sign-in)
 itk = (HERE / "intake.html").read_text(encoding="utf-8")
 itk = itk.replace("<style>", FONT + "\n" + BOOT + "\n<style>" + THEME, 1).replace("<body>", "<body>\n" + SPRITE, 1)

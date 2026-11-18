@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Page Planner · Menu Hauler</title>
+<!-- build_apps.py adds the Inter font and oolio-theme.css here and writes public/planner.html
+     (relay-worker.js serves it at /planner to the PLANNER accounts only; everyone else gets a 403) -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+[hidden]{display:none!important}
+*,*::before,*::after{box-sizing:border-box}
+:root{--veg:#e3f3ea;--veg-t:#14532d;--nv:#fbe7e1;--nv-t:#7a2611;--lnk:#ebe8fd;--lnk-t:#3c3489;--oth:#eef0f3;--oth-t:#1f2933}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--veg:#133d28;--veg-t:#c8f0d8;--nv:#4a1f14;--nv-t:#fbd5c8;--lnk:#2f2a66;--lnk-t:#dcd8ff;--oth:#2a2f36;--oth-t:#e6e9ee}}
+:root[data-theme="dark"]{--veg:#133d28;--veg-t:#c8f0d8;--nv:#4a1f14;--nv-t:#fbd5c8;--lnk:#2f2a66;--lnk-t:#dcd8ff;--oth:#2a2f36;--oth-t:#e6e9ee}
+body{margin:0;background:var(--bg,#f6f7f9);color:var(--text,#111);font:15px/1.5 var(--f-body,system-ui,sans-serif)}
+.pp-top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px));background:var(--bar,#222);color:var(--bar-text,#fff)}
+.pp-top b{font-size:1rem}.pp-top .sp{flex:1}
+.pp-top a{color:var(--bar-text,#fff);text-decoration:none;font-weight:600;font-size:.9rem;padding:5px 10px;border-radius:var(--r,6px)}
+.pp-top a:hover{background:var(--bar-hover,#333)}
+.tag{font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--bar-hover,#333);color:var(--bar-text,#fff)}
+main{max-width:1280px;margin:0 auto;padding:22px max(16px,env(safe-area-inset-left,0px)) 64px;display:grid;gap:18px}
+h1{font-size:1.45rem;margin:0}h2{font-size:1.08rem;margin:0 0 10px;display:flex;gap:8px;align-items:center}
+h2 .n{display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;background:var(--accent-soft,#e8eefc);color:var(--accent,#2554c7);font-size:.82rem}
+.sub{color:var(--muted,#667);margin:4px 0 0;max-width:80ch}
+.card{background:var(--card,#fff);border:1px solid var(--line,#dde);border-radius:var(--r-card,12px);padding:16px;box-shadow:var(--shadow,none);min-width:0}
+button{font:inherit;font-weight:600;background:var(--accent,#2554c7);color:var(--accent-text,#fff);border:1px solid var(--accent,#2554c7);border-radius:var(--r,6px);padding:7px 13px;cursor:pointer;margin:0}
+button.sec{background:transparent;color:var(--text,#111);border-color:var(--line,#dde)}
+button.sec:not(:disabled):hover{border-color:var(--accent,#2554c7);color:var(--accent,#2554c7)}
+button.bad{background:transparent;color:var(--bad,#b42318);border-color:var(--line,#dde)}
+button.sm{padding:3px 9px;font-size:.84rem}
+button:disabled{opacity:.5;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible,.cell:focus-visible{outline:2px solid var(--accent,#2554c7);outline-offset:2px}
+input,select{font:inherit;font-size:.92rem;color:var(--text,#111);background:var(--bg,#fff);border:1px solid var(--line,#dde);border-radius:var(--r,6px);padding:6px 9px;min-width:0}
+input[type=checkbox]{width:auto;padding:0}
+input[type=number]{width:80px}
+label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted,#667)}
+.row{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:end}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px 18px;margin-top:12px}
+.opt{display:flex;gap:8px;align-items:flex-start;font-size:.9rem}.opt input{margin-top:4px}
+.opt small{display:block;color:var(--muted,#667);font-size:.8rem}
+.muted{color:var(--muted,#667)}.small{font-size:.85rem}
+.msg{font-size:.88rem;min-height:1.3em;margin:8px 0 0;color:var(--muted,#667)}.msg.err{color:var(--bad,#b42318)}.msg.ok{color:var(--ok,#18794e)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:12px}
+.kpi{border:1px solid var(--line,#dde);border-radius:var(--r,6px);padding:10px 12px}
+.kpi span{display:block;color:var(--muted,#667);font-size:.8rem}.kpi b{font-size:1.35rem;font-variant-numeric:tabular-nums}
+.kpi.bad b{color:var(--bad,#b42318)}.kpi.ok b{color:var(--ok,#18794e)}
+.checks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.checks li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:6px;font-size:.9rem;padding:8px 10px;border-radius:var(--r,6px);border:1px solid var(--line,#dde)}
+.checks li.w{border-color:#e7b008;background:color-mix(in srgb,#e7b008 10%,transparent)}
+.checks li.e{border-color:var(--bad,#b42318);background:color-mix(in srgb,var(--bad,#b42318) 8%,transparent)}
+.checks li.i{color:var(--muted,#667)}
+.checks li b{color:var(--text,#111)}
+.tb{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.tb span{font-size:.82rem;padding:4px 10px;border-radius:99px;border:1px solid var(--line,#dde)}
+.tb span.over{border-color:var(--bad,#b42318);color:var(--bad,#b42318)}
+.tb span.free{border-style:dashed;color:var(--muted,#667)}
+.bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 12px;margin:0 0 12px;border-radius:var(--r,6px);background:var(--card,#fff);border:1px solid var(--accent,#2554c7);box-shadow:0 4px 14px rgb(0 0 0/.08)}
+.bar b{font-size:.95rem}
+.pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.pg{border:1px solid var(--line,#dde);border-radius:var(--r-card,12px);padding:10px;min-width:0;background:var(--bg,#fafbfc)}
+.pg.child{border-style:dashed}
+.pg.over{border-color:var(--bad,#b42318)}
+.pg-h{display:grid;gap:6px;margin-bottom:8px}
+.pg-h .t{display:flex;gap:6px;align-items:center}
+.pg-h .t input{flex:1;font-weight:600}
+.pg-h .m{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.8rem;color:var(--muted,#667)}
+.pg-h .m select{font-size:.8rem;padding:3px 6px}
+.badge{font-size:.72rem;font-weight:600;padding:1px 7px;border-radius:99px;background:var(--accent-soft,#e8eefc);color:var(--accent,#2554c7);white-space:nowrap}
+.badge.bad{background:color-mix(in srgb,var(--bad,#b42318) 14%,transparent);color:var(--bad,#b42318)}
+.grid{display:grid;gap:4px}
+.cell{min-height:50px;border-radius:6px;font-size:.74rem;line-height:1.2;padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;border:1px solid transparent;user-select:none;overflow-wrap:anywhere}
+.cell small{font-size:.66rem;opacity:.75;margin-top:2px}
+.cell.empty{border:1px dashed var(--line,#dde);background:transparent}
+.cell.veg{background:var(--veg);color:var(--veg-t)}.cell.nv{background:var(--nv);color:var(--nv-t)}.cell.oth{background:var(--oth);color:var(--oth-t)}
+.cell.lnk,.cell.back{background:var(--lnk);color:var(--lnk-t);font-weight:600}
+.cell.dup{box-shadow:inset 0 0 0 2px #e7b008}
+.cell.sel{outline:3px solid var(--accent,#2554c7);outline-offset:1px}
+body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix(in srgb,var(--accent,#2554c7) 6%,transparent)}
+.tray{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
+.tray .cell{min-height:0;padding:5px 9px;font-size:.8rem;flex-direction:row}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.8rem;color:var(--muted,#667);margin:0 0 12px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.plans{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px}
+.plans li{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.9rem;padding:6px 0;border-bottom:1px solid var(--line,#dde)}
+.plans li span{flex:1;min-width:160px}.plans li small{color:var(--muted,#667)}
+.dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.dl .card{display:grid;gap:8px;align-content:start;box-shadow:none}
+.dl p{margin:0;font-size:.88rem;color:var(--muted,#667)}
+@media (max-width:520px){.pages{grid-template-columns:minmax(0,1fr)}.cell{font-size:.68rem;min-height:44px}}
+</style>
+</head>
+<body>
+<header class="pp-top"><b>Page Planner</b><span class="tag">Private</span><span class="sp"></span><a href="/">Back to Menu Hauler</a></header>
+<main>
+<div>
+  <h1>POS page planner</h1>
+  <p class="sub">Upload an Oolio One import list and it’s laid out into as few toolbar pages as possible, within your grid size and jump limit. Then fix anything by hand and download the layout and a reordered import.</p>
+</div>
+
+<section class="card" aria-labelledby="pp-s1">
+  <h2 id="pp-s1"><span class="n">1</span>Import list</h2>
+  <div class="row">
+    <label class="f">Oolio One import (.xlsx or .csv, from Menu Converter)<input type="file" id="pp-file" accept=".xlsx,.xls,.csv"></label>
+    <label class="f" style="flex:1 1 220px">Plan name<input id="pp-name" placeholder="Kesari Clyde"></label>
+    <button type="button" class="sec" id="pp-save" disabled>Save plan</button>
+  </div>
+  <p class="msg" id="pp-msg1" role="status" aria-live="polite"></p>
+  <details id="pp-saved"><summary class="small">Saved plans <span id="pp-where" class="muted"></span></summary><ul class="plans" id="pp-plans"></ul></details>
+</section>
+
+<section class="card" aria-labelledby="pp-s2" id="pp-set" hidden>
+  <h2 id="pp-s2"><span class="n">2</span>Your POS</h2>
+  <div class="row">
+    <label class="f">Columns<input type="number" id="s-cols" min="2" max="10" value="5"></label>
+    <label class="f">Rows<input type="number" id="s-rows" min="2" max="10" value="5"></label>
+    <label class="f">Toolbar slots before scrolling<input type="number" id="s-slots" min="1" max="30" value="8"></label>
+    <label class="f">Most sub-page jumps<select id="s-depth"><option value="0">0 (toolbar only)</option><option value="1">1</option><option value="2" selected>2</option></select></label>
+  </div>
+  <div class="opts">
+    <label class="opt"><input type="checkbox" id="s-link" checked><span>A sub-page link uses a button slot<small>On the page it opens from.</small></span></label>
+    <label class="opt"><input type="checkbox" id="s-back" checked><span>A sub-page needs a Back button<small>Takes one slot on every sub-page.</small></span></label>
+    <label class="opt"><input type="checkbox" id="s-rowgrp" checked><span>Each sub-group starts a new row<small>E.g. all the Manchurians on one row, all the 65s on the next.</small></span></label>
+    <label class="opt"><input type="checkbox" id="s-share" checked><span>Groups of 1–2 can share a row<small>Stops tiny groups wasting whole rows.</small></span></label>
+    <label class="opt"><input type="checkbox" id="s-sep" checked><span>Keep food and drinks on separate pages<small>Uses the Product Group column.</small></span></label>
+    <label class="opt"><input type="checkbox" id="s-veg" checked><span>Split big categories into veg and non-veg<small>When a category won’t fit on one page.</small></span></label>
+  </div>
+  <fieldset style="border:0;margin:14px 0 0;padding:0"><legend class="small"><b>Busy categories</b>: tick the ones that must stay on the toolbar (never inside a sub-page). The others can go one tap deeper if the toolbar runs out of room.</legend>
+    <div class="opts" id="s-keep" style="margin-top:6px;grid-template-columns:repeat(auto-fill,minmax(200px,1fr))"></div></fieldset>
+  <div class="row" style="margin-top:14px"><button type="button" id="pp-build">Build pages</button><span class="small muted" id="pp-cnt"></span></div>
+</section>
+
+<section class="card" aria-labelledby="pp-s3" id="pp-chk" hidden>
+  <h2 id="pp-s3"><span class="n">3</span>Sanity checks</h2>
+  <div class="kpis" id="pp-kpis"></div>
+  <ul class="checks" id="pp-checks"></ul>
+</section>
+
+<section class="card" aria-labelledby="pp-s4" id="pp-ed" hidden>
+  <h2 id="pp-s4"><span class="n">4</span>Pages</h2>
+  <p class="sub small" style="margin:0 0 10px">Click a button, then click an empty slot to move it there or another button to swap them. You can copy a button onto another page, for example naan on both curry pages. Choose where each page opens from under its name.</p>
+  <div class="tb" id="pp-tb"></div>
+  <div class="legend"><span><i style="background:var(--veg)"></i>Veg</span><span><i style="background:var(--nv)"></i>Non-veg</span><span><i style="background:var(--oth)"></i>Drinks and other</span><span><i style="background:var(--lnk)"></i>Sub-page link or Back</span><span><i style="box-shadow:inset 0 0 0 2px #e7b008;background:var(--oth)"></i>Copy (also on another page)</span></div>
+  <div class="bar" id="pp-bar" hidden></div>
+  <div id="pp-trayw" hidden><p class="small" style="margin:0 0 6px"><b>Not on any page</b>: click one, then an empty slot.</p><div class="tray" id="pp-tray"></div></div>
+  <div class="row" style="margin:0 0 12px"><button type="button" class="sec sm" id="pp-undo" disabled>Undo</button><button type="button" class="sec sm" id="pp-add">Add page</button><button type="button" class="sec sm" id="pp-rebuild">Rebuild from scratch</button></div>
+  <div class="pages" id="pp-pages"></div>
+</section>
+
+<section class="card" aria-labelledby="pp-s5" id="pp-out" hidden>
+  <h2 id="pp-s5"><span class="n">5</span>Downloads</h2>
+  <div class="dl">
+    <div class="card"><b>Layout workbook</b><p>A grid for every page, a list of every button with its row and column, and the steps to do by hand in Oolio One: sub-page links, Back buttons and copies.</p><button type="button" id="pp-dl1">Download layout (.xlsx)</button></div>
+    <div class="card"><b>Import, sorted by page</b><p>Your import file in page order, with Category set to the page each product sits on. Use it if Oolio One builds a page from each category. Note this changes your category names in reports.</p><button type="button" class="sec" id="pp-dl2">Download import (.xlsx)</button></div>
+  </div>
+</section>
+</main>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id),esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
+/* ---------------- state ---------------- */
+// plan = {id,name,settings,source:{file,sheet,head,hr,rows},items:{id:{...}},pages:[{id,name,parent,cells:[null|{t:'i',id}|{t:'l',to}|{t:'b'}]}]}
+let P=null,sel=null,undo=[],dirty=false,local=false;
+const S=()=>P.settings,N=()=>S().cols*S().rows;
+const uid=()=>Math.random().toString(36).slice(2,9);
+
+/* ---------------- reading the import file ---------------- */
+const NV=/\b(chicken|goat|lamb|beef|pork|fish|prawns?|shrimp|egg|eggs|gosht|murg|mutton|keema|seafood|crab|lobster|squid|calamari|bacon|ham|salami|duck|turkey|veal|kebab|wings?|tuna|salmon|barramundi|chorizo|pepperoni|anchov\w*|oyster\w*|scallops?|mussels?)\b/i;
+const VEGNEG=/\b(veg|vegetarian|vegan|paneer|eggplant|egg ?free|no egg|eggless|plant)\b/i;
+function col(head,...names){for(const n of names){const i=head.findIndex(h=>String(h||'').replace(/\*/g,'').trim().toLowerCase()===n.toLowerCase());if(i>=0)return i}return -1}
+function readBook(buf,file){
+  const wb=XLSX.read(buf,{type:'array'});
+  for(const sn of wb.SheetNames){
+    const rows=XLSX.utils.sheet_to_json(wb.Sheets[sn],{header:1,defval:'',raw:true});
+    const hr=rows.findIndex(r=>r.some(c=>/^product name\*?$/i.test(String(c).trim())));
+    if(hr<0)continue;
+    return {file,sheet:sn,hr,head:rows[hr].map(String),rows:rows.slice(hr+1).filter(r=>r.some(c=>String(c).trim()!==''))};
+  }
+  throw new Error('No “Product Name” column found. Upload the Oolio One import made by Menu Converter.');
+}
+function itemsFrom(src){
+  const h=src.head,c={name:col(h,'Product Name'),type:col(h,'Product Type'),grp:col(h,'Product Group'),cat:col(h,'Category'),vn:col(h,'Variant Name'),price:col(h,'Sell Price'),desc:col(h,'Description')};
+  if(c.name<0||c.cat<0)throw new Error('The file needs “Product Name” and “Category” columns.');
+  const items={},order=[];let mods=0,last=null;
+  src.rows.forEach((r,ri)=>{
+    const name=String(r[c.name]||'').trim(),type=String(c.type>=0?r[c.type]:'Product').trim().toLowerCase(),cat=String(r[c.cat]||'').trim();
+    if(!name)return;
+    if(type==='modifier'){mods++;return}
+    if(type==='variant'){if(last&&items[last].name===name){items[last].rows.push(ri);const vn=String(c.vn>=0?r[c.vn]:'').trim();if(vn)items[last].sizes.push(vn)}return}
+    if(!cat){mods++;return}
+    const key=name.toLowerCase()+'|'+cat.toLowerCase();
+    if(items[key]){items[key].rows.push(ri);last=key;return}
+    const desc=c.desc>=0?String(r[c.desc]||''):'',txt=name+' '+desc;
+    items[key]={id:key,name,cat,grp:String(c.grp>=0?r[c.grp]:'').trim()||'Other',price:c.price>=0?+r[c.price]||0:0,sizes:[],rows:[ri],
+      nv:NV.test(name)||(!VEGNEG.test(name)&&NV.test(desc)),ord:order.length};
+    order.push(key);last=key;
+  });
+  // a sized product's own row is often $0 with the prices on the size rows
+  Object.values(items).forEach(it=>{if(it.sizes.length){const ps=it.rows.map(ri=>+src.rows[ri][c.price]||0).filter(x=>x>0);it.price=ps.length?Math.min(...ps):0}});
+  return {items,order,mods};
+}
+
+/* ---------------- building pages ---------------- */
+const STOP=new Set(['and','with','the','of','in','on','a','&','+','-','house','style','w','w/','or','any','extra','your']);
+const words=n=>[...new Set(n.toLowerCase().replace(/[()\/,.]/g,' ').split(/\s+/).map(w=>w.replace(/'s$/,'')).filter(w=>w&&!STOP.has(w)))];
+// items of one category in sub-groups: the word most of them share goes first (Chicken, Paneer, Manchurian, 65…)
+function subgroups(ids){
+  const it=P.items,left=new Set(ids),groups=[];
+  for(;;){
+    const cnt=new Map(),first=new Map();
+    ids.forEach(id=>{if(!left.has(id))return;words(it[id].name).forEach(w=>{cnt.set(w,(cnt.get(w)||0)+1);if(!first.has(w))first.set(w,it[id].ord)})});
+    let best=null;cnt.forEach((n,w)=>{if(n>=2&&n<left.size+1&&(!best||n>cnt.get(best)||(n===cnt.get(best)&&first.get(w)<first.get(best))))best=w});
+    if(!best||cnt.get(best)<2)break;
+    const g=ids.filter(id=>left.has(id)&&words(it[id].name).includes(best));
+    if(g.length===ids.length&&groups.length===0&&ids.length>S().cols){/* every item shares it (e.g. "Dosa"): try the next word instead */
+      g.forEach(id=>left.delete(id));const inner=subgroupsBy(g,best);groups.push(...inner);continue}
+    g.forEach(id=>left.delete(id));groups.push(g);
+  }
+  const rest=ids.filter(id=>left.has(id));
+  if(rest.length){const v=rest.filter(id=>!it[id].nv),n=rest.filter(id=>it[id].nv);if(v.length)groups.push(v);if(n.length)groups.push(n)}
+  // veg groups before non-veg, then menu order
+  const nvr=g=>g.filter(id=>it[id].nv).length/g.length;
+  return groups.sort((a,b)=>(nvr(a)>.5)-(nvr(b)>.5)||it[a[0]].ord-it[b[0]].ord);
+}
+function subgroupsBy(ids,skip){const saved=STOP.has(skip);STOP.add(skip);const g=subgroups(ids);if(!saved)STOP.delete(skip);return g}
+// lay a list of chunks (each up to `cols` buttons) into rows
+function rowsOf(chunks){const s=S(),rows=[];
+  chunks.forEach(ch=>{const lastRow=rows[rows.length-1];
+    if(!s.rowgrp){let i=0;if(lastRow&&lastRow.length<s.cols){while(lastRow.length<s.cols&&i<ch.length)lastRow.push(ch[i++])}while(i<ch.length)rows.push(ch.slice(i,i+=s.cols));return}
+    if(s.share&&lastRow&&lastRow.length+ch.length<=s.cols&&(ch.length<=2||lastRow.length<=2)&&shareOk(lastRow,ch))lastRow.push(...ch);else rows.push(ch.slice())});
+  return rows}
+// small groups share a row only with their own category, unless the whole category is that small (e.g. one sparkling wine)
+function shareOk(row,ch){const it=P.items,a=it[row[row.length-1]].cat,b=it[ch[0]].cat;if(a===b)return true;
+  const n=c=>P.order.filter(id=>it[id].cat===c).length;return n(b)<=2&&n(a)+n(b)<=S().cols}
+const chunk=(g,n)=>{const o=[];for(let i=0;i<g.length;i+=n)o.push(g.slice(i,i+n));return o};
+function blocksFrom(order){
+  const s=S(),it=P.items,cats=[];
+  order.forEach(id=>{const c=it[id].cat;let b=cats.find(x=>x.cat===c);if(!b)cats.push(b={cat:c,grp:it[id].grp,ids:[]});b.ids.push(id)});
+  const blocks=[];
+  cats.forEach(b=>{
+    const gs=subgroups(b.ids),chunks=gs.flatMap(g=>chunk(g,s.cols));
+    if(rowsOf(chunks).length<=s.rows){blocks.push({name:b.cat,grp:b.grp,chunks});return}
+    // too big for one page: veg / non-veg first, then numbered parts
+    const parts=[];
+    if(s.veg){const v=gs.filter(g=>g.filter(id=>it[id].nv).length*2<g.length),n=gs.filter(g=>!v.includes(g));
+      if(v.length&&n.length){parts.push(['Veg '+b.cat,v],['Non-veg '+b.cat,n])}}
+    if(!parts.length)parts.push([b.cat,gs]);
+    parts.forEach(([nm,pg])=>{let cur=[],k=1;const pieces=[];
+      pg.flatMap(g=>chunk(g,s.cols)).forEach(ch=>{if(rowsOf(cur.concat([ch])).length>s.rows){pieces.push(cur);cur=[]}cur.push(ch)});
+      if(cur.length)pieces.push(cur);
+      pieces.forEach(pc=>blocks.push({name:pieces.length>1?nm+' '+(k++):nm,grp:b.grp,chunks:pc}))});
+  });
+  return blocks}
+function pageNameOf(names){return names.length<=2?names.join(' and '):names.slice(0,2).join(', ')+' and more'}
+function build(){
+  const s=S(),it=P.items,order=P.order;
+  const blocks=blocksFrom(order),pages=[];
+  const fits=(pg,b)=>rowsOf(pg.chunks.concat(b.chunks)).length<=s.rows;
+  blocks.forEach(b=>{
+    const same=pages.filter(p=>!s.sep||p.grp===b.grp);
+    let target=same.length&&fits(same[same.length-1],b)?same[same.length-1]:same.find(p=>fits(p,b));
+    if(!target){target={id:uid(),grp:b.grp,names:[],chunks:[],parent:null};pages.push(target)}
+    target.names.push(b.name);target.chunks.push(...b.chunks)});
+  P.pages=pages.map(p=>({id:p.id,grp:p.grp,name:pageNameOf(p.names),parent:null,cells:cellsOf(rowsOf(p.chunks))}));
+  nest();syncLinks();
+}
+function cellsOf(rows){const s=S(),c=new Array(N()).fill(null);rows.forEach((r,ri)=>r.forEach((id,ci)=>{if(ri<s.rows)c[ri*s.cols+ci]={t:'i',id}}));return c}
+const byId=id=>P.pages.find(p=>p.id===id);
+const depth=p=>{let d=0,q=p,seen=new Set();while(q&&q.parent&&!seen.has(q.id)){seen.add(q.id);q=byId(q.parent);d++}return d};
+const kids=p=>P.pages.filter(q=>q.parent===p.id);
+const height=p=>{const k=kids(p);return k.length?1+Math.max(...k.map(height)):0};
+const isUnder=(p,anc)=>{let q=p,seen=new Set();while(q&&q.parent&&!seen.has(q.id)){seen.add(q.id);if(q.parent===anc.id)return true;q=byId(q.parent)}return false};
+const free=p=>p.cells.filter(c=>!c).length;
+const used=p=>p.cells.filter(c=>c&&c.t==='i').length;
+const linkCost=()=>S().link?1:0,backCost=()=>S().back?1:0;
+// fold pages under other pages until the toolbar fits
+function nest(){
+  const s=S(),keep=new Set(s.keep||[]);let guard=200;
+  while(P.pages.filter(p=>!p.parent).length>s.slots&&guard--){
+    const top=P.pages.filter(p=>!p.parent);
+    // best pair: a small page goes inside a nearby page that's on the toolbar; the two halves of a split category stay visible
+    let best=null;
+    for(const q of top){if(free(q)<backCost()||q.cells.some(c=>c&&c.t==='i'&&keep.has(P.items[c.id].cat)))continue;
+      for(const p of P.pages){if(p===q||isUnder(p,q))continue;
+        if(s.sep&&p.grp!==q.grp)continue;
+        if(depth(p)+1+height(q)>s.depth||free(p)<linkCost())continue;
+        const sc=depth(p)*100+height(q)*60+(p.grp!==q.grp?50:0)+(sameBase(p,q)?40:0)+Math.abs(P.pages.indexOf(p)-P.pages.indexOf(q))*4+used(q)+(used(p)<used(q)?30:0);
+        if(!best||sc<best.sc)best={p,q,sc}}}
+    if(best){best.q.parent=best.p.id;reserve(best.p);reserve(best.q,true);continue}
+    // nobody has room: make a hub page of links for the group with the most toolbar pages
+    const grp=Object.entries(top.reduce((o,p)=>(o[p.grp]=(o[p.grp]||0)+1,o),{})).sort((a,b)=>b[1]-a[1])[0][0];
+    const need=top.length-s.slots+1,cand=top.filter(p=>p.grp===grp&&free(p)>=backCost()&&1+height(p)<=s.depth&&!p.cells.some(c=>c&&c.t==='i'&&keep.has(P.items[c.id].cat))).slice(0,Math.max(2,need));
+    if(cand.length<2||cand.length*linkCost()>N())break;
+    const hub={id:uid(),grp,name:grp==='Beverage'?'Drinks':grp,parent:null,cells:new Array(N()).fill(null)};
+    P.pages.splice(P.pages.indexOf(cand[0]),0,hub);
+    cand.forEach(q=>{q.parent=hub.id;reserve(q,true)});reserve(hub);
+  }
+}
+const base=n=>n.toLowerCase().replace(/^(veg|non-veg)\s+/,'').replace(/\s+\d+$/,'');
+const sameBase=(p,q)=>base(p.name)===base(q.name);
+// placeholder so free() counts the link/back slot before syncLinks draws it
+function reserve(p,back){if(back?!S().back:!S().link)return;const i=p.cells.lastIndexOf(null);if(i>=0)p.cells[i]=back?{t:'b'}:{t:'l',to:'?'}}
+// every sub-page has a link on its parent and a Back button; stale ones go
+function syncLinks(){
+  const s=S();
+  P.pages.forEach(p=>p.cells=p.cells.map(c=>c&&((c.t==='l'&&(c.to==='?'||!s.link||!byId(c.to)||byId(c.to).parent!==p.id))||(c.t==='b'&&(!s.back||!p.parent)))?null:c));
+  P.pages.forEach(p=>{
+    // Back sits in the bottom-right slot (or the last free one), so it's always in the same place
+    if(s.back&&p.parent&&!p.cells.some(c=>c&&c.t==='b')){const i=p.cells.lastIndexOf(null);if(i>=0)p.cells[i]={t:'b'}}
+    if(s.link)kids(p).forEach(k=>{if(!p.cells.some(c=>c&&c.t==='l'&&c.to===k.id)){const i=p.cells.lastIndexOf(null);if(i>=0)p.cells[i]={t:'l',to:k.id}}})});
+}
+
+/* ---------------- sanity checks ---------------- */
+function checks(){
+  const s=S(),it=P.items,out=[],top=P.pages.filter(p=>!p.parent);
+  const placed=new Map();P.pages.forEach(p=>p.cells.forEach(c=>{if(c&&c.t==='i')placed.set(c.id,(placed.get(c.id)||0)+1)}));
+  const unplaced=P.order.filter(id=>!placed.has(id));
+  if(top.length>s.slots)out.push(['e','<b>'+top.length+' toolbar pages but only '+s.slots+' fit</b> before scrolling. Put a page under another one, or combine two small pages.']);
+  P.pages.forEach(p=>{const d=depth(p);if(d>s.depth)out.push(['e','<b>'+esc(p.name)+'</b> is '+d+' jumps deep. Your limit is '+s.depth+'.'])});
+  P.pages.forEach(p=>{if(p.parent&&s.link&&!byId(p.parent).cells.some(c=>c&&c.t==='l'&&c.to===p.id))out.push(['e','<b>'+esc(byId(p.parent).name)+'</b> has no empty slot for the link to <b>'+esc(p.name)+'</b>, so staff can’t reach it. Free a slot on that page.']);
+    if(p.parent&&s.back&&!p.cells.some(c=>c&&c.t==='b'))out.push(['e','<b>'+esc(p.name)+'</b> has no room for a Back button.'])});
+  if(unplaced.length)out.push(['e','<b>'+unplaced.length+' item'+(unplaced.length>1?'s are':' is')+' on no page</b>: '+unplaced.slice(0,8).map(id=>esc(it[id].name)).join(', ')+(unplaced.length>8?'…':'')+'. Put '+(unplaced.length>1?'them':'it')+' on a page from the list above the pages.']);
+  // the same name in two categories: staff may tap the wrong one
+  const byName={};P.order.forEach(id=>{const n=it[id].name.toLowerCase();(byName[n]=byName[n]||[]).push(id)});
+  Object.values(byName).filter(a=>a.length>1).forEach(a=>out.push(['w','<b>'+esc(it[a[0]].name)+'</b> is in '+a.length+' categories ('+a.map(id=>esc(it[id].cat)+' '+money(it[id])).join(', ')+'). Rename one so staff can tell them apart, or delete one.']));
+  // names that look alike but aren't the same product
+  const names=P.order.map(id=>it[id]);
+  for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){const a=names[i],b=names[j];if(a.name.toLowerCase()===b.name.toLowerCase())continue;
+    const wa=words(a.name).filter(w=>!/^(veg|vegetarian|dum)$/.test(w)),wb=words(b.name).filter(w=>!/^(veg|vegetarian|dum)$/.test(w));
+    if(wa.length&&wa.join(' ')===wb.join(' '))out.push(['w','<b>'+esc(a.name)+'</b> and <b>'+esc(b.name)+'</b> look almost the same on a button ('+money(a)+' vs '+money(b)+'). Make the difference obvious in the name or colour.'])}
+  P.order.forEach(id=>{const x=it[id];if(!x.sizes.length&&!x.price)out.push(['i','<b>'+esc(x.name)+'</b> has no price, so it will be an open-price button. Check that’s intended.'])});
+  P.pages.forEach(p=>{const u=used(p);if(u&&u<=Math.floor(N()*.3)&&!kids(p).length)out.push(['i','<b>'+esc(p.name)+'</b> uses only '+u+' of '+N()+' slots. It could share a page with another small one.'])});
+  const split={};P.pages.forEach(p=>p.cells.forEach(c=>{if(c&&c.t==='i'&&placed.get(c.id)===1){const cat=it[c.id].cat;(split[cat]=split[cat]||new Set()).add(p.name)}}));
+  Object.entries(split).filter(([,v])=>v.size>1).forEach(([k,v])=>out.push(['i','Category <b>'+esc(k)+'</b> is spread over '+v.size+' pages ('+[...v].map(esc).join(', ')+').']));
+  if(P.mods)out.push(['i',P.mods+' modifier rows were left out: they’re picked in pop-ups, not from page buttons.']);
+  if(!out.some(x=>x[0]!=='i'))out.unshift(['ok','No problems found. Everything fits within '+s.slots+' toolbar slots and '+s.depth+' jump'+(s.depth===1?'':'s')+'.']);
+  return {out,top,unplaced,placed}}
+const money=x=>x.sizes.length?x.sizes.join('/'):x.price?'$'+(+x.price).toFixed(2):'no price';
+
+/* ---------------- drawing ---------------- */
+function order(){const out=[],walk=(p,d)=>{out.push([p,d]);kids(p).forEach(k=>walk(k,d+1))};P.pages.filter(p=>!p.parent||!byId(p.parent)).forEach(p=>walk(p,0));return out}
+function draw(){
+  if(!P||!P.pages){['pp-chk','pp-ed','pp-out'].forEach(i=>$(i).hidden=true);return}
+  ['pp-chk','pp-ed','pp-out'].forEach(i=>$(i).hidden=false);
+  const s=S(),it=P.items,C=checks(),placed=C.placed,tops=C.top;
+  const subs=P.pages.length-tops.length,maxd=Math.max(0,...P.pages.map(depth)),empty=P.pages.reduce((a,p)=>a+free(p),0);
+  $('pp-kpis').innerHTML=[['Buttons',P.order.length],['Toolbar pages',tops.length+' / '+s.slots,tops.length>s.slots?'bad':'ok'],['Sub-pages',subs],['Deepest jump',maxd,maxd>s.depth?'bad':''],['Empty slots',empty],['Copies',[...placed.values()].reduce((a,n)=>a+n-1,0)]]
+    .map(([l,v,c])=>'<div class="kpi '+(c||'')+'"><span>'+l+'</span><b>'+v+'</b></div>').join('');
+  $('pp-checks').innerHTML=C.out.map(([k,t])=>'<li class="'+k+'"><span aria-hidden="true">'+({e:'✕',w:'!',i:'·',ok:'✓'})[k]+'</span><span>'+t+'</span></li>').join('');
+  $('pp-tb').innerHTML='<span class="small muted" style="border:0;padding:4px 0">Toolbar:</span>'+tops.map((p,i)=>'<span class="'+(i>=s.slots?'over':'')+'">'+(i+1)+'. '+esc(p.name)+'</span>').join('')+
+    Array.from({length:Math.max(0,s.slots-tops.length)},(_,i)=>'<span class="free">'+(tops.length+i+1)+'. free</span>').join('');
+  // unplaced tray
+  $('pp-trayw').hidden=!C.unplaced.length;
+  $('pp-tray').innerHTML=C.unplaced.map(id=>tile({t:'i',id},'tray',id,1)).join('');
+  const tl=P.pages.filter(p=>!p.parent);
+  $('pp-pages').innerHTML=order().map(([p,d])=>{
+    const opts='<option value="">Toolbar'+(p.parent?'':' (slot '+(tl.indexOf(p)+1)+')')+'</option>'+P.pages.filter(q=>q!==p&&!isUnder(q,p)).map(q=>'<option value="'+q.id+'"'+(p.parent===q.id?' selected':'')+'>Inside '+esc(q.name)+'</option>').join('');
+    const cnt=used(p),dd=depth(p),over=dd>s.depth;
+    return '<div class="pg'+(p.parent?' child':'')+(over?' over':'')+'" data-p="'+p.id+'"><div class="pg-h"><div class="t"><input value="'+esc(p.name)+'" data-act="name" aria-label="Page name">'+
+      '<button type="button" class="sec sm" data-act="up" aria-label="Move page up">↑</button><button type="button" class="sec sm" data-act="down" aria-label="Move page down">↓</button>'+(cnt?'':'<button type="button" class="bad sm" data-act="del">Delete</button>')+'</div>'+
+      '<div class="m"><label>Opens from <select data-act="parent">'+opts+'</select></label><span class="badge'+(over?' bad':'')+'">'+(dd?dd+' jump'+(dd>1?'s':''):'toolbar')+'</span><span>'+cnt+' of '+N()+' used</span></div></div>'+
+      '<div class="grid" style="grid-template-columns:repeat('+s.cols+',minmax(0,1fr))">'+p.cells.map((c,i)=>tile(c,p.id,i,placed.get(c&&c.id))).join('')+'</div></div>'}).join('');
+  drawBar();$('pp-undo').disabled=!undo.length;$('pp-save').disabled=false;
+}
+function tile(c,pid,i,copies){
+  const issel=sel&&sel.p===pid&&sel.i===i;
+  const a='data-p="'+pid+'" data-i="'+esc(i)+'" tabindex="0" role="button"';
+  if(!c)return '<div class="cell empty'+(issel?' sel':'')+'" '+a+' aria-label="Empty slot"></div>';
+  if(c.t==='b')return '<div class="cell back'+(issel?' sel':'')+'" '+a+'>‹ Back</div>';
+  if(c.t==='l'){const q=byId(c.to);return '<div class="cell lnk'+(issel?' sel':'')+'" '+a+'>'+esc(q?q.name:'?')+' ›</div>'}
+  const x=P.items[c.id];if(!x)return '<div class="cell empty" '+a+'></div>';
+  const k=x.grp==='Beverage'?'oth':x.nv?'nv':'veg';
+  return '<div class="cell '+k+(copies>1?' dup':'')+(issel?' sel':'')+'" '+a+' title="'+esc(x.cat+' · '+money(x))+'">'+esc(x.name)+(x.sizes.length?'<small>'+esc(x.sizes.join(' / '))+'</small>':'')+'</div>'}
+function drawBar(){
+  document.body.classList.toggle('picking',!!sel);
+  if(!sel){$('pp-bar').hidden=true;return}
+  const c=cellAt(sel);$('pp-bar').hidden=false;
+  const nm=c.t==='i'?P.items[c.id].name:c.t==='b'?'Back button':'Link to '+(byId(c.to)||{}).name;
+  const copyOpts=c.t==='i'?'<label class="small">Copy to <select id="pp-copyto"><option value="">choose a page…</option>'+P.pages.filter(p=>p.id!==sel.p).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'</select></label>':'';
+  $('pp-bar').innerHTML='<b>'+esc(nm)+'</b><span class="small muted">'+(c.t==='i'?'Click an empty slot to move it, or a button to swap.':'Links and Back buttons move within their own page.')+'</span>'+copyOpts+
+    (c.t==='i'&&sel.p!=='tray'?'<button type="button" class="bad sm" id="pp-rm">Take off this page</button>':'')+'<button type="button" class="sec sm" id="pp-cancel">Cancel</button>';
+  const ct=$('pp-copyto');if(ct)ct.onchange=()=>{const p=byId(ct.value);if(!p)return;const i=p.cells.indexOf(null);if(i<0){msg1('That page has no empty slot.',1);return}
+    if(p.cells.some(x=>x&&x.t==='i'&&x.id===c.id)){msg1('It’s already on that page.',1);return}snap();p.cells[i]={t:'i',id:c.id};sel=null;changed()};
+  if($('pp-rm'))$('pp-rm').onclick=()=>{snap();byId(sel.p).cells[sel.i]=null;sel=null;changed()};
+  $('pp-cancel').onclick=()=>{sel=null;draw()};
+}
+const cellAt=s=>s.p==='tray'?{t:'i',id:s.i}:byId(s.p).cells[s.i];
+function clickCell(pid,i){
+  if(pid!=='tray')i=+i;
+  if(!sel){if(pid==='tray'||byId(pid).cells[i]){sel={p:pid,i};draw()}return}
+  if(sel.p===pid&&sel.i===i){sel=null;draw();return}
+  const from=cellAt(sel);
+  if(pid==='tray'){sel={p:pid,i};draw();return}
+  const to=byId(pid).cells[i];
+  if((from.t!=='i'||(to&&to.t!=='i'))&&sel.p!==pid){msg1('Links and Back buttons stay on their own page. Use “Opens from” to move a sub-page.',1);return}
+  if(sel.p==='tray'&&to)return msg1('Pick an empty slot for it.',1);
+  snap();
+  if(sel.p==='tray')byId(pid).cells[i]={t:'i',id:sel.i};
+  else{const fp=byId(sel.p);
+    // moving onto a page that already has the same product would make a pointless copy
+    if(from.t==='i'&&sel.p!==pid&&byId(pid).cells.some((x,k)=>x&&x.t==='i'&&x.id===from.id&&k!==i)){undo.pop();return msg1('That page already has '+P.items[from.id].name+'.',1)}
+    fp.cells[sel.i]=to||null;byId(pid).cells[i]=from}
+  sel=null;changed()}
+function snap(){undo.push(JSON.stringify(P.pages));if(undo.length>60)undo.shift()}
+function changed(){dirty=true;syncLinks();draw();keepDraft()}
+function msg1(t,err){const m=$('pp-msg1');m.textContent=t||'';m.className='msg'+(err?' err':t?' ok':'');if(err)$('pp-msg1').scrollIntoView({block:'nearest'})}
+
+$('pp-pages').addEventListener('click',e=>{const c=e.target.closest('.cell');if(c){clickCell(c.dataset.p,c.dataset.i);return}
+  const b=e.target.closest('button[data-act]');if(!b)return;const p=byId(b.closest('.pg').dataset.p),act=b.dataset.act;
+  snap();const ix=P.pages.indexOf(p);
+  if(act==='up'||act==='down'){const sib=P.pages.filter(q=>q.parent===p.parent),k=sib.indexOf(p),o=sib[act==='up'?k-1:k+1];if(!o){undo.pop();return}
+    const j=P.pages.indexOf(o);P.pages[ix]=o;P.pages[j]=p}
+  if(act==='del'){kids(p).forEach(k=>k.parent=p.parent);P.pages.splice(ix,1)}
+  changed()});
+$('pp-pages').addEventListener('keydown',e=>{const c=e.target.closest('.cell');if(c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();clickCell(c.dataset.p,c.dataset.i)}});
+$('pp-tray').addEventListener('click',e=>{const c=e.target.closest('.cell');if(c)clickCell('tray',c.dataset.i)});
+$('pp-pages').addEventListener('change',e=>{const el=e.target,pg=el.closest('.pg');if(!pg)return;const p=byId(pg.dataset.p);
+  if(el.dataset.act==='name'){snap();p.name=el.value.trim()||'Page';changed()}
+  if(el.dataset.act==='parent'){const to=el.value?byId(el.value):null;
+    if(to&&S().link&&free(to)<1){msg1(to.name+' has no empty slot for the link. Free one first.',1);draw();return}
+    if(S().back&&to&&!p.parent&&free(p)<1){msg1(p.name+' has no empty slot for its Back button. Free one first.',1);draw();return}
+    snap();p.parent=to?to.id:null;changed()}});
+$('pp-undo').onclick=()=>{if(!undo.length)return;P.pages=JSON.parse(undo.pop());sel=null;dirty=true;syncLinks();draw();keepDraft()};
+$('pp-add').onclick=()=>{snap();P.pages.push({id:uid(),grp:'Other',name:'New page',parent:null,cells:new Array(N()).fill(null)});changed()};
+$('pp-rebuild').onclick=()=>{if(!confirm('Rebuild all pages from the import? Your changes to pages are lost (Undo brings them back).'))return;snap();readSettings();build();sel=null;changed()};
+
+/* ---------------- settings ---------------- */
+const DEF={cols:5,rows:5,slots:8,depth:2,link:true,back:true,rowgrp:true,share:true,sep:true,veg:true};
+function readSettings(){const n=(id,lo,hi,d)=>{const v=Math.round(+$(id).value);return v>=lo&&v<=hi?v:d};
+  const s={cols:n('s-cols',2,10,5),rows:n('s-rows',2,10,5),slots:n('s-slots',1,30,8),depth:+$('s-depth').value,link:$('s-link').checked,back:$('s-back').checked,rowgrp:$('s-rowgrp').checked,share:$('s-share').checked,sep:$('s-sep').checked,veg:$('s-veg').checked,
+    keep:[...document.querySelectorAll('#s-keep input:checked')].map(i=>i.value)};
+  const changedGrid=P.settings&&(P.settings.cols!==s.cols||P.settings.rows!==s.rows);P.settings=s;return changedGrid}
+function showSettings(){const s=P.settings||DEF;['cols','rows','slots'].forEach(k=>$('s-'+k).value=s[k]);$('s-depth').value=s.depth;['link','back','rowgrp','share','sep','veg'].forEach(k=>$('s-'+k).checked=!!s[k]);
+  const keep=new Set(s.keep||[]),cats=[];P.order.forEach(id=>{const it=P.items[id];let c=cats.find(x=>x.c===it.cat);if(!c)cats.push(c={c:it.cat,n:0});c.n++});
+  $('s-keep').innerHTML=cats.map(c=>'<label class="opt"><input type="checkbox" value="'+esc(c.c)+'"'+(keep.has(c.c)?' checked':'')+'><span>'+esc(c.c)+' <small style="display:inline">'+c.n+'</small></span></label>').join('')}
+$('pp-build').onclick=()=>{if(P.pages&&P.pages.some(p=>p.cells.some(Boolean))&&!confirm('Build the pages again with these settings? Changes you made to pages are lost (Undo brings them back).'))return;
+  if(P.pages)snap();readSettings();build();sel=null;changed();$('pp-chk').scrollIntoView({behavior:'smooth',block:'start'})};
+
+/* ---------------- loading a file ---------------- */
+$('pp-file').onchange=async()=>{const f=$('pp-file').files[0];if(!f)return;
+  try{const src=readBook(await f.arrayBuffer(),f.name);
+    const x={source:src};setPlan(x,true);
+    if(!$('pp-name').value)$('pp-name').value=f.name.replace(/\.[^.]+$/,'').replace(/\s*-\s*Oolio One.*$/i,'').trim();
+    msg1('Read '+P.order.length+' buttons in '+new Set(P.order.map(id=>P.items[id].cat)).size+' categories from '+f.name+'.');
+  }catch(e){msg1(e.message||String(e),1)}
+  $('pp-file').value=''};
+function setPlan(x,fresh){
+  const r=itemsFrom(x.source);
+  P={id:fresh?null:x.id,name:x.name||'',settings:x.settings||Object.assign({},DEF),source:x.source,items:r.items,order:r.order,mods:r.mods,pages:fresh?null:x.pages};
+  if(P.pages){const ok=new Set(P.order);P.pages.forEach(p=>p.cells=p.cells.map(c=>c&&c.t==='i'&&!ok.has(c.id)?null:c))}
+  undo=[];sel=null;dirty=!!fresh;showSettings();$('pp-set').hidden=false;$('pp-save').disabled=false;
+  $('pp-cnt').textContent=P.order.length+' buttons, '+r.mods+' modifier rows left out';
+  if(fresh){build();changed()}else draw()}
+
+/* ---------------- saving: the website (only the two planner accounts), else this browser ---------------- */
+const DRAFT='pp-draft',LOCAL='pp-local';
+function packed(){return {id:P.id,name:$('pp-name').value.trim()||P.source.file.replace(/\.[^.]+$/,''),settings:P.settings,source:P.source,pages:P.pages}}
+function keepDraft(){try{localStorage.setItem(DRAFT,JSON.stringify(packed()))}catch(e){}}
+async function api(path,body){const r=await fetch('/api/planner/'+path,body?{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{credentials:'same-origin'});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('The website answered '+r.status+'.'));return j}
+function localPlans(){try{return JSON.parse(localStorage.getItem(LOCAL)||'{}')||{}}catch(e){return {}}}
+async function listPlans(){
+  let rows=[];
+  if(!local){try{rows=(await api('list')).plans||[]}catch(e){local=true}}
+  if(local)rows=Object.values(localPlans()).map(p=>({id:p.id,name:p.name,updated_at:p.at,updated_by:'this browser'}));
+  $('pp-where').textContent=local?'(this browser only: the website isn’t reachable)':'(on the website, only you two can see them)';
+  rows.sort((a,b)=>b.updated_at-a.updated_at);
+  $('pp-plans').innerHTML=rows.length?rows.map(p=>'<li data-id="'+esc(p.id)+'"><span>'+esc(p.name)+' <small>'+new Date(p.updated_at).toLocaleString()+(p.updated_by?' · '+esc(p.updated_by):'')+'</small></span><button type="button" class="sec sm" data-a="open">Open</button><button type="button" class="bad sm" data-a="del">Delete</button></li>').join(''):'<li class="muted">No saved plans yet.</li>'}
+$('pp-plans').onclick=async e=>{const b=e.target.closest('button');if(!b)return;const id=b.closest('li').dataset.id;
+  try{if(b.dataset.a==='open'){if(dirty&&!confirm('Open this plan? Unsaved changes to the current one are lost.'))return;
+      const x=local?localPlans()[id]:(await api('get?id='+encodeURIComponent(id))).plan;$('pp-name').value=x.name||'';setPlan(x,false);P.id=id;dirty=false;msg1('Opened '+x.name+'.')}
+    else{if(!confirm('Delete this saved plan? This can’t be undone.'))return;
+      if(local){const all=localPlans();delete all[id];localStorage.setItem(LOCAL,JSON.stringify(all))}else await api('delete',{id});
+      if(P&&P.id===id)P.id=null;msg1('Deleted.')}
+    listPlans()}catch(err){msg1(err.message,1)}};
+$('pp-save').onclick=async()=>{if(!P)return;const x=packed();
+  try{if(local){x.id=x.id||uid();x.at=Date.now();const all=localPlans();all[x.id]=x;localStorage.setItem(LOCAL,JSON.stringify(all));P.id=x.id}
+    else{const j=await api('save',x);P.id=j.id}
+    dirty=false;msg1('Saved '+x.name+'.');listPlans()}catch(e){msg1(e.message,1)}};
+addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+
+/* ---------------- downloads ---------------- */
+function safeSheet(n,used){let s=String(n).replace(/[\\\/?*\[\]:]/g,' ').slice(0,28).trim()||'Page',k=s,i=2;while(used.has(k.toLowerCase()))k=s.slice(0,25)+' '+(i++);used.add(k.toLowerCase());return k}
+const where=(p,i)=>'row '+(Math.floor(i/S().cols)+1)+', column '+(i%S().cols+1);
+function fname(t){return(($('pp-name').value.trim()||'Menu')+' - '+t).replace(/[\\\/:*?"<>|]/g,'')}
+$('pp-dl1').onclick=()=>{
+  const s=S(),it=P.items,wb=XLSX.utils.book_new(),ord=order(),tops=P.pages.filter(p=>!p.parent),seen=new Map();
+  const list=[['Page','Opens from','Toolbar slot','Jumps','Row','Column','Button','Type','Category in file','Price / sizes']];
+  ord.forEach(([p])=>p.cells.forEach((c,i)=>{if(!c)return;const par=p.parent?byId(p.parent).name:'Toolbar';
+    const base=[p.name,par,p.parent?'':tops.indexOf(p)+1,depth(p),Math.floor(i/s.cols)+1,i%s.cols+1];
+    if(c.t==='i'){const x=it[c.id];const first=!seen.has(c.id);if(first)seen.set(c.id,p);list.push(base.concat([x.name,first?'Product':'Copy',x.cat,money(x)]))}
+    else list.push(base.concat([c.t==='b'?'Back':'Opens '+(byId(c.to)||{}).name,c.t==='b'?'Back button':'Sub-page link','','']))}));
+  const ws=XLSX.utils.aoa_to_sheet(list);ws['!cols']=[{wch:26},{wch:22},{wch:8},{wch:6},{wch:5},{wch:7},{wch:32},{wch:14},{wch:22},{wch:14}];
+  // the steps nobody can import: links, Back buttons, copies, toolbar order
+  const steps=[['#','What to do in Oolio One']];let n=1;
+  tops.forEach((p,i)=>steps.push([n++,'Toolbar slot '+(i+1)+': '+p.name+(i>=s.slots?' (past the '+s.slots+' that fit, so staff will need to scroll)':'')]));
+  ord.forEach(([p])=>p.cells.forEach((c,i)=>{if(!c)return;
+    if(c.t==='l')steps.push([n++,'On '+p.name+', '+where(p,i)+': add a button that opens the page '+(byId(c.to)||{}).name+'.']);
+    if(c.t==='b')steps.push([n++,'On '+p.name+', '+where(p,i)+': add a Back button.'])}));
+  const firstAt=new Map();ord.forEach(([p])=>p.cells.forEach((c,i)=>{if(c&&c.t==='i'){if(!firstAt.has(c.id))firstAt.set(c.id,p);else steps.push([n++,'On '+p.name+', '+where(p,i)+': add a copy of '+it[c.id].name+' (its own category is '+firstAt.get(c.id).name+').'])}}));
+  const wsS=XLSX.utils.aoa_to_sheet(steps);wsS['!cols']=[{wch:5},{wch:110}];
+  const used=new Set(['build steps','all buttons']);
+  XLSX.utils.book_append_sheet(wb,wsS,'Build steps');XLSX.utils.book_append_sheet(wb,ws,'All buttons');
+  ord.forEach(([p,d])=>{const g=[[p.name+(p.parent?' (opens from '+byId(p.parent).name+')':' (toolbar slot '+(tops.indexOf(p)+1)+')')]];
+    for(let r=0;r<s.rows;r++)g.push(p.cells.slice(r*s.cols,r*s.cols+s.cols).map(c=>!c?'':c.t==='b'?'‹ Back':c.t==='l'?((byId(c.to)||{}).name||'')+' ›':it[c.id].name));
+    const w=XLSX.utils.aoa_to_sheet(g);w['!cols']=Array.from({length:s.cols},()=>({wch:24}));XLSX.utils.book_append_sheet(wb,w,safeSheet(p.name,used))});
+  XLSX.writeFile(wb,fname('POS page layout.xlsx'))};
+$('pp-dl2').onclick=()=>{
+  const src=P.source,h=src.head,ci=col(h,'Category'),ord=order(),done=new Set(),out=[];
+  if(!confirm('This file sets each product’s Category to the page it sits on (e.g. “Snacks and Starter From South”). Reports by category will use those names. Download it?'))return;
+  ord.forEach(([p])=>p.cells.forEach(c=>{if(c&&c.t==='i'&&!done.has(c.id)){done.add(c.id);P.items[c.id].rows.forEach(ri=>{const r=src.rows[ri].slice();r[ci]=p.name;out.push(r);done.add('r'+ri)})}}));
+  // modifiers and anything not on a page keep their place at the end, unchanged
+  src.rows.forEach((r,ri)=>{if(!done.has('r'+ri))out.push(r)});
+  const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([h].concat(out));XLSX.utils.book_append_sheet(wb,ws,src.sheet.slice(0,31));
+  XLSX.writeFile(wb,fname('Oolio One import by page.xlsx'))};
+
+/* ---------------- start ---------------- */
+listPlans();
+try{const d=JSON.parse(localStorage.getItem(DRAFT)||'null');if(d&&d.source){$('pp-name').value=d.name||'';setPlan(d,false);P.id=d.id||null;msg1('Picked up where you left off on this device'+(d.name?' ('+d.name+')':'')+'. Save it to keep it on the website.')}}catch(e){}
+window.__pp={get P(){return P},build,checks};
+})();
+</script>
+</body>
+</html>
