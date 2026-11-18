@@ -6737,7 +6737,8 @@ const MAP_HTML="<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf
   function show(){let v=location.hash.slice(1);if(!(v in views))v='';
     const cur=views[v];new Set(Object.values(views)).forEach(el=>{el.hidden=el!==cur});
     if(LEGAL.includes(v)){document.querySelectorAll('#lx-legal .lg-doc').forEach(a=>{a.hidden=a.id!=='lg-'+v});document.querySelectorAll('.lx-lnav a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});document.title=g('lg-'+v).dataset.title+' · Menu Hauler'}else document.title='Menu Hauler';
-    document.querySelectorAll('.lx-tab').forEach(b=>{if(b.dataset.go===v||(b.dataset.views||'').split(' ').includes(v))b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+    // filter(Boolean): a tab without data-views must not match the home view (v is '' there), or every tab looks selected
+    document.querySelectorAll('.lx-tab').forEach(b=>{if(b.dataset.go===v||(b.dataset.views||'').split(' ').filter(Boolean).includes(v))b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
     document.querySelectorAll('.lx-menu [data-go]').forEach(b=>{if(b.dataset.go===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});closeMenu();
     if(v==='photos')openPF();if(v==='map'){if(!mapReady){mapReady=true;g('lx-mapframe').srcdoc=MAP_HTML}document.title='Tool map · Menu Hauler'}window.scrollTo(0,0);if(window.mhAfterShow)window.mhAfterShow(v,cur)}
   document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;const v=b.dataset.go;
