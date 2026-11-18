@@ -3757,7 +3757,8 @@ function convert(){
   if(om.rows.length)checks.push({msg:'OrderMate pluses and minuses: '+om.mods.length+' Add / No modifiers in '+om.groups.length+' suggested groups, for '+om.rows.length+' products. Download the OrderMate modifier sheet (step 6) for which products need which groups.'+(om.rows.some(r=>r.plus.size&&!r.add.size)?' The export only names the plus groups (“'+[...new Set(om.rows.flatMap(r=>[...r.plus]))].join('”, “')+'”), not what’s in them, so add those items to the Additions groups by hand.':''),list:[],info:true});
   chk('standard option groups were added in step 5. Check the options and prices with the venue.',preList,true);
   if(!S.mVol)checks.push({msg:'The Volume label in step 2 is blank, so poured drinks will have no Measured By.',list:[]});
-  {const n=plan.rows.filter(r=>r.src!=='ordermate').length;if(n)checks.push({msg:'Modifier plan: '+n+' products have descriptions that suggest removals, add-ons or a choice ('+plan.groups.filter(g=>g.kind!=='Removals'||g.links.size).length+' suggested groups). Download the modifier plan in step 7 for which products need which groups. These aren’t added to the import.',list:[],info:true})}
+  {const n=plan.rows.filter(r=>r.src!=='ordermate').length;if(n)checks.push({msg:'Modifier plan: '+n+' products have descriptions that suggest removals, add-ons or a choice ('+plan.groups.filter(g=>g.kind!=='Removals'||g.links.size).length+' suggested groups). These suggestions aren’t added to the import.',list:[],info:true})}
+  if(mods.length||genMods.length||preMods.length||plan.rows.length)checks.push({msg:'The import brings in modifiers but doesn’t create modifier groups or link them to products. Download the modifier plan in step 7: it lists every group to create, its modifiers and prices, and every product to link it to.',list:[],info:true});
   return{rows,nP,nV,nM,nG,nS:preList.length,checks,genMods,preMods,pre:preR,om,plan};}
 
 function run(){
@@ -3771,7 +3772,7 @@ function run(){
   $('q').style.display='block';renderPrev();
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
   const hasM=mods.length||res.genMods.length||res.preMods.length||res.om.mods.length;$('dlom').style.display=res.om.rows.length?'inline-block':'none';drawOM();$('dlom').disabled=!res.om.rows.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
-  {const hp=res.plan.rows.length||res.plan.have.size;$('dlpl').style.display=hp?'inline-block':'none';$('dlpl').disabled=!hp}
+  {const hp=res.plan.rows.length||hasM;$('dlpl').style.display=hp?'inline-block':'none';$('dlpl').disabled=!hp}
   $('inaW').style.display=INACT.length?'block':'none';$('inaN').textContent=INACT.length;
   renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();drawKids();saveSession();}
 function drawKids(){const on=KIDSON(),n=kidsMerged.length,el=$('kidmsg');if(!el)return;
@@ -4130,20 +4131,44 @@ $('dlom').addEventListener('click',()=>{if(!res||!res.om.rows.length)return;cons
   if(og.size)XLSX.utils.book_append_sheet(wb,sh(o,[28,10,80]),'Option groups');
   save(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),outName('xlsx','OrderMate modifier sheet'))});
 
-// the modifier plan (any menu): groups to create, then which products need which groups
-$('dlpl').addEventListener('click',()=>{if(!res)return;const P=res.plan,J=s=>[...s].join(', '),money=v=>+v?' +$'+(+v).toFixed(2):'';
-  const g=[['Suggested modifier group','Type','Modifiers','Required?','Maximum','Number of products','Link to products','Notes']]
-    .concat(P.groups.map(e=>[e.name,e.kind,[...e.mods].map(([n,p])=>n+money(p)).join(', '),e.req,e.max,e.links.size,J(e.links),J(e.note)]));
-  // groups the import already has (modifier sheets, size options, standard option groups), so nothing is created twice
-  const inImp=new Map();[...mods.map(o=>[o.group,o.name,o.price||'0']),...res.genMods.map(o=>[o.group,o.name,o.price]),...res.preMods.map(o=>[o.group,o.name,o.price])]
-    .forEach(([gr,n,p])=>{if(!inImp.has(gr))inImp.set(gr,new Map());inImp.get(gr).set(n,p)});
-  const links=new Map();P.have.forEach((set,k)=>set.forEach(gr=>{if(!links.has(gr))links.set(gr,new Set());links.get(gr).add(k)}));
-  inImp.forEach((m,gr)=>g.push([gr,'Already in the import',[...m].map(([n,p])=>n+money(p)).join(', '),'','',(links.get(gr)||new Set()).size,'(linked in the import)','']));
-  const p=[['Product','Category','Reporting group','Description','Removal group','No options','Addition group','Add options','Choice group(s)','Choices','Groups already linked in the import','OrderMate option groups (set up separately)']]
-    .concat(P.rows.map(r=>[r.name,r.cat,r.rg,r.desc,r.gR,J([...r.rem].map(x=>'No '+x)),r.gA,[...r.add].map(([x,pr])=>'Add '+x+money(pr)).concat([...r.plus].map(x=>'('+x+' items)')).join(', '),r.gC.join(', '),r.choice.map(c=>c.join(' / ')).join('; '),J(r.have),J(r.opt)]));
-  const wb=XLSX.utils.book_new(),sh=(rows,w)=>{const s=XLSX.utils.aoa_to_sheet(rows);s['!cols']=w.map(x=>({wch:x}));return s};
-  XLSX.utils.book_append_sheet(wb,sh(g,[30,20,70,10,9,10,60,40]),'Groups to create');
-  XLSX.utils.book_append_sheet(wb,sh(p,[30,18,14,50,24,40,24,40,22,40,40,26]),'Products');
+/* Every modifier group to build by hand: the Oolio import brings in the modifiers but doesn't create the groups or link
+   them to products (user, 2026-11-18), and listing it all is good practice even if that changes. So this covers EVERY group:
+   the suggested ones (Removals / Additions / Choice, from descriptions or OrderMate) and the ones whose modifiers are
+   already in the import (modifier sheets, options found on the menu, standard option groups), each with its modifiers,
+   prices, settings and every linked product. */
+function modBuild(){if(!res)return[];const G=new Map(),P=res.plan;
+  const grp=(name,src,inImp)=>{if(!G.has(name))G.set(name,{name,src:new Set(),inImp:true,req:'',max:'',mods:new Map(),links:new Set(),note:new Set()});const g=G.get(name);g.src.add(src);if(!inImp)g.inImp=false;return g};
+  const addMod=(g,n,p)=>{n=clean(n);if(!n)return;const v=p===''||p==null?'0':String(p);if(!g.mods.has(n)||(+v&&!+g.mods.get(n)))g.mods.set(n,v)};
+  const addLinks=(g,l)=>(Array.isArray(l)?l:String(l||'').split(/\s*[,;]\s*/)).map(clean).filter(Boolean).forEach(x=>g.links.add(x));
+  P.groups.forEach(e=>{const g=grp(e.name,'Suggested: '+e.kind,false);if(e.req)g.req=e.req;if(e.max)g.max=e.max;e.mods.forEach((p,n)=>addMod(g,n,p));addLinks(g,[...e.links]);e.note.forEach(x=>g.note.add(x))});
+  mods.forEach(o=>{const g=grp(clean(o.group)||'Modifiers','Modifier sheet',true);addMod(g,o.name,o.price);if(o.g){if(o.g.required)g.req=o.g.required;if(o.g.max)g.max=o.g.max;addLinks(g,o.g.linked)}});
+  res.genMods.forEach(o=>{const g=grp(o.group,'Options on the menu',true);addMod(g,o.name,o.price);addLinks(g,[o.linked])});
+  res.preMods.forEach(o=>{const g=grp(o.group,'Standard option group',true);addMod(g,o.name,o.price);if(o.req)g.req=o.req;if(o.max)g.max=o.max;addLinks(g,o.links)});
+  return[...G.values()]}
+$('dlpl').addEventListener('click',()=>{if(!res)return;const B=modBuild(),P=res.plan,J=s=>[...s].join(', '),money=v=>+v?'$'+(+v).toFixed(2):'$0.00',srt=(a,b)=>a.localeCompare(b);
+  // product → category, from the import rows (products and variant parents)
+  const ix=h=>OUT.indexOf(h),iN=ix('Product Name*'),iT=ix('Product Type*'),iC=ix('Category*'),CAT=new Map();
+  res.rows.forEach(r=>{if((r[iT]==='Product'||r[iT]==='Variant')&&!CAT.has(r[iN].toLowerCase()))CAT.set(r[iN].toLowerCase(),r[iC])});
+  P.rows.forEach(r=>{if(!CAT.has(r.name.toLowerCase()))CAT.set(r.name.toLowerCase(),r.cat)});
+  const catOf=n=>CAT.get(String(n).toLowerCase())||'';
+  // 1. one row per group: name, where it came from, settings, every modifier and every product
+  const g=[['Modifier group name','Where it came from','Modifiers already in the import?','Required?','Maximum selections','Number of modifiers','Modifiers (name and price)','Number of linked products','Linked products','Notes']]
+    .concat(B.map(e=>[e.name,J(e.src),e.inImp?'Yes: just create the group and add them':'No: create these modifiers too',e.req||'No',e.max||'',e.mods.size,[...e.mods].map(([n,p])=>n+' ('+money(p)+')').join(', '),e.links.size,[...e.links].sort(srt).join(', '),J(e.note)]));
+  // 2. one row per modifier, in its group: the list to build from
+  const m=[['Modifier group','Modifier','Price','Already in the import?']];B.forEach(e=>e.mods.forEach((p,n)=>m.push([e.name,n,+p||0,e.inImp?'Yes':'No'])));
+  // 3. one row per group and product link, so each link can be ticked off
+  const l=[['Modifier group','Linked product','Category','Done?']];B.forEach(e=>[...e.links].sort(srt).forEach(n=>l.push([e.name,n,catOf(n),''])));
+  // 4. one row per product: every group it needs
+  const byP=new Map();B.forEach(e=>e.links.forEach(n=>{const k=n.toLowerCase();if(!byP.has(k))byP.set(k,{name:n,groups:[]});byP.get(k).groups.push(e.name)}));
+  const pr=new Map(P.rows.map(r=>[r.name.toLowerCase(),r]));
+  const p=[['Product','Category','Number of groups','All modifier groups to link','Removal options','Add options','Choices','Description','OrderMate option groups (set up separately)']]
+    .concat([...byP.values()].sort((a,b)=>(catOf(a.name)+a.name).localeCompare(catOf(b.name)+b.name)).map(x=>{const r=pr.get(x.name.toLowerCase());
+      return[x.name,catOf(x.name),x.groups.length,x.groups.join(', '),r?J([...r.rem].map(y=>'No '+y)):'',r?[...r.add].map(([y,q])=>'Add '+y+(+q?' ('+money(q)+')':'')).join(', '):'',r?r.choice.map(c=>c.join(' / ')).join('; '):'',r?r.desc:'',r?J(r.opt):'']}));
+  const wb=XLSX.utils.book_new(),sh=(rows,w)=>{const s=XLSX.utils.aoa_to_sheet(rows);s['!cols']=w.map(x=>({wch:x}));s['!autofilter']={ref:XLSX.utils.encode_range({s:{r:0,c:0},e:{r:Math.max(rows.length-1,0),c:w.length-1}})};return s};
+  XLSX.utils.book_append_sheet(wb,sh(g,[30,24,26,10,10,10,70,10,70,40]),'Groups');
+  XLSX.utils.book_append_sheet(wb,sh(m,[30,34,10,12]),'Modifiers');
+  XLSX.utils.book_append_sheet(wb,sh(l,[30,34,20,8]),'Links');
+  XLSX.utils.book_append_sheet(wb,sh(p,[30,18,10,60,40,40,30,50,26]),'Products');
   save(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),outName('xlsx','modifier plan'))});
 $('file').addEventListener('change',e=>{if(e.target.files.length)handleFiles([...e.target.files])});
 $('comb').addEventListener('change',rebuild);
