@@ -188,7 +188,7 @@ Double Shot=60</textarea></div>
 <div class="scroll" id="prev" style="display:none"></div>
 <div id="pf"></div>
 <div id="mchg"></div>
-<button id="dlc" disabled>Download CSV</button><button id="dlx" disabled>Download XLSX</button><button id="dlm" class="sec" disabled style="display:none">Modifier names &amp; prices (CSV)</button><button id="dlom" class="sec" disabled style="display:none">OrderMate modifier sheet (XLSX)</button>
+<button id="dlc" disabled>Download CSV</button><button id="dlx" disabled>Download XLSX</button><button id="dlm" class="sec" disabled style="display:none">Modifier names &amp; prices (CSV)</button><button id="dlom" class="sec" disabled style="display:none">OrderMate modifier sheet (XLSX)</button><button id="dlpl" class="sec" disabled style="display:none" title="Which products need which modifications, and the modifier groups to create">Modifier plan (XLSX)</button>
 <label id="inaW" class="warn" style="display:none;margin-top:8px"><input type="checkbox" id="inaDl"> Also download the <b id="inaN">0</b> inactive OrderMate items as a separate sheet</label>
 <div class="warn">Modifiers are exported as Product Type “Modifier”. The modifier groups file lists each group with its modifiers, prices and linked products, so you can build the groups in Oolio.</div>
 </div>
@@ -1942,6 +1942,40 @@ function omPlan(items,catName,rgOf){const P=new Map(),G=new Map();
       const e=G.get(g);set.forEach(x=>e.items.add(pre+x));e.links.add(r.name);if(pre==='Add ')r.plus.forEach(x=>e.plus.add(x))})});
   const mods=[];G.forEach(e=>e.items.forEach(n=>mods.push({name:n,price:'0',group:e.name,rgx:e.rg,links:[...e.links]})));
   return{rows,groups:[...G.values()],mods}}
+/* Modifier plan for ANY menu (user's request 2026-11-18: "like the OrderMate sheet"): which products need which modifications,
+   and the groups to create. OrderMate items use their pluses / minuses (omPlan); other food items are read from their
+   description: "Add bacon $4" → paid addition, "choice of chips or salad" → a required choice group, and a short
+   ingredient list ("beef patty, cheddar, pickles, lettuce") → "No Pickles"… removals. Nothing here goes into the import. */
+const PL_STOP=/^(and|or|with|on|in|of|a|an|the|our|your|house|fresh|freshly|homemade|served|topped|finished|cooked|made|perfect|great|classic|loved|famous|delicious|signature|choice|option|options|available|ask|please|gf|v|vg|df|gfo|vgo|dfo|nf)$/;
+const PL_VERB=/\b(served|topped|finished|cooked|made|tossed|drizzled|loaded|stuffed|baked|grilled|fried|roasted|smothered|layered|paired|accompanied|perfect|great|loved|enjoy|ask|available|please|served|comes|includes|choose|daily|seasonal)\b/;
+function plSplit(s){return s.split(/\s*(?:,|;|\/|\+|&|\band\b|\bwith\b|\bon\b|\btopped with\b|\bserved with\b|\bover\b)\s*/i)}
+function plIngr(t){t=clean(t.replace(/\([^)]*\)/g,' ').replace(/^[^:]{1,30}:/,' ').replace(/[.!]/g,' ').replace(/^\W+|\W+$/g,'')).toLowerCase().replace(/^(one|two|three|four|five|six|double|triple|single|\d+x?)\s+/,'');
+  if(!t||/\d/.test(t)||PL_VERB.test(t))return'';const w=t.split(' ').filter(x=>!PL_STOP.test(x));if(!w.length||w.length>3||w.join(' ').length<3)return'';return cap(w.join(' '))}
+function descMods(desc){let d=' '+clean(desc)+' ';const add=[],choice=[],rem=[];
+  // paid add-ons: "add bacon $4", "+ avocado 3.5", "extra cheese +$2"
+  d=d.replace(/\b(?:add|extra|plus|\+)\s+([a-z][a-z '&-]{1,40}?)\s*[:\-–]?\s*\+?\s*\$?\s*(\d{1,3}(?:\.\d{1,2})?)\b/gi,(m,n,p)=>{const x=plIngr(n);if(x)add.push([x,(+p).toFixed(2)]);return' . '});
+  // "add bacon / avo / egg" with no price
+  d=d.replace(/\b(?:add|extra)\s+([a-z][a-z ,'&/-]{1,60}?)(?=\s*(?:\.|$|\())/gi,(m,n)=>{plSplit(n).forEach(x=>{x=plIngr(x);if(x)add.push([x,''])});return' . '});
+  // choices: "choice of chips or salad", "your choice of beef, chicken or tofu"
+  d=d.replace(/\b(?:your |a )?choice of\s+([a-z][a-z ,'&/-]{2,80}?)(?=\s*(?:\.|$|\(|\bserved\b|\bwith\b))/gi,(m,n)=>{const o=n.split(/\s*(?:,|\/|\bor\b)\s*/i).map(plIngr).filter(Boolean);if(o.length>1)choice.push(o);return' . '});
+  // what's left: a short ingredient list (at least 2 parts, otherwise it's probably a sentence)
+  d.split(/\s*\.\s*/).forEach(part=>{const bits=plSplit(part).map(x=>x.trim()).filter(Boolean);if(bits.length<2)return;const ok=bits.map(plIngr).filter(Boolean);if(ok.length>=2&&ok.length>=bits.length*0.6)ok.forEach(x=>rem.push(x))});
+  return{rem:[...new Set(rem)],add,choice}}
+function modPlan(items,catName,rgOf,om,linkedFrom){const P=new Map(),G=new Map(),CH=new Map();
+  const row=(it,cat)=>{const k=it.name.toLowerCase()+'|'+cat.toLowerCase();if(!P.has(k))P.set(k,{name:it.name,cat,rg:rgOf(it),desc:it.desc||'',rem:new Set(),add:new Map(),choice:[],plus:new Set(),opt:new Set(),src:it.src||''});return P.get(k)};
+  om.rows.forEach(r=>{const p=row({name:r.name,desc:'',src:'ordermate'},r.cat);p.rg=r.rg;r.rem.forEach(x=>p.rem.add(x));r.add.forEach(x=>p.add.set(x,''));r.plus.forEach(x=>p.plus.add(x));r.opt.forEach(x=>p.opt.add(x))});
+  items.forEach(it=>{if(it.modOf!=null||it.src==='ordermate'||!it.desc||isDrink(it)===true)return;const m=descMods(it.desc);if(!m.rem.length&&!m.add.length&&!m.choice.length)return;
+    const p=row(it,catName(it.cat)||'Menu');m.rem.forEach(x=>p.rem.add(x));m.add.forEach(([n,pr])=>{if(!p.add.has(n)||pr)p.add.set(n,pr)});m.choice.forEach(c=>{if(!p.choice.some(o=>o.join('|')===c.join('|')))p.choice.push(c)})});
+  const rows=[...P.values()];
+  rows.forEach(r=>{r.gR=r.rem.size?r.cat+' Removals':'';r.gA=r.add.size||r.plus.size?r.cat+' Additions':'';r.gC=[];
+    if(r.gR){if(!G.has(r.gR))G.set(r.gR,{name:r.gR,kind:'Removals',req:'',max:'',mods:new Map(),links:new Set(),note:new Set()});const g=G.get(r.gR);r.rem.forEach(x=>g.mods.set('No '+x,'0'));g.links.add(r.name)}
+    if(r.gA){if(!G.has(r.gA))G.set(r.gA,{name:r.gA,kind:'Additions',req:'',max:'',mods:new Map(),links:new Set(),note:new Set()});const g=G.get(r.gA);r.add.forEach((pr,x)=>{const k='Add '+x;if(!g.mods.has(k)||pr)g.mods.set(k,pr||'0')});r.plus.forEach(x=>g.note.add('OrderMate plus group “'+x+'”: add its items by hand'));g.links.add(r.name)}
+    r.choice.forEach(c=>{const key=c.map(x=>x.toLowerCase()).sort().join('|');if(!CH.has(key)){const n=CH.size,same=[...CH.values()].filter(x=>x.cat===r.cat).length;CH.set(key,{cat:r.cat,name:r.cat+' Choice'+(same?' '+(same+1):'')})}
+      const ch=CH.get(key);if(!G.has(ch.name))G.set(ch.name,{name:ch.name,kind:'Choice',req:'Yes',max:'1',mods:new Map(c.map(x=>[x,'0'])),links:new Set(),note:new Set()});G.get(ch.name).links.add(r.name);r.gC.push(ch.name)})});
+  // groups the import already links (modifier sheets, size-option groups, standard option groups), so the plan is the whole picture
+  const have=new Map();linkedFrom.forEach(o=>(o.links||[]).forEach(n=>{const k=n.toLowerCase();if(!have.has(k))have.set(k,new Set());have.get(k).add(o.group)}));
+  rows.forEach(r=>{r.have=have.get(r.name.toLowerCase())||new Set()});
+  return{rows:rows.filter(r=>r.gR||r.gA||r.gC.length||r.opt.size),groups:[...G.values()],have}}
 function convert(){
   {const i=OUTB.indexOf('Sell Price*');PLS=PLS.map(n=>OUTB.some(h=>N(h)===N(n))?n+' (price list)':n);OUT=OUTB.slice(0,i).concat(PLS,OUTB.slice(i))}
   const plv=(o,n)=>{if(!o.pl)return null;const v=o.pl[n]!=null&&o.pl[n]!==''?o.pl[n]:o.pl[n.replace(/ \(price list\)$/,'')];return v!=null&&v!==''?v:null};
@@ -1999,6 +2033,7 @@ function convert(){
     return{m,linked}});
   // OrderMate pluses and minuses → Add / No modifiers
   const om=omPlan(items,catName,rgOf);
+  const plan=modPlan(items,catName,rgOf,om,[...mods.map(o=>({group:o.group,links:o.g&&o.g.linked?String(o.g.linked).split(/\s*[,;]\s*/):[]})),...genMods.map(o=>({group:o.group,links:[o.linked]})),...preMods.map(o=>({group:o.group,links:o.links}))]);
   // modifiers (from modifier sheets, from groups above, from standard option groups and OrderMate)
   const all=[...mods,...genMods,...preMods,...om.mods],mm=new Map(),clash=new Map();
   all.forEach(o=>{const k=o.name.toLowerCase()+'|'+(o.price||'0');if(!mm.has(k))mm.set(k,o);const n=o.name.toLowerCase();if(!clash.has(n))clash.set(n,new Set());clash.get(n).add(o.price||'0')});
@@ -2023,10 +2058,11 @@ function convert(){
   if(om.rows.length)checks.push({msg:'OrderMate pluses and minuses: '+om.mods.length+' Add / No modifiers in '+om.groups.length+' suggested groups, for '+om.rows.length+' products. Download the OrderMate modifier sheet (step 6) for which products need which groups.'+(om.rows.some(r=>r.plus.size&&!r.add.size)?' The export only names the plus groups (“'+[...new Set(om.rows.flatMap(r=>[...r.plus]))].join('”, “')+'”), not what’s in them, so add those items to the Additions groups by hand.':''),list:[],info:true});
   chk('standard option groups were added in step 5. Check the options and prices with the venue.',preList,true);
   if(!S.mVol)checks.push({msg:'The Volume label in step 2 is blank, so poured drinks will have no Measured By.',list:[]});
-  return{rows,nP,nV,nM,nG,nS:preList.length,checks,genMods,preMods,pre:preR,om};}
+  {const n=plan.rows.filter(r=>r.src!=='ordermate').length;if(n)checks.push({msg:'Modifier plan: '+n+' products have descriptions that suggest removals, add-ons or a choice ('+plan.groups.filter(g=>g.kind!=='Removals'||g.links.size).length+' suggested groups). Download the modifier plan in step 7 for which products need which groups. These aren’t added to the import.',list:[],info:true})}
+  return{rows,nP,nV,nM,nG,nS:preList.length,checks,genMods,preMods,pre:preR,om,plan};}
 
 function run(){
-  if(!tables.length){$('npfix').innerHTML='';npSig='';$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm','dlom'].forEach(i=>$(i).disabled=true);$('dlm').style.display=$('dlom').style.display=$('inaW').style.display=$('ombox').style.display='none';return}
+  if(!tables.length){$('npfix').innerHTML='';npSig='';$('stats').textContent='Choose a file to begin.';$('prev').style.display=$('q').style.display='none';['dlc','dlx','dlm','dlom','dlpl'].forEach(i=>$(i).disabled=true);$('dlm').style.display=$('dlom').style.display=$('dlpl').style.display=$('inaW').style.display=$('ombox').style.display='none';return}
   readSettings();res=convert();
   // new menu: tick the presets that match it, except ones off by default or already in the files
   // and the ones the venue's type uses (Setup Tracker → Venue type), even if they're normally off
@@ -2036,6 +2072,7 @@ function run(){
   $('q').style.display='block';renderPrev();
   $('dlc').disabled=$('dlx').disabled=!res.rows.length;
   const hasM=mods.length||res.genMods.length||res.preMods.length||res.om.mods.length;$('dlom').style.display=res.om.rows.length?'inline-block':'none';drawOM();$('dlom').disabled=!res.om.rows.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
+  {const hp=res.plan.rows.length||res.plan.have.size;$('dlpl').style.display=hp?'inline-block':'none';$('dlpl').disabled=!hp}
   $('inaW').style.display=INACT.length?'block':'none';$('inaN').textContent=INACT.length;
   renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();drawKids();saveSession();}
 function drawKids(){const on=KIDSON(),n=kidsMerged.length,el=$('kidmsg');if(!el)return;
@@ -2394,6 +2431,21 @@ $('dlom').addEventListener('click',()=>{if(!res||!res.om.rows.length)return;cons
   if(og.size)XLSX.utils.book_append_sheet(wb,sh(o,[28,10,80]),'Option groups');
   save(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),outName('xlsx','OrderMate modifier sheet'))});
 
+// the modifier plan (any menu): groups to create, then which products need which groups
+$('dlpl').addEventListener('click',()=>{if(!res)return;const P=res.plan,J=s=>[...s].join(', '),money=v=>+v?' +$'+(+v).toFixed(2):'';
+  const g=[['Suggested modifier group','Type','Modifiers','Required?','Maximum','Number of products','Link to products','Notes']]
+    .concat(P.groups.map(e=>[e.name,e.kind,[...e.mods].map(([n,p])=>n+money(p)).join(', '),e.req,e.max,e.links.size,J(e.links),J(e.note)]));
+  // groups the import already has (modifier sheets, size options, standard option groups), so nothing is created twice
+  const inImp=new Map();[...mods.map(o=>[o.group,o.name,o.price||'0']),...res.genMods.map(o=>[o.group,o.name,o.price]),...res.preMods.map(o=>[o.group,o.name,o.price])]
+    .forEach(([gr,n,p])=>{if(!inImp.has(gr))inImp.set(gr,new Map());inImp.get(gr).set(n,p)});
+  const links=new Map();P.have.forEach((set,k)=>set.forEach(gr=>{if(!links.has(gr))links.set(gr,new Set());links.get(gr).add(k)}));
+  inImp.forEach((m,gr)=>g.push([gr,'Already in the import',[...m].map(([n,p])=>n+money(p)).join(', '),'','',(links.get(gr)||new Set()).size,'(linked in the import)','']));
+  const p=[['Product','Category','Reporting group','Description','Removal group','No options','Addition group','Add options','Choice group(s)','Choices','Groups already linked in the import','OrderMate option groups (set up separately)']]
+    .concat(P.rows.map(r=>[r.name,r.cat,r.rg,r.desc,r.gR,J([...r.rem].map(x=>'No '+x)),r.gA,[...r.add].map(([x,pr])=>'Add '+x+money(pr)).concat([...r.plus].map(x=>'('+x+' items)')).join(', '),r.gC.join(', '),r.choice.map(c=>c.join(' / ')).join('; '),J(r.have),J(r.opt)]));
+  const wb=XLSX.utils.book_new(),sh=(rows,w)=>{const s=XLSX.utils.aoa_to_sheet(rows);s['!cols']=w.map(x=>({wch:x}));return s};
+  XLSX.utils.book_append_sheet(wb,sh(g,[30,20,70,10,9,10,60,40]),'Groups to create');
+  XLSX.utils.book_append_sheet(wb,sh(p,[30,18,14,50,24,40,24,40,22,40,40,26]),'Products');
+  save(new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}),outName('xlsx','modifier plan'))});
 $('file').addEventListener('change',e=>{if(e.target.files.length)handleFiles([...e.target.files])});
 $('comb').addEventListener('change',rebuild);
 $('catmode').addEventListener('change',()=>{catCfg={};rebuild()});
