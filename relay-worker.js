@@ -113,7 +113,7 @@ const list = v => String(v || '').split(',').map(x => x.trim().toLowerCase()).fi
 
 /* ---------- people and permissions ---------- */
 // role: owner (the built-in OWNER, can't be changed) > admin (uses /admin) > member. status: active | blocked.
-const TOOLS = ['venues', 'converter', 'photos', 'venue', 'setup', 'word'];
+const TOOLS = ['venues', 'converter', 'photos', 'venue', 'setup', 'training', 'word'];
 const ACTIVITY_DAYS = 180;
 // email domains that may sign in without being added one by one: set on /admin, else ALLOWED_DOMAINS, else oolio.com
 async function domainsOf(env) {

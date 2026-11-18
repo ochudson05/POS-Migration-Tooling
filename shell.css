@@ -4,10 +4,10 @@
 body{zoom:var(--mh-zoom,1)}
 .ic{width:1.15em;height:1.15em;flex:none;vertical-align:-.2em;display:inline-block}
 /* one colour per tool, used for its icon tile */
-:root{--t-converter:#673ab6;--t-photos:#c2185b;--t-venue:#1e6fd9;--t-setup:#2e7d32;--t-word:#d35400;--t-venues:#00838f;--ease:cubic-bezier(.2,.8,.2,1)}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--t-converter:#b39ddb;--t-photos:#f48fb1;--t-venue:#90caf9;--t-setup:#81c784;--t-word:#ffb74d;--t-venues:#80deea}}
-:root[data-theme="dark"]{--t-converter:#b39ddb;--t-photos:#f48fb1;--t-venue:#90caf9;--t-setup:#81c784;--t-word:#ffb74d;--t-venues:#80deea}
-.t-converter{--tint:var(--t-converter)}.t-photos{--tint:var(--t-photos)}.t-venue{--tint:var(--t-venue)}.t-setup{--tint:var(--t-setup)}.t-word{--tint:var(--t-word)}.t-venues{--tint:var(--t-venues)}
+:root{--t-converter:#673ab6;--t-photos:#c2185b;--t-venue:#1e6fd9;--t-setup:#2e7d32;--t-word:#d35400;--t-venues:#00838f;--t-training:#5d4037;--ease:cubic-bezier(.2,.8,.2,1)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--t-converter:#b39ddb;--t-photos:#f48fb1;--t-venue:#90caf9;--t-setup:#81c784;--t-word:#ffb74d;--t-venues:#80deea;--t-training:#bcaaa4}}
+:root[data-theme="dark"]{--t-converter:#b39ddb;--t-photos:#f48fb1;--t-venue:#90caf9;--t-setup:#81c784;--t-word:#ffb74d;--t-venues:#80deea;--t-training:#bcaaa4}
+.t-converter{--tint:var(--t-converter)}.t-photos{--tint:var(--t-photos)}.t-venue{--tint:var(--t-venue)}.t-setup{--tint:var(--t-setup)}.t-word{--tint:var(--t-word)}.t-venues{--tint:var(--t-venues)}.t-training{--tint:var(--t-training)}
 
 /* everything that can be pressed or typed into eases between states */
 button,.btn,a,input,select,textarea,.lx-card,.card,.st-card,.rf-card{transition:background-color .18s,border-color .18s,color .18s,box-shadow .2s,transform .2s var(--ease),opacity .18s}
@@ -143,7 +143,7 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 .mh-bz>summary h3{margin:0}.mh-bz .mh-bz-chev{margin-left:auto;transition:transform .2s var(--ease)}.mh-bz[open] .mh-bz-chev{transform:rotate(90deg)}
 .mh-bz>*:not(summary){margin-top:10px}
 .mh-bz-item{display:grid;gap:8px;padding:12px;border:1px solid var(--line);border-radius:var(--r);background:var(--bg)}
-.mh-sheet button.mh-bz-text{display:block;width:100%;text-align:left;white-space:normal;font-weight:400;font-size:.82rem;line-height:1.5;color:var(--muted);background:var(--card);border:1px dashed var(--line);max-height:7.5em;overflow:auto;cursor:copy}
+.mh-sheet button.mh-bz-text{display:block;width:100%;text-align:left;white-space:pre-wrap;font-weight:400;font-size:.82rem;line-height:1.5;color:var(--muted);background:var(--card);border:1px dashed var(--line);max-height:7.5em;overflow:auto;cursor:copy}
 .mh-sheet button.mh-bz-text:hover{border-color:var(--accent);color:var(--text)}
 .mh-btn.done{background:var(--ok,#1a8a4a)!important;border-color:var(--ok,#1a8a4a)!important}
 /* notifications: the bell, its list, and notices */

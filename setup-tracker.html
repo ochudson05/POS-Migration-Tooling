@@ -217,7 +217,7 @@ const GUIDES=/*GUIDES*/{"create-an-oolio-online-store":["Create an Oolio Online 
 /* ---------- what each organisation can have, which turns steps on or off ---------- */
 const FLAGS=[
   ['ecom','Online ordering / e-com sold'],['mpos','MPOS / pay at table'],['moto','MOTO payments'],
-  ['manual','Manual EFTPOS'],['impact','Impact printers'],['booking','7Rooms / NowBookIt'],['loyalty','Loyalty / gift cards'],['integ','Other integrations']];
+  ['manual','Manual EFTPOS'],['impact','Impact printers'],['booking','7Rooms / NowBookIt'],['loyalty','Loyalty / gift cards'],['kds','KDS'],['kiosk','Kiosk'],['integ','Other integrations']];
 const STAGES=[['pre','Pre-config'],['ready','Ready for training'],['trained','Training done'],['follow','Follow-ups'],['done','Complete']];
 const TZ=['Australia/Sydney','Australia/Melbourne','Australia/Brisbane','Australia/Adelaide','Australia/Perth','Australia/Hobart','Australia/Darwin','Pacific/Auckland'];
 const TZ_BY_STATE={NSW:'Australia/Sydney',ACT:'Australia/Sydney',VIC:'Australia/Melbourne',QLD:'Australia/Brisbane',SA:'Australia/Adelaide',WA:'Australia/Perth',TAS:'Australia/Hobart',NT:'Australia/Darwin'};
@@ -280,20 +280,11 @@ const SECTIONS=[
   {id:'menu-pos',t:'Build the POS menu and tables',guides:['create-a-pos-menu','configure-sections-tables','create-courses','create-price-lists']},
   {id:'menu-users',t:'Create users and roles',info:['Get the staff list from the customer (or their intake form) and create a user for each person.'],extra:o=>staffPanel(o),check:o=>{const L=o.staff||[];if(!L.length)return null;const n=L.filter(x=>x.done).length;return n===L.length?{ok:1,m:'All '+L.length+' users created.'}:{m:(L.length-n)+' of '+L.length+' users still to create.'}},guides:['create-a-user','managing-user-roles']},
 ]},
-{id:'trn',phase:'trn',t:'Training session',d:'Treat training as validation. Open the hardware diagram with the customer and confirm all routing.',steps:[
-  {id:'trn-diagram',t:'Walk through the hardware diagram',info:['Confirm every printer and device location and its routing with the customer.']},
-  {id:'trn-print',t:'Printing workflows',info:['Confirm the workflow agreed in Printers, and any “still to confirm” items.'],guides:['configure-printer-profiles','troubleshoot-printing-issues-in-pos']},
-  {id:'trn-route',t:'Device routing',guides:['configure-device-profiles']},
-  {id:'trn-report',t:'Reporting preferences',info:['Who gets the daily and shift summaries; show Insights.'],guides:['configure-oolio-one-insights-and-widgets','understand-the-sales-summary-report','understand-the-shift-summary','save-and-schedule-reports']},
-  {id:'trn-pat',t:'Pay at table',guides:['process-a-payment-on-mpos','process-a-split-bill']},
-  {id:'trn-refund',t:'Refund workflows',guides:['process-a-refund','void-products-or-orders']},
-  {id:'trn-offline',t:'Offline mode',guides:['operate-in-offline-mode']},
-  {id:'trn-tables',t:'Table handling',guides:['place-a-dine-in-order','view-open-orders','use-courses','use-seat-management-']},
-  {id:'trn-disc',t:'Discounts and surcharges',guides:['create-a-discount','create-a-surcharge','disable-a-scheduled-surcharge']},
-  {id:'trn-loyalty',when:'loyalty',t:'Loyalty and gift cards',guides:['configure-loyalty','configure-oolio-gift-cards','purchase-oolio-gift-cards','redeem-oolio-gift-cards']},
-  {id:'trn-insights',t:'Insights reporting',guides:['configure-oolio-one-insights-and-widgets','set-revenue-budgets-and-forecasts']},
-  {id:'trn-integ',when:'integ',t:'Integrations',fields:[['which','Integrations','text','Xero, Deputy, Uber Eats…']],guides:['connect-xero-to-oolio-one','connect-deputy-to-oolio-one','connect-doshii-to-oolio-one','connect-uber-eats-or-doordash-to-oolio-one','connect-restoke-to-oolio-one']},
-  {id:'trn-ecom',when:'ecom',t:'Online ordering demo',info:['Put the store into training mode.','Submit a test order.','Show the customer checkout, the order arriving in POS, and the online menu.'],subs:['Training mode on','Test order submitted','Checkout flow shown','Order shown in POS','Online menu shown','Training mode off again'],guides:['create-an-oolio-online-store','manage-online-orders-in-pos','create-an-online-menu']},
+/* ---------- training: the run sheet itself is the Training Session tab (training-session.html, window.OolioTraining) ---------- */
+{id:'trn',phase:'trn',t:'Training session',d:'Run the session in the Training Session tab: the run sheet, notes at each step, action items and the report.',steps:[
+  {id:'trn-session',t:'Run the training session',info:['Open the Training Session tab with this venue selected. Finishing the session there ticks this step.'],extra:o=>trainingPanel(o),check:o=>{const T=window.OolioTraining;if(!T||!o.trs)return null;const p=T.progress(o);return p.finished?{ok:1,m:'Finished: '+p.done+' of '+p.total+' topics covered.'}:{m:p.done+' of '+p.total+' topics covered so far.'}}},
+  {id:'trn-ready',t:'Ready for trade',info:['Recorded at the end of the training session. If not ready, the plan is in the session report.'],check:o=>{const r=o.trs&&o.trs.ready;if(!r)return null;return r==='Yes'?{ok:1,m:'Ready for trade.'}:{m:'Not ready yet'+(o.trs.plan?': '+o.trs.plan:'.')}}},
+  {id:'trn-actions',t:'Close out the action items',info:['Action items captured in the training session. Tick them off there.'],check:o=>{const T=window.OolioTraining;if(!T||!o.trs)return null;const n=T.progress(o).open;return n?{m:n+' action item'+(n>1?'s':'')+' still open.'}:{ok:1,m:'No open action items.'}}},
 ]},
 {id:'fu',phase:'trn',t:'Follow-ups',steps:[
   {id:'fu-booking',when:'booking',t:'7Rooms / NowBookIt session',info:['Can be a separate follow-up session; it doesn’t need to happen during onboarding.','Needs matching floor plans in both systems and the integration set up in both.'],fields:[['date','Booked for','date']],guides:['configure-sections-tables']},
@@ -933,6 +924,9 @@ function groupRecap(gid){const G=GROUPS[gid],V=venuesOf(gid),b=G.biz||{},L=[];
   return L.join('\n').replace(/\n{3,}/g,'\n\n').trim()}
 const fmtDate=d=>{const t=new Date(d+'T00:00');return isNaN(t)?d:t.toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'})};
 
+function trainingPanel(o){const T=window.OolioTraining;const p=T&&o.trs?T.progress(o):null;
+  return '<div class="st-check">'+(p?p.done+' of '+p.total+' topics covered · '+p.open+' open action item'+(p.open===1?'':'s')+(p.finished?' · finished':''):'Not started yet.')+
+    ' <button type="button" class="st-sec st-sm" data-go="training">Open Training Session</button></div>'}
 function guideHtml(slug){const x=GUIDES[slug];if(!x)return'';
   return '<div class="st-guide"><a href="'+HELP+slug+'" target="_blank" rel="noopener">'+esc(x[0])+'</a><span>'+esc(x[2])+'</span>'+
     (x[3]&&x[3].length?'<span>Covers: '+esc(x[3].join(' · '))+'</span>':'')+'</div>'}
@@ -984,7 +978,7 @@ function stepHtml(o,step){const s=st(o,step.id),open=VIEW.open.has(step.id),cls=
   if(step.table)h+=tableHtml(o,step.table);
   if(step.fields)h+='<div class="st-fields">'+step.fields.map(f=>fieldHtml(o,step,f)).join('')+'</div>';
   if(c)h+='<div class="st-check '+(c.ok?'ok':'w')+'">'+([].concat(c.m).length>1?'<ul>'+[].concat(c.m).map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul>':esc([].concat(c.m)[0]))+'</div>';
-  if((step.guides||[]).length)h+='<div class="st-guides">'+step.guides.map(guideHtml).join('')+'</div>';
+  if((step.guides||[]).length||step.links)h+='<div class="st-guides">'+(step.links||[]).map(([t,u])=>'<div class="st-guide"><a href="'+esc(u)+'" target="_blank" rel="noopener">'+esc(t)+'</a></div>').join('')+(step.guides||[]).map(guideHtml).join('')+'</div>';
   h+='<label class="st-f">Notes<textarea data-note="'+step.id+'"'+(READONLY?' disabled':'')+' placeholder="Anything to remember or follow up">'+esc(s.note||'')+'</textarea></label>';
   if(!READONLY)h+='<div class="st-tools"><button type="button" class="st-sec st-sm" data-na="'+step.id+'">'+(s.s==='na'?'It’s needed after all':'Not needed for this venue')+'</button></div>';
   return h+'</div></details>'}

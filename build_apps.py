@@ -1,4 +1,4 @@
-"""Builds apps.html: one page that launches the Menu Converter, Photo Finder, Restaurant Lookup, Setup Tracker and Image to Word,
+"""Builds apps.html: one page that launches the Menu Converter, Photo Finder, Restaurant Lookup, Setup Tracker, Training Session and Image to Word,
 with the legal pages from legal.html (business details in BUSINESS below) and a footer on every view.
 
     python build_apps.py [publish_copy.html]
@@ -52,6 +52,15 @@ st_body_start = stp.index("<body>") + len("<body>")
 st_script = stp.index("<script>", st_body_start)
 st_body = stp[st_body_start:st_script].strip()
 st_js = stp[st_script + len("<script>"):stp.rindex("</script>")]
+
+# Training Session also runs in the top page (it saves on the venue through window.OolioVenues); ids and classes start ts-
+tsp = (HERE / "training-session.html").read_text(encoding="utf-8")
+ts_css, _ = between(tsp, "<style>", "</style>")
+ts_css = re.sub(r"/\*BASE.*?/\*END BASE\*/", "", ts_css, flags=re.S)
+ts_body_start = tsp.index("<body>") + len("<body>")
+ts_script = tsp.index("<script>", ts_body_start)
+ts_body = tsp[ts_body_start:ts_script].strip()
+ts_js = tsp[ts_script + len("<script>"):tsp.rindex("</script>")]
 
 # Image to Word also runs in the top page (reading pictures with Claude and the downloads capability only reach it); ids and classes start iw-
 iwp = (HERE / "image-to-word.html").read_text(encoding="utf-8")
@@ -269,6 +278,7 @@ LAUNCHER_HTML = SPRITE + """
     <button type="button" class="lx-tab" data-go="photos">""" + ic("images") + """<span>Photo Finder</span></button>
     <button type="button" class="lx-tab" data-go="venue">""" + ic("store") + """<span>Restaurant Lookup</span></button>
     <button type="button" class="lx-tab" data-go="setup">""" + ic("list-checks") + """<span>Setup Tracker</span></button>
+    <button type="button" class="lx-tab" data-go="training">""" + ic("presentation") + """<span>Training Session</span></button>
     <button type="button" class="lx-tab" data-go="word">""" + ic("scan-text") + """<span>Image to Word</span></button>
   </nav>
   <label class="lx-venue"><span>Venue</span><select id="lx-venue" aria-label="Venue you are working on"><option value="">Loading venues…</option></select></label>
@@ -314,6 +324,13 @@ LAUNCHER_HTML = SPRITE + """
       <dl class="lx-flow"><dt>Takes</dt><dd>The venue, or a Restaurant Lookup result</dd><dt>Gives</dt><dd>Progress for each step, devices and printers checked against the rules, and a recap to paste into HubSpot</dd></dl>
       <button type="button" class="lx-open" data-go="setup">Open Setup Tracker""" + ic("arrow-right") + """</button>
     </article>
+    <article class="lx-card t-training">
+      <div class="lx-cico">""" + ic("presentation") + """</div>
+      <h2>Training Session</h2>
+      <p>Runs the customer’s training session from the run sheet, with notes at every step and action items captured as they come up.</p>
+      <dl class="lx-flow"><dt>Takes</dt><dd>The venue you’re training</dd><dt>Gives</dt><dd>A session report with action items by owner, notes and anything not covered, to copy, print or save as Word</dd></dl>
+      <button type="button" class="lx-open" data-go="training">Open Training Session""" + ic("arrow-right") + """</button>
+    </article>
     <article class="lx-card t-word">
       <div class="lx-cico">""" + ic("scan-text") + """</div>
       <h2>Image to Word</h2>
@@ -335,6 +352,9 @@ LAUNCHER_HTML = SPRITE + """
 <div id="lx-st" hidden>
 """ + st_body + """
 </div>
+<div id="lx-ts" hidden>
+""" + ts_body + """
+</div>
 <div id="lx-iw" hidden>
 """ + iw_body + """
 </div>
@@ -355,7 +375,7 @@ LAUNCHER_HTML = SPRITE + """
 
 LAUNCHER_JS = r"""
 (()=>{
-  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),word:g('lx-iw'),map:g('lx-map')};
+  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),training:g('lx-ts'),word:g('lx-iw'),map:g('lx-map')};
   const LEGAL=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>a.id.slice(3));LEGAL.forEach(k=>{views[k]=g('lx-legal')});
   const onClaude=!!(window.claude&&window.claude.use)||/(^|\.)claude(usercontent)?\.(ai|com)$/.test(location.hostname);
   let pfReady=false,checked=false,mapReady=false;
@@ -390,13 +410,14 @@ page = (
     '<meta name="claude:viewport-fit-sides" content="cover">\n'
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>\n'
     + FONT + "\n"
-    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + iw_css + THEME + SHELL_CSS + "</style>\n"
+    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + ts_css + iw_css + THEME + SHELL_CSS + "</style>\n"
     + LAUNCHER_HTML
     + "<script>" + SHELL_JS + "</script>\n"
     + "<script>" + (HERE / "menu-knowledge.js").read_text(encoding="utf-8") + "</script>\n"
     + "<script>" + conv_js + "</script>\n"
     + "<script>" + rl_js + "</script>\n"
     + "<script>" + st_js + "</script>\n"
+    + "<script>" + ts_js + "</script>\n"
     + "<script>" + iw_js + "</script>\n"
     + "<script>\nconst PF_HTML=" + pf_js + ";\nconst MAP_HTML=" + map_js + ";\n" + LAUNCHER_JS + "</script>\n"
     + "<script>" + (HERE / "venue-link.js").read_text(encoding="utf-8") + "</script>\n"
