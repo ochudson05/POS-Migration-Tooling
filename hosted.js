@@ -124,11 +124,14 @@ window.claude={use:async n=>{
 // view-only and Firecrawl limits are also enforced by the website itself. Admins get a link to /admin in the footer.
 let ME_NOW=null;
 const TOOLKEYS=['venues','converter','photos','venue','setup','training','word'];
+// views that share another tool's access (the Photo Editor sits under Photo Tools with the Photo Finder)
+const VIEWKEY={photoedit:'photos'},keyOf=v=>VIEWKEY[v]||v;
 function applyAccess(m){ME_NOW=m;window.MH_ME=m;const ok=t=>!m.tools||m.tools.includes(t);
   // pages show their "read by Claude" notes instead of the OCR ones
   document.documentElement.classList.toggle('oolio-claude',!!m.claude);
-  document.querySelectorAll('.lx-tab[data-go],.lx-card .lx-open[data-go]').forEach(b=>{const t=b.dataset.go;if(TOOLKEYS.includes(t)&&!ok(t))(b.closest('.lx-card')||b).hidden=true});
-  const guard=()=>{const v=location.hash.slice(1);if(TOOLKEYS.includes(v)&&!ok(v)){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}window.dispatchEvent(new HashChangeEvent('hashchange'))}};
+  document.querySelectorAll('.lx-tab[data-go],.lx-card .lx-open[data-go],.lx-menu [data-go]').forEach(b=>{const t=keyOf(b.dataset.go);if(TOOLKEYS.includes(t)&&!ok(t))(b.closest('.lx-card')||b).hidden=true});
+  document.querySelectorAll('[data-tool]').forEach(b=>{if(!ok(b.dataset.tool))b.hidden=true});
+  const guard=()=>{const v=keyOf(location.hash.slice(1));if(TOOLKEYS.includes(v)&&!ok(v)){try{history.replaceState(null,'',location.pathname+location.search)}catch(e){location.hash=''}window.dispatchEvent(new HashChangeEvent('hashchange'))}};
   window.addEventListener('hashchange',guard);guard();
   if(m.admin){const f=document.querySelector('.lx-foot .hosted-only');if(f&&!f.querySelector('a[href="/admin"]')){const a=document.createElement('a');a.href='/admin';a.innerHTML=(window.mhIcon?window.mhIcon('shield-check'):'')+'Admin';f.prepend(a,' · ')}}
   // the Page Planner is its own page (/planner), which the website only serves to the two planner accounts
@@ -137,7 +140,7 @@ function applyAccess(m){ME_NOW=m;window.MH_ME=m;const ok=t=>!m.tools||m.tools.in
   // shell.js redraws the account button and the tab marker
   window.dispatchEvent(new CustomEvent('mh:me',{detail:m}))}
 // which tool is open, for the admin page's activity list
-function report(){const t=location.hash.slice(1);if(TOOLKEYS.includes(t)&&!(ME_NOW&&ME_NOW.tools&&!ME_NOW.tools.includes(t)))fetch('/api/seen',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({tool:t})}).catch(()=>{})}
+function report(){const t=keyOf(location.hash.slice(1));if(TOOLKEYS.includes(t)&&!(ME_NOW&&ME_NOW.tools&&!ME_NOW.tools.includes(t)))fetch('/api/seen',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({tool:t})}).catch(()=>{})}
 window.addEventListener('hashchange',report);
 const start=()=>{me().then(applyAccess).catch(()=>{});report()};
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();

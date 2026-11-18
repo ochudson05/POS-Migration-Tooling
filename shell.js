@@ -7,9 +7,11 @@
 const g=id=>document.getElementById(id),esc=t=>String(t==null?'':t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]);
 const ic=(n,c)=>'<svg class="ic'+(c?' '+c:'')+'" aria-hidden="true" focusable="false"><use href="#i-'+n+'"/></svg>';
 window.mhIcon=ic;
-const TOOLS=[{k:'venues',n:'Venues',i:'search'},{k:'converter',n:'Menu Converter',i:'file-spreadsheet'},{k:'photos',n:'Photo Finder',i:'images'},{k:'venue',n:'Restaurant Lookup',i:'store'},
+const TOOLS=[{k:'venues',n:'Venues',i:'search'},{k:'converter',n:'Menu Converter',i:'file-spreadsheet'},{k:'photos',n:'Photo Finder',i:'images'},{k:'photoedit',n:'Photo Editor',i:'crop',a:'photos'},{k:'venue',n:'Restaurant Lookup',i:'store'},
   {k:'setup',n:'Setup Tracker',i:'list-checks'},{k:'training',n:'Training Session',i:'presentation'},{k:'word',n:'Image to Word',i:'scan-text'}];
 window.mhTools=TOOLS;
+// a view that shares another tool's access (a: the Photo Editor uses the Photo Finder's "photos")
+const acc=k=>{const t=TOOLS.find(x=>x.k===k);return t&&t.a||k};
 const KEY='mh.settings';let S={};try{S=JSON.parse(localStorage.getItem(KEY)||'{}')||{}}catch(e){}
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
 const root=document.documentElement,HOST=root.getAttribute('data-mh-host')||'',mq=matchMedia('(prefers-color-scheme: dark)');
@@ -45,7 +47,7 @@ function applySize(){const z=+S.size||1;if(z===1)root.style.removeProperty('--mh
 function applyMotion(){root.classList.toggle('mh-still',S.motion==='reduce');syncFrame()}
 
 /* ---------- start page, tab marker and view animation (the launcher calls mhAfterShow after each view change) ---------- */
-const allowed=k=>{const m=window.MH_ME;return!(m&&m.tools&&!m.tools.includes(k))};
+const allowed=k=>{const m=window.MH_ME;return!(m&&m.tools&&!m.tools.includes(acc(k)))};
 if(!location.hash){const st=S.start||'home',t=st==='last'?S.last:st;if(t&&t!=='home'&&TOOLS.some(x=>x.k===t)&&allowed(t)){try{history.replaceState(null,'','#'+t)}catch(e){}}}
 function moveInd(){const tabs=document.querySelector('.lx-tabs');if(!tabs)return;let ind=tabs.querySelector('.lx-ind');
   if(!ind){ind=document.createElement('span');ind.className='lx-ind';ind.setAttribute('aria-hidden','true');tabs.prepend(ind)}
@@ -58,7 +60,7 @@ window.mhAfterShow=(v,el)=>{moveInd();
 addEventListener('resize',()=>requestAnimationFrame(moveInd));
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(moveInd);
 // each tool's own heading gets its icon (again whenever a tool redraws its page)
-const HEADS=[['lx-vs','search','venues'],['lx-conv','file-spreadsheet','converter'],['lx-rf','store','venue'],['lx-st','list-checks','setup'],['lx-ts','presentation','training'],['lx-iw','scan-text','word']];
+const HEADS=[['lx-vs','search','venues'],['lx-conv','file-spreadsheet','converter'],['lx-rf','store','venue'],['lx-st','list-checks','setup'],['lx-ts','presentation','training'],['lx-iw','scan-text','word'],['lx-pe','crop','photos']];
 function heads(){HEADS.forEach(([id,i,k])=>{const h=g(id)&&g(id).querySelector('h1');if(h&&!h.querySelector('.mh-hico'))h.insertAdjacentHTML('afterbegin','<span class="mh-hico t-'+k+'">'+ic(i)+'</span>')})}
 heads();let headQ=false;
 const mo=new MutationObserver(()=>{if(!headQ){headQ=true;requestAnimationFrame(()=>{headQ=false;heads()})}});
@@ -106,7 +108,7 @@ async function copyText(t){try{await navigator.clipboard.writeText(t);return tru
   try{const a=document.createElement('textarea');a.value=t;a.setAttribute('readonly','');a.style.cssText='position:fixed;opacity:0;top:0;left:0';(g('mh-set')||document.body).appendChild(a);a.select();const ok=document.execCommand('copy');a.remove();return ok}catch(e){return false}}
 function drawSettings(){const body=g('mh-set-body');if(!body)return;const m=Object.assign({},window.MH_ME||{},ACC||{});
   let acct;
-  if(HOSTED){const tools=m.tools?TOOLS.filter(t=>m.tools.includes(t.k)):TOOLS;
+  if(HOSTED){const tools=m.tools?TOOLS.filter(t=>m.tools.includes(acc(t.k))):TOOLS;
     acct='<div class="mh-who"><span class="mh-av big" aria-hidden="true">'+esc(initials(m.name||m.email))+'</span><div><b>'+esc(m.name||'Loading…')+'</b><span>'+esc(m.email||'')+'</span>'+
       (m.role?'<span class="mh-pill '+m.role+'">'+ic(m.role==='member'?'user':'shield-check')+(m.role==='owner'?'Owner':m.role==='admin'?'Admin':'Member')+'</span>':'')+'</div></div>'+
       '<form class="mh-name" data-form="name"><label for="mh-name">Display name</label><div class="mh-row"><input id="mh-name" maxlength="60" autocomplete="name" value="'+esc(m.name||'')+'"><button type="submit">Save</button></div><small>Shown to your team on the admin page and the records you change.</small></form>'+

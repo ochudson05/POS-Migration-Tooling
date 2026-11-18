@@ -128,6 +128,7 @@ footer{margin-top:40px;font-size:13px;color:var(--muted)}
   <div class="tbl"><table>
     <thead><tr><th>Tool</th><th>What changed</th></tr></thead>
     <tbody>
+      <tr><td style="color:var(--t-photos)">Photo Tools</td><td>New <b>Photo Editor</b> (19 Nov): sizes one photo to an exact size and file size, such as a 1000 × 1000 Oolio product photo under 2 MB. The Photo Finder and Photo Editor now sit together under a <b>Photo Tools</b> tab.</td></tr>
       <tr><td style="color:var(--t-converter)">Menu Converter</td><td>Reads <b>Redcat onboarding workbooks</b>: categories fill down, Uber/DoorDash becomes a price list, options become shared modifier groups or sizes, and FREE TEXT becomes Kitchen Notes / Spice Level.</td></tr>
       <tr><td style="color:var(--t-converter)">Menu Converter</td><td><b>Price lists</b> as extra columns between GTIN and Sell Price*. They come from Oolio files with extra price columns or from repeated OrderMate exports (one per price level). A missing price list price uses the sell price and is listed in the checks.</td></tr>
       <tr><td style="color:var(--t-converter)">Menu Converter</td><td><b>OrderMate exports</b>: Group, Category, Printer Group and System State are mapped. Inactive items are left out. Pluses become "Add X" modifiers and minuses become "No X". An OrderMate modifier sheet (XLSX) lists the groups to create.</td></tr>
@@ -331,6 +332,21 @@ footer{margin-top:40px;font-size:13px;color:var(--muted)}
         <span class="f">Product export</span><span class="to">→</span><span class="f">Venue's own: Hungry Hungry, website, Uber Eats, DoorDash</span><span class="to">→</span><span class="f">Pexels, Pixabay, Openverse, Wikimedia</span><span class="to">→</span><span class="f out">Folder or ZIP + credits</span>
       </div></div>
       <div class="cost"><b>Cost:</b> free libraries · DoorDash about 5 Firecrawl credits. Searches cached 14 days.</div>
+    </article>
+
+    <article class="tool t-photos">
+      <div class="tool-head"><div class="tile">PE</div><div><h3>Photo Editor <span class="new">New</span></h3><div class="sub">One photo at the exact size you need</div></div></div>
+      <div class="where"><span class="chip loc">Photo Tools menu</span><span class="chip mono">photo-editor.html</span><span class="chip">browser only</span></div>
+      <div><p class="lab">What it can do</p><ul>
+        <li>Size presets (Oolio 1000 × 1000 square, landscape, portrait) or a custom size</li>
+        <li>Fill and crop, or fit the whole photo on white, black, a colour, blur or transparent</li>
+        <li>Drag, zoom, rotate, flip and adjust brightness, contrast and saturation</li>
+        <li>Save as JPEG, PNG or WebP under a file size limit (2 MB by default)</li>
+      </ul></div>
+      <div><p class="lab">How it works</p><div class="flow">
+        <span class="f">One photo (file or paste)</span><span class="to">→</span><span class="f">Frame it in the browser</span><span class="to">→</span><span class="f out">Download at the chosen size</span>
+      </div></div>
+      <div class="cost"><b>Cost:</b> free. The photo never leaves the browser.</div>
     </article>
 
     <article class="tool t-setup">

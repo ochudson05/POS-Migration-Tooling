@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Photo Editor</title>
+<style>
+/*BASE: only used when this file is opened on its own; the launcher has the same tokens*/
+:root{box-sizing:border-box;--bg:#f7f6f3;--card:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#e2e0da;--accent:#c4410c;--accent-text:#fff;--ok:#1a7f4b;--warn:#a15c00}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161614;--card:#222220;--text:#f1f0ec;--muted:#9c9b94;--line:#37362f;--accent:#ff7a3d;--accent-text:#1a1a18;--ok:#4cc38a;--warn:#f0b45a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161614;--card:#222220;--text:#f1f0ec;--muted:#9c9b94;--line:#37362f;--accent:#ff7a3d;--accent-text:#1a1a18;--ok:#4cc38a;--warn:#f0b45a;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+/*END BASE*/
+.pe *,.pe *::before,.pe *::after{box-sizing:border-box}
+.pe{max-width:1180px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.pe h1{font-size:1.5rem;margin:0 0 4px;text-wrap:balance}
+.pe h2{font-size:1.05rem;margin:0 0 10px}
+.pe .pe-sub{color:var(--muted);margin:0 0 18px;max-width:75ch}
+.pe button{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-text);border:0;border-radius:8px;padding:9px 14px;cursor:pointer;margin:0}
+.pe button.pe-sec{background:transparent;color:var(--text);border:1px solid var(--line)}
+.pe button.pe-sm{font-size:.85rem;padding:5px 10px}
+.pe button:disabled{opacity:.5;cursor:default}
+.pe button:focus-visible,.pe input:focus-visible,.pe select:focus-visible,.pe label.pe-drop:focus-within,.pe canvas:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pe input[type=text],.pe input[type=number],.pe select{font:inherit;font-size:.92rem;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+.pe input[type=color]{width:42px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer}
+.pe input[type=range]{width:100%;accent-color:var(--accent)}
+.pe-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.pe-grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:820px){.pe-grid{grid-template-columns:minmax(0,1fr)}}
+.pe-side{display:grid;gap:16px;min-width:0}
+.pe-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.pe-f{display:grid;gap:4px;font-size:.82rem;color:var(--muted);margin:0 0 12px}
+.pe-f:last-child{margin-bottom:0}
+.pe-two{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:end}
+.pe-two span{padding-bottom:8px;color:var(--muted)}
+.pe-seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.pe-seg button{flex:1;background:transparent!important;color:var(--text)!important;border-radius:0!important;font-size:.85rem;padding:7px 8px;font-weight:500}
+.pe-seg button+button{border-left:1px solid var(--line)}
+.pe-seg button[aria-pressed="true"]{background:var(--accent)!important;color:var(--accent-text)!important;font-weight:600}
+.pe-sw{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.pe-sw button{width:34px;height:34px;padding:0;border-radius:8px;border:1px solid var(--line)!important}
+.pe-sw button[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:2px}
+.pe-sw .pe-chk,.pe-stage.pe-chk{background-color:#fff;background-image:linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%),linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%);background-size:14px 14px;background-position:0 0,7px 7px}
+.pe-sw .pe-blur{background:linear-gradient(135deg,#d9a46a,#7c9cbf)!important}
+.pe-drop{position:relative;display:grid;place-items:center;text-align:center;gap:4px;border:2px dashed var(--line);border-radius:12px;padding:22px 14px;cursor:pointer;color:var(--muted);font-size:.9rem}
+.pe-drop strong{color:var(--text);font-size:1rem}
+.pe-drop.over{border-color:var(--accent);background:var(--bg)}
+.pe-drop input{position:absolute;width:1px;height:1px;opacity:0}
+.pe-view{display:grid;gap:12px;min-width:0}
+.pe-stage{position:relative;display:grid;place-items:center;border-radius:10px;background:var(--bg);border:1px solid var(--line);padding:14px;min-height:320px}
+.pe-stage canvas{max-width:100%;height:auto;display:block;box-shadow:0 1px 6px rgb(0 0 0/.18);cursor:grab;touch-action:none}
+.pe-stage canvas.drag{cursor:grabbing}
+.pe-empty{color:var(--muted);text-align:center;font-size:.92rem;max-width:36ch}
+.pe-tools{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.pe-zoom{display:flex;gap:8px;align-items:center;flex:1 1 220px;font-size:.85rem;color:var(--muted)}
+.pe-info{font-size:.88rem;color:var(--muted)}
+.pe-info b{color:var(--text)}
+.pe-msg{font-size:.88rem;min-height:1.3em;margin:6px 0 0;color:var(--ok)}
+.pe-msg.err{color:var(--warn)}
+.pe-adj summary{cursor:pointer;font-weight:600;font-size:.95rem}
+.pe-adj[open] summary{margin-bottom:10px}
+.pe-adj label{display:grid;grid-template-columns:86px 1fr 44px;gap:8px;align-items:center;font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.pe-adj output{text-align:right;font-variant-numeric:tabular-nums}
+.pe-hint{font-size:.8rem;color:var(--muted);margin:4px 0 0}
+</style>
+</head>
+<body>
+<main class="pe" id="pe">
+  <h1>Photo Editor</h1>
+  <p class="pe-sub">Sizes one photo to the exact dimensions and file size you need: pick a size, drag and zoom to frame it, and download. Everything happens in your browser; the photo isn’t uploaded anywhere.</p>
+  <div class="pe-grid">
+    <div class="pe-side">
+      <section class="pe-card" aria-labelledby="pe-h1">
+        <h2 id="pe-h1">1. Photo</h2>
+        <label class="pe-drop" id="pe-drop">
+          <strong>Drop a photo here</strong>
+          <span>or click to choose. You can also paste one (Ctrl+V).</span>
+          <span class="pe-hint">JPG, PNG, WebP, GIF, BMP or AVIF</span>
+          <input type="file" id="pe-file" accept="image/*">
+        </label>
+        <p class="pe-hint" id="pe-orig" hidden></p>
+      </section>
+      <section class="pe-card" aria-labelledby="pe-h2">
+        <h2 id="pe-h2">2. Size</h2>
+        <label class="pe-f">Size
+          <select id="pe-preset">
+            <option value="1000x1000">Oolio product photo, square 1000 × 1000</option>
+            <option value="2000x2000">Square, large 2000 × 2000</option>
+            <option value="600x600">Square, small 600 × 600</option>
+            <option value="1200x800">Landscape 3:2, 1200 × 800</option>
+            <option value="1920x1080">Landscape 16:9, 1920 × 1080</option>
+            <option value="1200x900">Landscape 4:3, 1200 × 900</option>
+            <option value="800x1200">Portrait 2:3, 800 × 1200</option>
+            <option value="1080x1350">Portrait 4:5, 1080 × 1350</option>
+            <option value="orig">Keep the photo’s own shape</option>
+            <option value="custom">Custom size</option>
+          </select>
+        </label>
+        <div class="pe-two pe-f" style="margin-bottom:12px">
+          <label class="pe-f" style="margin:0">Width (px)<input type="number" id="pe-w" min="16" max="8000" step="1" value="1000"></label>
+          <span>×</span>
+          <label class="pe-f" style="margin:0">Height (px)<input type="number" id="pe-h" min="16" max="8000" step="1" value="1000"></label>
+        </div>
+        <div class="pe-f">Fitting
+          <div class="pe-seg" role="group" aria-label="Fitting">
+            <button type="button" data-fit="fill" aria-pressed="true">Fill (crop)</button>
+            <button type="button" data-fit="fit" aria-pressed="false">Fit whole photo</button>
+          </div>
+        </div>
+        <div class="pe-f">Background <span id="pe-bgnote">(shows when the photo doesn’t fill the frame)</span>
+          <div class="pe-sw" role="group" aria-label="Background">
+            <button type="button" data-bg="#ffffff" style="background:#fff" aria-label="White" title="White" aria-pressed="true"></button>
+            <button type="button" data-bg="#000000" style="background:#000" aria-label="Black" title="Black" aria-pressed="false"></button>
+            <button type="button" data-bg="blur" class="pe-blur" aria-label="Blurred photo" title="Blurred photo" aria-pressed="false"></button>
+            <button type="button" data-bg="none" class="pe-chk" aria-label="Transparent (PNG or WebP only)" title="Transparent (PNG or WebP only)" aria-pressed="false"></button>
+            <input type="color" id="pe-col" value="#f2f2f2" aria-label="Other colour" title="Other colour">
+          </div>
+        </div>
+      </section>
+      <section class="pe-card" aria-labelledby="pe-h3">
+        <h2 id="pe-h3">3. Save</h2>
+        <label class="pe-f">File name<input type="text" id="pe-name" placeholder="Photo" autocomplete="off"></label>
+        <div class="pe-two pe-f" style="grid-template-columns:1fr 1fr">
+          <label class="pe-f" style="margin:0">Format
+            <select id="pe-fmt"><option value="image/jpeg">JPEG</option><option value="image/png">PNG</option><option value="image/webp">WebP</option></select>
+          </label>
+          <label class="pe-f" style="margin:0">Max file size (KB)<input type="number" id="pe-max" min="20" max="20000" step="10" value="2000"></label>
+        </div>
+        <p class="pe-hint" id="pe-fmtnote">Oolio accepts JPEG or PNG; 2000 KB (2 MB) keeps it under the upload limit.</p>
+        <div class="pe-row" style="margin-top:12px">
+          <button type="button" id="pe-dl" disabled>Download photo</button>
+        </div>
+        <p class="pe-msg" id="pe-msg" role="status" aria-live="polite"></p>
+      </section>
+    </div>
+    <section class="pe-card pe-view" aria-labelledby="pe-h4">
+      <div class="pe-row" style="justify-content:space-between">
+        <h2 id="pe-h4" style="margin:0">Preview</h2>
+        <span class="pe-info" id="pe-info"></span>
+      </div>
+      <div class="pe-stage" id="pe-stage">
+        <p class="pe-empty" id="pe-empty">Add a photo to start. Drag it to move it inside the frame and use the zoom slider (or your mouse wheel) to frame it.</p>
+        <canvas id="pe-cv" width="10" height="10" hidden tabindex="0" aria-label="Photo preview. Drag or use the arrow keys to move the photo; plus and minus to zoom."></canvas>
+      </div>
+      <div class="pe-tools">
+        <label class="pe-zoom">Zoom<input type="range" id="pe-zoom" min="0.2" max="5" step="0.01" value="1" disabled><output id="pe-zv">100%</output></label>
+        <div class="pe-row">
+          <button type="button" class="pe-sec pe-sm" id="pe-rl" disabled title="Rotate left">⟲ Rotate</button>
+          <button type="button" class="pe-sec pe-sm" id="pe-rr" disabled title="Rotate right">⟳ Rotate</button>
+          <button type="button" class="pe-sec pe-sm" id="pe-fl" disabled title="Mirror left to right">⇆ Flip</button>
+          <button type="button" class="pe-sec pe-sm" id="pe-ct" disabled>Centre</button>
+          <button type="button" class="pe-sec pe-sm" id="pe-rs" disabled>Reset all</button>
+        </div>
+      </div>
+      <details class="pe-adj">
+        <summary>Adjust colours</summary>
+        <label>Brightness<input type="range" id="pe-b" min="50" max="150" value="100" disabled><output>100%</output></label>
+        <label>Contrast<input type="range" id="pe-c" min="50" max="150" value="100" disabled><output>100%</output></label>
+        <label>Saturation<input type="range" id="pe-s" min="0" max="200" value="100" disabled><output>100%</output></label>
+      </details>
+    </section>
+  </div>
+</main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const st={img:null,name:'',w:1000,h:1000,fit:'fill',bg:'#ffffff',zoom:1,ox:0,oy:0,rot:0,flip:false,b:100,c:100,s:100,preset:'1000x1000'};
+let pr=1,est=0,estTimer=0;
+const cv=$('pe-cv'),cx=cv.getContext('2d');
+try{const p=JSON.parse(localStorage.getItem('mh.pe')||'{}');if(p.preset)st.preset=p.preset;if(p.w)st.w=p.w;if(p.h)st.h=p.h;if(p.fit)st.fit=p.fit;if(p.bg)st.bg=p.bg;
+  if(p.fmt)$('pe-fmt').value=p.fmt;if(p.max)$('pe-max').value=p.max}catch(e){}
+const remember=()=>{try{localStorage.setItem('mh.pe',JSON.stringify({preset:st.preset,w:st.w,h:st.h,fit:st.fit,bg:st.bg,fmt:$('pe-fmt').value,max:$('pe-max').value}))}catch(e){}};
+const msg=(t,err)=>{const m=$('pe-msg');m.textContent=t||'';m.className='pe-msg'+(err?' err':'')};
+const kb=n=>n>=1048576?(n/1048576).toFixed(2)+' MB':Math.max(1,Math.round(n/1024))+' KB';
+
+/* ---------- loading a photo ---------- */
+function loadFile(f){if(!f||!/^image\//.test(f.type||'')&&!/\.(jpe?g|png|webp|gif|bmp|avif)$/i.test(f.name||'')){msg('That file isn’t a picture.',true);return}
+  const url=URL.createObjectURL(f),im=new Image();
+  im.onload=()=>{st.img=im;st.name=(f.name||'Pasted photo.png');st.rot=0;st.flip=false;st.b=st.c=st.s=100;
+    $('pe-name').value=st.name.replace(/\.[a-z0-9]+$/i,'');
+    $('pe-orig').hidden=false;$('pe-orig').textContent='“'+st.name+'”, '+im.naturalWidth+' × '+im.naturalHeight+' px, '+kb(f.size||0);
+    ['pe-zoom','pe-rl','pe-rr','pe-fl','pe-ct','pe-rs','pe-b','pe-c','pe-s','pe-dl'].forEach(id=>$(id).disabled=false);
+    $('pe-empty').hidden=true;cv.hidden=false;syncAdj();if(st.preset==='orig')origSize();centre();msg('')};
+  im.onerror=()=>{URL.revokeObjectURL(url);msg('This picture couldn’t be opened. Try saving it as a JPG or PNG first.',true)};
+  im.src=url}
+const drop=$('pe-drop');
+$('pe-file').addEventListener('change',e=>{loadFile(e.target.files[0]);e.target.value=''});
+['dragenter','dragover'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add('over')}));
+['dragleave','drop'].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove('over')}));
+drop.addEventListener('drop',e=>loadFile(e.dataTransfer.files[0]));
+$('pe-stage').addEventListener('dragover',e=>e.preventDefault());
+$('pe-stage').addEventListener('drop',e=>{e.preventDefault();loadFile(e.dataTransfer.files[0])});
+// a picture pasted while this tool is showing (not into a text box) becomes the photo
+document.addEventListener('paste',e=>{const root=$('pe');if(!root||root.offsetParent===null)return;
+  const f=[...(e.clipboardData&&e.clipboardData.files||[])].find(x=>/^image\//.test(x.type));if(!f)return;e.preventDefault();loadFile(f)});
+
+/* ---------- drawing ---------- */
+const srcW=()=>st.rot%180?st.img.naturalHeight:st.img.naturalWidth,srcH=()=>st.rot%180?st.img.naturalWidth:st.img.naturalHeight;
+const base=()=>{const a=st.w/srcW(),b=st.h/srcH();return st.fit==='fill'?Math.max(a,b):Math.min(a,b)};
+const filt=()=>(st.b!==100||st.c!==100||st.s!==100)?'brightness('+st.b+'%) contrast('+st.c+'%) saturate('+st.s+'%)':'none';
+// in Fill the photo can't be moved so far that the background shows; in Fit it can't leave the frame
+function clamp(){if(!st.img)return;const k=base()*st.zoom,dw=srcW()*k,dh=srcH()*k;
+  const lx=st.fit==='fill'&&st.zoom>=1?Math.max(0,(dw-st.w)/2):(dw+st.w)/2-Math.min(dw,st.w)*.15,
+        ly=st.fit==='fill'&&st.zoom>=1?Math.max(0,(dh-st.h)/2):(dh+st.h)/2-Math.min(dh,st.h)*.15;
+  st.ox=Math.max(-lx,Math.min(lx,st.ox));st.oy=Math.max(-ly,Math.min(ly,st.oy))}
+function paint(ctx,W,H,sc){const im=st.img,k=base()*st.zoom;
+  ctx.save();ctx.setTransform(sc,0,0,sc,0,0);ctx.clearRect(0,0,W,H);
+  if(st.bg==='blur'){const kb2=Math.max(W/srcW(),H/srcH())*1.25;ctx.save();ctx.filter='blur('+Math.round(Math.max(W,H)/30)+'px) brightness(0.95)';
+    ctx.translate(W/2,H/2);ctx.rotate(st.rot*Math.PI/180);ctx.drawImage(im,-im.naturalWidth*kb2/2,-im.naturalHeight*kb2/2,im.naturalWidth*kb2,im.naturalHeight*kb2);ctx.restore()}
+  else if(st.bg!=='none'){ctx.fillStyle=st.bg;ctx.fillRect(0,0,W,H)}
+  ctx.translate(W/2+st.ox,H/2+st.oy);ctx.rotate(st.rot*Math.PI/180);if(st.flip)ctx.scale(-1,1);
+  ctx.filter=filt();ctx.imageSmoothingQuality='high';
+  ctx.drawImage(im,-im.naturalWidth*k/2,-im.naturalHeight*k/2,im.naturalWidth*k,im.naturalHeight*k);ctx.restore()}
+function draw(){if(!st.img){info();return}clamp();
+  const dpr=window.devicePixelRatio||1,box=Math.max(240,Math.min(($('pe-stage').clientWidth||600)-28,620));
+  pr=Math.min(1,box*dpr/Math.max(st.w,st.h));const cw=Math.max(1,Math.round(st.w*pr)),ch=Math.max(1,Math.round(st.h*pr));
+  if(cv.width!==cw||cv.height!==ch){cv.width=cw;cv.height=ch}
+  const disp=Math.min(box,box*st.w/Math.max(st.w,st.h));cv.style.width=disp+'px';
+  paint(cx,st.w,st.h,pr);$('pe-stage').classList.toggle('pe-chk',st.bg==='none');
+  $('pe-zoom').value=st.zoom;$('pe-zv').textContent=Math.round(st.zoom*100)+'%';info();queueEst()}
+function info(){const t=$('pe-info');if(!st.img){t.textContent='';return}
+  t.innerHTML='<b>'+st.w+' × '+st.h+' px</b>'+(est?' · about <b>'+kb(est)+'</b>':'')}
+addEventListener('resize',()=>requestAnimationFrame(draw));
+if(window.ResizeObserver)new ResizeObserver(()=>requestAnimationFrame(draw)).observe($('pe-stage'));
+
+/* ---------- moving and zooming ---------- */
+let drag=null;
+cv.addEventListener('pointerdown',e=>{if(!st.img)return;cv.setPointerCapture(e.pointerId);cv.classList.add('drag');drag={x:e.clientX,y:e.clientY,ox:st.ox,oy:st.oy}});
+cv.addEventListener('pointermove',e=>{if(!drag)return;const f=st.w/cv.clientWidth;st.ox=drag.ox+(e.clientX-drag.x)*f;st.oy=drag.oy+(e.clientY-drag.y)*f;draw()});
+const end=()=>{drag=null;cv.classList.remove('drag')};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+cv.addEventListener('wheel',e=>{if(!st.img)return;e.preventDefault();setZoom(st.zoom*(e.deltaY<0?1.06:1/1.06))},{passive:false});
+cv.addEventListener('keydown',e=>{if(!st.img)return;const step=(e.shiftKey?50:10)*st.w/cv.clientWidth,m={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+  if(m){e.preventDefault();st.ox+=m[0]*step;st.oy+=m[1]*step;draw()}else if(e.key==='+'||e.key==='='){e.preventDefault();setZoom(st.zoom*1.06)}else if(e.key==='-'){e.preventDefault();setZoom(st.zoom/1.06)}});
+function setZoom(z){const old=st.zoom;st.zoom=Math.max(.2,Math.min(5,z));st.ox*=st.zoom/old;st.oy*=st.zoom/old;draw()}
+$('pe-zoom').addEventListener('input',e=>setZoom(+e.target.value));
+function centre(){st.zoom=1;st.ox=st.oy=0;draw()}
+$('pe-ct').onclick=centre;
+$('pe-rl').onclick=()=>{st.rot=(st.rot+270)%360;if(st.preset==='orig')origSize();centre()};
+$('pe-rr').onclick=()=>{st.rot=(st.rot+90)%360;if(st.preset==='orig')origSize();centre()};
+$('pe-fl').onclick=()=>{st.flip=!st.flip;st.ox=-st.ox;draw()};
+$('pe-rs').onclick=()=>{st.rot=0;st.flip=false;st.b=st.c=st.s=100;syncAdj();if(st.preset==='orig')origSize();centre()};
+
+/* ---------- colours ---------- */
+function syncAdj(){[['pe-b','b'],['pe-c','c'],['pe-s','s']].forEach(([id,k])=>{$(id).value=st[k];$(id).nextElementSibling.textContent=st[k]+'%'})}
+[['pe-b','b'],['pe-c','c'],['pe-s','s']].forEach(([id,k])=>$(id).addEventListener('input',e=>{st[k]=+e.target.value;e.target.nextElementSibling.textContent=st[k]+'%';draw()}));
+
+/* ---------- size, fitting and background ---------- */
+function origSize(){if(!st.img)return;let w=srcW(),h=srcH();const m=Math.max(w,h);if(m>2000){w=Math.round(w*2000/m);h=Math.round(h*2000/m)}st.w=w;st.h=h;$('pe-w').value=w;$('pe-h').value=h}
+function applyPreset(){const p=st.preset;$('pe-preset').value=p;
+  if(/^\d+x\d+$/.test(p)){const[a,b]=p.split('x').map(Number);st.w=a;st.h=b}else if(p==='orig')origSize();
+  $('pe-w').value=st.w;$('pe-h').value=st.h;$('pe-w').readOnly=$('pe-h').readOnly=p!=='custom'}
+$('pe-preset').addEventListener('change',e=>{st.preset=e.target.value;applyPreset();remember();centre()});
+['pe-w','pe-h'].forEach(id=>$(id).addEventListener('input',()=>{const w=Math.round(+$('pe-w').value),h=Math.round(+$('pe-h').value);
+  if(w>=16&&w<=8000&&h>=16&&h<=8000){st.w=w;st.h=h;remember();centre()}}));
+['pe-w','pe-h'].forEach(id=>$(id).addEventListener('focus',()=>{if(st.preset!=='custom'){st.preset='custom';applyPreset()}}));
+document.querySelectorAll('#pe [data-fit]').forEach(b=>b.addEventListener('click',()=>{st.fit=b.dataset.fit;syncFit();remember();centre()}));
+function syncFit(){document.querySelectorAll('#pe [data-fit]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.fit===st.fit)))}
+document.querySelectorAll('#pe [data-bg]').forEach(b=>b.addEventListener('click',()=>setBg(b.dataset.bg)));
+$('pe-col').addEventListener('input',e=>setBg(e.target.value));
+function setBg(v){st.bg=v;syncBg();remember();
+  if(v==='none'&&$('pe-fmt').value==='image/jpeg'){$('pe-fmt').value='image/png';fmtNote();msg('Switched to PNG: JPEG can’t be transparent.')}draw()}
+function syncBg(){let hit=false;document.querySelectorAll('#pe [data-bg]').forEach(b=>{const on=b.dataset.bg===st.bg;hit=hit||on;b.setAttribute('aria-pressed',String(on))});
+  if(!hit&&/^#/.test(st.bg))$('pe-col').value=st.bg}
+function fmtNote(){const f=$('pe-fmt').value;$('pe-fmtnote').textContent=f==='image/png'?'PNG keeps every detail and transparency but makes bigger files; the size limit can’t be forced, so pick a smaller size if it’s over.':
+  f==='image/webp'?'WebP makes small files, but not every system accepts it. Oolio accepts JPEG or PNG.':'Oolio accepts JPEG or PNG; 2000 KB (2 MB) keeps it under the upload limit.'}
+$('pe-fmt').addEventListener('change',()=>{if($('pe-fmt').value==='image/jpeg'&&st.bg==='none'){st.bg='#ffffff';syncBg()}fmtNote();remember();draw()});
+$('pe-max').addEventListener('change',()=>{remember();queueEst()});
+
+/* ---------- saving ---------- */
+// JPEG and WebP: start at quality .92 and step down until the file fits the limit (not below .4)
+async function encode(){const out=document.createElement('canvas');out.width=st.w;out.height=st.h;const oc=out.getContext('2d');paint(oc,st.w,st.h,1);
+  const f=$('pe-fmt').value,max=Math.max(20,+$('pe-max').value||2000)*1024;
+  const enc=q=>new Promise((res,rej)=>out.toBlob(b=>b?res(b):rej(new Error('The browser couldn’t make this file.')),f,q));
+  if(f==='image/png'){const b=await enc();return{blob:b,q:null,over:b.size>max}}
+  let q=.92,b=await enc(q);while(b.size>max&&q>.41){q=Math.round((q-.07)*100)/100;b=await enc(q)}
+  return{blob:b,q,over:b.size>max}}
+function queueEst(){clearTimeout(estTimer);estTimer=setTimeout(async()=>{if(!st.img)return;try{const r=await encode();est=r.blob.size;info()}catch(e){}},450)}
+function fileName(){const ext={'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp'}[$('pe-fmt').value];
+  return(($('pe-name').value.trim()||'Photo').replace(/[\\/:*?"<>|]/g,'').trim()||'Photo').slice(0,120)+ext}
+async function save(blob,name){let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){}
+  if(dl){try{await dl.save({filename:name,data:blob});return true}catch(e){if(e&&e.code!=='declined')msg('The file couldn’t be saved here ('+(e.message||e.code||'unavailable')+').',true);return false}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),30000);return true}
+$('pe-dl').addEventListener('click',async()=>{if(!st.img)return;const b=$('pe-dl');b.disabled=true;msg('Making the file…');
+  try{const r=await encode(),name=fileName();est=r.blob.size;info();
+    if(await save(r.blob,name))msg('Saved “'+name+'”: '+st.w+' × '+st.h+' px, '+kb(r.blob.size)+(r.q!=null&&r.q<.92?' (quality '+Math.round(r.q*100)+'% to fit the limit)':'')+'.'+
+      (r.over?' It’s still over '+$('pe-max').value+' KB; choose a smaller size'+($('pe-fmt').value==='image/png'?' or JPEG':'')+' to bring it down.':''),r.over)}
+  catch(e){msg(e.message||'The file couldn’t be made.',true)}b.disabled=false});
+
+applyPreset();syncFit();syncBg();fmtNote();
+})();
+</script>
+</body>
+</html>

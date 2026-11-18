@@ -71,6 +71,15 @@ iw_script = iwp.index("<script>", iw_body_start)
 iw_body = iwp[iw_body_start:iw_script].strip()
 iw_js = iwp[iw_script + len("<script>"):iwp.rindex("</script>")]
 
+# Photo Editor (under Photo Tools with the Photo Finder) runs in the top page too (the downloads capability only reaches it); ids and classes start pe-
+pep = (HERE / "photo-editor.html").read_text(encoding="utf-8")
+pe_css, _ = between(pep, "<style>", "</style>")
+pe_css = re.sub(r"/\*BASE.*?/\*END BASE\*/", "", pe_css, flags=re.S)
+pe_body_start = pep.index("<body>") + len("<body>")
+pe_script = pep.index("<script>", pe_body_start)
+pe_body = pep[pe_body_start:pe_script].strip()
+pe_js = pep[pe_script + len("<script>"):pep.rindex("</script>")]
+
 # the Photo Finder's page as a JS string; "</" is written "<\/" so it can't close this page's <script>
 # the Oolio One look (oolio-theme.css) goes after every tool's own CSS, and into the Photo Finder frame too
 THEME = (HERE / "oolio-theme.css").read_text(encoding="utf-8")
@@ -265,6 +274,16 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .oh-banner button{font:inherit;font-weight:600;background:var(--card);color:var(--text);border:0;border-radius:6px;padding:4px 12px;cursor:pointer;margin:0}
 #lx-mapframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
 #lx-pfframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
+/* Photo Tools tab and its menu (Photo Finder, Photo Editor) */
+.lx-tab .lx-chev{width:.95em;height:.95em;margin-left:-2px;transition:transform .2s}
+.lx-tab[aria-expanded="true"] .lx-chev{transform:rotate(180deg)}
+.lx-menu{position:fixed;z-index:60;min-width:250px;max-width:calc(100vw - 16px);background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 10px 30px rgb(0 0 0/.2);display:grid;gap:2px}
+.lx-menu[hidden]{display:none}
+.lx-menu button{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;font:inherit;background:none;color:var(--text);border:0;border-radius:8px;padding:8px 10px;margin:0;cursor:pointer}
+.lx-menu button:hover,.lx-menu button:focus-visible{background:var(--bg);outline:none}
+.lx-menu button[aria-current="page"]{background:var(--bg);box-shadow:inset 3px 0 0 var(--accent)}
+.lx-menu .ic{margin-top:3px;color:var(--t-photos)}
+.lx-menu span{display:grid}.lx-menu b{font-size:.92rem}.lx-menu small{font-size:.8rem;color:var(--muted);font-weight:400}
 """
 
 LAUNCHER_CSS += VS_CSS
@@ -275,13 +294,17 @@ LAUNCHER_HTML = SPRITE + """
   <nav class="lx-tabs" aria-label="Tools">
     <button type="button" class="lx-tab" data-go="venues">""" + ic("search") + """<span>Venues</span></button>
     <button type="button" class="lx-tab" data-go="converter">""" + ic("file-spreadsheet") + """<span>Menu Converter</span></button>
-    <button type="button" class="lx-tab" data-go="photos">""" + ic("images") + """<span>Photo Finder</span></button>
+    <button type="button" class="lx-tab lx-tmenu" id="lx-ptools" data-tool="photos" data-views="photos photoedit" aria-haspopup="menu" aria-expanded="false" aria-controls="lx-pmenu">""" + ic("images") + """<span>Photo Tools</span>""" + ic("chevron-down", "lx-chev") + """</button>
     <button type="button" class="lx-tab" data-go="venue">""" + ic("store") + """<span>Restaurant Lookup</span></button>
     <button type="button" class="lx-tab" data-go="setup">""" + ic("list-checks") + """<span>Setup Tracker</span></button>
     <button type="button" class="lx-tab" data-go="training">""" + ic("presentation") + """<span>Training Session</span></button>
     <button type="button" class="lx-tab" data-go="word">""" + ic("scan-text") + """<span>Image to Word</span></button>
   </nav>
   <label class="lx-venue"><span>Venue</span><select id="lx-venue" aria-label="Venue you are working on"><option value="">Loading venues…</option></select></label>
+  <div class="lx-menu" id="lx-pmenu" role="menu" aria-label="Photo Tools" hidden>
+    <button type="button" role="menuitem" data-go="photos">""" + ic("images") + """<span><b>Photo Finder</b><small>Free photos for every product on a menu</small></span></button>
+    <button type="button" role="menuitem" data-go="photoedit">""" + ic("crop") + """<span><b>Photo Editor</b><small>Resize and crop one photo to the right size</small></span></button>
+  </div>
   <div class="lx-acts"><button type="button" class="lx-ib" id="mh-theme" aria-label="Switch theme">""" + ic("moon") + """</button><button type="button" class="lx-ib" id="mh-open" aria-label="Settings and account" aria-haspopup="dialog">""" + ic("settings") + """</button></div>
 </header>
 <dialog class="lx-dlg" id="lx-dlg"></dialog>
@@ -309,6 +332,13 @@ LAUNCHER_HTML = SPRITE + """
       <p>Finds a free photo for every product and saves them in a folder named after the venue, each image named exactly like its product.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>Product export from Oolio One (.csv or .xlsx)</dd><dt>Gives</dt><dd>A venue folder of JPEGs plus a photo credits list</dd></dl>
       <button type="button" class="lx-open" data-go="photos">Open Photo Finder""" + ic("arrow-right") + """</button>
+    </article>
+    <article class="lx-card t-photos">
+      <div class="lx-cico">""" + ic("crop") + """</div>
+      <h2>Photo Editor</h2>
+      <p>Resizes and crops a single photo to an exact size and file size, such as a 1000 × 1000 Oolio product photo under 2 MB.</p>
+      <dl class="lx-flow"><dt>Takes</dt><dd>One photo (JPG, PNG, WebP, pasted screenshots)</dd><dt>Gives</dt><dd>A JPEG, PNG or WebP at the size you pick, framed how you want</dd></dl>
+      <button type="button" class="lx-open" data-go="photoedit">Open Photo Editor""" + ic("arrow-right") + """</button>
     </article>
     <article class="lx-card t-venue">
       <div class="lx-cico">""" + ic("store") + """</div>
@@ -358,6 +388,9 @@ LAUNCHER_HTML = SPRITE + """
 <div id="lx-iw" hidden>
 """ + iw_body + """
 </div>
+<div id="lx-pe" hidden>
+""" + pe_body + """
+</div>
 <div id="lx-pf" class="lx-pfwrap" hidden>
   <div class="lx-note" id="lx-pfnote" hidden>
     <span>Photo search and saving are blocked on claude.ai, because claude.ai pages can’t download pictures from other websites. Save the Photo Finder to your computer and open the file in Edge or Chrome. It works there with nothing to install.</span>
@@ -375,7 +408,7 @@ LAUNCHER_HTML = SPRITE + """
 
 LAUNCHER_JS = r"""
 (()=>{
-  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),training:g('lx-ts'),word:g('lx-iw'),map:g('lx-map')};
+  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),training:g('lx-ts'),word:g('lx-iw'),photoedit:g('lx-pe'),map:g('lx-map')};
   const LEGAL=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>a.id.slice(3));LEGAL.forEach(k=>{views[k]=g('lx-legal')});
   const onClaude=!!(window.claude&&window.claude.use)||/(^|\.)claude(usercontent)?\.(ai|com)$/.test(location.hostname);
   let pfReady=false,checked=false,mapReady=false;
@@ -390,11 +423,26 @@ LAUNCHER_JS = r"""
   function show(){let v=location.hash.slice(1);if(!(v in views))v='';
     const cur=views[v];new Set(Object.values(views)).forEach(el=>{el.hidden=el!==cur});
     if(LEGAL.includes(v)){document.querySelectorAll('#lx-legal .lg-doc').forEach(a=>{a.hidden=a.id!=='lg-'+v});document.querySelectorAll('.lx-lnav a').forEach(a=>{if(a.getAttribute('href')==='#'+v)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});document.title=g('lg-'+v).dataset.title+' · Menu Hauler'}else document.title='Menu Hauler';
-    document.querySelectorAll('.lx-tab').forEach(b=>{if(b.dataset.go===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+    document.querySelectorAll('.lx-tab').forEach(b=>{if(b.dataset.go===v||(b.dataset.views||'').split(' ').includes(v))b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});
+    document.querySelectorAll('.lx-menu [data-go]').forEach(b=>{if(b.dataset.go===v)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});closeMenu();
     if(v==='photos')openPF();if(v==='map'){if(!mapReady){mapReady=true;g('lx-mapframe').srcdoc=MAP_HTML}document.title='Tool map · Menu Hauler'}window.scrollTo(0,0);if(window.mhAfterShow)window.mhAfterShow(v,cur)}
   document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;const v=b.dataset.go;
     if(location.hash.slice(1)===v)return;if(v)location.hash=v;else{history.pushState?history.pushState(null,'',location.pathname+location.search):location.hash='';show()}});
   window.addEventListener('hashchange',show);window.addEventListener('popstate',show);
+  // Photo Tools: a tab that opens a small menu (Photo Finder, Photo Editor). The menu sits outside the scrolling tab row
+  // so it isn't clipped, and is placed under the tab each time it opens.
+  function closeMenu(){const m=g('lx-pmenu'),b=g('lx-ptools');if(m&&!m.hidden){m.hidden=true;b.setAttribute('aria-expanded','false')}}
+  function openMenu(focus){const m=g('lx-pmenu'),b=g('lx-ptools'),r=b.getBoundingClientRect(),z=+getComputedStyle(document.body).zoom||1;
+    m.hidden=false;b.setAttribute('aria-expanded','true');const w=m.offsetWidth;
+    m.style.top=(r.bottom/z+6)+'px';m.style.left=Math.max(8,Math.min(r.left/z,innerWidth/z-w-8))+'px';
+    if(focus){const it=[...m.querySelectorAll('[data-go]')].filter(x=>!x.hidden);(it.find(x=>x.getAttribute('aria-current'))||it[0]).focus()}}
+  g('lx-ptools').addEventListener('click',e=>{e.stopPropagation();if(g('lx-pmenu').hidden)openMenu(e.detail===0);else closeMenu()});
+  g('lx-ptools').addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();openMenu(true)}});
+  g('lx-pmenu').addEventListener('keydown',e=>{const it=[...g('lx-pmenu').querySelectorAll('[data-go]')].filter(x=>!x.hidden),i=it.indexOf(document.activeElement);
+    if(e.key==='Escape'){closeMenu();g('lx-ptools').focus()}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();it[(i+(e.key==='ArrowDown'?1:-1)+it.length)%it.length].focus()}else if(e.key==='Tab')closeMenu()});
+  document.addEventListener('click',e=>{if(!e.target.closest('#lx-pmenu'))closeMenu()});
+  g('lx-pmenu').addEventListener('click',()=>setTimeout(closeMenu));
+  window.addEventListener('resize',closeMenu);document.querySelector('.lx-tabs').addEventListener('scroll',closeMenu,{passive:true});
   g('lx-pfsave').addEventListener('click',async()=>{const m=g('lx-pfmsg');m.textContent='';
     let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){}
     if(!dl){m.textContent='Saving isn’t available in this view. Ask whoever shared this page for the photo-finder.html file.';return}
@@ -410,7 +458,7 @@ page = (
     '<meta name="claude:viewport-fit-sides" content="cover">\n'
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>\n'
     + FONT + "\n"
-    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + ts_css + iw_css + THEME + SHELL_CSS + "</style>\n"
+    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + ts_css + iw_css + pe_css + THEME + SHELL_CSS + "</style>\n"
     + LAUNCHER_HTML
     + "<script>" + SHELL_JS + "</script>\n"
     + "<script>" + (HERE / "menu-knowledge.js").read_text(encoding="utf-8") + "</script>\n"
@@ -419,6 +467,7 @@ page = (
     + "<script>" + st_js + "</script>\n"
     + "<script>" + ts_js + "</script>\n"
     + "<script>" + iw_js + "</script>\n"
+    + "<script>" + pe_js + "</script>\n"
     + "<script>\nconst PF_HTML=" + pf_js + ";\nconst MAP_HTML=" + map_js + ";\n" + LAUNCHER_JS + "</script>\n"
     + "<script>" + (HERE / "venue-link.js").read_text(encoding="utf-8") + "</script>\n"
     + "<script>" + (HERE / "venue-search.js").read_text(encoding="utf-8") + "</script>\n"
