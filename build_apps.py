@@ -569,9 +569,9 @@ itk = itk.replace("<style>", FONT + "\n" + BOOT + "\n<style>" + THEME, 1).replac
 print("wrote", HERE / "public" / "intake.html")
 
 # public/knowledge.html: the knowledge graph of the Obsidian vault (knowledge.html; relay-worker.js serves it at /knowledge
-# to the PLANNER accounts and to people the owner ticks on /admin). Its own look, so only the theme boot is added.
+# to the PLANNER accounts and to people the owner ticks on /admin). Its own CSS (with the Oolio colours restated), so only the font and theme boot are added.
 kgp = (HERE / "knowledge.html").read_text(encoding="utf-8")
-kgp = kgp.replace("<style>", BOOT + "\n<style>", 1)
+kgp = kgp.replace("<style>", FONT + "\n" + BOOT + "\n<style>", 1)
 (HERE / "public" / "knowledge.html").write_bytes(kgp.replace("\r\n", "\n").encode("utf-8"))
 print("wrote", HERE / "public" / "knowledge.html")
 

@@ -96,6 +96,22 @@ body{margin:0;background:var(--bg,#f6f7f9);color:var(--text,#111);font:15px/1.5 
 .pp-top b{font-size:1rem}.pp-top .sp{flex:1}
 .pp-top a{color:var(--bar-text,#fff);text-decoration:none;font-weight:600;font-size:.9rem;padding:5px 10px;border-radius:var(--r,6px)}
 .pp-top a:hover{background:var(--bar-hover,#333)}
+.pp-top b{display:inline-flex;align-items:center;gap:9px}
+.pp-logo{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--bar-text,#fff);color:var(--bar,#222)}
+.pp-logo .ic{width:17px;height:17px}
+.pp-top a{display:inline-flex;align-items:center;gap:6px}.pp-top a:focus-visible{outline:2px solid var(--bar-text,#fff);outline-offset:2px}
+.ic{width:1.05em;height:1.05em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+/* step 1 drop zone and the locked steps 2-5 (same look as the Menu Converter) */
+.dz{position:relative;display:grid;justify-items:center;gap:6px;text-align:center;padding:26px 20px;margin:0;border:2px dashed color-mix(in srgb,var(--accent,#673ab6) 45%,var(--line,#dde));border-radius:12px;background:color-mix(in srgb,var(--accent,#673ab6) 5%,var(--card,#fff));color:var(--text,#111);cursor:pointer;transition:background-color .18s,border-color .18s}
+.dz:hover,.dz:focus-within,.dz.over{border-color:var(--accent,#673ab6);background:color-mix(in srgb,var(--accent,#673ab6) 10%,var(--card,#fff))}
+.dz:focus-within{outline:2px solid var(--accent,#673ab6);outline-offset:2px}
+.dz-in{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);margin:0;padding:0;border:0}
+.dz-ic{width:32px;height:32px;fill:none;stroke:var(--accent,#673ab6);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dz-t{font-size:1rem}.dz-t u{color:var(--accent,#673ab6);text-underline-offset:3px}
+.dz-s{font-size:.85rem;color:var(--muted,#667)}
+.pp-locked{color:var(--muted,#667);border-style:dashed;background:transparent;box-shadow:none}
+.pp-locked ol{list-style:none;display:flex;flex-wrap:wrap;gap:6px 22px;margin:0 0 6px;padding:0;font-weight:600;font-size:.95rem}
+.pp-locked p{margin:0;font-size:.85rem}
 .tag{font-size:.75rem;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--bar-hover,#333);color:var(--bar-text,#fff)}
 main{max-width:1280px;margin:0 auto;padding:22px max(16px,env(safe-area-inset-left,0px)) 64px;display:grid;gap:18px}
 h1{font-size:1.45rem;margin:0}h2{font-size:1.08rem;margin:0 0 10px;display:flex;gap:8px;align-items:center}
@@ -125,7 +141,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted,#667)}
 .kpi.bad b{color:var(--bad,#b42318)}.kpi.ok b{color:var(--ok,#18794e)}
 .checks{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 .checks li{display:grid;grid-template-columns:22px minmax(0,1fr);gap:6px;font-size:.9rem;padding:8px 10px;border-radius:var(--r,6px);border:1px solid var(--line,#dde)}
-.checks li.w{border-color:#e7b008;background:color-mix(in srgb,#e7b008 10%,transparent)}
+.checks li.w{border-color:var(--warn,#b45f00);background:color-mix(in srgb,var(--warn,#b45f00) 10%,transparent)}
 .checks li.e{border-color:var(--bad,#b42318);background:color-mix(in srgb,var(--bad,#b42318) 8%,transparent)}
 .checks li.i{color:var(--muted,#667)}
 .checks li b{color:var(--text,#111)}
@@ -152,7 +168,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted,#667)}
 .cell.empty{border:1px dashed var(--line,#dde);background:transparent}
 .cell.veg{background:var(--veg);color:var(--veg-t)}.cell.nv{background:var(--nv);color:var(--nv-t)}.cell.oth{background:var(--oth);color:var(--oth-t)}
 .cell.lnk,.cell.back{background:var(--lnk);color:var(--lnk-t);font-weight:600}
-.cell.dup{box-shadow:inset 0 0 0 2px #e7b008}
+.cell.dup{box-shadow:inset 0 0 0 2px var(--warn,#b45f00)}
 .cell.sel{outline:3px solid var(--accent,#2554c7);outline-offset:1px}
 body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix(in srgb,var(--accent,#2554c7) 6%,transparent)}
 .tray{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
@@ -227,22 +243,30 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
 <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></symbol>
 <symbol id="i-share-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3" /> <circle cx="6" cy="12" r="3" /> <circle cx="18" cy="19" r="3" /> <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" /> <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" /></symbol>
 </svg>
-<header class="pp-top"><b>Page Planner</b><span class="tag">Private</span><span class="sp"></span><a href="/">Back to Menu Hauler</a></header>
+<header class="pp-top"><b><span class="pp-logo"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-utensils"/></svg></span>Menu Hauler</b><span class="tag">Page Planner</span><span class="sp"></span><a href="/"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-house"/></svg>Back to the tools</a></header>
 <main>
 <div>
-  <h1>POS page planner</h1>
-  <p class="sub">Upload an Oolio One import list and it’s laid out into as few toolbar pages as possible, within your grid size and jump limit. Then fix anything by hand and download the layout and a reordered import.</p>
+  <h1>Page Planner</h1>
+  <p class="sub">Lay out an Oolio One import as POS toolbar pages, then fix anything by hand and download the layout.</p>
 </div>
 
 <section class="card" aria-labelledby="pp-s1">
   <h2 id="pp-s1"><span class="n">1</span>Import list</h2>
-  <div class="row">
-    <label class="f">Oolio One import (.xlsx or .csv, from Menu Converter)<input type="file" id="pp-file" accept=".xlsx,.xls,.csv"></label>
+  <label class="dz" for="pp-file" id="pp-dz"><input type="file" id="pp-file" class="dz-in" accept=".xlsx,.xls,.csv">
+    <svg class="dz-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L7 8m5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+    <span class="dz-t"><b>Drop an Oolio One import here</b> or <u>choose a file</u></span>
+    <span class="dz-s">The .xlsx or .csv the Menu Converter downloads.</span></label>
+  <div class="row" style="margin-top:12px">
     <label class="f" style="flex:1 1 220px">Plan name<input id="pp-name" placeholder="Kesari Clyde"></label>
     <button type="button" class="sec" id="pp-save" disabled>Save plan</button>
   </div>
   <p class="msg" id="pp-msg1" role="status" aria-live="polite"></p>
   <details id="pp-saved"><summary class="small">Saved plans <span id="pp-where" class="muted"></span></summary><ul class="plans" id="pp-plans"></ul></details>
+</section>
+
+<section class="card pp-locked" id="pp-lock" aria-live="polite">
+  <ol><li>2. Your POS</li><li>3. Sanity checks</li><li>4. Pages</li><li>5. Downloads</li></ol>
+  <p>Add an import above, or open a saved plan, and these steps open.</p>
 </section>
 
 <section class="card" aria-labelledby="pp-s2" id="pp-set" hidden>
@@ -276,7 +300,7 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
   <h2 id="pp-s4"><span class="n">4</span>Pages</h2>
   <p class="sub small" style="margin:0 0 10px">Click a button, then click an empty slot to move it there or another button to swap them. You can copy a button onto another page, for example naan on both curry pages. Choose where each page opens from under its name.</p>
   <div class="tb" id="pp-tb"></div>
-  <div class="legend"><span><i style="background:var(--veg)"></i>Veg</span><span><i style="background:var(--nv)"></i>Non-veg</span><span><i style="background:var(--oth)"></i>Drinks and other</span><span><i style="background:var(--lnk)"></i>Sub-page link or Back</span><span><i style="box-shadow:inset 0 0 0 2px #e7b008;background:var(--oth)"></i>Copy (also on another page)</span></div>
+  <div class="legend"><span><i style="background:var(--veg)"></i>Veg</span><span><i style="background:var(--nv)"></i>Non-veg</span><span><i style="background:var(--oth)"></i>Drinks and other</span><span><i style="background:var(--lnk)"></i>Sub-page link or Back</span><span><i style="box-shadow:inset 0 0 0 2px var(--warn,#b45f00);background:var(--oth)"></i>Copy (also on another page)</span></div>
   <div class="bar" id="pp-bar" hidden></div>
   <div id="pp-trayw" hidden><p class="small" style="margin:0 0 6px"><b>Not on any page</b>: click one, then an empty slot.</p><div class="tray" id="pp-tray"></div></div>
   <div class="row" style="margin:0 0 12px"><button type="button" class="sec sm" id="pp-undo" disabled>Undo</button><button type="button" class="sec sm" id="pp-add">Add page</button><button type="button" class="sec sm" id="pp-rebuild">Rebuild from scratch</button></div>
@@ -574,18 +598,23 @@ $('pp-build').onclick=()=>{if(P.pages&&P.pages.some(p=>p.cells.some(Boolean))&&!
   if(P.pages)snap();readSettings();build();sel=null;changed();$('pp-chk').scrollIntoView({behavior:'smooth',block:'start'})};
 
 /* ---------------- loading a file ---------------- */
-$('pp-file').onchange=async()=>{const f=$('pp-file').files[0];if(!f)return;
+// dropping a file on the drop zone works like choosing it
+{const dz=$('pp-dz');['dragenter','dragover'].forEach(t=>dz.addEventListener(t,e=>{e.preventDefault();dz.classList.add('over')}));
+  ['dragleave','drop'].forEach(t=>dz.addEventListener(t,()=>dz.classList.remove('over')));
+  dz.addEventListener('drop',e=>{e.preventDefault();const f=e.dataTransfer&&e.dataTransfer.files[0];if(f)readFile(f)})}
+$('pp-file').onchange=()=>{const f=$('pp-file').files[0];if(f)readFile(f)};
+async function readFile(f){
   try{const src=readBook(await f.arrayBuffer(),f.name);
     const x={source:src};setPlan(x,true);
     if(!$('pp-name').value)$('pp-name').value=f.name.replace(/\.[^.]+$/,'').replace(/\s*-\s*Oolio One.*$/i,'').trim();
     msg1('Read '+P.order.length+' buttons in '+new Set(P.order.map(id=>P.items[id].cat)).size+' categories from '+f.name+'.');
   }catch(e){msg1(e.message||String(e),1)}
-  $('pp-file').value=''};
+  $('pp-file').value=''}
 function setPlan(x,fresh){
   const r=itemsFrom(x.source);
   P={id:fresh?null:x.id,name:x.name||'',settings:x.settings||Object.assign({},DEF),source:x.source,items:r.items,order:r.order,mods:r.mods,pages:fresh?null:x.pages};
   if(P.pages){const ok=new Set(P.order);P.pages.forEach(p=>p.cells=p.cells.map(c=>c&&c.t==='i'&&!ok.has(c.id)?null:c))}
-  undo=[];sel=null;dirty=!!fresh;showSettings();$('pp-set').hidden=false;$('pp-save').disabled=false;
+  undo=[];sel=null;dirty=!!fresh;showSettings();$('pp-set').hidden=false;$('pp-lock').hidden=true;$('pp-save').disabled=false;
   $('pp-cnt').textContent=P.order.length+' buttons, '+r.mods+' modifier rows left out';
   if(fresh){build();changed()}else draw()}
 

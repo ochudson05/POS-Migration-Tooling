@@ -9,35 +9,48 @@
      connect their Obsidian vault folder to sync it both ways. Based on the vault's own Knowledge Viewer (_help-db/viewer.html). -->
 <style>
 :root{
-  --bg:#f6f7f9;--panel:#fff;--panel2:#f1f3f5;--text:#1d2329;--muted:#66707a;--line:#e2e6ea;
-  --accent:#1f6feb;--accent-soft:#e7f0ff;--mark:#fff1a8;--danger:#c92a2a;
+  --bg:#f5f3f9;--panel:#fff;--panel2:#ece7f5;--text:#222222;--muted:#5f586d;--line:#e3dded;
+  --accent:#673ab6;--accent-soft:#efe8f9;--accent-text:#fff;--mark:#fff1a8;--danger:#c62828;
+  --bar:#4a2a96;--bar-text:#fff;--bar-muted:rgb(255 255 255/.78);--bar-hover:rgb(255 255 255/.12);
   --g-reference:#495057;--g-clients:#e03131;--g-people:#e67700;--g-processes:#2f9e44;
   --g-oolio-one-features:#1971c2;--g-products:#9c36b5;--g-organisation:#0c8599;--g-help-centre:#9aa5b1;--g-notebook:#d6336c;--g-menu-hauler:#e8590c;
-  --shadow:0 1px 2px rgba(0,0,0,.05),0 2px 8px rgba(0,0,0,.04);
+  --shadow:0 1px 2px rgb(40 22 80/.06),0 2px 8px rgb(40 22 80/.05);
 }
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#111418;--panel:#181c21;--panel2:#1f242a;--text:#e6e9ec;--muted:#98a2ad;--line:#2b3138;
-  --accent:#5b9dff;--accent-soft:#1b2a40;--mark:#5c4b00;--danger:#ff6b6b;
+  --bg:#141119;--panel:#1e1a26;--panel2:#272033;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;
+  --accent:#b39ddb;--accent-soft:#2a2238;--accent-text:#1a1424;--mark:#5c4b00;--danger:#ef9a9a;
+  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247/.74);--bar-hover:rgb(242 239 247/.1);
   --g-reference:#adb5bd;--g-clients:#ff6b6b;--g-people:#ffa94d;--g-processes:#69db7c;
   --g-oolio-one-features:#4dabf7;--g-products:#da77f2;--g-organisation:#3bc9db;--g-help-centre:#5f6b78;--g-notebook:#f783ac;--g-menu-hauler:#ff922b;
   --shadow:none;}}
 :root[data-theme="dark"]{
-  --bg:#111418;--panel:#181c21;--panel2:#1f242a;--text:#e6e9ec;--muted:#98a2ad;--line:#2b3138;
-  --accent:#5b9dff;--accent-soft:#1b2a40;--mark:#5c4b00;--danger:#ff6b6b;
+  --bg:#141119;--panel:#1e1a26;--panel2:#272033;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;
+  --accent:#b39ddb;--accent-soft:#2a2238;--accent-text:#1a1424;--mark:#5c4b00;--danger:#ef9a9a;
+  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247/.74);--bar-hover:rgb(242 239 247/.1);
   --g-reference:#adb5bd;--g-clients:#ff6b6b;--g-people:#ffa94d;--g-processes:#69db7c;
   --g-oolio-one-features:#4dabf7;--g-products:#da77f2;--g-organisation:#3bc9db;--g-help-centre:#5f6b78;--g-notebook:#f783ac;--g-menu-hauler:#ff922b;
   --shadow:none;}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
-body{background:var(--bg);color:var(--text);font:14px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;display:flex;flex-direction:column}
+body{background:var(--bg);color:var(--text);font:14.5px/1.55 "Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased;display:flex;flex-direction:column}
 a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
 button{font:inherit;color:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:7px;padding:5px 10px;cursor:pointer}
 button:hover{border-color:var(--accent)}button.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
-header{display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--panel);border-bottom:1px solid var(--line);flex-wrap:wrap}
-header h1{font-size:15px;margin:0;white-space:nowrap}
-header h1 a{color:var(--text)}
-#q{flex:1;min-width:180px;max-width:520px;padding:7px 11px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);font:inherit}
-#q:focus{outline:2px solid var(--accent);outline-offset:-1px}
+header{display:flex;align-items:center;gap:10px 14px;padding:9px 16px;background:var(--bar);color:var(--bar-text);flex-wrap:wrap;box-shadow:0 1px 0 rgb(0 0 0/.06),0 6px 18px rgb(30 10 70/.12);position:relative;z-index:6}
+header h1{font-size:15px;margin:0;white-space:nowrap;display:flex;align-items:center;gap:10px}
+header h1 a{color:var(--bar-text)}header h1 a:hover{text-decoration:none}
+.brand{display:inline-flex;align-items:center;gap:9px;font-weight:700}
+.logo{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--bar-text);color:var(--bar)}
+.ktag{font-size:.75rem;font-weight:600;padding:2px 9px;border-radius:99px;background:var(--bar-hover);color:var(--bar-text)}
+.ic{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;display:block}
+header button{background:transparent;border-color:transparent;color:var(--bar-muted);font-weight:600;padding:6px 11px}
+header button:hover{border-color:transparent;background:var(--bar-hover);color:var(--bar-text)}
+header button.on{background:var(--bar-text);border-color:var(--bar-text);color:var(--bar)}
+header button:focus-visible,header a:focus-visible{outline:2px solid var(--bar-text);outline-offset:2px}
+#theme,#menu{padding:6px;border-radius:50%;border:1px solid var(--bar-hover)}
+#q{flex:1;min-width:180px;max-width:520px;padding:8px 12px;border:1px solid transparent;border-radius:8px;background:var(--bar-hover);color:var(--bar-text);font:inherit}
+#q::placeholder{color:var(--bar-muted)}
+#q:focus{outline:2px solid var(--bar-text);outline-offset:1px;background:var(--panel);color:var(--text)}#q:focus::placeholder{color:var(--muted)}
 nav{display:flex;gap:6px;flex-wrap:wrap}
 .wrap{flex:1;display:flex;min-height:0}
 aside#side{width:260px;flex:none;overflow:auto;background:var(--panel);border-right:1px solid var(--line);padding:10px 8px 30px}
@@ -80,8 +93,8 @@ a.wl{background:var(--accent-soft);padding:0 4px;border-radius:4px}
 .wl.broken{color:var(--danger);border-bottom:1px dashed var(--danger);cursor:help}
 .side{position:sticky;top:0;display:flex;flex-direction:column;gap:12px}
 .side .card{padding:12px}
-.side h3{font-size:12.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 8px;display:flex;align-items:center;gap:6px}
-.side h3 .seg{margin-left:auto;display:flex;gap:4px}.side h3 .seg button{padding:1px 7px;font-size:11px;text-transform:none;letter-spacing:0}
+.side h3{font-size:13px;font-weight:600;color:var(--muted);margin:0 0 8px;display:flex;align-items:center;gap:6px}
+.side h3 .seg{margin-left:auto;display:flex;gap:4px}.side h3 .seg button{padding:1px 7px;font-size:11px}
 .links a{display:flex;align-items:center;gap:7px;padding:3px 4px;border-radius:6px;color:var(--text);font-size:13px}
 .links a:hover{background:var(--panel2);text-decoration:none}
 .links .empty{color:var(--muted);font-size:12.5px}
@@ -121,7 +134,7 @@ mark{background:var(--mark);color:inherit;border-radius:2px;padding:0 1px}
 .thumbs button{position:absolute;top:4px;right:4px;padding:0 7px;font-size:12px;line-height:20px}
 .field{display:block;margin-top:12px}.field span{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px}
 .field input,.field textarea{width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:var(--panel2);color:var(--text);font:inherit;resize:vertical}
-button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}button.primary:disabled{opacity:.45;cursor:default}
+button.primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent);font-weight:600}button.primary:disabled{opacity:.45;cursor:default}
 .ibox{margin-bottom:8px}.ibox .top{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.ibox .top .when{font-weight:600}
 .pill.ok{color:var(--g-processes);border-color:var(--g-processes)}
 #menu{display:none}
@@ -135,8 +148,8 @@ button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}bu
 </head>
 <body>
 <header>
-  <button id="menu" aria-label="Show notes list">☰</button>
-  <h1><a class="back" href="/" title="Back to Menu Hauler">← Menu Hauler</a> <a href="#/">Knowledge</a></h1>
+  <button id="menu" aria-label="Show notes list"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+  <h1><a class="brand" href="/" title="Back to Menu Hauler"><span class="logo"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2M7 2v20M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/></svg></span>Menu Hauler</a><a class="ktag" href="#/">Knowledge</a></h1>
   <input id="q" type="search" placeholder="Search notes and help guides  ( / )" autocomplete="off">
   <nav>
     <button data-go="#/">Home</button>
@@ -145,7 +158,7 @@ button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}bu
     <button data-go="#/add" id="nav-add" hidden>Add notes</button>
     <button id="refresh" title="Re-read the notes from your vault folder" hidden>Connect to vault</button>
     <button id="syncb" hidden title="Sync with menuhauler.com now">Sync</button>
-    <button id="theme" title="Light / dark">◐</button>
+    <button id="theme" title="Light / dark" aria-label="Switch light or dark"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></button>
   </nav>
 </header>
 <div class="wrap">
