@@ -176,6 +176,8 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
   <div class="dl">
     <div class="card"><b>Layout workbook</b><p>A grid for every page, a list of every button with its row and column, and the steps to do by hand in Oolio One: sub-page links, Back buttons and copies.</p><button type="button" id="pp-dl1">Download layout (.xlsx)</button></div>
     <div class="card"><b>Import, sorted by page</b><p>Your import file in page order, with Category set to the page each product sits on. Use it if Oolio One builds a page from each category. Note this changes your category names in reports.</p><button type="button" class="sec" id="pp-dl2">Download import (.xlsx)</button></div>
+    <div class="card"><b>Venue portal</b><p>Shows these pages to the venue on its portal link, so the owner can approve them or ask for changes. Needs a live portal link for the venue (Setup Tracker → Intake link).</p>
+      <label class="small" for="pp-pv">Venue</label><select id="pp-pv"><option value="">Loading venues…</option></select><button type="button" class="sec" id="pp-portal">Send to venue portal</button><p class="small muted" id="pp-pmsg" role="status" aria-live="polite"></p></div>
   </div>
 </section>
 </main>
@@ -513,6 +515,16 @@ addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='
 function safeSheet(n,used){let s=String(n).replace(/[\\\/?*\[\]:]/g,' ').slice(0,28).trim()||'Page',k=s,i=2;while(used.has(k.toLowerCase()))k=s.slice(0,25)+' '+(i++);used.add(k.toLowerCase());return k}
 const where=(p,i)=>'row '+(Math.floor(i/S().cols)+1)+', column '+(i%S().cols+1);
 function fname(t){return(($('pp-name').value.trim()||'Menu')+' - '+t).replace(/[\\\/:*?"<>|]/g,'')}
+/* send the pages to a venue's portal (/api/intake/plan): each page with its buttons in order; links shown as "→ page" */
+async function portalVenues(){const sel=$('pp-pv');if(!sel||sel.dataset.ok)return;try{const r=await fetch('/api/db/list?coll=orgs',{credentials:'same-origin'}),j=await r.json();
+    const L=(j.docs||[]).map(d=>({id:d.id,name:(d.data&&d.data.name)||'Untitled'})).sort((a,b)=>a.name.localeCompare(b.name));let act='';try{act=localStorage.getItem('ov-active')||''}catch(e){}
+    sel.innerHTML='<option value="">Pick a venue</option>'+L.map(v=>'<option value="'+esc(v.id)+'"'+(v.id===act?' selected':'')+'>'+esc(v.name)+'</option>').join('');sel.dataset.ok=1}
+  catch(e){sel.innerHTML='<option value="">Couldn’t load venues</option>'}}
+function planPages(){const pg=id=>P.pages.find(x=>x.id===id);return P.pages.map(p=>[p.name,p.cells.filter(Boolean).map(c=>c.t==='i'?(P.items[c.id]||{}).name||'':c.t==='l'?'→ '+((pg(c.to)||{}).name||'page'):'← Back').filter(Boolean)])}
+$('pp-portal').onclick=async()=>{const v=$('pp-pv').value,m=$('pp-pmsg');if(!P||!P.pages||!P.pages.length){m.textContent='Build the pages first.';return}if(!v){m.textContent='Pick the venue.';return}
+  m.textContent='Sending…';try{const r=await fetch('/api/intake/plan',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({venue:v,pages:planPages()})}),j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||('Error '+r.status));m.textContent='Sent. The venue sees '+P.pages.length+' pages on its portal (version '+j.ver+').'}catch(e){m.textContent=e.message}};
+setTimeout(portalVenues,0);
 $('pp-dl1').onclick=()=>{
   const s=S(),it=P.items,wb=XLSX.utils.book_new(),ord=order(),tops=P.pages.filter(p=>!p.parent),seen=new Map();
   const list=[['Page','Opens from','Toolbar slot','Jumps','Row','Column','Button','Type','Category in file','Price / sizes']];

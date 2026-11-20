@@ -70,7 +70,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-20.3';
+const VERSION = '2026-11-20.4';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -130,7 +130,7 @@ const list = v => String(v || '').split(',').map(x => x.trim().toLowerCase()).fi
 
 /* ---------- people and permissions ---------- */
 // role: owner (the built-in OWNER, can't be changed) > admin (uses /admin) > member. status: active | blocked.
-const TOOLS = ['venues', 'converter', 'photos', 'venue', 'setup', 'training', 'word'];
+const TOOLS = ['venues', 'converter', 'photos', 'venue', 'setup', 'training', 'hypercare', 'team', 'word'];
 const ACTIVITY_DAYS = 180;
 // email domains that may sign in without being added one by one: set on /admin, else ALLOWED_DOMAINS, else oolio.com
 async function domainsOf(env) {
@@ -336,6 +336,14 @@ async function admin(path, req, env, user, q) {
       localOn: localOn(env), gemini: env.GEMINI_KEY ? geminiModel(env) : null, cachedThisMonth: cached };
     return api({ me: user, owner: OWNER, users, tools: TOOLS, domains: await domainsOf(env), domainsFrom: set ? 'admin' : (env.ALLOWED_DOMAINS ? 'cloudflare' : 'default'),
       extraEmails: list(env.ALLOWED_EMAILS), activityDays: ACTIVITY_DAYS, firecrawl: { used: fc, cap: +env.FIRECRAWL_MONTHLY_CAP || 500 }, claude: claudeInfo });
+  }
+  // this month's AI spend per tool, and Firecrawl credits used (the Team tab's metrics)
+  if (path === 'spend') {
+    const month = new Date().toISOString().slice(0, 7);
+    const tools = ((await DB.prepare("SELECT tool, COUNT(*) AS calls, COALESCE(SUM(cost), 0) AS cost, SUM(CASE WHEN state = 'cached' THEN 1 ELSE 0 END) AS cached FROM claude_calls WHERE at >= ?1 GROUP BY tool ORDER BY cost DESC").bind(monthStart()).all().catch(() => ({ results: [] }))).results || []);
+    const fc = ((await DB.prepare("SELECT amount FROM usage WHERE month = ?1 AND kind = 'firecrawl'").bind(month).first().catch(() => null)) || {}).amount || 0;
+    return api({ month, tools: tools.map(t => ({ tool: t.tool || '', calls: t.calls, usd: t.cost / 1e6 })), claudeUsd: tools.reduce((a, t) => a + t.cost / 1e6, 0),
+      calls: tools.reduce((a, t) => a + t.calls, 0), cached: tools.reduce((a, t) => a + (t.cached || 0), 0), firecrawl: { used: fc, cap: +env.FIRECRAWL_MONTHLY_CAP || 500 } });
   }
   if (path === 'claude-calls') {
     const items = (await DB.prepare('SELECT at, email, tool, model, in_tokens, out_tokens, cost, state, note FROM claude_calls ORDER BY at DESC LIMIT 100').all()).results || [];
@@ -707,8 +715,18 @@ async function intakeTables(env) {
     env.DB.prepare('CREATE TABLE IF NOT EXISTS intake_chunks (file_id TEXT NOT NULL, n INTEGER NOT NULL, data BLOB, PRIMARY KEY (file_id, n))'),
     env.DB.prepare('CREATE TABLE IF NOT EXISTS intake_seen (email TEXT NOT NULL, token TEXT NOT NULL, seen_at INTEGER, PRIMARY KEY (email, token))'),
   ]);
+  // the venue portal (added 2026-11-20): what the team has published for the venue to see, and the venue's sign-offs
+  for (const col of ['portal TEXT', 'approvals TEXT', 'approved_at INTEGER'])
+    await env.DB.prepare('ALTER TABLE intake ADD COLUMN ' + col).run().catch(() => {});
   ITABLES = true;
 }
+/* ---------- the venue portal: the intake link, extended ----------
+   Staff publish a snapshot of the venue (stage, go-live, progress, the menu to approve, optionally the page plan) to the
+   link; the venue sees it at /intake/<token> and signs off the menu, the page plan and go-live with a name and a note,
+   or asks for changes. A sign-off records which published version it was for (ver), so a later publish shows as
+   "changed since you approved". Up to 40 sign-offs are kept per link, newest last. */
+const PORTAL_MAX = 400000, SIGNOFFS = ['menu', 'plan', 'golive'];
+const jsonOr = (s, d) => { try { return s ? JSON.parse(s) : d; } catch (e) { return d; } };
 const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const TOKEN = /^[A-Za-z0-9_-]{24}$/;
 const filesOf = async (env, token) => ((await env.DB.prepare('SELECT id, name, type, size, kind, at FROM intake_files WHERE token = ?1 ORDER BY at').bind(token).all()).results || []);
@@ -727,25 +745,27 @@ async function intakeStaff(path, req, env, user, q, u) {
     let data = null; try { data = r.data ? JSON.parse(r.data) : null; } catch (e) { }
     const seen = await DB.prepare('SELECT seen_at FROM intake_seen WHERE email = ?1 AND token = ?2').bind(user.email, r.token).first();
     return api({ link: { token: r.token, url: linkOf(u, r.token), createdAt: r.created_at, createdBy: r.created_by, expires: r.expires, live: liveLink(r), revoked: !!r.revoked,
-      submittedAt: r.submitted_at, submits: r.submits, seenAt: seen ? seen.seen_at : null, data, files: await filesOf(env, r.token) } });
+      submittedAt: r.submitted_at, submits: r.submits, seenAt: seen ? seen.seen_at : null, data, files: await filesOf(env, r.token),
+      portal: jsonOr(r.portal, null), approvals: jsonOr(r.approvals, {}), approvedAt: r.approved_at || null } });
   }
   // every venue's sent-in form from the last INBOX_DAYS, newest first, and whether this person has looked at it since
   // it was last sent. The site's bell and the Setup Tracker use it; only people with the Setup Tracker get any.
   if (path === 'inbox') {
     if (user.tools && !user.tools.includes('setup')) return api({ items: [] });
-    const rows = (await DB.prepare('SELECT i.token, i.venue, i.venue_name, i.created_by, i.submitted_at, i.submits, i.revoked, i.expires, s.seen_at, ' +
+    // a sign-off on the portal counts as a sending too (approved_at)
+    const rows = (await DB.prepare('SELECT i.token, i.venue, i.venue_name, i.created_by, MAX(COALESCE(i.submitted_at, 0), COALESCE(i.approved_at, 0)) AS sent_at, i.approved_at, i.submits, i.revoked, i.expires, s.seen_at, ' +
       '(SELECT COUNT(*) FROM intake_files f WHERE f.token = i.token) AS files FROM intake i LEFT JOIN intake_seen s ON s.token = i.token AND s.email = ?1 ' +
-      'WHERE i.submitted_at > ?2 ORDER BY i.submitted_at DESC LIMIT 200').bind(user.email, now - INBOX_DAYS * 864e5).all()).results || [];
+      'WHERE i.submitted_at > ?2 OR i.approved_at > ?2 ORDER BY sent_at DESC LIMIT 200').bind(user.email, now - INBOX_DAYS * 864e5).all()).results || [];
     // one row per venue: its newest link
     const by = new Map(); rows.forEach(r => { if (!by.has(r.venue)) by.set(r.venue, r); });
-    return api({ now, items: [...by.values()].map(r => ({ token: r.token, venue: r.venue, venueName: r.venue_name || '', createdBy: r.created_by, submittedAt: r.submitted_at,
-      submits: r.submits, files: r.files, live: liveLink(r), seenAt: r.seen_at || null, unseen: !r.seen_at || r.seen_at < r.submitted_at })) });
+    return api({ now, items: [...by.values()].map(r => ({ token: r.token, venue: r.venue, venueName: r.venue_name || '', createdBy: r.created_by, submittedAt: r.sent_at, signedOff: r.approved_at === r.sent_at,
+      submits: r.submits, files: r.files, live: liveLink(r), seenAt: r.seen_at || null, unseen: !r.seen_at || r.seen_at < r.sent_at })) });
   }
   // this person has looked at the answers ({token}), or at all of them ({all: true}); view-only people can do this too
   if (path === 'seen') {
     if (req.method !== 'POST') return api({ error: 'Use POST.' }, 405);
     const b = await req.json().catch(() => ({}));
-    const tokens = b.all ? ((await DB.prepare('SELECT token FROM intake WHERE submitted_at > ?1').bind(now - INBOX_DAYS * 864e5).all()).results || []).map(r => r.token)
+    const tokens = b.all ? ((await DB.prepare('SELECT token FROM intake WHERE submitted_at > ?1 OR approved_at > ?1').bind(now - INBOX_DAYS * 864e5).all()).results || []).map(r => r.token)
       : [String(b.token || '')].filter(t => TOKEN.test(t));
     if (tokens.length) await DB.batch(tokens.map(t => DB.prepare('INSERT INTO intake_seen (email, token, seen_at) VALUES (?1, ?2, ?3) ON CONFLICT(email, token) DO UPDATE SET seen_at = ?3').bind(user.email, t, now)));
     return api({ ok: true, seen: tokens.length });
@@ -779,6 +799,41 @@ async function intakeStaff(path, req, env, user, q, u) {
     await DB.prepare('UPDATE intake SET expires = ?2, revoked = 0 WHERE token = ?1').bind(String(b.token || ''), now + INTAKE_DAYS * 864e5).run();
     return api({ ok: true });
   }
+  // the Page Planner sends a venue's POS pages to its newest live link: {venue, pages: [[page name, [button, ...]], ...]}
+  if (path === 'plan') {
+    const venue = String(b.venue || '').slice(0, 200), pages = Array.isArray(b.pages) ? b.pages.slice(0, 80) : [];
+    if (!venue || !pages.length) return api({ error: 'Pick a venue and build the pages first.' }, 400);
+    const r = await DB.prepare('SELECT token, portal, revoked, expires FROM intake WHERE venue = ?1 ORDER BY created_at DESC LIMIT 1').bind(venue).first();
+    if (!r || !liveLink(r)) return api({ error: 'This venue has no live portal link. Make one in the Setup Tracker (Intake link) first.' }, 409);
+    const clean = pages.map(x => [String((x && x[0]) || 'Page').slice(0, 80), (Array.isArray(x && x[1]) ? x[1] : []).slice(0, 120).map(y => String(y).slice(0, 80))]);
+    const old = jsonOr(r.portal, {}) || {}, sig = JSON.stringify({ pages: clean }), was = old.plan || {};
+    const p = Object.assign({}, old, { plan: { title: 'Your POS pages', body: { pages: clean }, ver: was.sig === sig ? (was.ver || 1) : (was.ver || 0) + 1, sig, at: now } });
+    if (!p.at) p.at = now;
+    const json = JSON.stringify(p);
+    if (json.length > PORTAL_MAX) return api({ error: 'That plan is too big to send.' }, 413);
+    await DB.prepare('UPDATE intake SET portal = ?2 WHERE token = ?1').bind(r.token, json).run();
+    return api({ ok: true, ver: p.plan.ver });
+  }
+  // publish what the venue sees on its portal: {token, portal: {stage, stages, golive, training, progress, menu, plan, contact}}
+  if (path === 'publish') {
+    const token = String(b.token || '');
+    if (!TOKEN.test(token)) return api({ error: 'No link.' }, 400);
+    if (!b.portal || typeof b.portal !== 'object' || Array.isArray(b.portal)) return api({ error: 'Nothing to publish.' }, 400);
+    const r = await DB.prepare('SELECT portal FROM intake WHERE token = ?1').bind(token).first();
+    if (!r) return api({ error: 'That link doesn’t exist any more.' }, 404);
+    const old = jsonOr(r.portal, {}) || {}, p = Object.assign({}, b.portal, { at: now, by: user.name || user.email });
+    // the page plan comes from the Page Planner (intake/plan), so publishing from the tracker keeps it
+    if (!p.plan && old.plan) p.plan = old.plan;
+    // each part keeps a version number that goes up when its content changes, so sign-offs can tell they're out of date
+    for (const k of SIGNOFFS) {
+      const sig = JSON.stringify((p[k] && p[k].body) || null), was = old[k] || {};
+      if (p[k]) p[k] = Object.assign({}, p[k], { ver: was.sig === sig ? (was.ver || 1) : (was.ver || 0) + 1, sig });
+    }
+    const json = JSON.stringify(p);
+    if (json.length > PORTAL_MAX) return api({ error: 'That’s too much to publish (' + Math.round(json.length / 1000) + ' KB, limit ' + PORTAL_MAX / 1000 + ' KB). Publish the menu without the page plan.' }, 413);
+    await DB.prepare('UPDATE intake SET portal = ?2 WHERE token = ?1').bind(token, json).run();
+    return api({ ok: true, portal: p });
+  }
   // one link ({token}), or every link and file for a venue ({venue}) when the venue is deleted
   if (path === 'delete') {
     const tokens = b.venue ? ((await DB.prepare('SELECT token FROM intake WHERE venue = ?1').bind(String(b.venue)).all()).results || []).map(r => r.token) : [String(b.token || '')];
@@ -804,7 +859,10 @@ async function intakePublic(rest, req, env) {
   if (req.method === 'POST' && origin && new URL(origin).host !== new URL(req.url).host) return api({ error: 'Not allowed from another site.' }, 403);
   if (!action && req.method === 'GET') {
     let data = null; try { data = r.data ? JSON.parse(r.data) : null; } catch (e) { }
-    return api({ venue: r.venue_name || '', expires: r.expires, submittedAt: r.submitted_at, data, files: await filesOf(env, token), limits: { file: FILE_MAX, total: TOKEN_MAX_BYTES, files: TOKEN_MAX_FILES } });
+    const portal = jsonOr(r.portal, null);
+    if (portal) { delete portal.by; for (const k of SIGNOFFS) if (portal[k]) delete portal[k].sig; }
+    return api({ venue: r.venue_name || '', expires: r.expires, submittedAt: r.submitted_at, data, files: await filesOf(env, token), limits: { file: FILE_MAX, total: TOKEN_MAX_BYTES, files: TOKEN_MAX_FILES },
+      portal, approvals: jsonOr(r.approvals, {}) });
   }
   if (req.method !== 'POST') return api({ error: 'Use POST.' }, 405);
   if (!action) {
@@ -841,6 +899,23 @@ async function intakePublic(rest, req, env) {
     const f = await DB.prepare('SELECT id FROM intake_files WHERE id = ?1 AND token = ?2').bind(String(b.id || ''), token).first();
     if (f) await dropFile(env, f.id);
     return api({ ok: true });
+  }
+  // a sign-off: {what: menu|plan|golive, decision: approve|changes, name, note, ver}
+  if (action === 'approve') {
+    const b = await req.json().catch(() => ({}));
+    const what = SIGNOFFS.includes(b.what) ? b.what : '', decision = b.decision === 'changes' ? 'changes' : b.decision === 'approve' ? 'approve' : '';
+    const name = String(b.name || '').replace(/\s+/g, ' ').trim().slice(0, 100), note = String(b.note || '').slice(0, 2000);
+    if (!what || !decision) return api({ error: 'That sign-off couldn’t be read. Try again.' }, 400);
+    if (!name) return api({ error: 'Type your name to sign off.' }, 400);
+    if (decision === 'changes' && !note.trim()) return api({ error: 'Say what needs changing.' }, 400);
+    const portal = jsonOr(r.portal, null);
+    if (!portal || !portal[what]) return api({ error: 'There’s nothing to sign off here yet.' }, 409);
+    const ap = jsonOr(r.approvals, {}) || {}, hist = Array.isArray(ap.history) ? ap.history : [];
+    if (hist.length >= 200) return api({ error: 'This link has had too many sign-offs. Ask your Oolio contact for a new one.' }, 429);
+    const entry = { what, decision, name, note, at: now, ver: portal[what].ver || 1 };
+    ap[what] = entry; ap.history = hist.concat([entry]).slice(-40);
+    await DB.prepare('UPDATE intake SET approvals = ?2, approved_at = ?3 WHERE token = ?1').bind(token, JSON.stringify(ap), now).run();
+    return api({ ok: true, approvals: ap });
   }
   return api({ error: 'Unknown address.' }, 404);
 }

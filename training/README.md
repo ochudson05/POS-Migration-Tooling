@@ -35,6 +35,17 @@ alone with rules + knowledge learned from 80% of venues, on the other 20%:
 to 57.0%.) Most remaining misses can't be known from a name: winery names, house cocktail
 names, and venues filing iced lattes under "Coffee".
 
+## Regression check (run before pushing a converter change)
+
+```
+python training/regress.py            # scores the built launcher and compares with training/baseline.json
+python training/regress.py --update   # after a deliberate improvement: save the new scores as the baseline
+```
+
+It serves the repo on 127.0.0.1, runs `eval.html` in headless Edge or Chrome, and fails (exit code 1) if category,
+food/drink or printer accuracy drops more than 0.5 points, listing the top misses. `baseline.json` is committed;
+the test set it scores against stays local.
+
 `/training/smoke.html` checks that Word files are read and that Claude's add-ons come back as a
 modifier table (with a stand-in Claude; put sample .docx menus in `training/_test-docs/` as a/b/c.docx).
 

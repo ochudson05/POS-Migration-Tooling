@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Knowledge · Menu Hauler</title>
 <!-- Source of public/knowledge.html (build_apps.py adds the theme boot). Served at /knowledge by relay-worker.js to the
-     PLANNER accounts and people the owner ticks on /admin. Notes come from /api/kg/list (D1 kg_notes); the PLANNER accounts can
+     everyone signed in. Notes come from /api/kg/list (D1 kg_notes); the PLANNER accounts can
      connect their Obsidian vault folder to sync it both ways. Based on the vault's own Knowledge Viewer (_help-db/viewer.html). -->
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <script>/* Menu Hauler: applies this device's appearance settings before the page draws, so it never flashes the wrong theme.
@@ -112,6 +112,9 @@ a.wl{background:var(--accent-soft);padding:0 4px;border-radius:4px}
 .links a:hover{background:var(--panel2);text-decoration:none}
 .links .empty{color:var(--muted);font-size:12.5px}
 svg.lg{width:100%;height:280px;display:block;background:var(--panel2);border-radius:8px}
+.ask{margin-bottom:16px;display:grid;gap:8px}.ask-h{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center}
+.ask-h button{font:inherit;font-weight:600;background:var(--accent);color:#fff;border:0;border-radius:8px;padding:7px 12px;cursor:pointer}.ask-h button:disabled{opacity:.6;cursor:wait}
+.ask-a{line-height:1.55}.ask-a a,.ask a{color:var(--accent)}
 .res{display:block;color:var(--text);padding:11px 14px;border:1px solid var(--line);border-radius:10px;background:var(--panel);margin-bottom:8px}
 .res:hover{border-color:var(--accent);text-decoration:none}
 .res .t{font-weight:600;display:flex;align-items:center;gap:7px}.res .p{color:var(--muted);font-size:12px}.res .x{font-size:13px;margin-top:4px;color:var(--text)}
@@ -389,10 +392,31 @@ function vaultName(){return store.get("okv-vault")||"OOLIO"}
 
 function viewSearch(q){
   const r=search(q);markSide(null);
-  main().innerHTML=`<div class="content"><h2 style="margin-top:0">${r.length} result${r.length===1?"":"s"} for “${esc(q)}”</h2>
+  const ai=!!(ME&&ME.claude);
+  main().innerHTML=`<div class="content"><div class="card ask"><div class="ask-h"><b>Ask the vault</b>
+      ${ai?`<button type="button" id="askb">Ask Claude: “${esc(q.length>60?q.slice(0,60)+"…":q)}”</button>`:`<span class="muted">The ${Math.min(r.length,6)} best matching passages are below. AI answers turn on when Claude is switched on for you on /admin.</span>`}</div>
+      <div id="askout" aria-live="polite"></div></div>
+    <h2 style="margin-top:0">${r.length} result${r.length===1?"":"s"} for “${esc(q)}”</h2>
     ${r.map(({n,snip})=>`<a class="res" href="${href(n)}"><div class="t"><span class="dot" style="background:var(--g-${slug(n.group)})"></span>${esc(n.title)}</div>
       <div class="p">${esc(n.group)}${n.sub?" / "+esc(n.sub):""}</div><div class="x">${snip}</div></a>`).join("")||'<div class="card muted">Nothing matched. Try fewer or different words.</div>'}</div>`;
+  const b=$("#askb");if(b)b.onclick=()=>ask(q,r);
 }
+/* Ask the vault: the best-matching notes' most relevant passages go to Claude (the website's /api/claude, which the owner
+   switches on per person), which answers only from them and cites them as [1], [2]. Answers are cached by the Worker. */
+function passages(n,ts,max){const P=n.plain.split(/\n{2,}|(?<=[.!?])\s+(?=[A-Z])/).map(s=>s.trim()).filter(s=>s.length>30);
+  const sc=P.map((p,i)=>{const l=p.toLowerCase();return[ts.reduce((s,w)=>s+(l.includes(w)?1:0),0),i]}).filter(x=>x[0]).sort((a,b)=>b[0]-a[0]).slice(0,4).sort((a,b)=>a[1]-b[1]);
+  let out=sc.map(x=>P[x[1]]).join("\n");if(!out)out=n.plain.slice(0,600);return out.slice(0,max)}
+async function ask(q,r){const el=$("#askout"),b=$("#askb");if(!el)return;b.disabled=true;el.innerHTML='<p class="muted">Reading the best matching notes…</p>';
+  const ts=terms(q),top=r.slice(0,6);
+  if(!top.length){el.innerHTML='<p class="muted">No notes match, so there’s nothing to answer from.</p>';b.disabled=false;return}
+  const context=top.map(({n},i)=>`[${i+1}] ${n.title} (${n.group}${n.sub?" / "+n.sub:""})\n${passages(n,ts,1600)}`).join("\n\n");
+  const prompt="Answer the question using ONLY the numbered notes from the team's knowledge vault below. Cite the notes you use like [1] or [2]. "+
+    "If the notes don't answer it, say so plainly and say what's missing. Keep it short and practical: steps or a few sentences. Australian English.\n\nQuestion: "+q;
+  try{const j=await apiCall("/api/claude",{prompt,context,tool:"knowledge",task:"light"});
+    const ans=esc(j.text||"").replace(/\[(\d)\]/g,(m,d)=>top[d-1]?`<a href="${href(top[d-1].n)}" title="${esc(top[d-1].n.title)}">[${d}]</a>`:m).replace(/\n/g,"<br>");
+    el.innerHTML=`<div class="ask-a">${ans}</div><p class="muted" style="font-size:.8rem;margin:6px 0 0">From ${top.length} notes: ${top.map(({n},i)=>`<a href="${href(n)}">[${i+1}] ${esc(n.title)}</a>`).join(" · ")}${j.cached?" · saved answer, free":""}</p>`}
+  catch(e){el.innerHTML=`<p class="muted">Claude couldn’t answer (${esc(e.message)}). The search results below still work.</p>`}
+  b.disabled=false}
 
 function viewQuestions(){
   markSide(null);

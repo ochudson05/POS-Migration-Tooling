@@ -89,6 +89,13 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
 #ts-report .m{color:#666}
 .ts-msg{min-height:1.2em;font-size:.88rem;color:var(--muted);margin:0}
 @media print{body *{visibility:hidden!important}#ts-report,#ts-report *{visibility:visible!important}#ts-report{position:absolute;left:0;top:0;border:0;max-width:none;padding:0}}
+.ts-cheatd{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);padding:16px;width:min(820px,calc(100vw - 32px));max-height:calc(100vh - 32px)}
+.ts-cheatd::backdrop{background:rgb(0 0 0/.4)}.tc-bar{margin-bottom:12px;align-items:center}
+.tc-sheet{font-size:.9rem;line-height:1.4}.tc-sheet header{border-bottom:2px solid var(--accent);margin-bottom:10px}.tc-sheet h1{font-size:1.4rem;margin:0}.tc-sheet header p{margin:2px 0 8px;color:var(--muted)}
+.tc-sheet h2{font-size:1rem;margin:12px 0 6px}.tc-sheet ul{margin:0;padding-left:1.1em}.tc-sheet li{margin:2px 0}
+.tc-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}.tc-cats div{border:1px solid var(--line);border-radius:8px;padding:6px 8px;display:grid;gap:2px;break-inside:avoid}
+.tc-cats small{color:var(--muted)}.tc-cats span{font-size:.82rem}.tc-sheet footer{margin-top:14px;padding-top:8px;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+@media print{html.ts-pc body *{visibility:hidden!important}html.ts-pc #ts-cheat .tc-sheet,html.ts-pc #ts-cheat .tc-sheet *{visibility:visible!important}html.ts-pc #ts-cheat{position:absolute;inset:0;border:0;max-height:none;width:auto;padding:0;background:#fff;color:#000}html.ts-pc #ts-report{display:none}html.ts-pc .tc-bar{display:none}}
 </style>
 </head>
 <body>
@@ -292,7 +299,7 @@ function reportText(M){const o=[M.title.toUpperCase(),M.meta.map(([k,v])=>k+': '
   return o.join('\n')}
 function reportView(ven,d){const M=model(ven,d),dis=RO()?' disabled':'';
   return'<div class="ts-card" style="display:grid;gap:12px"><div class="ts-row ts-small">Include:'+[['notes','Notes'],['missing','Not covered and skipped'],['donea','Completed action items']].map(([k,t])=>'<label style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-opt="'+k+'"'+(OPTS[k]?' checked':'')+'>'+t+'</label>').join('')+'</div>'+
-    '<div class="ts-row"><button type="button" data-rep="copy">Copy report</button><button type="button" class="ts-sec" data-rep="word">Download Word</button><button type="button" class="ts-sec" data-rep="print">Print / PDF</button>'+
+    '<div class="ts-row"><button type="button" data-rep="copy">Copy report</button><button type="button" class="ts-sec" data-rep="word">Download Word</button><button type="button" class="ts-sec" data-rep="print">Print / PDF</button><button type="button" class="ts-sec" data-rep="cheat">Staff cheat sheet</button>'+
     (ven.local?'':'<button type="button" class="ts-sec" data-rep="finish"'+dis+'>'+(d.finished?'Finished ✓ (update tracker again)':'Finish session and update tracker')+'</button>')+'</div><p class="ts-msg" id="ts-msg" role="status" aria-live="polite"></p>'+
     '<div id="ts-report">'+reportHtml(M)+'</div></div>'}
 
@@ -337,7 +344,7 @@ function wire(){const app=$('ts-app');if(!app||app.dataset.w)return;app.dataset.
     if(b.dataset.jump){const s=$('ts-s-'+b.dataset.jump);if(s)s.scrollIntoView({behavior:'smooth'});return}
     if(b.dataset.goto){TAB='run';ls.set('ts-tab',TAB);OPEN.add(b.dataset.goto);render();const el=app.querySelector('[data-sid="'+b.dataset.goto+'"]');if(el)el.scrollIntoView({block:'center'});return}
     if(b.dataset.adel){save({actions:acts(D()).filter(a=>a.id!==b.dataset.adel)});return}
-    if(b.dataset.rep==='copy')copyReport();else if(b.dataset.rep==='word')wordReport();else if(b.dataset.rep==='print')window.print();else if(b.dataset.rep==='finish')finish()});
+    if(b.dataset.rep==='copy')copyReport();else if(b.dataset.rep==='word')wordReport();else if(b.dataset.rep==='print')window.print();else if(b.dataset.rep==='cheat')cheatSheet();else if(b.dataset.rep==='finish')finish()});
   app.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.sid){if(d.open)OPEN.add(d.dataset.sid);else OPEN.delete(d.dataset.sid)}},true);
   app.addEventListener('submit',e=>{const f=e.target.closest('form[data-addform]');if(!f)return;e.preventDefault();addAction(f)});
   app.addEventListener('input',e=>{const t=e.target;
@@ -360,7 +367,32 @@ function wire(){const app=$('ts-app');if(!app||app.dataset.w)return;app.dataset.
 function start(){wire();render();const v=OV();if(v&&v.on)v.on(()=>render());
   addEventListener('hashchange',()=>{if(location.hash==='#training')render()})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
-window.OolioTraining={steps:()=>RUN,progress(o){const fl=(o&&o.flags)||{},d=(o&&o.trs)||{},L=RUN.flatMap(s=>s.steps.filter(x=>!x.when||fl[x.when]));return Object.assign(prog(null,d,L),{open:acts(d).filter(a=>!a.done).length,finished:d.finished||0,ready:d.ready||''})}};
+/* ---------- staff cheat sheet: one printable page made from the venue's own menu, devices and printers ---------- */
+// each how-to with its help.oolio.com guides (slugs from the Setup Tracker's baked-in guide list; missing ones are left out)
+const CHEAT_HOW=[['Sign in and clock on',['get-started-with-oolio-one-pos','clock-on-off']],['Start an order or open a table',['place-a-dine-in-order','place-a-takeaway-order']],
+  ['Add modifiers and notes',['place-a-dine-in-order']],['Find an open order and reprint a docket',['view-open-orders','troubleshoot-printing-issues-in-pos']],
+  ['Split a bill and take payment',['process-a-split-bill','process-a-payment-on-mpos']],['Refund or void',['process-a-refund','void-products-or-orders']],
+  ['End of day',['close-a-shift','understand-the-shift-summary']]];
+function cheatSheet(){const v=venue();if(!v){alert('Pick a venue at the top first.');return}const o=v.o,m=o.menu||{},OVx=OV();
+  const byCat=new Map();(m.names||[]).forEach(([n,c])=>{(byCat.get(c||'Other')||byCat.set(c||'Other',[]).get(c||'Other')).push(n)});
+  const cats=(m.cats||[]).map(([c,n,pr])=>({c,n,pr,items:(byCat.get(c)||[]).slice(0,10)}));
+  const dev=(o.devices||[]).filter(d=>d.name&&!/support/i.test(d.name)),prn=(o.printers||[]).filter(p=>p.name);
+  const G=new Set((OVx&&OVx.guides?OVx.guides():[]).map(g=>g.slug)),how=CHEAT_HOW.map(([t,sl])=>[t,sl.filter(x=>G.has(x)).map(x=>'help.oolio.com/'+x).join(' · ')]);
+  const e=s=>esc(s==null?'':String(s));
+  const html='<div class="tc-sheet"><header><h1>'+e(v.name)+': staff quick guide</h1><p>Oolio POS'+(o.golive?' · live from '+e(new Date(o.golive+'T00:00').toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'})):'')+'</p></header>'+
+    (cats.length?'<section><h2>Where things are on the POS</h2><div class="tc-cats">'+cats.map(c=>'<div><b>'+e(c.c)+'</b>'+(c.pr?'<small>prints at '+e(c.pr)+'</small>':'')+'<span>'+c.items.map(e).join(' · ')+(c.n>c.items.length?' · +'+(c.n-c.items.length)+' more':'')+'</span></div>').join('')+'</div></section>':'')+
+    (prn.length?'<section><h2>Printers</h2><ul>'+prn.map(p=>'<li><b>'+e(p.name)+'</b>'+(p.loc?' · '+e(String(p.loc).split('·')[0]):'')+(p.use?' · '+e(p.use)+' only':'')+(p.fb?' · if it jams, dockets go to '+e(p.fb):'')+'</li>').join('')+'</ul></section>':'')+
+    (dev.length?'<section><h2>Devices</h2><ul>'+dev.map(d=>'<li><b>'+e(d.name)+'</b>'+(d.loc?' · '+e(d.loc):'')+'</li>').join('')+'</ul></section>':'')+
+    '<section><h2>How do I…</h2><ul>'+how.map(([t,u])=>'<li><b>'+e(t)+'</b>'+(u?' · '+e(u):'')+'</li>').join('')+'</ul></section>'+
+    '<footer>Stuck? Ask your manager, or search help.oolio.com. POS offline? Check the heartbeat icon at the top of the screen and the network cable.</footer></div>';
+  let d=document.getElementById('ts-cheat');if(!d){d=document.createElement('dialog');d.id='ts-cheat';d.className='ts-cheatd';document.body.append(d)}
+  d.innerHTML='<div class="ts-row tc-bar"><button type="button" data-c="print">Print / PDF</button><button type="button" class="ts-sec" data-c="copy">Copy text</button><button type="button" class="ts-sec" data-c="close">Close</button>'+
+    (m.names?'':'<span class="ts-sub" style="margin:0">Convert the venue’s menu first to fill in the POS section.</span>')+'</div>'+html;
+  d.onclick=async ev=>{const b=ev.target.closest('[data-c]');if(!b)return;const k=b.dataset.c;
+    if(k==='close')d.close();else if(k==='copy'){const t=d.querySelector('.tc-sheet').innerText;try{await navigator.clipboard.writeText(t);b.textContent='Copied'}catch(x){prompt('Copy:',t)}}
+    else{document.documentElement.classList.add('ts-pc');const off=()=>{document.documentElement.classList.remove('ts-pc');removeEventListener('afterprint',off)};addEventListener('afterprint',off);window.print();setTimeout(off,1500)}};
+  d.showModal()}
+window.OolioTraining={cheatSheet,steps:()=>RUN,progress(o){const fl=(o&&o.flags)||{},d=(o&&o.trs)||{},L=RUN.flatMap(s=>s.steps.filter(x=>!x.when||fl[x.when]));return Object.assign(prog(null,d,L),{open:acts(d).filter(a=>!a.done).length,finished:d.finished||0,ready:d.ready||''})}};
 })();
 </script>
 </body>

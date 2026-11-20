@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Page Planner · Menu Hauler</title>
 <!-- build_apps.py adds the Inter font and oolio-theme.css here and writes public/planner.html
-     (relay-worker.js serves it at /planner to the PLANNER accounts only; everyone else gets a 403) -->
+     (relay-worker.js serves it at /planner to everyone signed in) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
 <script>/* Menu Hauler: applies this device's appearance settings before the page draws, so it never flashes the wrong theme.
@@ -240,10 +240,24 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
 <symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /> <path d="M15 5.764v15" /> <path d="M9 3.236v15" /></symbol>
 <symbol id="i-bug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88" /> <path d="M14.12 3.88 16 2" /> <path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1" /> <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6" /> <path d="M12 20v-9" /> <path d="M6.53 9C4.6 8.8 3 7.1 3 5" /> <path d="M6 13H2" /> <path d="M3 21c0-2.1 1.7-3.9 3.8-4" /> <path d="M20.97 5c0 2.1-1.6 3.8-3.5 4" /> <path d="M22 13h-4" /> <path d="M17.2 17c2.1.1 3.8 1.9 3.8 4" /></symbol>
 <symbol id="i-presentation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20" /> <path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3" /> <path d="m7 21 5-5 5 5" /></symbol>
-<symbol id="i-layout-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1" /> <rect width="7" height="7" x="14" y="3" rx="1" /> <rect width="7" height="7" x="14" y="14" rx="1" /> <rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
 <symbol id="i-crop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14" /> <path d="M18 22V8a2 2 0 0 0-2-2H2" /></symbol>
 <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></symbol>
 <symbol id="i-share-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3" /> <circle cx="6" cy="12" r="3" /> <circle cx="18" cy="19" r="3" /> <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" /> <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" /></symbol>
+<symbol id="i-life-buoy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="m4.93 4.93 4.24 4.24" /> <path d="m14.83 9.17 4.24-4.24" /> <path d="m14.83 14.83 4.24 4.24" /> <path d="m9.17 14.83-4.24 4.24" /> <circle cx="12" cy="12" r="4" /></symbol>
+<symbol id="i-route" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3" /> <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /> <circle cx="18" cy="5" r="3" /></symbol>
+<symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /> <path d="M12 7v5l4 2" /></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4" /> <path d="M16 2v4" /> <rect width="18" height="18" x="3" y="4" rx="2" /> <path d="M3 10h18" /></symbol>
+<symbol id="i-chart-column" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16" /> <path d="M18 17V9" /> <path d="M13 17V5" /> <path d="M8 17v-3" /></symbol>
+<symbol id="i-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /> <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /> <rect x="6" y="14" width="12" height="8" rx="1" /></symbol>
+<symbol id="i-triangle-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></symbol>
+<symbol id="i-command" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" /></symbol>
+<symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" /> <path d="m21.854 2.147-10.94 10.939" /></symbol>
+<symbol id="i-file-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /> <path d="M14 2v4a2 2 0 0 0 2 2h4" /> <path d="m9 15 2 2 4-4" /></symbol>
+<symbol id="i-undo-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5" /> <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></symbol>
+<symbol id="i-message-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></symbol>
+<symbol id="i-book-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14" /> <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></symbol>
+<symbol id="i-flask-conical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /> <path d="M8.5 2h7" /> <path d="M7 16h10" /></symbol>
+<symbol id="i-monitor-smartphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8" /> <path d="M10 19v-3.96 3.15" /> <path d="M7 19h5" /> <rect width="6" height="10" x="16" y="12" rx="2" /></symbol>
 </svg>
 <header class="pp-top"><b><span class="pp-logo"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-utensils"/></svg></span>Menu Hauler</b><span class="tag">Page Planner</span><span class="sp"></span><a href="/"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-house"/></svg>Back to the tools</a></header>
 <main>
@@ -314,6 +328,8 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
   <div class="dl">
     <div class="card"><b>Layout workbook</b><p>A grid for every page, a list of every button with its row and column, and the steps to do by hand in Oolio One: sub-page links, Back buttons and copies.</p><button type="button" id="pp-dl1">Download layout (.xlsx)</button></div>
     <div class="card"><b>Import, sorted by page</b><p>Your import file in page order, with Category set to the page each product sits on. Use it if Oolio One builds a page from each category. Note this changes your category names in reports.</p><button type="button" class="sec" id="pp-dl2">Download import (.xlsx)</button></div>
+    <div class="card"><b>Venue portal</b><p>Shows these pages to the venue on its portal link, so the owner can approve them or ask for changes. Needs a live portal link for the venue (Setup Tracker → Intake link).</p>
+      <label class="small" for="pp-pv">Venue</label><select id="pp-pv"><option value="">Loading venues…</option></select><button type="button" class="sec" id="pp-portal">Send to venue portal</button><p class="small muted" id="pp-pmsg" role="status" aria-live="polite"></p></div>
   </div>
 </section>
 </main>
@@ -620,7 +636,7 @@ function setPlan(x,fresh){
   $('pp-cnt').textContent=P.order.length+' buttons, '+r.mods+' modifier rows left out';
   if(fresh){build();changed()}else draw()}
 
-/* ---------------- saving: the website (only the two planner accounts), else this browser ---------------- */
+/* ---------------- saving: the website (everyone signed in), else this browser ---------------- */
 const DRAFT='pp-draft',LOCAL='pp-local';
 function packed(){return {id:P.id,name:$('pp-name').value.trim()||P.source.file.replace(/\.[^.]+$/,''),settings:P.settings,source:P.source,pages:P.pages}}
 function keepDraft(){try{localStorage.setItem(DRAFT,JSON.stringify(packed()))}catch(e){}}
@@ -651,6 +667,16 @@ addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='
 function safeSheet(n,used){let s=String(n).replace(/[\\\/?*\[\]:]/g,' ').slice(0,28).trim()||'Page',k=s,i=2;while(used.has(k.toLowerCase()))k=s.slice(0,25)+' '+(i++);used.add(k.toLowerCase());return k}
 const where=(p,i)=>'row '+(Math.floor(i/S().cols)+1)+', column '+(i%S().cols+1);
 function fname(t){return(($('pp-name').value.trim()||'Menu')+' - '+t).replace(/[\\\/:*?"<>|]/g,'')}
+/* send the pages to a venue's portal (/api/intake/plan): each page with its buttons in order; links shown as "→ page" */
+async function portalVenues(){const sel=$('pp-pv');if(!sel||sel.dataset.ok)return;try{const r=await fetch('/api/db/list?coll=orgs',{credentials:'same-origin'}),j=await r.json();
+    const L=(j.docs||[]).map(d=>({id:d.id,name:(d.data&&d.data.name)||'Untitled'})).sort((a,b)=>a.name.localeCompare(b.name));let act='';try{act=localStorage.getItem('ov-active')||''}catch(e){}
+    sel.innerHTML='<option value="">Pick a venue</option>'+L.map(v=>'<option value="'+esc(v.id)+'"'+(v.id===act?' selected':'')+'>'+esc(v.name)+'</option>').join('');sel.dataset.ok=1}
+  catch(e){sel.innerHTML='<option value="">Couldn’t load venues</option>'}}
+function planPages(){const pg=id=>P.pages.find(x=>x.id===id);return P.pages.map(p=>[p.name,p.cells.filter(Boolean).map(c=>c.t==='i'?(P.items[c.id]||{}).name||'':c.t==='l'?'→ '+((pg(c.to)||{}).name||'page'):'← Back').filter(Boolean)])}
+$('pp-portal').onclick=async()=>{const v=$('pp-pv').value,m=$('pp-pmsg');if(!P||!P.pages||!P.pages.length){m.textContent='Build the pages first.';return}if(!v){m.textContent='Pick the venue.';return}
+  m.textContent='Sending…';try{const r=await fetch('/api/intake/plan',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({venue:v,pages:planPages()})}),j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||('Error '+r.status));m.textContent='Sent. The venue sees '+P.pages.length+' pages on its portal (version '+j.ver+').'}catch(e){m.textContent=e.message}};
+setTimeout(portalVenues,0);
 $('pp-dl1').onclick=()=>{
   const s=S(),it=P.items,wb=XLSX.utils.book_new(),ord=order(),tops=P.pages.filter(p=>!p.parent),seen=new Map();
   const list=[['Page','Opens from','Toolbar slot','Jumps','Row','Column','Button','Type','Category in file','Price / sizes']];

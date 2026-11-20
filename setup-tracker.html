@@ -114,6 +114,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
 .st-inbox{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0 0;padding:12px 14px;border-radius:10px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--card))}
 .st-inbox .st-grow{min-width:200px}
 .st-ikpage{display:grid;gap:14px}
+.st-portal{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:8px}.st-portal li{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}.st-portal li>div{flex-basis:100%}
 .st-ikgrid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
 .st-ikgrid .st-card h2,.st-ikpage>.st-card h2{font-size:1rem;margin:0 0 10px;display:flex;align-items:center;gap:8px}
 .st-ikdl{display:grid;grid-template-columns:minmax(90px,auto) 1fr;gap:6px 14px;margin:0;font-size:.92rem}
@@ -376,7 +377,8 @@ async function start(){
   if(ME)names([ME]);}
 // one write at a time per organisation; edits made meanwhile are merged into the next write
 const Q={};
-function save(id,patch){const o=ORGS[id];if(!o||READONLY)return;
+function save(id,patch,why){const o=ORGS[id];if(!o||READONLY)return;
+  try{if(!(why&&why.nolog))logChange(id,o,patch,why)}catch(e){console.error(e)}
   patch=Object.assign({},patch,{updatedAt:Date.now(),updatedBy:ME||''});ORGS[id]=deepMerge(o,patch);
   const q=Q[id]||(Q[id]={p:null,busy:false});q.p=deepMerge(q.p||{},patch);if(!q.busy)flush(id);notify();soonRender()}
 async function flush(id){const q=Q[id];q.busy=true;setSaving(true);
@@ -397,8 +399,55 @@ async function deleteOrg(id){if(READONLY)throw new Error('You can only view this
   if(window.OOLIO_HOSTED)fetch('/api/intake/delete',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({venue:id})}).catch(()=>{});
   if(MODE==='db'){const mc=DB.collection(MCOL(id));
     for(let round=0;round<20;round++){const s=await mc.get();if(!s.docs.length)break;await Promise.all(s.docs.map(d=>mc.doc(d.id).delete()))}
+    const lc=DB.collection(LCOL(id));
+    for(let round=0;round<20;round++){const s=await lc.get();if(!s.docs.length)break;await Promise.all(s.docs.map(d=>lc.doc(d.id).delete()))}
     await DB.collection(COL).doc(id).delete()}
-  else{local.del(id);const m=mlocal.all();if(m[id]){delete m[id];ls.set(mlocal.key,JSON.stringify(m))}}}
+  else{local.del(id);llocal.del(id);const m=mlocal.all();if(m[id]){delete m[id];ls.set(mlocal.key,JSON.stringify(m))}}}
+/* ---------- venue timeline: who changed what, in which tool, with undo ----------
+   Every save to a venue writes an entry to orgs/<id>/log: when, who, a one-line description, the tool it came from, and
+   the values the change replaced (prev), so it can be undone. The same person editing the same thing within 3 minutes
+   is folded into one entry (typing in a field is one change, not fifty). Without the shared database the log is kept
+   in this browser (localStorage st-log, newest 300 per venue). Changes bigger than 60 KB are logged without undo. */
+const LCOL=id=>COL+'/'+id+'/log';
+const llocal={key:'st-log',all(){try{return JSON.parse(ls.get(this.key)||'{}')}catch(e){return{}}},
+  put(id,lid,d){const a=this.all(),m=(a[id]=a[id]||{});m[lid]=d;Object.keys(m).sort((x,y)=>m[y].at-m[x].at).slice(300).forEach(k=>delete m[k]);try{ls.set(this.key,JSON.stringify(a))}catch(e){}},
+  del(id){const a=this.all();if(a[id]){delete a[id];ls.set(this.key,JSON.stringify(a))}}};
+const NOLOG=new Set(['updatedAt','updatedBy','lookupQ','menuWatch','menuLog','group','createdAt','createdBy']);
+const TOOLOF={'':'Home',venues:'Venues',converter:'Menu Converter',photos:'Photo Finder',venue:'Restaurant Lookup',setup:'Setup Tracker',training:'Training Session',word:'Image to Word',hypercare:'Hypercare',team:'Team',workload:'Team',metrics:'Team'};
+const jclone=v=>v==null?null:JSON.parse(JSON.stringify(v));
+const plainObj=v=>v&&typeof v==='object'&&!Array.isArray(v);
+function prevOf(o,p){const r={};for(const[k,v]of Object.entries(p)){if(NOLOG.has(k))continue;const ov=o?o[k]:undefined;r[k]=plainObj(v)&&plainObj(ov)?prevOf(ov,v):ov===undefined?null:jclone(ov)}return r}
+function describe(p){const out=[],keys=[];
+  if(plainObj(p.steps))Object.entries(p.steps).forEach(([sid,v])=>{const t=(STEP[sid]||{}).t||sid;v=v||{};keys.push('s:'+sid+':'+('s' in v?'s':Object.keys(v).filter(k=>k!=='by'&&k!=='at').sort().join('+')));
+    out.push('s' in v?(v.s==='done'?'Ticked “'+t+'”':v.s==='na'?'Marked “'+t+'” not needed':'Unticked “'+t+'”'):v.v?'Filled in “'+t+'”':'note' in v?'Wrote a note on “'+t+'”':'who' in v?'Set who does “'+t+'”':'due' in v?'Set the due date of “'+t+'”':'Changed “'+t+'”')});
+  const nm=k=>(STAGES.find(s=>s[0]===k)||[k,k])[1];
+  const K={stage:()=>'Moved to '+nm(p.stage),golive:()=>p.golive?'Set go-live to '+p.golive:'Cleared the go-live date',training:()=>p.training?'Set training to '+p.training:'Cleared the training date',
+    owner:()=>'Owner: '+(p.owner||'nobody'),ownerId:()=>'',name:()=>'Renamed to “'+p.name+'”',flags:()=>'Changed what the venue has (KDS, kiosk, delivery…)',devices:()=>'Changed devices',printers:()=>'Changed printers',
+    staff:()=>'Changed the staff list',brand:()=>'Changed brand details',menu:()=>'Saved a converted menu'+(p.menu&&p.menu.products?' ('+p.menu.products+' products)':''),photos:()=>'Saved product photos',
+    lookup:()=>'Looked up the venue',contact:()=>'Changed the contact',links:()=>'Changed links',vtype:()=>'Set the venue type',trs:()=>'Updated the training session',
+    hc:()=>'Updated hypercare',menuAlert:()=>'Menu scan alert',portal:()=>'Updated the venue portal'};
+  Object.keys(p).forEach(k=>{if(k==='steps'||NOLOG.has(k))return;keys.push(k);const t=K[k]?K[k]():'Changed '+k;if(t)out.push(t)});
+  return{text:out.join('; ')||'Changed the venue',key:keys.sort().join(',')}}
+const LAST={};
+function logChange(id,o,patch,why){const d=describe(patch);if(!d.key)return;const now=Date.now(),text=why&&why.text||d.text,tool=TOOLOF[location.hash.slice(1)]||location.hash.slice(1)||'Home';
+  let prev=prevOf(o,patch);if(JSON.stringify(prev).length>60000)prev=null;
+  const L=LAST[id];
+  if(L&&L.key===d.key&&L.by===(ME||'')&&now-L.at<180000&&!(why&&why.undo)){L.at=now;L.text=text;writeLog(id,L.lid,{at:now,by:L.by,text,tool:L.tool,key:L.key,prev:L.prev});return}
+  const lid='l'+now.toString(36)+Math.random().toString(36).slice(2,5),e={at:now,by:ME||'',text,tool,key:d.key,prev};
+  if(why&&why.undo)e.undoOf=why.undo;
+  LAST[id]=Object.assign({lid},e);writeLog(id,lid,e)}
+function writeLog(id,lid,e){if(MODE==='db')DB.collection(LCOL(id)).doc(lid).set(e).catch(()=>{});else llocal.put(id,lid,e);
+  window.dispatchEvent(new CustomEvent('oolio:log',{detail:{id}}))}
+async function venueLog(id,n){n=n||60;
+  if(MODE==='db'){try{const s=await DB.collection(LCOL(id)).orderBy('at','desc').limit(n).get();return s.docs.map(d=>Object.assign({id:d.id},d.data()))}catch(e){return[]}}
+  return Object.entries(llocal.all()[id]||{}).map(([k,v])=>Object.assign({id:k},v)).sort((a,b)=>b.at-a.at).slice(0,n)}
+// put back the values an entry replaced; the undo is itself logged, and the entry is marked as undone
+function undoLog(id,e){if(READONLY||!ORGS[id]||!e||!e.prev||e.undone)return false;delete LAST[id];
+  save(id,jclone(e.prev),{text:'Undid: '+e.text,undo:e.id});
+  const mark={undone:Date.now(),undoneBy:ME||''};
+  if(MODE==='db')DB.collection(LCOL(id)).doc(e.id).update(mark).catch(()=>{});else{const a=llocal.all();if(a[id]&&a[id][e.id]){Object.assign(a[id][e.id],mark);ls.set(llocal.key,JSON.stringify(a))}}
+  return true}
+
 let savingT=null;function setSaving(b){const el=g('st-saving');if(!el)return;clearTimeout(savingT);if(b)el.textContent='Saving…';else savingT=setTimeout(()=>{el.textContent=MODE==='db'?'Saved for the team':'Saved on this browser'},300)}
 function flash(t,err){const el=g('st-flash');if(el){el.className='st-msg'+(err?' err':'');el.textContent=t}}
 
@@ -457,7 +506,15 @@ window.OolioVenues={
   active(){return this.get(this.activeId)},
   setActive(id){ACTIVE=id&&ORGS[id]?id:'';ls.set('ov-active',ACTIVE);if(VIEW.org&&ACTIVE&&VIEW.org!==ACTIVE){VIEW.org=ACTIVE;VIEW.open=new Set();render()}notify()},
   open(id){if(id&&ORGS[id]){VIEW.org=id;VIEW.tab='list';VIEW.open=new Set(outstanding(ORGS[id]).slice(0,1).map(x=>x.id))}else VIEW.org=null;render()},
-  save(id,patch){save(id,patch)},
+  save(id,patch,why){save(id,patch,why)},
+  log(id,n){return venueLog(id,n)},
+  undo(id,e){return undoLog(id,e)},
+  // the checklist as other tools need it: every step that applies to the venue, with its section, state, owner and due date
+  steps(id){const o=ORGS[id];return o?stepsFor(o).map(x=>{const v=st(o,x.id);return{id:x.id,t:x.t,sec:x.sec.t,phase:x.sec.phase,s:v.s||'',who:v.who||'',due:v.due||'',at:v.at||0,late:overdue(o,x)}}):[]},
+  stages(){return STAGES.slice()},
+  guides(){return typeof GUIDES==='object'?Object.entries(GUIDES).map(([slug,a])=>({slug,title:a[0],cat:a[1],desc:a[2],heads:a[3]||[]})):[]},
+  name(uid){return uid?(uid===ME?'you':(NAMES[uid]||'')):''},
+  names(ids){return names(ids||[])},
   tick(id,step){const o=ORGS[id];if(o&&st(o,step).s!=='done')save(id,{steps:{[step]:{s:'done',by:ME,at:Date.now()}}})},
   async create(o){const id=await createOrg(o);this.setActive(id);ensureGroups();return id},
   groups(){return Object.entries(GROUPS).map(([id,o])=>Object.assign({id},o,{venues:venuesOf(id).map(([v])=>v)})).sort((a,b)=>(a.name||'').localeCompare(b.name||''))},
@@ -1214,6 +1271,26 @@ window.intakePanel=(o,id)=>{if(!window.OOLIO_HOSTED)return'';const S=INTAKE[id];
     '<div class="st-small st-muted">Works until '+esc(new Date(L.expires).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}))+'. Anyone with the link can see and change the answers, so only send it to the venue.</div>';
   if(!READONLY)h+='<div class="st-tools">'+(L.live?'<button type="button" class="st-link" data-ik="refresh">Check for answers</button><button type="button" class="st-link" data-ik="off">Turn the link off</button>':'<button type="button" class="st-link" data-ik="extend">Turn it back on for '+30+' days</button>')+'<button type="button" class="st-link" data-ik="new">Make a new link</button></div>';
   return h+'</div>'};
+/* the venue portal: what the venue sees on its link (stage, go-live, progress, the menu to approve, the page plan) and its
+   sign-offs. Published by hand (Publish to portal) so the venue never sees half-finished work. */
+const SIGN={menu:'Menu and prices',plan:'POS page plan',golive:'Go-live'};
+async function portalSnapshot(id){const o=ORGS[id];if(!o)throw new Error('No venue.');const pr=progress(o);
+  const P={venue:o.name||'',stage:o.stage||'pre',stages:STAGES.map(x=>x[1]),stageName:(STAGES.find(x=>x[0]===(o.stage||'pre'))||STAGES[0])[1],goliveDate:o.golive||'',training:o.training||'',
+    progress:{done:pr.done,total:pr.total},contact:myName(),steps:stepsFor(o).filter(x=>x.sec.phase==='pre').map(x=>[x.t,st(o,x.id).s||''])};
+  // the menu: the newest saved version (every line: product, category, size, price)
+  const V=await menuVersions(id);const last=V[0];
+  if(last&&(last.items||[]).length)P.menu={title:'Your menu',body:{items:last.items.slice(0,1500),file:last.file||'',at:last.at}};
+  // the page plan is sent from the Page Planner (/planner → Send to venue portal) and kept when this is published again
+  if(o.golive)P.golive={title:'Ready to go live',body:{date:o.golive,statement:'We have checked our menu and prices, our devices and printers are set up, and our staff have been trained. We are ready to go live on Oolio on '+fmtDate(o.golive)+'.'}};
+  return P}
+function portalHtml(o,id,L){const P=L.portal,A=L.approvals||{};
+  const row=k=>{const part=P&&P[k],a=A[k];if(!part)return'<li><b>'+SIGN[k]+'</b> <span class="st-small st-muted">not published'+(k==='golive'&&!o.golive?' (set a go-live date first)':'')+'</span></li>';
+    const stale=a&&a.ver!==part.ver;
+    return'<li><b>'+SIGN[k]+'</b> '+(!a?'<span class="st-chip a">Waiting for the venue</span>':a.decision==='approve'?'<span class="st-chip '+(stale?'w':'ok')+'">'+(stale?'Approved an older version':'Approved')+'</span>':'<span class="st-chip w">Changes asked for</span>')+
+      (a?'<span class="st-small st-muted"> '+esc(a.name)+', '+esc(when(a.at))+'</span>'+(a.note?'<div class="st-small" style="white-space:pre-wrap;margin:2px 0 0">“'+esc(a.note)+'”</div>':''):'')+'</li>'};
+  return'<section class="st-card"><h2>Venue portal</h2><p class="st-small st-muted" style="margin:0 0 8px">The venue sees its setup stage, go-live date and progress on the same link, and signs off the menu, page plan and go-live. '+
+    (P?'Last published '+esc(when(P.at))+(P.by?' by '+esc(P.by):'')+'.':'Nothing published yet.')+'</p><ul class="st-portal">'+['menu','plan','golive'].map(row).join('')+'</ul>'+
+    (READONLY?'':'<div class="st-tools"><button type="button" class="st-sm" data-ik="publish">'+(P?'Publish again':'Publish to portal')+'</button>'+'<span class="st-small st-muted">The page plan is sent from the Page Planner.</span></div>')+'</section>'}
 // the answers, in the order the form asks for them ([label, value, section])
 function ikRows(d){return[['Trading name',d.trading,'biz'],['Legal name',d.legal,'biz'],['ABN',d.abn,'biz'],['Address',d.address,'biz'],['Phone',d.phone,'biz'],['Email',d.email,'biz'],['Website',d.website,'biz'],
   ['Name',d.cname,'contact'],['Role',d.crole,'contact'],['Mobile',d.cmobile,'contact'],['Email',d.cemail,'contact'],
@@ -1250,6 +1327,7 @@ function intakeHtml(o,id){const S=INTAKE[id],L=S&&S.link;
       '<button type="button" class="st-sec st-sm" data-ik="refresh">Check for newer answers</button>'+(d.cemail?'<a class="st-sec st-sm st-filebtn" href="mailto:'+esc(d.cemail)+'">Email '+esc(d.cname?d.cname.split(' ')[0]:'the contact')+'</a>':'')+'</div>'}
   else h+='<div class="st-ikwait">The venue hasn’t sent the form yet. '+(L.live?'You’ll get a notification when they do.':'The link is '+(L.revoked?'turned off':'expired')+'.')+'</div>';
   h+='<div class="st-small st-muted">Link made '+esc(when(L.createdAt))+(L.createdBy?' by '+esc(who(L.createdBy)):'')+' · '+(L.live?'works until '+esc(new Date(L.expires).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})):(L.revoked?'turned off':'expired'))+'</div><div id="st-flash" class="st-msg" style="margin:0"></div></div>';
+  h+=portalHtml(o,id,L);
   if(!L.submittedAt&&!L.files.length)return h+'</div>';
   const R=ikRows(d),sec=(k,t)=>'<section class="st-card"><h2>'+t+'</h2><dl class="st-ikdl">'+R.filter(x=>x[2]===k).map(([l,x])=>{x=clean(x);
       let v=esc(x);if(x&&/email/i.test(l))v='<a href="mailto:'+esc(x)+'">'+esc(x)+'</a>';else if(x&&/phone|mobile/i.test(l))v='<a href="tel:'+esc(x.replace(/[^\d+]/g,''))+'">'+esc(x)+'</a>';else if(x&&l==='Website')v='<a href="'+esc(/^https?:/i.test(x)?x:'https://'+x)+'" target="_blank" rel="noopener">'+esc(x)+'</a>';
@@ -1291,6 +1369,10 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-ik],
     if(b.dataset.ik==='apply')return applyIntake(id);
     if(b.dataset.ik==='refresh'){await intakeLoad(id,true);render();const N=INTAKE[id]&&INTAKE[id].link;flash(N&&N.submittedAt?'Answers last sent '+when(N.submittedAt)+'.':'No answers yet.');if(window.mhInboxRefresh)window.mhInboxRefresh();return}
     if(b.dataset.ik==='off'){if(!confirm('Turn the link off? The venue won’t be able to open the form. Their answers and files stay here.'))return;await intakeCall('revoke',{token:L.token});await intakeLoad(id,true);return}
+    if(b.dataset.ik==='publish'){if(!L||!L.live){flash('Turn the link back on first.',true);return}b.disabled=true;
+      try{const P=await portalSnapshot(id);await intakeCall('publish',{token:L.token,portal:P});await intakeLoad(id,true);
+        save(id,{portal:{at:Date.now()}},{text:'Published the venue portal'+(P.menu?' (menu of '+P.menu.body.items.length+' items)':'')});flash('Published. The venue sees it next time they open their link.')}
+      finally{b.disabled=false}return}
     if(b.dataset.ik==='extend'){await intakeCall('extend',{token:L.token});await intakeLoad(id,true);flash('The link works again for 30 days.');return}
     if(b.dataset.ik==='new'){if(!confirm('Make a new link? The old one stops working, and the venue starts a fresh form.'))return;INTAKE[id]={t:Date.now(),link:null};await window.intakeDialog(id);return}
     const f=await intakeFile(b.dataset.id);

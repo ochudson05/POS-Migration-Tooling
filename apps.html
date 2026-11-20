@@ -68,6 +68,7 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 /* pre-flight result and menu changes in step 7 */
 .pf{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 12px;background:var(--bg)}
 .pf-h{display:flex;align-items:center;gap:10px;font-weight:600}
+.pf-h>span:nth-child(2){flex:1;min-width:0}.pf-copy{font:inherit;font-size:.82rem;font-weight:600;padding:5px 10px;margin:0;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer;flex:none}
 .pf-h .pf-dot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;flex:none;font-size:.9rem}
 .pf.ok .pf-dot{background:var(--ok)}.pf.warn .pf-dot{background:var(--warn)}.pf.bad .pf-dot{background:var(--bad,#c62828)}
 .pf.bad{border-color:var(--bad,#c62828)}
@@ -414,6 +415,7 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .st-inbox{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:12px 0 0;padding:12px 14px;border-radius:10px;border:1px solid var(--accent);background:color-mix(in srgb,var(--accent) 9%,var(--card))}
 .st-inbox .st-grow{min-width:200px}
 .st-ikpage{display:grid;gap:14px}
+.st-portal{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:8px}.st-portal li{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline}.st-portal li>div{flex-basis:100%}
 .st-ikgrid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(min(300px,100%),1fr))}
 .st-ikgrid .st-card h2,.st-ikpage>.st-card h2{font-size:1rem;margin:0 0 10px;display:flex;align-items:center;gap:8px}
 .st-ikdl{display:grid;grid-template-columns:minmax(90px,auto) 1fr;gap:6px 14px;margin:0;font-size:.92rem}
@@ -575,6 +577,13 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 #ts-report .m{color:#666}
 .ts-msg{min-height:1.2em;font-size:.88rem;color:var(--muted);margin:0}
 @media print{body *{visibility:hidden!important}#ts-report,#ts-report *{visibility:visible!important}#ts-report{position:absolute;left:0;top:0;border:0;max-width:none;padding:0}}
+.ts-cheatd{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--text);padding:16px;width:min(820px,calc(100vw - 32px));max-height:calc(100vh - 32px)}
+.ts-cheatd::backdrop{background:rgb(0 0 0/.4)}.tc-bar{margin-bottom:12px;align-items:center}
+.tc-sheet{font-size:.9rem;line-height:1.4}.tc-sheet header{border-bottom:2px solid var(--accent);margin-bottom:10px}.tc-sheet h1{font-size:1.4rem;margin:0}.tc-sheet header p{margin:2px 0 8px;color:var(--muted)}
+.tc-sheet h2{font-size:1rem;margin:12px 0 6px}.tc-sheet ul{margin:0;padding-left:1.1em}.tc-sheet li{margin:2px 0}
+.tc-cats{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px}.tc-cats div{border:1px solid var(--line);border-radius:8px;padding:6px 8px;display:grid;gap:2px;break-inside:avoid}
+.tc-cats small{color:var(--muted)}.tc-cats span{font-size:.82rem}.tc-sheet footer{margin-top:14px;padding-top:8px;border-top:1px solid var(--line);color:var(--muted);font-size:.82rem}
+@media print{html.ts-pc body *{visibility:hidden!important}html.ts-pc #ts-cheat .tc-sheet,html.ts-pc #ts-cheat .tc-sheet *{visibility:visible!important}html.ts-pc #ts-cheat{position:absolute;inset:0;border:0;max-height:none;width:auto;padding:0;background:#fff;color:#000}html.ts-pc #ts-report{display:none}html.ts-pc .tc-bar{display:none}}
 
 
 .iw *,.iw *::before,.iw *::after{box-sizing:border-box}
@@ -934,6 +943,142 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 @keyframes mh-notice-in{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
 @media (max-width:560px){.mh-notices{top:auto;bottom:max(16px,env(safe-area-inset-bottom,0px));right:16px}}
 .mh-still .mh-notice,.mh-still .mh-pop,.mh-still #mh-bell .ic{animation:none}
+/* Menu Hauler: styles for the venue record and routing map (venue-record.js, vr-), Hypercare (hypercare.js, hc-),
+   the Team tab (team-views.js, tm-) and search everything (global-search.js, gs-). build_apps.py adds it after shell.css. */
+:root{--t-hypercare:#ad1457;--t-team:#455a64}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--t-hypercare:#f48fb1;--t-team:#b0bec5}}
+:root[data-theme="dark"]{--t-hypercare:#f48fb1;--t-team:#b0bec5}
+.t-hypercare{--tint:var(--t-hypercare)}.t-team{--tint:var(--t-team)}
+
+/* venue record (home hub) */
+.vr-rec{max-width:960px;margin:0 auto;padding:0 max(16px,env(safe-area-inset-left,0px)) 8px;display:grid;gap:12px}
+.lx-home>.vr-rec{padding:0}
+.vr-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.vr-card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--tint,var(--accent));border-radius:12px;padding:12px 14px;display:grid;gap:6px;align-content:start;min-width:0}
+.vr-card h3{font-size:.95rem;margin:0;display:flex;gap:6px;align-items:center}.vr-card h3 .ic{color:var(--tint,var(--accent));width:16px;height:16px}
+.vr-card p{margin:0;font-size:.88rem}
+.vr-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.vr-acts button{font:inherit;font-size:.82rem;font-weight:600;padding:5px 10px;margin:0;border-radius:8px;cursor:pointer;background:var(--accent);color:var(--accent-text);border:0}
+.vr-tag{display:inline-flex;align-items:center;gap:4px;font-size:.76rem;padding:2px 8px;border-radius:99px;border:1px solid var(--line);background:var(--bg)}
+.vr-tag.ok{border-color:var(--ok);color:var(--ok)}.vr-tag.warn{border-color:var(--warn);color:var(--warn)}.vr-tag.bad{border-color:var(--bad);color:var(--bad)}
+.vr-tl{display:grid;gap:6px}.vr-tlh{display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}.vr-tlh .lx-toolsh{margin:0}
+.vr-tlist{list-style:none;margin:0;padding:0;background:var(--card);border:1px solid var(--line);border-radius:12px;max-height:360px;overflow:auto}
+.vr-ev{display:grid;grid-template-columns:84px minmax(0,1fr) auto;gap:10px;align-items:start;padding:8px 12px;border-bottom:1px solid var(--line);font-size:.88rem}
+.vr-ev:last-child{border-bottom:0}.vr-ev.undone .vr-what{text-decoration:line-through;color:var(--muted)}
+.vr-when{color:var(--muted);font-size:.8rem;font-variant-numeric:tabular-nums;padding-top:1px}
+.vr-what{display:grid;gap:1px;min-width:0;overflow-wrap:anywhere}.vr-what small{color:var(--muted);font-size:.78rem}
+.vr-undo{display:inline-flex!important;gap:4px;align-items:center;font-size:.8rem!important}.vr-undo .ic{width:13px;height:13px}
+.vr-tlist>li.lx-muted{padding:10px 12px;font-size:.88rem}
+@media (max-width:560px){.vr-ev{grid-template-columns:minmax(0,1fr) auto}.vr-when{grid-column:1/-1}}
+
+/* routing map */
+.vr-main,.hc-main-wrap,.tm-main{max-width:1100px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:14px}
+.vr-main h1,.tm-main h1{font-size:1.5rem;margin:0}
+.vr-probs{display:grid;gap:6px}.vr-prob{background:var(--card);border:1px solid var(--line);border-left:3px solid var(--warn);border-radius:8px;padding:8px 12px}
+.vr-prob summary{cursor:pointer}.vr-prob p{margin:6px 0 0;font-size:.88rem}
+.vr-okline{display:flex;gap:6px;align-items:center;color:var(--ok);font-weight:600;margin:0}
+.vr-lanehead,.vr-lane{display:grid;grid-template-columns:minmax(0,2fr) 24px minmax(0,1.3fr) 24px minmax(0,1.2fr);gap:8px;align-items:center}
+.vr-lanehead{font-size:.8rem;color:var(--muted);font-weight:600;padding:0 12px}
+.vr-lanes{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.vr-lane{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}.vr-lane.bad{border-color:var(--bad)}
+.vr-cats{display:flex;flex-wrap:wrap;gap:4px}.vr-chip{font-size:.8rem;border:1px solid var(--line);border-radius:6px;padding:2px 7px;background:var(--bg)}.vr-chip small{color:var(--muted)}
+.vr-arrow{color:var(--muted);display:grid;place-items:center}
+.vr-dest{display:grid;gap:2px;min-width:0;font-size:.88rem}.vr-dest b{display:flex;gap:5px;align-items:center}.vr-dest small{color:var(--muted);font-size:.78rem}.vr-dest .ic{width:15px;height:15px}
+.vr-bad{color:var(--bad)!important}
+@media (max-width:720px){.vr-lanehead{display:none}.vr-lane{grid-template-columns:1fr}.vr-arrow{transform:rotate(90deg);justify-self:start}}
+.lx-dlg.vr-wide{width:min(720px,calc(100vw - 32px))}
+.vr-mail textarea{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%;box-sizing:border-box;resize:vertical}
+.vr-mail h2{display:flex;gap:8px;align-items:center}
+.vr-tabs{display:flex;flex-wrap:wrap;gap:6px}.vr-tabs button{font:inherit;font-size:.85rem;padding:5px 10px;border-radius:8px;cursor:pointer;margin:0}
+.vr-tabs button[aria-selected="true"]{background:var(--accent)!important;color:var(--accent-text)!important;border-color:var(--accent)!important}
+
+/* hypercare */
+#hc-root{max-width:1100px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:14px}
+#hc-root h1{font-size:1.5rem;margin:0}
+.hc-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:16px;align-items:start}
+.hc-side{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:8px}.hc-side h2{font-size:.95rem;margin:0}
+.hc-vlist{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.hc-vlist button{display:grid;gap:1px;width:100%;text-align:left;font:inherit;background:none;border:1px solid transparent;border-radius:8px;padding:7px 9px;margin:0;cursor:pointer;color:var(--text)}
+.hc-vlist button:hover{background:var(--bg)}.hc-vlist button[aria-current]{background:var(--bg);border-color:var(--line);box-shadow:inset 3px 0 0 var(--t-hypercare)}
+.hc-vlist span{font-size:.8rem;color:var(--muted)}.hc-vlist em{font-style:normal;color:var(--bad);font-weight:600}
+.hc-main{display:grid;gap:12px;min-width:0}
+.hc-vhead{display:flex;flex-wrap:wrap;gap:8px 16px;justify-content:space-between;align-items:end}.hc-vhead h2{margin:0;font-size:1.2rem}.hc-vhead p{margin:2px 0 0}
+.hc-days{display:flex;gap:3px}.hc-days i{width:12px;height:12px;border-radius:3px;background:var(--line)}.hc-days i.on{background:var(--t-hypercare)}
+.hc-add{display:grid;grid-template-columns:minmax(0,1fr) auto auto auto;gap:8px;align-items:end;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
+.hc-add label,.hc-cf label{display:grid;gap:3px;font-size:.8rem;color:var(--muted)}
+.hc-add input,.hc-add select,.hc-cf input,.hc-cf select,.hc-foot input{font:inherit;font-size:.9rem;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;margin:0;width:100%;box-sizing:border-box}
+.hc-add button,.hc-cf button:not(.lx-link){font:inherit;font-size:.88rem;font-weight:600;padding:8px 12px;margin:0;border-radius:8px;cursor:pointer;background:var(--accent);color:var(--accent-text);border:0;display:inline-flex;gap:5px;align-items:center;white-space:nowrap}
+@media (max-width:820px){.hc-layout{grid-template-columns:1fr}.hc-add{grid-template-columns:1fr 1fr}.hc-add .hc-t{grid-column:1/-1}}
+.hc-list{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.hc-is{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--muted);border-radius:10px;padding:10px 12px;display:grid;gap:6px}
+.hc-is.sev-blocker{border-left-color:var(--bad)}.hc-is.sev-high{border-left-color:var(--warn)}.hc-is.sev-low{border-left-color:var(--line)}
+.hc-is.closed{opacity:.75;border-left-color:var(--ok)}
+.hc-ih{display:flex;flex-wrap:wrap;gap:4px 10px;align-items:baseline}.hc-ih b{font-size:.95rem}
+.hc-sev{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+.hc-is.sev-blocker .hc-sev{color:var(--bad)}.hc-is.sev-high .hc-sev{color:var(--warn)}
+.hc-is p{margin:0}.hc-is>.lx-link{justify-self:start}.hc-fix{display:flex;gap:6px;align-items:flex-start}.hc-fix .ic{color:var(--ok);flex:none;margin-top:2px}
+.hc-close summary{cursor:pointer;font-size:.85rem;color:var(--accent);font-weight:600}
+.hc-cf{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto auto;gap:8px;align-items:end;margin-top:8px}
+@media (max-width:640px){.hc-cf{grid-template-columns:1fr}}
+.hc-foot{gap:10px!important;align-items:center}.hc-foot label{display:flex;gap:6px;align-items:center}.hc-foot input{width:auto}
+.hc-ins{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px}
+.hc-ins h2{font-size:1.05rem;margin:0;display:flex;flex-wrap:wrap;gap:6px;align-items:center}.hc-ins h3{font-size:.9rem;margin:0 0 6px}
+.hc-insg{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.hc-bars{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.hc-bars li{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(60px,1fr) 3.5em;gap:8px;align-items:center;font-size:.85rem}
+.hc-bars li>span{min-width:0;overflow-wrap:anywhere}
+.hc-bars i{display:block;height:10px;border-radius:5px;background:linear-gradient(90deg,var(--tint,var(--accent)) var(--w),var(--line) var(--w))}
+.hc-bars b{text-align:right;font-variant-numeric:tabular-nums}
+.hc-bars small{grid-column:1/-1;color:var(--muted);font-size:.78rem;margin-top:-3px}
+.hc-ins{--tint:var(--t-hypercare)}
+
+/* team */
+#tm-root{max-width:1200px;margin:0 auto;padding-block:24px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:14px;--tint:var(--t-team)}
+#tm-root h1{font-size:1.5rem;margin:0}
+.tm-switch{display:flex;gap:6px}.tm-switch button{font:inherit;font-size:.9rem;font-weight:600;padding:7px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--muted);cursor:pointer;margin:0;display:inline-flex;gap:6px;align-items:center}
+.tm-switch button[aria-selected="true"]{color:var(--text);border-color:var(--t-team);box-shadow:inset 0 -2px 0 var(--t-team)}
+.tm-clash{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid var(--bad);border-left:4px solid var(--bad);border-radius:10px;padding:10px 12px}
+.tm-clash .ic{color:var(--bad);flex:none;margin-top:2px}.tm-clash ul{margin:4px 0 0;padding-left:1.1em;font-size:.88rem}
+.tm-cal{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}
+.tm-cal table{border-collapse:collapse;width:100%;min-width:760px;font-size:.82rem}
+.tm-cal th,.tm-cal td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:6px;vertical-align:top;text-align:left}
+.tm-cal thead th{background:var(--bg);font-weight:600;color:var(--muted)}.tm-cal tbody th{display:grid;gap:1px;min-width:120px}.tm-cal tbody th small{color:var(--muted);font-weight:400}
+.tm-ev{display:flex;gap:4px;align-items:center;width:100%;text-align:left;font:inherit;font-size:.78rem;border:0;border-radius:6px;padding:3px 6px;margin:0 0 3px;cursor:pointer;color:var(--text);background:var(--bg)}
+.tm-ev.golive{background:color-mix(in srgb,var(--ok) 18%,var(--card))}.tm-ev.training{background:color-mix(in srgb,var(--t-training) 16%,var(--card))}.tm-ev .ic{width:12px;height:12px;flex:none}
+.tm-cols{display:grid;gap:12px;grid-template-columns:repeat(auto-fill,minmax(270px,1fr))}
+.tm-col{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px;display:grid;gap:8px;align-content:start}
+.tm-col h2{font-size:1rem;margin:0;display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.tm-col ul{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.tm-v{display:grid;gap:3px;width:100%;text-align:left;font:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;margin:0;cursor:pointer;color:var(--text)}
+.tm-v:hover{border-color:var(--accent)}.tm-v span{font-size:.8rem;color:var(--muted)}
+.tm-mini{display:block;height:5px;border-radius:3px;background:var(--line);overflow:hidden}.tm-mini i{display:block;height:100%;background:var(--ok)}
+.tm-tags{display:flex;flex-wrap:wrap;gap:4px}.tm-tags em{font-style:normal;font-size:.72rem;padding:1px 7px;border-radius:99px;border:1px solid var(--line)}
+.tm-tags em.bad{color:var(--bad);border-color:var(--bad)}.tm-tags em.warn{color:var(--warn);border-color:var(--warn)}.tm-tags em.on{color:var(--accent);border-color:var(--accent)}
+.tm-tiles{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.tm-tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:grid;gap:2px}
+.tm-tile b{font-size:1.6rem;font-variant-numeric:tabular-nums}.tm-tile span{font-size:.88rem}.tm-tile small{color:var(--muted);font-size:.78rem}
+.tm-tiles-s .tm-tile{background:var(--bg)}.tm-tiles-s .tm-tile b{font-size:1.25rem}
+.tm-grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.tm-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px;align-content:start}
+.tm-card h2{font-size:1rem;margin:0}
+
+/* search everything */
+.gs-open .ic{width:18px;height:18px}
+.gs-dlg{border:0;padding:0;background:transparent;width:min(640px,calc(100vw - 24px));max-height:calc(100vh - 80px);margin-top:8vh}
+.gs-dlg::backdrop{background:rgb(0 0 0/.35)}
+.gs-box{background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 50px rgb(0 0 0/.25);display:grid;grid-template-rows:auto minmax(0,1fr) auto;max-height:calc(100vh - 100px);overflow:hidden}
+.gs-q{display:flex;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line);color:var(--muted)}
+.gs-q input{flex:1;min-width:0;font:inherit;font-size:1.05rem;color:var(--text);background:none;border:0;outline:0;padding:4px 0;margin:0}
+.gs-q kbd{font:inherit;font-size:.72rem;border:1px solid var(--line);border-radius:4px;padding:1px 5px}
+.gs-list{list-style:none;margin:0;padding:6px;overflow:auto}
+.gs-list li[role=option]{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:8px;cursor:pointer}
+.gs-list li[aria-selected="true"],.gs-list li[role=option]:hover{background:var(--bg);box-shadow:inset 3px 0 0 var(--accent)}
+.gs-list li .ic{color:var(--muted)}.gs-list span{display:grid;min-width:0}.gs-list b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gs-list small{color:var(--muted);font-size:.8rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gs-list em{font-style:normal;font-size:.74rem;color:var(--muted);display:inline-flex;gap:3px;align-items:center;white-space:nowrap}.gs-list em .ic{width:12px;height:12px}
+.gs-list mark{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;border-radius:2px}
+.gs-none{padding:14px;color:var(--muted)}
+.gs-foot{display:flex;justify-content:space-between;margin:0;padding:8px 14px;border-top:1px solid var(--line);font-size:.78rem;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -990,10 +1135,24 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 <symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" /> <path d="M15 5.764v15" /> <path d="M9 3.236v15" /></symbol>
 <symbol id="i-bug" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m8 2 1.88 1.88" /> <path d="M14.12 3.88 16 2" /> <path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1" /> <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6" /> <path d="M12 20v-9" /> <path d="M6.53 9C4.6 8.8 3 7.1 3 5" /> <path d="M6 13H2" /> <path d="M3 21c0-2.1 1.7-3.9 3.8-4" /> <path d="M20.97 5c0 2.1-1.6 3.8-3.5 4" /> <path d="M22 13h-4" /> <path d="M17.2 17c2.1.1 3.8 1.9 3.8 4" /></symbol>
 <symbol id="i-presentation" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h20" /> <path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3" /> <path d="m7 21 5-5 5 5" /></symbol>
-<symbol id="i-layout-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="7" x="3" y="3" rx="1" /> <rect width="7" height="7" x="14" y="3" rx="1" /> <rect width="7" height="7" x="14" y="14" rx="1" /> <rect width="7" height="7" x="3" y="14" rx="1" /></symbol>
 <symbol id="i-crop" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2v14a2 2 0 0 0 2 2h14" /> <path d="M18 22V8a2 2 0 0 0-2-2H2" /></symbol>
 <symbol id="i-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6" /></symbol>
 <symbol id="i-share-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3" /> <circle cx="6" cy="12" r="3" /> <circle cx="18" cy="19" r="3" /> <line x1="8.59" x2="15.42" y1="13.51" y2="17.49" /> <line x1="15.41" x2="8.59" y1="6.51" y2="10.49" /></symbol>
+<symbol id="i-life-buoy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10" /> <path d="m4.93 4.93 4.24 4.24" /> <path d="m14.83 9.17 4.24-4.24" /> <path d="m14.83 14.83 4.24 4.24" /> <path d="m9.17 14.83-4.24 4.24" /> <circle cx="12" cy="12" r="4" /></symbol>
+<symbol id="i-route" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3" /> <path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15" /> <circle cx="18" cy="5" r="3" /></symbol>
+<symbol id="i-history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /> <path d="M3 3v5h5" /> <path d="M12 7v5l4 2" /></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4" /> <path d="M16 2v4" /> <rect width="18" height="18" x="3" y="4" rx="2" /> <path d="M3 10h18" /></symbol>
+<symbol id="i-chart-column" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16" /> <path d="M18 17V9" /> <path d="M13 17V5" /> <path d="M8 17v-3" /></symbol>
+<symbol id="i-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /> <path d="M6 9V3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v6" /> <rect x="6" y="14" width="12" height="8" rx="1" /></symbol>
+<symbol id="i-triangle-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3" /> <path d="M12 9v4" /> <path d="M12 17h.01" /></symbol>
+<symbol id="i-command" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3" /></symbol>
+<symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z" /> <path d="m21.854 2.147-10.94 10.939" /></symbol>
+<symbol id="i-file-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" /> <path d="M14 2v4a2 2 0 0 0 2 2h4" /> <path d="m9 15 2 2 4-4" /></symbol>
+<symbol id="i-undo-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5" /> <path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11" /></symbol>
+<symbol id="i-message-square" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></symbol>
+<symbol id="i-book-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14" /> <path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></symbol>
+<symbol id="i-flask-conical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /> <path d="M8.5 2h7" /> <path d="M7 16h10" /></symbol>
+<symbol id="i-monitor-smartphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8" /> <path d="M10 19v-3.96 3.15" /> <path d="M7 19h5" /> <rect width="6" height="10" x="16" y="12" rx="2" /></symbol>
 </svg>
 <header class="lx-bar">
   <button type="button" class="lx-brand" data-go=""><span class="lx-logo"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-utensils"/></svg></span>Menu Hauler</button>
@@ -1004,6 +1163,8 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
     <button type="button" class="lx-tab" data-go="venue"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-store"/></svg><span>Restaurant Lookup</span></button>
     <button type="button" class="lx-tab" data-go="setup"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-list-checks"/></svg><span>Setup Tracker</span></button>
     <button type="button" class="lx-tab" data-go="training"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-presentation"/></svg><span>Training Session</span></button>
+    <button type="button" class="lx-tab" data-go="hypercare"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-life-buoy"/></svg><span>Hypercare</span></button>
+    <button type="button" class="lx-tab" data-go="team"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-users"/></svg><span>Team</span></button>
     <button type="button" class="lx-tab" data-go="word"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-scan-text"/></svg><span>Image to Word</span></button>
   </nav>
   <label class="lx-venue"><span>Venue</span><select id="lx-venue" aria-label="Venue you are working on"><option value="">Loading venues…</option></select></label>
@@ -1067,6 +1228,20 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
       <dl class="lx-flow"><dt>Takes</dt><dd>The venue you’re training</dd><dt>Gives</dt><dd>A session report with action items by owner, notes and anything not covered, to copy, print or save as Word</dd></dl>
       <button type="button" class="lx-open" data-go="training">Open Training Session<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-arrow-right"/></svg></button>
     </article>
+    <article class="lx-card t-hypercare">
+      <div class="lx-cico"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-life-buoy"/></svg></div>
+      <h2>Hypercare</h2>
+      <p>The first 14 days after go-live: log each issue the venue raises, close it with what fixed it and why, and see which setup steps keep causing problems.</p>
+      <dl class="lx-flow"><dt>Takes</dt><dd>Issues as the venue reports them</dd><dt>Gives</dt><dd>An issue list per venue, root causes across all venues, and a handover to support</dd></dl>
+      <button type="button" class="lx-open" data-go="hypercare">Open Hypercare<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-arrow-right"/></svg></button>
+    </article>
+    <article class="lx-card t-team">
+      <div class="lx-cico"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-users"/></svg></div>
+      <h2>Team</h2>
+      <p>Who has which venues, their go-live and training dates over the next six weeks with clashes flagged, and metrics on how setups are going.</p>
+      <dl class="lx-flow"><dt>Takes</dt><dd>Nothing: it reads the saved venues</dd><dt>Gives</dt><dd>A workload board, time to go-live, where venues get stuck, hypercare issues and AI spend</dd></dl>
+      <button type="button" class="lx-open" data-go="team">Open Team<svg class="ic" aria-hidden="true" focusable="false"><use href="#i-arrow-right"/></svg></button>
+    </article>
     <article class="lx-card t-word">
       <div class="lx-cico"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-scan-text"/></svg></div>
       <h2>Image to Word</h2>
@@ -1079,6 +1254,9 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 <div id="lx-vs" hidden>
 <main class="vs-main" id="vs-root"></main>
 </div>
+<div id="lx-hc" hidden><main id="hc-root"></main></div>
+<div id="lx-team" hidden><main id="tm-root"></main></div>
+<div id="lx-routing" hidden><main class="vr-main" id="vr-routing"></main></div>
 <div id="lx-conv" hidden>
 <main>
 <h1>Menu Converter</h1>
@@ -1696,7 +1874,7 @@ const g=id=>document.getElementById(id),esc=t=>String(t==null?'':t).replace(/[&<
 const ic=(n,c)=>'<svg class="ic'+(c?' '+c:'')+'" aria-hidden="true" focusable="false"><use href="#i-'+n+'"/></svg>';
 window.mhIcon=ic;
 const TOOLS=[{k:'venues',n:'Venues',i:'search'},{k:'converter',n:'Menu Converter',i:'file-spreadsheet'},{k:'photos',n:'Photo Finder',i:'images'},{k:'photoedit',n:'Photo Editor',i:'crop',a:'photos'},{k:'venue',n:'Restaurant Lookup',i:'store'},
-  {k:'setup',n:'Setup Tracker',i:'list-checks'},{k:'training',n:'Training Session',i:'presentation'},{k:'word',n:'Image to Word',i:'scan-text'}];
+  {k:'setup',n:'Setup Tracker',i:'list-checks'},{k:'training',n:'Training Session',i:'presentation'},{k:'hypercare',n:'Hypercare',i:'life-buoy'},{k:'team',n:'Team',i:'users'},{k:'word',n:'Image to Word',i:'scan-text'}];
 window.mhTools=TOOLS;
 // a view that shares another tool's access (a: the Photo Editor uses the Photo Finder's "photos")
 const acc=k=>{const t=TOOLS.find(x=>x.k===k);return t&&t.a||k};
@@ -1750,7 +1928,7 @@ window.mhAfterShow=(v,el)=>{moveInd();
 addEventListener('resize',()=>requestAnimationFrame(moveInd));
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(moveInd);
 // each tool's own heading gets its icon (again whenever a tool redraws its page)
-const HEADS=[['lx-vs','search','venues'],['lx-conv','file-spreadsheet','converter'],['lx-rf','store','venue'],['lx-st','list-checks','setup'],['lx-ts','presentation','training'],['lx-iw','scan-text','word'],['lx-pe','crop','photos']];
+const HEADS=[['lx-vs','search','venues'],['lx-conv','file-spreadsheet','converter'],['lx-rf','store','venue'],['lx-st','list-checks','setup'],['lx-ts','presentation','training'],['lx-iw','scan-text','word'],['lx-pe','crop','photos'],['lx-hc','life-buoy','hypercare'],['lx-team','users','team'],['lx-routing','route','setup']];
 function heads(){HEADS.forEach(([id,i,k])=>{const h=g(id)&&g(id).querySelector('h1');if(h&&!h.querySelector('.mh-hico'))h.insertAdjacentHTML('afterbegin','<span class="mh-hico t-'+k+'">'+ic(i)+'</span>')})}
 heads();let headQ=false;
 const mo=new MutationObserver(()=>{if(!headQ){headQ=true;requestAnimationFrame(()=>{headQ=false;heads()})}});
@@ -2427,12 +2605,12 @@ function redcatNotes(rows,mb){const notes=[],spice=[];
 const FIELDS=[
  ['name','Product / item name',['itemname','productname','name','item','product','menuitem','dishname','title','modifieritem','modifiername','modifier','optionname']],
  ['variation','Variation / size',['variationname','variation','variantname','variant','size','sizename','portion']],
- ['category','Category',['category','categories','categoryname','categorynames','menucategory','reportingcategory','menugroup','group','section','department']],
+ ['category','Category',['category','categories','categoryname','categorynames','menucategory','reportingcategory','menugroup','group','section','sectionname','department']],
  ['screen','Screen (Lightspeed)',['screenname','screen']],
  ['sub','Subscreen (Lightspeed)',['subscreenname','subscreen']],
  ['menu','Menu name',['menuname','menu']],
- ['price','Price',['price','sellprice','retailprice','unitprice','saleprice','priceinctax','priceincgst','rrp','amount']],
- ['tax','Tax',['tax','taxcode','taxrate','selltax','taxname','gst']],
+ ['price','Price',['price','sellprice','sellpriceinctax','baseprice','retailprice','unitprice','saleprice','priceinctax','priceincgst','rrp','amount']],
+ ['tax','Tax',['tax','taxcode','taxrate','selltax','selltaxcode','taxname','gst']],
  ['description','Description',['description','productdescription','itemdescription','details']],
  ['sku','SKU',['sku','itemcode','productcode']],
  ['barcode','Barcode',['barcode','upc','ean']],
@@ -2479,6 +2657,8 @@ function analyse(t){
   else if(H.has('printergroup')&&(H.has('systemstate')||H.has('plusgroup')||H.has('optiongroups')))src='ordermate';
   else if(H.has('screenname')||H.has('subscreenname')||H.has('menuname'))src='lightspeed';
   else if(H.has('token')||(H.has('itemname')&&H.has('variationname')))src='square';
+  else if(H.has('productno')&&H.has('sellpriceinctax'))src='oolioexport';
+  else if(H.has('sectionname')&&H.has('itemname')&&H.has('baseprice'))src='hungryhungry';
   else if(H.has('sellprice')||H.has('categorynames')||H.has('printerprofiles')||/pre-?work/i.test(text))src='prework';
   let mk=-1;rows.forEach((r,i)=>{if(i>hdr&&r.some(c=>MARK.test(c)))mk=i});
   // OrderMate: "Group" is the menu group (the category), "Category" is Food/Beverage, "Printer Group" the printer
@@ -2490,7 +2670,7 @@ function analyse(t){
   if(src==='redcat'){const j=headers.indexOf(REDCAT_PL);if(j>=0&&rows.slice(hdr+1).some(r=>clean(r[j])))pl.push({name:REDCAT_PL,j})}
   return{hdr,headers,map,kind,src,pl,start:mk>=0?mk+1:hdr+1,marker:mk>=0};}
 const OOLIOH=new Set(OUTB.map(N).concat(['productid','measuredby']));
-const SRCNAME={redcat:'Redcat',ordermate:'OrderMate',square:'Square',lightspeed:'Lightspeed',prework:'Oolio pre-work',oolio:'Oolio import file',custom:'Custom spreadsheet',document:'Menu document'};
+const SRCNAME={redcat:'Redcat',ordermate:'OrderMate',square:'Square',lightspeed:'Lightspeed',prework:'Oolio pre-work',oolioexport:'Oolio product export',hungryhungry:'Hungry Hungry item list',oolio:'Oolio import file',custom:'Custom spreadsheet',document:'Menu document'};
 
 /* ---------------- extracting rows ---------------- */
 const num=v=>{let s=String(v==null?'':v).trim();if(!s)return'';
@@ -3968,7 +4148,7 @@ function tplPresets(){const OV=window.OolioVenues,a=OV&&OV.active?OV.active():nu
    Problems stop an upload (missing required values, prices that aren't numbers, half-filled measure columns, rows the
    wizard can't tell apart, sizes with no parent). Things to check won't stop it but are worth a look. */
 let PF=null;
-function preflight(rows){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'),t:ix('Product Type*'),pg:ix('Product Group*'),rg:ix('Reporting Group*'),c:ix('Category*'),
+function preflight(rows,plan){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'),t:ix('Product Type*'),pg:ix('Product Group*'),rg:ix('Reporting Group*'),c:ix('Category*'),
     vg:ix('Variant Group'),vn:ix('Variant Name'),mb:ix('Measured By*'),dv:ix('Default Value'),u:ix('Unit'),pos:ix('POS Name'),pp:ix('Printer Profiles'),p:ix('Sell Price*'),tx:ix('Sell Tax*')};
   const block=[],warn=[],add=(L,msg,list,how)=>{if(list.length)L.push({msg,list:[...new Set(list)],how})};
   const miss={},badP=[],meas=[],dup=new Map(),parents=new Set(),orphan=[],emptyVar=new Map(),prn=[],long=[],odd=[],cats=new Map();
@@ -3997,14 +4177,59 @@ function preflight(rows){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'),t:i
   add(warn,'names have emoji or unusual characters',odd,'Kitchen and bar printers often can’t print them.');
   const tiny=[...cats].filter(([c,n])=>c&&n===1).map(([c])=>c);
   if(tiny.length>=4)add(warn,'categories have only one product',tiny,'Oolio works best with a few broad categories (Hot Coffee, Pizza). Merge small ones in step 3.');
+  lint(rows,I,plan,add,warn);
   return{block,warn,rows:rows.length}}
+/* menu linter: things the wizard accepts but that turn into fixes after go-live (odd prices, food that prints nowhere,
+   sizes priced the wrong way round or named differently from the rest of the category, empty modifier groups) */
+const SIZE_RANK=[[/\b(kids?|mini|baby|piccolo|taster)\b/,1],[/\b(small|sml|sm|short|half)\b/,2],[/\b(regular|reg|standard|std|medium|med|single)\b/,3],
+  [/\b(large|lrg|lge|lg|tall|double|full)\b/,4],[/\b(x-?large|xl|extra large|jumbo|mega|family)\b/,5],[/\bpot|middy\b/,2],[/\bschooner\b/,3],[/\bpint\b/,4],[/\bjug|pitcher\b/,6],
+  [/\bglass\b/,2],[/\bcarafe|half bottle\b/,4],[/\bbottle\b/,5]];
+function sizeRank(s){s=String(s||'').toLowerCase();const ml=s.match(/(\d+(?:\.\d+)?)\s*(ml|l|oz)\b/);
+  if(ml)return +ml[1]*(ml[2]==='l'?1000:ml[2]==='oz'?29.6:1);
+  for(const[re,n]of SIZE_RANK)if(re.test(s))return n*1e5;return null}
+function lint(rows,I,plan,add,warn){const price=r=>{const s=String(r[I.p]==null?'':r[I.p]).trim();return /^\d+(\.\d+)?$/.test(s)?+s:null};
+  const zero=[],noPrn=[],odd=[],order=[],mixed=[],twoCats=[],byCat=new Map(),names=new Map(),fam=new Map();
+  rows.forEach(r=>{if(r[I.t]!=='Product')return;const nm=String(r[I.n]||'').trim(),lbl=nm+(r[I.vn]?' ('+r[I.vn]+')':''),p=price(r),c=String(r[I.c]||'');
+    if(p===0&&!/\b(free|complimentary|staff|tap water|water|n\/?a|open)\b/i.test(nm+' '+(r[I.vn]||'')))zero.push(lbl);
+    if(/food/i.test(String(r[I.rg]||''))&&!String(r[I.pp]||'').trim())noPrn.push(nm);
+    if(p>0)(byCat.get(c)||byCat.set(c,[]).get(c)).push([lbl,p]);
+    const k=nm.toLowerCase().replace(/\s+/g,' ');(names.get(k)||names.set(k,{nm,cats:new Set()}).get(k)).cats.add(c);
+    if(r[I.vn])(fam.get(k)||fam.set(k,{nm,cat:c,sizes:[]}).get(k)).sizes.push([String(r[I.vn]).trim(),p])});
+  // a price far from the rest of its category: likely a typo (4.5 for 45, or 450)
+  byCat.forEach(L=>{if(L.length<4)return;const s=L.map(x=>x[1]).sort((a,b)=>a-b),m=s[s.length>>1];
+    L.forEach(([l,p])=>{if((p>m*4||p<m/4)&&Math.abs(p-m)>5)odd.push(l+': $'+p.toFixed(2)+' (most are about $'+m.toFixed(2)+')')})});
+  // a bigger size that costs less than a smaller one
+  fam.forEach(f=>{const s=f.sizes.map(([n,p])=>[n,p,sizeRank(n)]).filter(x=>x[1]!=null&&x[2]!=null).sort((a,b)=>a[2]-b[2]);
+    for(let i=1;i<s.length;i++)if(s[i][1]<s[i-1][1]){order.push(f.nm+': '+s[i][0]+' $'+s[i][1].toFixed(2)+' is less than '+s[i-1][0]+' $'+s[i-1][1].toFixed(2));break}});
+  // sizes named differently from the rest of the category ("Regular, Large" where the others are "Small, Large")
+  const catF=new Map();fam.forEach(f=>(catF.get(f.cat)||catF.set(f.cat,[]).get(f.cat)).push(f));
+  catF.forEach(L=>{if(L.length<3)return;const key=f=>f.sizes.map(x=>x[0].toLowerCase()).sort().join(' / '),cnt=new Map();L.forEach(f=>cnt.set(key(f),(cnt.get(key(f))||0)+1));
+    const[top,n]=[...cnt].sort((a,b)=>b[1]-a[1])[0];if(n<L.length*0.6)return;const ts=new Set(top.split(' / '));
+    L.forEach(f=>{const k=key(f);if(k!==top&&k.split(' / ').some(x=>ts.has(x)))mixed.push(f.nm+': '+f.sizes.map(x=>x[0]).join(', ')+' (most in '+(f.cat||'this category')+': '+top+')')})});
+  names.forEach(v=>{if(v.cats.size>1)twoCats.push(v.nm+' ('+[...v.cats].filter(Boolean).join(', ')+')')});
+  add(warn,'products are priced $0',zero,'A $0 item usually means the price wasn’t found. Free items are fine; check the rest.');
+  add(warn,'prices are far from the rest of their category',odd,'Often a typo (4.5 for 45). Check against the menu.');
+  add(warn,'size groups have a bigger size costing less than a smaller one',order,'Usually the prices are swapped between sizes.');
+  add(warn,'size groups are named differently from the rest of their category',mixed,'Use the same size names across a category, so staff and reports see one set.');
+  add(warn,'food products have no printer, so they won’t print in the kitchen',noPrn,'Give them a printer or KDS profile in step 3, or the kitchen never sees the order.');
+  add(warn,'products are in more than one category',twoCats,'Fine on purpose (a dish on lunch and dinner menus); otherwise remove the extra one.');
+  if(plan&&plan.groups){const G=[...(plan.groups.values?plan.groups.values():plan.groups)];
+    add(warn,'modifier groups have no modifiers in them',G.filter(g=>g.mods&&!g.mods.size).map(g=>g.name),'Add the options or drop the group from the modifier plan.');
+    add(warn,'modifier groups aren’t linked to any product',G.filter(g=>g.mods&&g.mods.size&&g.links&&!g.links.size).map(g=>g.name),'Link them to products when you build them, or leave them out.')}}
+// the pre-flight result as plain text, for a ticket or the venue's notes
+function pfText(){if(!PF)return'';const L=[(PF.block.length?'NOT READY':'READY')+' – pre-flight check of '+PF.rows+' import rows'+(window.OOLIO_VENUE_NAME?' for '+window.OOLIO_VENUE_NAME:'')+', '+new Date().toLocaleString('en-AU')];
+  const one=(t,x)=>{L.push('','['+t+'] '+(x.list.length?x.list.length+' ':'')+x.msg);if(x.how)L.push('  '+x.how);x.list.slice(0,50).forEach(y=>L.push('  - '+y));if(x.list.length>50)L.push('  … and '+(x.list.length-50)+' more')};
+  PF.block.forEach(x=>one('FIX',x));PF.warn.forEach(x=>one('CHECK',x));if(!PF.block.length&&!PF.warn.length)L.push('','No problems found.');return L.join('\n')}
 function drawPreflight(){const el=$('pf');if(!el)return;if(!res||!res.rows.length){el.innerHTML='';PF=null;return}
-  PF=preflight(res.rows);const nb=PF.block.reduce((s,x)=>s+Math.max(1,x.list.length),0),nw=PF.warn.reduce((s,x)=>s+x.list.length,0);
+  PF=preflight(res.rows,res.plan);const nb=PF.block.reduce((s,x)=>s+Math.max(1,x.list.length),0),nw=PF.warn.reduce((s,x)=>s+x.list.length,0);
   const cls=nb?'bad':nw?'warn':'ok',icon=nb?'!':nw?'?':'✓';
   const list=(L,open)=>L.map(x=>x.list.length?'<details'+(open?' open':'')+'><summary><b>'+x.list.length+'</b> '+esc(x.msg)+'</summary><p class="pf-how">'+esc(x.how||'')+'</p><ul>'+x.list.slice(0,200).map(y=>'<li>'+esc(y)+'</li>').join('')+'</ul></details>':'<p style="margin:8px 0 0">'+esc(x.msg)+'</p>').join('');
   el.innerHTML='<div class="pf '+cls+'" role="status"><div class="pf-h"><span class="pf-dot" aria-hidden="true">'+icon+'</span><span>'+
     (nb?'Fix '+nb+' problem'+(nb>1?'s':'')+' before importing':nw?'Ready to import, with '+nw+' thing'+(nw>1?'s':'')+' to check':'Ready to import')+
-    '<small>Pre-flight check of all '+PF.rows+' rows against what the Oolio setup wizard needs.</small></span></div>'+list(PF.block,true)+list(PF.warn,false)+'</div>'}
+    '<small>Pre-flight check of all '+PF.rows+' rows against what the Oolio setup wizard needs, plus the menu linter (prices, sizes, printers, modifier groups).</small></span>'+
+    '<button type="button" class="pf-copy" id="pfcopy">Copy report</button></div>'+list(PF.block,true)+list(PF.warn,false)+'</div>';
+  window.OOLIO_LINT={block:nb,warn:nw,at:Date.now()};
+  $('pfcopy').onclick=async()=>{const t=pfText();try{await navigator.clipboard.writeText(t);$('pfcopy').textContent='Copied'}catch(e){prompt('Copy the report:',t)}setTimeout(()=>{const b=$('pfcopy');if(b)b.textContent='Copy report'},1800)}}
 // downloading with problems asks first
 function pfGo(){if(!PF||!PF.block.length)return true;return confirm('The pre-flight check found '+PF.block.length+' kind'+(PF.block.length>1?'s':'')+' of problem that will probably stop the Oolio import. Download anyway?')}
 
@@ -4161,7 +4386,7 @@ function announce(file){if(!res)return;const ix=h=>OUT.indexOf(h),iN=ix('Product
   const names=new Map(),cats=new Map();
   res.rows.forEach(r=>{if(r[iT]!=='Product')return;if(!names.has(r[iN]))names.set(r[iN],r[iC]);const c=cats.get(r[iC])||{n:new Set(),p:new Set()};c.n.add(r[iN]);if(r[iP])c.p.add(r[iP]);cats.set(r[iC],c)});
   window.dispatchEvent(new CustomEvent('oolio:menu',{detail:{at:Date.now(),file,products:names.size,variants:res.nV||0,modifiers:res.nM||0,groups:res.nG||0,
-    cats:[...cats].map(([c,v])=>[c,v.n.size,[...v.p].join(', ')]),names:[...names].slice(0,800),
+    cats:[...cats].map(([c,v])=>[c,v.n.size,[...v.p].join(', ')]),names:[...names].slice(0,800),lint:window.OOLIO_LINT?{block:window.OOLIO_LINT.block,warn:window.OOLIO_LINT.warn}:null,
     // every sellable line (product, category, size, price) for the venue's menu history
     items:res.rows.filter(r=>r[iT]==='Product').map(r=>[r[iN],r[iC],r[iV]||'',r[iS]===''?'':+r[iS]]).slice(0,1500),
     sources:tables.filter(t=>t.on&&t.a&&t.a.kind!=='modifiers').map(t=>t.srcLabel||t.file),
@@ -4915,7 +5140,8 @@ async function start(){
   if(ME)names([ME]);}
 // one write at a time per organisation; edits made meanwhile are merged into the next write
 const Q={};
-function save(id,patch){const o=ORGS[id];if(!o||READONLY)return;
+function save(id,patch,why){const o=ORGS[id];if(!o||READONLY)return;
+  try{if(!(why&&why.nolog))logChange(id,o,patch,why)}catch(e){console.error(e)}
   patch=Object.assign({},patch,{updatedAt:Date.now(),updatedBy:ME||''});ORGS[id]=deepMerge(o,patch);
   const q=Q[id]||(Q[id]={p:null,busy:false});q.p=deepMerge(q.p||{},patch);if(!q.busy)flush(id);notify();soonRender()}
 async function flush(id){const q=Q[id];q.busy=true;setSaving(true);
@@ -4936,8 +5162,55 @@ async function deleteOrg(id){if(READONLY)throw new Error('You can only view this
   if(window.OOLIO_HOSTED)fetch('/api/intake/delete',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({venue:id})}).catch(()=>{});
   if(MODE==='db'){const mc=DB.collection(MCOL(id));
     for(let round=0;round<20;round++){const s=await mc.get();if(!s.docs.length)break;await Promise.all(s.docs.map(d=>mc.doc(d.id).delete()))}
+    const lc=DB.collection(LCOL(id));
+    for(let round=0;round<20;round++){const s=await lc.get();if(!s.docs.length)break;await Promise.all(s.docs.map(d=>lc.doc(d.id).delete()))}
     await DB.collection(COL).doc(id).delete()}
-  else{local.del(id);const m=mlocal.all();if(m[id]){delete m[id];ls.set(mlocal.key,JSON.stringify(m))}}}
+  else{local.del(id);llocal.del(id);const m=mlocal.all();if(m[id]){delete m[id];ls.set(mlocal.key,JSON.stringify(m))}}}
+/* ---------- venue timeline: who changed what, in which tool, with undo ----------
+   Every save to a venue writes an entry to orgs/<id>/log: when, who, a one-line description, the tool it came from, and
+   the values the change replaced (prev), so it can be undone. The same person editing the same thing within 3 minutes
+   is folded into one entry (typing in a field is one change, not fifty). Without the shared database the log is kept
+   in this browser (localStorage st-log, newest 300 per venue). Changes bigger than 60 KB are logged without undo. */
+const LCOL=id=>COL+'/'+id+'/log';
+const llocal={key:'st-log',all(){try{return JSON.parse(ls.get(this.key)||'{}')}catch(e){return{}}},
+  put(id,lid,d){const a=this.all(),m=(a[id]=a[id]||{});m[lid]=d;Object.keys(m).sort((x,y)=>m[y].at-m[x].at).slice(300).forEach(k=>delete m[k]);try{ls.set(this.key,JSON.stringify(a))}catch(e){}},
+  del(id){const a=this.all();if(a[id]){delete a[id];ls.set(this.key,JSON.stringify(a))}}};
+const NOLOG=new Set(['updatedAt','updatedBy','lookupQ','menuWatch','menuLog','group','createdAt','createdBy']);
+const TOOLOF={'':'Home',venues:'Venues',converter:'Menu Converter',photos:'Photo Finder',venue:'Restaurant Lookup',setup:'Setup Tracker',training:'Training Session',word:'Image to Word',hypercare:'Hypercare',team:'Team',workload:'Team',metrics:'Team'};
+const jclone=v=>v==null?null:JSON.parse(JSON.stringify(v));
+const plainObj=v=>v&&typeof v==='object'&&!Array.isArray(v);
+function prevOf(o,p){const r={};for(const[k,v]of Object.entries(p)){if(NOLOG.has(k))continue;const ov=o?o[k]:undefined;r[k]=plainObj(v)&&plainObj(ov)?prevOf(ov,v):ov===undefined?null:jclone(ov)}return r}
+function describe(p){const out=[],keys=[];
+  if(plainObj(p.steps))Object.entries(p.steps).forEach(([sid,v])=>{const t=(STEP[sid]||{}).t||sid;v=v||{};keys.push('s:'+sid+':'+('s' in v?'s':Object.keys(v).filter(k=>k!=='by'&&k!=='at').sort().join('+')));
+    out.push('s' in v?(v.s==='done'?'Ticked “'+t+'”':v.s==='na'?'Marked “'+t+'” not needed':'Unticked “'+t+'”'):v.v?'Filled in “'+t+'”':'note' in v?'Wrote a note on “'+t+'”':'who' in v?'Set who does “'+t+'”':'due' in v?'Set the due date of “'+t+'”':'Changed “'+t+'”')});
+  const nm=k=>(STAGES.find(s=>s[0]===k)||[k,k])[1];
+  const K={stage:()=>'Moved to '+nm(p.stage),golive:()=>p.golive?'Set go-live to '+p.golive:'Cleared the go-live date',training:()=>p.training?'Set training to '+p.training:'Cleared the training date',
+    owner:()=>'Owner: '+(p.owner||'nobody'),ownerId:()=>'',name:()=>'Renamed to “'+p.name+'”',flags:()=>'Changed what the venue has (KDS, kiosk, delivery…)',devices:()=>'Changed devices',printers:()=>'Changed printers',
+    staff:()=>'Changed the staff list',brand:()=>'Changed brand details',menu:()=>'Saved a converted menu'+(p.menu&&p.menu.products?' ('+p.menu.products+' products)':''),photos:()=>'Saved product photos',
+    lookup:()=>'Looked up the venue',contact:()=>'Changed the contact',links:()=>'Changed links',vtype:()=>'Set the venue type',trs:()=>'Updated the training session',
+    hc:()=>'Updated hypercare',menuAlert:()=>'Menu scan alert',portal:()=>'Updated the venue portal'};
+  Object.keys(p).forEach(k=>{if(k==='steps'||NOLOG.has(k))return;keys.push(k);const t=K[k]?K[k]():'Changed '+k;if(t)out.push(t)});
+  return{text:out.join('; ')||'Changed the venue',key:keys.sort().join(',')}}
+const LAST={};
+function logChange(id,o,patch,why){const d=describe(patch);if(!d.key)return;const now=Date.now(),text=why&&why.text||d.text,tool=TOOLOF[location.hash.slice(1)]||location.hash.slice(1)||'Home';
+  let prev=prevOf(o,patch);if(JSON.stringify(prev).length>60000)prev=null;
+  const L=LAST[id];
+  if(L&&L.key===d.key&&L.by===(ME||'')&&now-L.at<180000&&!(why&&why.undo)){L.at=now;L.text=text;writeLog(id,L.lid,{at:now,by:L.by,text,tool:L.tool,key:L.key,prev:L.prev});return}
+  const lid='l'+now.toString(36)+Math.random().toString(36).slice(2,5),e={at:now,by:ME||'',text,tool,key:d.key,prev};
+  if(why&&why.undo)e.undoOf=why.undo;
+  LAST[id]=Object.assign({lid},e);writeLog(id,lid,e)}
+function writeLog(id,lid,e){if(MODE==='db')DB.collection(LCOL(id)).doc(lid).set(e).catch(()=>{});else llocal.put(id,lid,e);
+  window.dispatchEvent(new CustomEvent('oolio:log',{detail:{id}}))}
+async function venueLog(id,n){n=n||60;
+  if(MODE==='db'){try{const s=await DB.collection(LCOL(id)).orderBy('at','desc').limit(n).get();return s.docs.map(d=>Object.assign({id:d.id},d.data()))}catch(e){return[]}}
+  return Object.entries(llocal.all()[id]||{}).map(([k,v])=>Object.assign({id:k},v)).sort((a,b)=>b.at-a.at).slice(0,n)}
+// put back the values an entry replaced; the undo is itself logged, and the entry is marked as undone
+function undoLog(id,e){if(READONLY||!ORGS[id]||!e||!e.prev||e.undone)return false;delete LAST[id];
+  save(id,jclone(e.prev),{text:'Undid: '+e.text,undo:e.id});
+  const mark={undone:Date.now(),undoneBy:ME||''};
+  if(MODE==='db')DB.collection(LCOL(id)).doc(e.id).update(mark).catch(()=>{});else{const a=llocal.all();if(a[id]&&a[id][e.id]){Object.assign(a[id][e.id],mark);ls.set(llocal.key,JSON.stringify(a))}}
+  return true}
+
 let savingT=null;function setSaving(b){const el=g('st-saving');if(!el)return;clearTimeout(savingT);if(b)el.textContent='Saving…';else savingT=setTimeout(()=>{el.textContent=MODE==='db'?'Saved for the team':'Saved on this browser'},300)}
 function flash(t,err){const el=g('st-flash');if(el){el.className='st-msg'+(err?' err':'');el.textContent=t}}
 
@@ -4996,7 +5269,15 @@ window.OolioVenues={
   active(){return this.get(this.activeId)},
   setActive(id){ACTIVE=id&&ORGS[id]?id:'';ls.set('ov-active',ACTIVE);if(VIEW.org&&ACTIVE&&VIEW.org!==ACTIVE){VIEW.org=ACTIVE;VIEW.open=new Set();render()}notify()},
   open(id){if(id&&ORGS[id]){VIEW.org=id;VIEW.tab='list';VIEW.open=new Set(outstanding(ORGS[id]).slice(0,1).map(x=>x.id))}else VIEW.org=null;render()},
-  save(id,patch){save(id,patch)},
+  save(id,patch,why){save(id,patch,why)},
+  log(id,n){return venueLog(id,n)},
+  undo(id,e){return undoLog(id,e)},
+  // the checklist as other tools need it: every step that applies to the venue, with its section, state, owner and due date
+  steps(id){const o=ORGS[id];return o?stepsFor(o).map(x=>{const v=st(o,x.id);return{id:x.id,t:x.t,sec:x.sec.t,phase:x.sec.phase,s:v.s||'',who:v.who||'',due:v.due||'',at:v.at||0,late:overdue(o,x)}}):[]},
+  stages(){return STAGES.slice()},
+  guides(){return typeof GUIDES==='object'?Object.entries(GUIDES).map(([slug,a])=>({slug,title:a[0],cat:a[1],desc:a[2],heads:a[3]||[]})):[]},
+  name(uid){return uid?(uid===ME?'you':(NAMES[uid]||'')):''},
+  names(ids){return names(ids||[])},
   tick(id,step){const o=ORGS[id];if(o&&st(o,step).s!=='done')save(id,{steps:{[step]:{s:'done',by:ME,at:Date.now()}}})},
   async create(o){const id=await createOrg(o);this.setActive(id);ensureGroups();return id},
   groups(){return Object.entries(GROUPS).map(([id,o])=>Object.assign({id},o,{venues:venuesOf(id).map(([v])=>v)})).sort((a,b)=>(a.name||'').localeCompare(b.name||''))},
@@ -5753,6 +6034,26 @@ window.intakePanel=(o,id)=>{if(!window.OOLIO_HOSTED)return'';const S=INTAKE[id];
     '<div class="st-small st-muted">Works until '+esc(new Date(L.expires).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'}))+'. Anyone with the link can see and change the answers, so only send it to the venue.</div>';
   if(!READONLY)h+='<div class="st-tools">'+(L.live?'<button type="button" class="st-link" data-ik="refresh">Check for answers</button><button type="button" class="st-link" data-ik="off">Turn the link off</button>':'<button type="button" class="st-link" data-ik="extend">Turn it back on for '+30+' days</button>')+'<button type="button" class="st-link" data-ik="new">Make a new link</button></div>';
   return h+'</div>'};
+/* the venue portal: what the venue sees on its link (stage, go-live, progress, the menu to approve, the page plan) and its
+   sign-offs. Published by hand (Publish to portal) so the venue never sees half-finished work. */
+const SIGN={menu:'Menu and prices',plan:'POS page plan',golive:'Go-live'};
+async function portalSnapshot(id){const o=ORGS[id];if(!o)throw new Error('No venue.');const pr=progress(o);
+  const P={venue:o.name||'',stage:o.stage||'pre',stages:STAGES.map(x=>x[1]),stageName:(STAGES.find(x=>x[0]===(o.stage||'pre'))||STAGES[0])[1],goliveDate:o.golive||'',training:o.training||'',
+    progress:{done:pr.done,total:pr.total},contact:myName(),steps:stepsFor(o).filter(x=>x.sec.phase==='pre').map(x=>[x.t,st(o,x.id).s||''])};
+  // the menu: the newest saved version (every line: product, category, size, price)
+  const V=await menuVersions(id);const last=V[0];
+  if(last&&(last.items||[]).length)P.menu={title:'Your menu',body:{items:last.items.slice(0,1500),file:last.file||'',at:last.at}};
+  // the page plan is sent from the Page Planner (/planner → Send to venue portal) and kept when this is published again
+  if(o.golive)P.golive={title:'Ready to go live',body:{date:o.golive,statement:'We have checked our menu and prices, our devices and printers are set up, and our staff have been trained. We are ready to go live on Oolio on '+fmtDate(o.golive)+'.'}};
+  return P}
+function portalHtml(o,id,L){const P=L.portal,A=L.approvals||{};
+  const row=k=>{const part=P&&P[k],a=A[k];if(!part)return'<li><b>'+SIGN[k]+'</b> <span class="st-small st-muted">not published'+(k==='golive'&&!o.golive?' (set a go-live date first)':'')+'</span></li>';
+    const stale=a&&a.ver!==part.ver;
+    return'<li><b>'+SIGN[k]+'</b> '+(!a?'<span class="st-chip a">Waiting for the venue</span>':a.decision==='approve'?'<span class="st-chip '+(stale?'w':'ok')+'">'+(stale?'Approved an older version':'Approved')+'</span>':'<span class="st-chip w">Changes asked for</span>')+
+      (a?'<span class="st-small st-muted"> '+esc(a.name)+', '+esc(when(a.at))+'</span>'+(a.note?'<div class="st-small" style="white-space:pre-wrap;margin:2px 0 0">“'+esc(a.note)+'”</div>':''):'')+'</li>'};
+  return'<section class="st-card"><h2>Venue portal</h2><p class="st-small st-muted" style="margin:0 0 8px">The venue sees its setup stage, go-live date and progress on the same link, and signs off the menu, page plan and go-live. '+
+    (P?'Last published '+esc(when(P.at))+(P.by?' by '+esc(P.by):'')+'.':'Nothing published yet.')+'</p><ul class="st-portal">'+['menu','plan','golive'].map(row).join('')+'</ul>'+
+    (READONLY?'':'<div class="st-tools"><button type="button" class="st-sm" data-ik="publish">'+(P?'Publish again':'Publish to portal')+'</button>'+'<span class="st-small st-muted">The page plan is sent from the Page Planner.</span></div>')+'</section>'}
 // the answers, in the order the form asks for them ([label, value, section])
 function ikRows(d){return[['Trading name',d.trading,'biz'],['Legal name',d.legal,'biz'],['ABN',d.abn,'biz'],['Address',d.address,'biz'],['Phone',d.phone,'biz'],['Email',d.email,'biz'],['Website',d.website,'biz'],
   ['Name',d.cname,'contact'],['Role',d.crole,'contact'],['Mobile',d.cmobile,'contact'],['Email',d.cemail,'contact'],
@@ -5789,6 +6090,7 @@ function intakeHtml(o,id){const S=INTAKE[id],L=S&&S.link;
       '<button type="button" class="st-sec st-sm" data-ik="refresh">Check for newer answers</button>'+(d.cemail?'<a class="st-sec st-sm st-filebtn" href="mailto:'+esc(d.cemail)+'">Email '+esc(d.cname?d.cname.split(' ')[0]:'the contact')+'</a>':'')+'</div>'}
   else h+='<div class="st-ikwait">The venue hasn’t sent the form yet. '+(L.live?'You’ll get a notification when they do.':'The link is '+(L.revoked?'turned off':'expired')+'.')+'</div>';
   h+='<div class="st-small st-muted">Link made '+esc(when(L.createdAt))+(L.createdBy?' by '+esc(who(L.createdBy)):'')+' · '+(L.live?'works until '+esc(new Date(L.expires).toLocaleDateString('en-AU',{day:'numeric',month:'short',year:'numeric'})):(L.revoked?'turned off':'expired'))+'</div><div id="st-flash" class="st-msg" style="margin:0"></div></div>';
+  h+=portalHtml(o,id,L);
   if(!L.submittedAt&&!L.files.length)return h+'</div>';
   const R=ikRows(d),sec=(k,t)=>'<section class="st-card"><h2>'+t+'</h2><dl class="st-ikdl">'+R.filter(x=>x[2]===k).map(([l,x])=>{x=clean(x);
       let v=esc(x);if(x&&/email/i.test(l))v='<a href="mailto:'+esc(x)+'">'+esc(x)+'</a>';else if(x&&/phone|mobile/i.test(l))v='<a href="tel:'+esc(x.replace(/[^\d+]/g,''))+'">'+esc(x)+'</a>';else if(x&&l==='Website')v='<a href="'+esc(/^https?:/i.test(x)?x:'https://'+x)+'" target="_blank" rel="noopener">'+esc(x)+'</a>';
@@ -5830,6 +6132,10 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-ik],
     if(b.dataset.ik==='apply')return applyIntake(id);
     if(b.dataset.ik==='refresh'){await intakeLoad(id,true);render();const N=INTAKE[id]&&INTAKE[id].link;flash(N&&N.submittedAt?'Answers last sent '+when(N.submittedAt)+'.':'No answers yet.');if(window.mhInboxRefresh)window.mhInboxRefresh();return}
     if(b.dataset.ik==='off'){if(!confirm('Turn the link off? The venue won’t be able to open the form. Their answers and files stay here.'))return;await intakeCall('revoke',{token:L.token});await intakeLoad(id,true);return}
+    if(b.dataset.ik==='publish'){if(!L||!L.live){flash('Turn the link back on first.',true);return}b.disabled=true;
+      try{const P=await portalSnapshot(id);await intakeCall('publish',{token:L.token,portal:P});await intakeLoad(id,true);
+        save(id,{portal:{at:Date.now()}},{text:'Published the venue portal'+(P.menu?' (menu of '+P.menu.body.items.length+' items)':'')});flash('Published. The venue sees it next time they open their link.')}
+      finally{b.disabled=false}return}
     if(b.dataset.ik==='extend'){await intakeCall('extend',{token:L.token});await intakeLoad(id,true);flash('The link works again for 30 days.');return}
     if(b.dataset.ik==='new'){if(!confirm('Make a new link? The old one stops working, and the venue starts a fresh form.'))return;INTAKE[id]={t:Date.now(),link:null};await window.intakeDialog(id);return}
     const f=await intakeFile(b.dataset.id);
@@ -6216,7 +6522,7 @@ function reportText(M){const o=[M.title.toUpperCase(),M.meta.map(([k,v])=>k+': '
   return o.join('\n')}
 function reportView(ven,d){const M=model(ven,d),dis=RO()?' disabled':'';
   return'<div class="ts-card" style="display:grid;gap:12px"><div class="ts-row ts-small">Include:'+[['notes','Notes'],['missing','Not covered and skipped'],['donea','Completed action items']].map(([k,t])=>'<label style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-opt="'+k+'"'+(OPTS[k]?' checked':'')+'>'+t+'</label>').join('')+'</div>'+
-    '<div class="ts-row"><button type="button" data-rep="copy">Copy report</button><button type="button" class="ts-sec" data-rep="word">Download Word</button><button type="button" class="ts-sec" data-rep="print">Print / PDF</button>'+
+    '<div class="ts-row"><button type="button" data-rep="copy">Copy report</button><button type="button" class="ts-sec" data-rep="word">Download Word</button><button type="button" class="ts-sec" data-rep="print">Print / PDF</button><button type="button" class="ts-sec" data-rep="cheat">Staff cheat sheet</button>'+
     (ven.local?'':'<button type="button" class="ts-sec" data-rep="finish"'+dis+'>'+(d.finished?'Finished ✓ (update tracker again)':'Finish session and update tracker')+'</button>')+'</div><p class="ts-msg" id="ts-msg" role="status" aria-live="polite"></p>'+
     '<div id="ts-report">'+reportHtml(M)+'</div></div>'}
 
@@ -6261,7 +6567,7 @@ function wire(){const app=$('ts-app');if(!app||app.dataset.w)return;app.dataset.
     if(b.dataset.jump){const s=$('ts-s-'+b.dataset.jump);if(s)s.scrollIntoView({behavior:'smooth'});return}
     if(b.dataset.goto){TAB='run';ls.set('ts-tab',TAB);OPEN.add(b.dataset.goto);render();const el=app.querySelector('[data-sid="'+b.dataset.goto+'"]');if(el)el.scrollIntoView({block:'center'});return}
     if(b.dataset.adel){save({actions:acts(D()).filter(a=>a.id!==b.dataset.adel)});return}
-    if(b.dataset.rep==='copy')copyReport();else if(b.dataset.rep==='word')wordReport();else if(b.dataset.rep==='print')window.print();else if(b.dataset.rep==='finish')finish()});
+    if(b.dataset.rep==='copy')copyReport();else if(b.dataset.rep==='word')wordReport();else if(b.dataset.rep==='print')window.print();else if(b.dataset.rep==='cheat')cheatSheet();else if(b.dataset.rep==='finish')finish()});
   app.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.sid){if(d.open)OPEN.add(d.dataset.sid);else OPEN.delete(d.dataset.sid)}},true);
   app.addEventListener('submit',e=>{const f=e.target.closest('form[data-addform]');if(!f)return;e.preventDefault();addAction(f)});
   app.addEventListener('input',e=>{const t=e.target;
@@ -6284,7 +6590,32 @@ function wire(){const app=$('ts-app');if(!app||app.dataset.w)return;app.dataset.
 function start(){wire();render();const v=OV();if(v&&v.on)v.on(()=>render());
   addEventListener('hashchange',()=>{if(location.hash==='#training')render()})}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
-window.OolioTraining={steps:()=>RUN,progress(o){const fl=(o&&o.flags)||{},d=(o&&o.trs)||{},L=RUN.flatMap(s=>s.steps.filter(x=>!x.when||fl[x.when]));return Object.assign(prog(null,d,L),{open:acts(d).filter(a=>!a.done).length,finished:d.finished||0,ready:d.ready||''})}};
+/* ---------- staff cheat sheet: one printable page made from the venue's own menu, devices and printers ---------- */
+// each how-to with its help.oolio.com guides (slugs from the Setup Tracker's baked-in guide list; missing ones are left out)
+const CHEAT_HOW=[['Sign in and clock on',['get-started-with-oolio-one-pos','clock-on-off']],['Start an order or open a table',['place-a-dine-in-order','place-a-takeaway-order']],
+  ['Add modifiers and notes',['place-a-dine-in-order']],['Find an open order and reprint a docket',['view-open-orders','troubleshoot-printing-issues-in-pos']],
+  ['Split a bill and take payment',['process-a-split-bill','process-a-payment-on-mpos']],['Refund or void',['process-a-refund','void-products-or-orders']],
+  ['End of day',['close-a-shift','understand-the-shift-summary']]];
+function cheatSheet(){const v=venue();if(!v){alert('Pick a venue at the top first.');return}const o=v.o,m=o.menu||{},OVx=OV();
+  const byCat=new Map();(m.names||[]).forEach(([n,c])=>{(byCat.get(c||'Other')||byCat.set(c||'Other',[]).get(c||'Other')).push(n)});
+  const cats=(m.cats||[]).map(([c,n,pr])=>({c,n,pr,items:(byCat.get(c)||[]).slice(0,10)}));
+  const dev=(o.devices||[]).filter(d=>d.name&&!/support/i.test(d.name)),prn=(o.printers||[]).filter(p=>p.name);
+  const G=new Set((OVx&&OVx.guides?OVx.guides():[]).map(g=>g.slug)),how=CHEAT_HOW.map(([t,sl])=>[t,sl.filter(x=>G.has(x)).map(x=>'help.oolio.com/'+x).join(' · ')]);
+  const e=s=>esc(s==null?'':String(s));
+  const html='<div class="tc-sheet"><header><h1>'+e(v.name)+': staff quick guide</h1><p>Oolio POS'+(o.golive?' · live from '+e(new Date(o.golive+'T00:00').toLocaleDateString('en-AU',{day:'numeric',month:'long',year:'numeric'})):'')+'</p></header>'+
+    (cats.length?'<section><h2>Where things are on the POS</h2><div class="tc-cats">'+cats.map(c=>'<div><b>'+e(c.c)+'</b>'+(c.pr?'<small>prints at '+e(c.pr)+'</small>':'')+'<span>'+c.items.map(e).join(' · ')+(c.n>c.items.length?' · +'+(c.n-c.items.length)+' more':'')+'</span></div>').join('')+'</div></section>':'')+
+    (prn.length?'<section><h2>Printers</h2><ul>'+prn.map(p=>'<li><b>'+e(p.name)+'</b>'+(p.loc?' · '+e(String(p.loc).split('·')[0]):'')+(p.use?' · '+e(p.use)+' only':'')+(p.fb?' · if it jams, dockets go to '+e(p.fb):'')+'</li>').join('')+'</ul></section>':'')+
+    (dev.length?'<section><h2>Devices</h2><ul>'+dev.map(d=>'<li><b>'+e(d.name)+'</b>'+(d.loc?' · '+e(d.loc):'')+'</li>').join('')+'</ul></section>':'')+
+    '<section><h2>How do I…</h2><ul>'+how.map(([t,u])=>'<li><b>'+e(t)+'</b>'+(u?' · '+e(u):'')+'</li>').join('')+'</ul></section>'+
+    '<footer>Stuck? Ask your manager, or search help.oolio.com. POS offline? Check the heartbeat icon at the top of the screen and the network cable.</footer></div>';
+  let d=document.getElementById('ts-cheat');if(!d){d=document.createElement('dialog');d.id='ts-cheat';d.className='ts-cheatd';document.body.append(d)}
+  d.innerHTML='<div class="ts-row tc-bar"><button type="button" data-c="print">Print / PDF</button><button type="button" class="ts-sec" data-c="copy">Copy text</button><button type="button" class="ts-sec" data-c="close">Close</button>'+
+    (m.names?'':'<span class="ts-sub" style="margin:0">Convert the venue’s menu first to fill in the POS section.</span>')+'</div>'+html;
+  d.onclick=async ev=>{const b=ev.target.closest('[data-c]');if(!b)return;const k=b.dataset.c;
+    if(k==='close')d.close();else if(k==='copy'){const t=d.querySelector('.tc-sheet').innerText;try{await navigator.clipboard.writeText(t);b.textContent='Copied'}catch(x){prompt('Copy:',t)}}
+    else{document.documentElement.classList.add('ts-pc');const off=()=>{document.documentElement.classList.remove('ts-pc');removeEventListener('afterprint',off)};addEventListener('afterprint',off);window.print();setTimeout(off,1500)}};
+  d.showModal()}
+window.OolioTraining={cheatSheet,steps:()=>RUN,progress(o){const fl=(o&&o.flags)||{},d=(o&&o.trs)||{},L=RUN.flatMap(s=>s.steps.filter(x=>!x.when||fl[x.when]));return Object.assign(prog(null,d,L),{open:acts(d).filter(a=>!a.done).length,finished:d.finished||0,ready:d.ready||''})}};
 })();
 </script>
 <script>
@@ -6759,7 +7090,7 @@ const PF_HTML="<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-
 const MAP_HTML="<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1, viewport-fit=cover\">\n<!-- Tool map: the page under Settings > Help. build_apps.py loads it into the launcher in a frame (view #map).\n     Also published as a claude.ai artifact. Update both when tools change. -->\n<title>Menu Hauler Tool Map<\/title>\n<meta name=\"claude:viewport-fit-sides\" content=\"cover\">\n<link rel=\"stylesheet\" href=\"https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap\">\n<style>\n/* Layout: one column; system map up top, then the venue journey, tool cards in a 2-up grid, then helpers and the three-places table. Colours follow the Menu Hauler app (purple bar, one tint per tool). */\n:root{\n  --bg:#f5f3f9; --surface:#ffffff; --fg:#1d1729; --muted:#5f5872; --line:#ddd7ea; --soft:#ece7f6;\n  --accent:#673ab6; --bar:#4a2a96; --bar-text:#ffffff;\n  --t-converter:#673ab6; --t-photos:#c2185b; --t-venue:#1e6fd9; --t-setup:#2e7d32; --t-word:#d35400; --t-venues:#00838f;\n  --cf:#e8710a; --gc:#1a73e8; --pc:#5f5872; --warn:#a15c00; --warn-soft:#fdf1dc;\n  --f-display:\"Space Grotesk\",\"Segoe UI\",system-ui,sans-serif;\n  --f-body:\"Inter\",system-ui,-apple-system,\"Segoe UI\",sans-serif;\n  --f-mono:ui-monospace,SFMono-Regular,Consolas,monospace;\n}\n@media (prefers-color-scheme:dark){:root:not([data-theme=\"light\"]){\n  --bg:#141119; --surface:#1d1826; --fg:#ece8f4; --muted:#a69fb8; --line:#352d44; --soft:#262033;\n  --accent:#b39ddb; --bar:#251b3d; --bar-text:#ece8f4;\n  --t-converter:#b39ddb; --t-photos:#f48fb1; --t-venue:#90caf9; --t-setup:#81c784; --t-word:#ffb74d; --t-venues:#80deea;\n  --cf:#ffa95c; --gc:#8ab4f8; --pc:#a69fb8; --warn:#ffcc80; --warn-soft:#3a2c14; color-scheme:dark}}\n:root[data-theme=\"dark\"]{\n  --bg:#141119; --surface:#1d1826; --fg:#ece8f4; --muted:#a69fb8; --line:#352d44; --soft:#262033;\n  --accent:#b39ddb; --bar:#251b3d; --bar-text:#ece8f4;\n  --t-converter:#b39ddb; --t-photos:#f48fb1; --t-venue:#90caf9; --t-setup:#81c784; --t-word:#ffb74d; --t-venues:#80deea;\n  --cf:#ffa95c; --gc:#8ab4f8; --pc:#a69fb8; --warn:#ffcc80; --warn-soft:#3a2c14; color-scheme:dark}\n\n*{box-sizing:border-box}\nbody{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.55;-webkit-font-smoothing:antialiased}\n.wrap{max-width:1120px;margin:0 auto;padding-block:0 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}\nheader.top{background:var(--bar);color:var(--bar-text)}\nheader.top .wrap{padding-block:28px 30px;display:flex;flex-direction:column;gap:8px}\nh1,h2,h3{font-family:var(--f-display);text-wrap:balance;margin:0;line-height:1.2}\nh1{font-size:30px;font-weight:700;letter-spacing:-.01em}\nheader.top p{margin:0;max-width:68ch;opacity:.85}\n.eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.09em;font-weight:600;opacity:.75}\nsection{display:flex;flex-direction:column;gap:16px;margin-top:44px}\nh2{font-size:22px;font-weight:600}\n.lede{margin:0;color:var(--muted);max-width:70ch}\ncode,.mono{font-family:var(--f-mono);font-size:.88em}\ncode{background:var(--soft);padding:1px 5px;border-radius:4px}\n\n/* system map */\n.mapbox{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow-x:auto}\n.mapbox svg{display:block;min-width:820px;width:100%;height:auto}\nsvg text{font-family:var(--f-body);fill:var(--fg)}\nsvg .t-h{font-family:var(--f-display);font-weight:600;font-size:15px}\nsvg .t-s{font-size:12.5px;fill:var(--muted)}\nsvg .t-xs{font-size:11.5px;fill:var(--muted)}\nsvg .lbl{font-size:11.5px;font-weight:600;fill:var(--accent)}\n.keys{display:flex;flex-wrap:wrap;gap:10px 22px;font-size:13px;color:var(--muted)}\n.keys span{display:inline-flex;align-items:center;gap:7px}\n.sw{width:12px;height:12px;border-radius:3px;border:2px solid}\n.three{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}\n.three div{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px}\n.three b{display:block;font-family:var(--f-display);font-size:15px;margin-bottom:2px}\n\n/* journey */\n.journey{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px}\n.step{flex:1 1 150px;min-width:0;background:var(--surface);border:1px solid var(--line);border-top:4px solid var(--tint);border-radius:10px;padding:10px 12px}\n.step .n{font-size:11.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tint)}\n.step b{display:block;font-family:var(--f-display);font-size:15px}\n.step span{font-size:13px;color:var(--muted)}\n.arrow{align-self:center;color:var(--muted);font-size:18px}\n.side{flex-basis:100%;font-size:13.5px;color:var(--muted)}\n\n/* tool cards */\n.tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}\n.tool{--tint:var(--accent);background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:12px;min-width:0}\n.t-converter{--tint:var(--t-converter)}.t-photos{--tint:var(--t-photos)}.t-venue{--tint:var(--t-venue)}.t-setup{--tint:var(--t-setup)}.t-word{--tint:var(--t-word)}.t-venues{--tint:var(--t-venues)}\n.tool-head{display:flex;align-items:center;gap:12px}\n.tile{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:var(--tint);color:var(--surface);font-family:var(--f-display);font-weight:700;font-size:15px;flex:none}\n.tool h3{font-size:18px}\n.tool .sub{font-size:13px;color:var(--muted)}\n.where{display:flex;flex-wrap:wrap;gap:6px}\n.chip{font-size:12px;padding:3px 9px;border-radius:999px;background:var(--soft);color:var(--fg);white-space:nowrap}\n.chip.loc{border:1px solid var(--tint);background:transparent;color:var(--tint);font-weight:600}\n.lab{font-size:11.5px;text-transform:uppercase;letter-spacing:.08em;font-weight:600;color:var(--muted);margin:0 0 4px}\n.tool ul{margin:0;padding-left:18px;font-size:14px;display:flex;flex-direction:column;gap:2px}\n.flow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px}\n.flow .f{background:var(--soft);border-left:3px solid var(--tint);padding:4px 9px;border-radius:5px}\n.flow .f.out{background:var(--tint);color:var(--surface);border-left-color:var(--tint);font-weight:600}\n.flow .to{color:var(--muted)}\n.flow .or{font-size:11.5px;color:var(--muted);font-style:italic}\n.cost{font-size:13px;color:var(--muted);border-top:1px dashed var(--line);padding-top:10px;margin-top:auto}\n.cost b{color:var(--fg);font-weight:600}\n.note{font-size:12.5px;background:var(--warn-soft);color:var(--warn);padding:6px 10px;border-radius:6px}\n\n/* tables */\n.tbl{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px}\ntable{border-collapse:collapse;width:100%;font-size:14px;min-width:640px}\nth,td{text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}\nth{font-size:12px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;background:var(--soft)}\ntr:last-child td{border-bottom:none}\ntd:first-child{font-weight:600;white-space:nowrap}\n.na{color:var(--muted)}\n\n.pages{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}\n.pg{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:13.5px;display:flex;flex-direction:column;gap:4px;min-width:0}\n.pg b{font-family:var(--f-display);font-size:15px}\n.pg code{align-self:flex-start}\nfooter{margin-top:40px;font-size:13px;color:var(--muted)}\n.new{display:inline-block;font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:1px 6px;border-radius:4px;background:var(--accent);color:var(--surface);vertical-align:1px;margin-right:4px}\n.tbl td:first-child{white-space:normal;min-width:120px}\n\n@media (max-width:860px){.tools{grid-template-columns:1fr}.pages{grid-template-columns:repeat(2,minmax(0,1fr))}.three{grid-template-columns:1fr}}\n@media (max-width:480px){.pages{grid-template-columns:1fr}h1{font-size:25px}.arrow{display:none}}\n<\/style>\n<\/head>\n<body>\n\n<header class=\"top\"><div class=\"wrap\">\n  <div class=\"eyebrow\">menuhauler.com · system map<\/div>\n  <h1>Menu Hauler Tool Map<\/h1>\n  <p>Every tool in Menu Hauler: where it lives, what it can do and how it gets there. It's a set of web tools for setting a hospitality venue up on Oolio One, from looking the venue up to the import spreadsheet and the go-live pack.<\/p>\n<\/div><\/header>\n\n<div class=\"wrap\">\n\n<section>\n  <h2>What's new<\/h2>\n  <p class=\"lede\">Added on 16–17 November 2026. Each change also appears on its tool's card below, marked <span class=\"new\">New<\/span>.<\/p>\n  <div class=\"tbl\"><table>\n    <thead><tr><th>Tool<\/th><th>What changed<\/th><\/tr><\/thead>\n    <tbody>\n      <tr><td style=\"color:var(--t-photos)\">Photo Tools<\/td><td>New <b>Photo Editor<\/b> (19 Nov): sizes one photo to an exact size and file size, such as a 1000 × 1000 Oolio product photo under 2 MB. The Photo Finder and Photo Editor now sit together under a <b>Photo Tools<\/b> tab.<\/td><\/tr>\n      <tr><td style=\"color:var(--t-converter)\">Menu Converter<\/td><td>Reads <b>Redcat onboarding workbooks<\/b>: categories fill down, Uber/DoorDash becomes a price list, options become shared modifier groups or sizes, and FREE TEXT becomes Kitchen Notes / Spice Level.<\/td><\/tr>\n      <tr><td style=\"color:var(--t-converter)\">Menu Converter<\/td><td><b>Price lists<\/b> as extra columns between GTIN and Sell Price*. They come from Oolio files with extra price columns or from repeated OrderMate exports (one per price level). A missing price list price uses the sell price and is listed in the checks.<\/td><\/tr>\n      <tr><td style=\"color:var(--t-converter)\">Menu Converter<\/td><td><b>OrderMate exports<\/b>: Group, Category, Printer Group and System State are mapped. Inactive items are left out. Pluses become \"Add X\" modifiers and minuses become \"No X\". An OrderMate modifier sheet (XLSX) lists the groups to create.<\/td><\/tr>\n      <tr><td style=\"color:var(--t-converter)\">Menu Converter<\/td><td><b>Sizes<\/b>: \"Regular TAKEAWAY\" / \"Dine-In\" are split into plain sizes plus a Takeaway price list. Filler sizes (Serve, SIDE OF, Retail) are dropped. Kids items become a Kids Size variant, with a step 4 tick box to turn that off (a Kids prefix is used instead). More size words are recognised.<\/td><\/tr>\n      <tr><td style=\"color:var(--t-converter)\">Menu Converter<\/td><td>Every word of item names gets a capital (BLT and IPA stay as they are). Is Selling?, Print On Receipt? and Variable Pricing? are written as TRUE / FALSE, as in Oolio's own exports.<\/td><\/tr>\n      <tr><td style=\"color:var(--t-setup)\">Setup Tracker<\/td><td>Hardware diagrams are read <b>by server OCR and rules, not AI<\/b>. They also recognise everything sold on shop.oolio.com, including shorthand like \"s80\", \"Cash Draw\" and \"oPad\". A <b>Read with AI<\/b> tick box sends pictures straight to Claude.<\/td><\/tr>\n      <tr><td style=\"color:var(--t-word)\">Image to Word<\/td><td>A <b>Read with AI<\/b> tick box (off by default). With AI on, text is grouped into headings, bullet lists and tables, rather than copying the page layout.<\/td><\/tr>\n      <tr><td>Website (Worker)<\/td><td>Sends the Anthropic workspace ID when <code>ANTHROPIC_WORKSPACE_ID<\/code> is set, so workspace-scoped API keys work.<\/td><\/tr>\n      <tr><td>Claude Code<\/td><td>New <b>hardware-parser<\/b> agent writes the Setup Tracker hardware CSV from a diagram.<\/td><\/tr>\n    <\/tbody>\n  <\/table><\/div>\n<\/section>\n\n<section>\n  <h2>Where everything runs<\/h2>\n  <p class=\"lede\">The website and all shared data live on Cloudflare. The Google server is optional: it makes reading menus from websites and photos better, and if it's off every tool falls back to its built-in readers.<\/p>\n  <div class=\"mapbox\">\n  <svg viewBox=\"0 0 1000 560\" role=\"img\" aria-label=\"System map: browser and customer connect to the Cloudflare Worker, which stores data in D1, calls outside services with team keys and reaches the Google Cloud server through a tunnel. This PC pushes code to GitHub, which deploys the Worker.\">\n    <defs>\n      <marker id=\"ah\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"7\" markerHeight=\"7\" orient=\"auto-start-reverse\"><path d=\"M0 0L10 5L0 10z\" style=\"fill:var(--muted)\"/><\/marker>\n    <\/defs>\n    <!-- people -->\n    <rect x=\"20\" y=\"50\" width=\"190\" height=\"82\" rx=\"10\" style=\"fill:var(--surface);stroke:var(--accent);stroke-width:2\"/>\n    <text x=\"36\" y=\"76\" class=\"t-h\">Your browser<\/text>\n    <text x=\"36\" y=\"96\" class=\"t-s\">menuhauler.com<\/text>\n    <text x=\"36\" y=\"114\" class=\"t-xs\">email code sign-in<\/text>\n    <rect x=\"20\" y=\"150\" width=\"190\" height=\"72\" rx=\"10\" style=\"fill:var(--surface);stroke:var(--line);stroke-width:1.5\"/>\n    <text x=\"36\" y=\"176\" class=\"t-h\">Venue's customer<\/text>\n    <text x=\"36\" y=\"196\" class=\"t-s\">/intake/&lt;token&gt; link<\/text>\n    <text x=\"36\" y=\"212\" class=\"t-xs\">uploads menus, staff list<\/text>\n\n    <!-- cloudflare -->\n    <rect x=\"250\" y=\"20\" width=\"430\" height=\"320\" rx=\"14\" style=\"fill:none;stroke:var(--cf);stroke-width:2;stroke-dasharray:6 4\"/>\n    <text x=\"268\" y=\"44\" class=\"t-h\" style=\"fill:var(--cf)\">Cloudflare (free plan)<\/text>\n    <rect x=\"270\" y=\"58\" width=\"390\" height=\"166\" rx=\"10\" style=\"fill:var(--soft);stroke:var(--line)\"/>\n    <text x=\"288\" y=\"84\" class=\"t-h\">Worker \"menurunner\"<\/text>\n    <text x=\"510\" y=\"84\" class=\"t-xs mono\">relay-worker.js<\/text>\n    <text x=\"288\" y=\"108\" class=\"t-s\">• serves the launcher + all six tools (public/)<\/text>\n    <text x=\"288\" y=\"128\" class=\"t-s\">• sign-in, /admin, roles, blocking, activity log<\/text>\n    <text x=\"288\" y=\"148\" class=\"t-s\">• /api/db shared records · /api/me · /api/fetch<\/text>\n    <text x=\"288\" y=\"168\" class=\"t-s\">• /api/fc Firecrawl (monthly cap) · /api/claude<\/text>\n    <text x=\"288\" y=\"188\" class=\"t-s\">• holds every API key, records spend<\/text>\n    <text x=\"288\" y=\"208\" class=\"t-s\">• /api/server/* → Google server<\/text>\n    <rect x=\"270\" y=\"250\" width=\"390\" height=\"74\" rx=\"10\" style=\"fill:var(--surface);stroke:var(--cf);stroke-width:1.5\"/>\n    <text x=\"288\" y=\"275\" class=\"t-h\">D1 database \"oolio-tools\"<\/text>\n    <text x=\"288\" y=\"295\" class=\"t-s\">venues, organisations, menu versions, users,<\/text>\n    <text x=\"288\" y=\"313\" class=\"t-s\">activity, settings, Claude costs, intake files<\/text>\n    <line x1=\"465\" y1=\"224\" x2=\"465\" y2=\"248\" style=\"stroke:var(--muted);stroke-width:1.5\" marker-end=\"url(#ah)\"/>\n\n    <!-- browser arrows -->\n    <line x1=\"210\" y1=\"91\" x2=\"268\" y2=\"91\" style=\"stroke:var(--muted);stroke-width:1.5\" marker-end=\"url(#ah)\"/>\n    <line x1=\"210\" y1=\"186\" x2=\"268\" y2=\"186\" style=\"stroke:var(--muted);stroke-width:1.5\" marker-end=\"url(#ah)\"/>\n\n    <!-- services -->\n    <rect x=\"730\" y=\"20\" width=\"250\" height=\"320\" rx=\"14\" style=\"fill:var(--surface);stroke:var(--line);stroke-width:1.5\"/>\n    <text x=\"748\" y=\"46\" class=\"t-h\">Outside services<\/text>\n    <text x=\"748\" y=\"64\" class=\"t-xs\">called with the team's keys<\/text>\n    <text x=\"748\" y=\"94\" class=\"t-s\">Google Places<\/text><text x=\"962\" y=\"94\" class=\"t-xs\" text-anchor=\"end\">lookups<\/text>\n    <text x=\"748\" y=\"122\" class=\"t-s\">ABN Lookup<\/text><text x=\"962\" y=\"122\" class=\"t-xs\" text-anchor=\"end\">ABN, legal name<\/text>\n    <text x=\"748\" y=\"150\" class=\"t-s\">Firecrawl<\/text><text x=\"962\" y=\"150\" class=\"t-xs\" text-anchor=\"end\">hard websites<\/text>\n    <text x=\"748\" y=\"178\" class=\"t-s\">Claude / Gemini<\/text><text x=\"962\" y=\"178\" class=\"t-xs\" text-anchor=\"end\">off until enabled<\/text>\n    <text x=\"748\" y=\"206\" class=\"t-s\">Resend<\/text><text x=\"962\" y=\"206\" class=\"t-xs\" text-anchor=\"end\">sign-in emails<\/text>\n    <text x=\"748\" y=\"234\" class=\"t-s\">Photo libraries<\/text><text x=\"962\" y=\"234\" class=\"t-xs\" text-anchor=\"end\">Pexels, Pixabay…<\/text>\n    <text x=\"748\" y=\"262\" class=\"t-s\">Venue sites + apps<\/text><text x=\"962\" y=\"262\" class=\"t-xs\" text-anchor=\"end\">via /api/fetch<\/text>\n    <text x=\"748\" y=\"290\" class=\"t-xs\">Hungry Hungry, me&amp;u/Mr Yum,<\/text>\n    <text x=\"748\" y=\"306\" class=\"t-xs\">DoorDash, Uber Eats<\/text>\n    <line x1=\"660\" y1=\"140\" x2=\"728\" y2=\"140\" style=\"stroke:var(--muted);stroke-width:1.5\" marker-end=\"url(#ah)\"/>\n    <text x=\"694\" y=\"132\" class=\"lbl\" text-anchor=\"middle\">keys<\/text>\n\n    <!-- google vm -->\n    <rect x=\"250\" y=\"400\" width=\"430\" height=\"140\" rx=\"14\" style=\"fill:var(--surface);stroke:var(--gc);stroke-width:2\"/>\n    <text x=\"268\" y=\"426\" class=\"t-h\" style=\"fill:var(--gc)\">Google Cloud server (optional)<\/text>\n    <text x=\"268\" y=\"446\" class=\"t-xs\">VM \"menu-hauler-main\", e2-small, Sydney · server.menuhauler.com<\/text>\n    <rect x=\"268\" y=\"460\" width=\"120\" height=\"62\" rx=\"8\" style=\"fill:var(--soft);stroke:var(--line)\"/>\n    <text x=\"328\" y=\"486\" class=\"t-s\" text-anchor=\"middle\">Gateway<\/text>\n    <text x=\"328\" y=\"504\" class=\"t-xs\" text-anchor=\"middle\">key check<\/text>\n    <rect x=\"410\" y=\"460\" width=\"252\" height=\"62\" rx=\"8\" style=\"fill:var(--soft);stroke:var(--line)\"/>\n    <text x=\"536\" y=\"486\" class=\"t-s\" text-anchor=\"middle\">Menu scraper + OCR<\/text>\n    <text x=\"536\" y=\"504\" class=\"t-xs\" text-anchor=\"middle\">menu-scraper/ · keeps no data<\/text>\n    <line x1=\"388\" y1=\"491\" x2=\"408\" y2=\"491\" style=\"stroke:var(--muted);stroke-width:1.5\" marker-end=\"url(#ah)\"/>\n    <line x1=\"465\" y1=\"340\" x2=\"465\" y2=\"398\" style=\"stroke:var(--gc);stroke-width:1.5;stroke-dasharray:4 3\" marker-end=\"url(#ah)\"/>\n    <text x=\"475\" y=\"374\" class=\"lbl\" style=\"fill:var(--gc)\">Cloudflare Tunnel<\/text>\n\n    <!-- this pc + github -->\n    <rect x=\"20\" y=\"262\" width=\"190\" height=\"150\" rx=\"10\" style=\"fill:var(--surface);stroke:var(--pc);stroke-width:1.5\"/>\n    <text x=\"36\" y=\"288\" class=\"t-h\">This PC<\/text>\n    <text x=\"36\" y=\"308\" class=\"t-xs\">Claude Code + source files<\/text>\n    <text x=\"36\" y=\"328\" class=\"t-xs\">build_apps.py → public/<\/text>\n    <text x=\"36\" y=\"346\" class=\"t-xs\">site-viewer (read-only data)<\/text>\n    <text x=\"36\" y=\"364\" class=\"t-xs\">training/ → menu-knowledge.js<\/text>\n    <text x=\"36\" y=\"382\" class=\"t-xs\">monthly menu scan task<\/text>\n    <text x=\"36\" y=\"400\" class=\"t-xs\">parser agents<\/text>\n    <rect x=\"20\" y=\"452\" width=\"190\" height=\"62\" rx=\"10\" style=\"fill:var(--surface);stroke:var(--pc);stroke-width:1.5\"/>\n    <text x=\"36\" y=\"478\" class=\"t-h\">GitHub (private)<\/text>\n    <text x=\"36\" y=\"498\" class=\"t-xs\">POS-Migration-Tooling · main<\/text>\n    <line x1=\"115\" y1=\"412\" x2=\"115\" y2=\"450\" style=\"stroke:var(--muted);stroke-width:1.5\" marker-end=\"url(#ah)\"/>\n    <text x=\"124\" y=\"436\" class=\"lbl\">git push<\/text>\n    <path d=\"M210 483 H232 V300 H268\" style=\"fill:none;stroke:var(--muted);stroke-width:1.5\" marker-end=\"url(#ah)\"/>\n    <text x=\"238\" y=\"390\" class=\"lbl\" transform=\"rotate(-90 238 390)\" text-anchor=\"middle\">auto-deploy 1–2 min<\/text>\n\n    <!-- claude.ai copy -->\n    <rect x=\"730\" y=\"400\" width=\"250\" height=\"140\" rx=\"14\" style=\"fill:none;stroke:var(--muted);stroke-width:1.5;stroke-dasharray:5 4\"/>\n    <text x=\"748\" y=\"426\" class=\"t-h\">claude.ai copy<\/text>\n    <text x=\"748\" y=\"446\" class=\"t-xs\">\"Oolio Menu Tools\" artifact<\/text>\n    <text x=\"748\" y=\"470\" class=\"t-s\">same tool code, own database<\/text>\n    <text x=\"748\" y=\"490\" class=\"t-s\">viewer's own Firecrawl + Claude<\/text>\n    <text x=\"748\" y=\"514\" class=\"t-xs\">republished by hand; move records<\/text>\n    <text x=\"748\" y=\"530\" class=\"t-xs\">with Setup Tracker backup/restore<\/text>\n  <\/svg>\n  <\/div>\n  <div class=\"keys\">\n    <span><i class=\"sw\" style=\"border-color:var(--cf)\"><\/i>Cloudflare: website, API, data<\/span>\n    <span><i class=\"sw\" style=\"border-color:var(--gc)\"><\/i>Google Cloud: optional reading server<\/span>\n    <span><i class=\"sw\" style=\"border-color:var(--pc)\"><\/i>Local: where changes are made<\/span>\n  <\/div>\n<\/section>\n\n<section>\n  <h2>A venue's path through the tools<\/h2>\n  <p class=\"lede\">The launcher has a venue picker at the top. Pick a venue once and it flows into every tool (<code>venue-link.js<\/code>). The home hub walks each venue through four stages.<\/p>\n  <div class=\"journey\">\n    <div class=\"step t-venues\"><div class=\"n\">Start<\/div><b>Venues<\/b><span>find or add the venue<\/span><\/div>\n    <div class=\"arrow\">→<\/div>\n    <div class=\"step t-venue\"><div class=\"n\">Stage 1 · lookup<\/div><b>Restaurant Lookup<\/b><span>build its profile<\/span><\/div>\n    <div class=\"arrow\">→<\/div>\n    <div class=\"step t-converter\"><div class=\"n\">Stage 2 · menu<\/div><b>Menu Converter<\/b><span>menu to Oolio CSV<\/span><\/div>\n    <div class=\"arrow\">→<\/div>\n    <div class=\"step t-photos\"><div class=\"n\">Stage 3 · photos<\/div><b>Photo Finder<\/b><span>a photo per product<\/span><\/div>\n    <div class=\"arrow\">→<\/div>\n    <div class=\"step t-setup\"><div class=\"n\">Stage 4 · checklist<\/div><b>Setup Tracker<\/b><span>setup to go-live<\/span><\/div>\n    <div class=\"side\"><b style=\"color:var(--t-word)\">Image to Word<\/b> sits beside the path and can be used at any time.<\/div>\n  <\/div>\n<\/section>\n\n<section>\n  <h2>The six tools<\/h2>\n  <p class=\"lede\">All six ship in one page, the launcher, as banner tabs. Each card shows where the tool lives, what it can do, the steps it runs through and what it costs.<\/p>\n  <div class=\"tools\">\n\n    <article class=\"tool t-venues\">\n      <div class=\"tool-head\"><div class=\"tile\">Ve<\/div><div><h3>Venues<\/h3><div class=\"sub\">Search the venues the team has already saved<\/div><\/div><\/div>\n      <div class=\"where\"><span class=\"chip loc\">Launcher tab 1<\/span><span class=\"chip mono\">venue-search.js<\/span><span class=\"chip\">reads D1 records<\/span><\/div>\n      <div><p class=\"lab\">What it can do<\/p><ul>\n        <li>Search by name, organisation, suburb, ABN, legal name, owner, phone or email<\/li>\n        <li>Filter by stage, go-live soon, overdue steps and \"mine\"<\/li>\n        <li>Open a venue in any tool<\/li>\n        <li>Not found: add it, or send it to Restaurant Lookup<\/li>\n      <\/ul><\/div>\n      <div><p class=\"lab\">How it works<\/p><div class=\"flow\">\n        <span class=\"f\">Type a search<\/span><span class=\"to\">→<\/span><span class=\"f\">Saved records <code>/api/db<\/code><\/span><span class=\"to\">→<\/span><span class=\"f\">Filters<\/span><span class=\"to\">→<\/span><span class=\"f out\">Active venue in every tool<\/span>\n      <\/div><\/div>\n      <div class=\"cost\"><b>Cost:<\/b> free. It only reads saved records.<\/div>\n    <\/article>\n\n    <article class=\"tool t-venue\">\n      <div class=\"tool-head\"><div class=\"tile\">RL<\/div><div><h3>Restaurant Lookup<\/h3><div class=\"sub\">A venue profile from a name and a suburb<\/div><\/div><\/div>\n      <div class=\"where\"><span class=\"chip loc\">Launcher tab<\/span><span class=\"chip mono\">restaurant-lookup.html<\/span><span class=\"chip\">Worker calls Google, ABN, Firecrawl<\/span><\/div>\n      <div><p class=\"lab\">What it can do<\/p><ul>\n        <li>Google listing, opening hours, reviews and website<\/li>\n        <li>ABN and legal name<\/li>\n        <li>POS and online-ordering tech the venue uses<\/li>\n        <li>Delivery-app links, plus a short Claude summary when AI is on<\/li>\n      <\/ul><\/div>\n      <div><p class=\"lab\">How it works<\/p><div class=\"flow\">\n        <span class=\"f\">Name + suburb<\/span><span class=\"to\">→<\/span><span class=\"f\">Google Places<\/span><span class=\"to\">→<\/span><span class=\"f\">Website via <code>/api/fetch<\/code><\/span><span class=\"to\">→<\/span><span class=\"f\">ABN Lookup<\/span><span class=\"to\">→<\/span><span class=\"f\">Firecrawl last resort<\/span><span class=\"to\">→<\/span><span class=\"f out\">Saved venue profile<\/span>\n      <\/div><\/div>\n      <div class=\"cost\"><b>Cost:<\/b> Google Places 1,000 free a month · ABN free · Firecrawl about 13–23 credits, only when nothing else works. Results cached 14 days.<\/div>\n    <\/article>\n\n    <article class=\"tool t-converter\">\n      <div class=\"tool-head\"><div class=\"tile\">MC<\/div><div><h3>Menu Converter<\/h3><div class=\"sub\">Menu Reader 2.0: any menu into the Oolio One import CSV<\/div><\/div><\/div>\n      <div class=\"where\"><span class=\"chip loc\">Launcher tab<\/span><span class=\"chip mono\">menu-converter.html<\/span><span class=\"chip mono\">menu-knowledge.js<\/span><span class=\"chip\">server scraper + OCR<\/span><\/div>\n      <div><p class=\"lab\">What it can do<\/p><ul>\n        <li>Read PDF, Word, Excel, photos and web addresses<\/li>\n        <li>\"Find all menus\": website, Hungry Hungry, me&amp;u/Mr Yum, DoorDash, Uber Eats<\/li>\n        <li><span class=\"new\">New<\/span>Read Redcat onboarding workbooks (MENU and FREE TEXT sheets)<\/li>\n        <li><span class=\"new\">New<\/span>Read OrderMate exports: inactive items left out, pluses → \"Add X\", minuses → \"No X\", plus a modifier sheet (XLSX)<\/li>\n        <li><span class=\"new\">New<\/span>Price lists as extra columns, from Oolio files or one OrderMate export per price level<\/li>\n        <li><span class=\"new\">New<\/span>Takeaway / dine-in sizes split into a Takeaway price list; filler sizes dropped; kids items become a Kids Size (tick box)<\/li>\n        <li>Sort into categories, food/drink, printers, sizes and modifier groups<\/li>\n        <li>Pre-flight check, menu changes vs last version, spirit brands, standard option groups<\/li>\n        <li>Price editor, price request sheet, no-price override, session restore<\/li>\n      <\/ul><\/div>\n      <div><p class=\"lab\">How it works<\/p><div class=\"flow\">\n        <span class=\"f\">Files, POS exports (Oolio, OrderMate, Redcat) or web addresses<\/span><span class=\"to\">→<\/span><span class=\"f\">Built-in parsers<\/span><span class=\"or\">or<\/span><span class=\"f\">Server scraper + OCR<\/span><span class=\"or\">or<\/span><span class=\"f\">Firecrawl (capped)<\/span><span class=\"to\">→<\/span><span class=\"f\">Trained rules from ~220 venues<\/span><span class=\"to\">→<\/span><span class=\"f\">Review + checks<\/span><span class=\"to\">→<\/span><span class=\"f out\">Oolio import CSV<\/span>\n      <\/div><\/div>\n      <div class=\"note\">\"Check against the original\" (AI flags differences between a photo and the list; it never fixes) is built but hidden until an API key is set.<\/div>\n      <div class=\"cost\"><b>Cost:<\/b> free readers first · Firecrawl capped per search · AI only if the owner switches it on.<\/div>\n    <\/article>\n\n    <article class=\"tool t-photos\">\n      <div class=\"tool-head\"><div class=\"tile\">PF<\/div><div><h3>Photo Finder<\/h3><div class=\"sub\">A photo for every product on the menu<\/div><\/div><\/div>\n      <div class=\"where\"><span class=\"chip loc\">Launcher tab (in a frame)<\/span><span class=\"chip mono\">photo-finder.html<\/span><span class=\"chip\">browser + <code>/api/fetch<\/code><\/span><\/div>\n      <div><p class=\"lab\">What it can do<\/p><ul>\n        <li>Take an Oolio product export and find one photo per product<\/li>\n        <li>Prefer the venue's own photos over stock<\/li>\n        <li>Fall back to free photo libraries<\/li>\n        <li>Save a folder or a ZIP, with a credits file for each photo<\/li>\n      <\/ul><\/div>\n      <div><p class=\"lab\">How it works<\/p><div class=\"flow\">\n        <span class=\"f\">Product export<\/span><span class=\"to\">→<\/span><span class=\"f\">Venue's own: Hungry Hungry, website, Uber Eats, DoorDash<\/span><span class=\"to\">→<\/span><span class=\"f\">Pexels, Pixabay, Openverse, Wikimedia<\/span><span class=\"to\">→<\/span><span class=\"f out\">Folder or ZIP + credits<\/span>\n      <\/div><\/div>\n      <div class=\"cost\"><b>Cost:<\/b> free libraries · DoorDash about 5 Firecrawl credits. Searches cached 14 days.<\/div>\n    <\/article>\n\n    <article class=\"tool t-photos\">\n      <div class=\"tool-head\"><div class=\"tile\">PE<\/div><div><h3>Photo Editor <span class=\"new\">New<\/span><\/h3><div class=\"sub\">One photo at the exact size you need<\/div><\/div><\/div>\n      <div class=\"where\"><span class=\"chip loc\">Photo Tools menu<\/span><span class=\"chip mono\">photo-editor.html<\/span><span class=\"chip\">browser only<\/span><\/div>\n      <div><p class=\"lab\">What it can do<\/p><ul>\n        <li>Size presets (Oolio 1000 × 1000 square, landscape, portrait) or a custom size<\/li>\n        <li>Fill and crop, or fit the whole photo on white, black, a colour, blur or transparent<\/li>\n        <li>Drag, zoom, rotate, flip and adjust brightness, contrast and saturation<\/li>\n        <li>Save as JPEG, PNG or WebP under a file size limit (2 MB by default)<\/li>\n      <\/ul><\/div>\n      <div><p class=\"lab\">How it works<\/p><div class=\"flow\">\n        <span class=\"f\">One photo (file or paste)<\/span><span class=\"to\">→<\/span><span class=\"f\">Frame it in the browser<\/span><span class=\"to\">→<\/span><span class=\"f out\">Download at the chosen size<\/span>\n      <\/div><\/div>\n      <div class=\"cost\"><b>Cost:<\/b> free. The photo never leaves the browser.<\/div>\n    <\/article>\n\n    <article class=\"tool t-setup\">\n      <div class=\"tool-head\"><div class=\"tile\">ST<\/div><div><h3>Setup Tracker<\/h3><div class=\"sub\">The Config Recap Checklist for each venue, through to go-live<\/div><\/div><\/div>\n      <div class=\"where\"><span class=\"chip loc\">Launcher tab<\/span><span class=\"chip mono\">setup-tracker.html<\/span><span class=\"chip\">records in D1<\/span><\/div>\n      <div><p class=\"lab\">What it can do<\/p><ul>\n        <li>Steps, owners and due dates, with links to help.oolio.com guides<\/li>\n        <li><span class=\"new\">New<\/span>Devices and printers read from a hardware diagram without AI, recognising everything on shop.oolio.com<\/li>\n        <li><span class=\"new\">New<\/span>\"Read with AI\" tick box to send diagram pictures straight to Claude<\/li>\n        <li>Staff list, brand, Board view, organisations (groups of venues)<\/li>\n        <li>Go-live pack as a Word file<\/li>\n        <li>Customer intake link (30 days) and backup / restore of records<\/li>\n      <\/ul><\/div>\n      <div><p class=\"lab\">How it works (hardware diagram)<\/p><div class=\"flow\">\n        <span class=\"f\">.drawio labels<\/span><span class=\"or\">or<\/span><span class=\"f\">Server OCR<\/span><span class=\"to\">→<\/span><span class=\"f\">Diagram rules + Oolio shop catalogue<\/span><span class=\"to\">→<\/span><span class=\"f\">Claude only if rules find nothing (or Read with AI is ticked)<\/span><span class=\"to\">→<\/span><span class=\"f out\">Device plan in the checklist<\/span>\n      <\/div><\/div>\n      <div class=\"cost\"><b>Cost:<\/b> free.<\/div>\n    <\/article>\n\n    <article class=\"tool t-word\">\n      <div class=\"tool-head\"><div class=\"tile\">IW<\/div><div><h3>Image to Word<\/h3><div class=\"sub\">Photos, scans and PDFs into an editable Word file<\/div><\/div><\/div>\n      <div class=\"where\"><span class=\"chip loc\">Launcher tab<\/span><span class=\"chip mono\">image-to-word.html<\/span><span class=\"chip\">pdf.js for PDFs<\/span><\/div>\n      <div><p class=\"lab\">What it can do<\/p><ul>\n        <li>Turn a photo or scan of a document into formatted text<\/li>\n        <li>Read PDFs page by page<\/li>\n        <li>Save a .docx you can edit<\/li>\n        <li><span class=\"new\">New<\/span>\"Read with AI\" tick box (off by default). With AI on, text is grouped into headings, bullet lists and tables<\/li>\n      <\/ul><\/div>\n      <div><p class=\"lab\">How it works<\/p><div class=\"flow\">\n        <span class=\"f\">Image or PDF<\/span><span class=\"to\">→<\/span><span class=\"f\">AI off: server OCR, else Tesseract in the browser<\/span><span class=\"or\">or<\/span><span class=\"f\">AI on: Claude, falling back to OCR<\/span><span class=\"to\">→<\/span><span class=\"f out\">.docx<\/span>\n      <\/div><\/div>\n      <div class=\"cost\"><b>Cost:<\/b> free, unless Claude is switched on for you.<\/div>\n    <\/article>\n\n  <\/div>\n<\/section>\n\n<section>\n  <h2>Other pages on the website<\/h2>\n  <div class=\"pages\">\n    <div class=\"pg\"><b>Sign-in<\/b><code>/login<\/code><span>Anyone with an allowed email gets a 6-digit code.<\/span><\/div>\n    <div class=\"pg\"><b>Admin<\/b><code>/admin<\/code><span>Owner and admins: people, roles, tool access, view-only, blocking, Firecrawl on/off, AI settings and spend, activity.<\/span><\/div>\n    <div class=\"pg\"><b>Customer intake<\/b><code>/intake/&lt;token&gt;<\/code><span>Public. The venue's customer uploads menus, staff list and files. Lasts 30 days.<\/span><\/div>\n    <div class=\"pg\"><b>Legal<\/b><code>/legal/<\/code><span>Public: privacy, terms and the other policy pages.<\/span><\/div>\n  <\/div>\n<\/section>\n\n<section>\n  <h2>Helpers on this PC<\/h2>\n  <p class=\"lede\">These don't touch the live site. They're for changing the software, checking data, or doing a job from chat in Claude Code.<\/p>\n  <div class=\"tbl\"><table>\n    <thead><tr><th>Helper<\/th><th>What it does<\/th><th>How to use it<\/th><\/tr><\/thead>\n    <tbody>\n      <tr><td>build_apps.py<\/td><td>Rebuilds <code>apps.html<\/code> and everything in <code>public/<\/code> from the tool sources<\/td><td><code>python build_apps.py<\/code>, then push to main<\/td><\/tr>\n      <tr><td>site-viewer/<\/td><td>Read-only view of live data: users, venues, activity, AI spend<\/td><td><code>start.cmd<\/code> → http://127.0.0.1:8790<\/td><\/tr>\n      <tr><td>menu-scraper/<\/td><td>The scraper the server runs; can also run here on port 8787<\/td><td>venv in <code>%USERPROFILE%\\.menu-scraper\\venv<\/code><\/td><\/tr>\n      <tr><td>training/<\/td><td>Rebuilds the converter's rules from the team's finished pre-work<\/td><td><code>harvest.py<\/code> → <code>build_knowledge.py<\/code><\/td><\/tr>\n      <tr><td>menu-parser agent<\/td><td>Parses a menu into Oolio pre-work with the same rules<\/td><td>Ask Claude Code to \"parse this menu\"<\/td><\/tr>\n      <tr><td>hardware-parser agent<\/td><td>Reads a hardware diagram into the Setup Tracker hardware CSV<\/td><td>Ask Claude Code to read a hardware diagram<\/td><\/tr>\n      <tr><td>Monthly menu scan<\/td><td>Scheduled task that follows <code>menu-scan-task.md<\/code><\/td><td>1st of the month, 9am, while this PC and Claude are on<\/td><\/tr>\n    <\/tbody>\n  <\/table><\/div>\n<\/section>\n\n<section>\n  <h2>Same tools, three places<\/h2>\n  <p class=\"lede\"><code>hosted.js<\/code> translates what the tools ask for into the website's own API, so the tool code is identical everywhere. The website is the main home.<\/p>\n  <div class=\"tbl\"><table>\n    <thead><tr><th>The tool asks for<\/th><th>menuhauler.com<\/th><th>claude.ai copy<\/th><th>Local file (apps.html)<\/th><\/tr><\/thead>\n    <tbody>\n      <tr><td>Shared records<\/td><td><code>/api/db<\/code> → D1<\/td><td>the artifact's own database<\/td><td>browser storage, just you<\/td><\/tr>\n      <tr><td>Who you are<\/td><td><code>/api/me<\/code><\/td><td>claude.ai account<\/td><td class=\"na\">not signed in<\/td><\/tr>\n      <tr><td>Firecrawl<\/td><td>team key, monthly cap<\/td><td>viewer's own connector<\/td><td class=\"na\">not available<\/td><\/tr>\n      <tr><td>Fetching pages and photos<\/td><td><code>/api/fetch<\/code>, free<\/td><td>Claude browser or Firecrawl<\/td><td>direct only (many sites block it)<\/td><\/tr>\n      <tr><td>AI reading and summaries<\/td><td><code>/api/claude<\/code>, off unless enabled for you<\/td><td>viewer's own Claude usage<\/td><td>Tesseract and built-in parsers<\/td><\/tr>\n      <tr><td>Scraper + OCR server<\/td><td><code>/api/server/*<\/code> → Google server<\/td><td class=\"na\">not available<\/td><td class=\"na\">not available<\/td><\/tr>\n    <\/tbody>\n  <\/table><\/div>\n<\/section>\n\n<section>\n  <h2>Who can do what<\/h2>\n  <div class=\"three\">\n    <div><b>Owner<\/b>Everything. The only one who can make admins, change allowed domains, turn AI on and choose who may use it.<\/div>\n    <div><b>Admin<\/b>Opens <code>/admin<\/code> and manages members.<\/div>\n    <div><b>Member<\/b>Uses the tools. Can be limited to some tools, set to view-only, have Firecrawl off, or be blocked.<\/div>\n  <\/div>\n<\/section>\n\n<footer>Drawn from SYSTEM-GUIDE.md, the project notes and the commit history. Updated 17 November 2026. If this disagrees with the code, the code wins.<\/footer>\n<\/div>\n\n<\/body>\n<\/html>\n";
 
 (()=>{
-  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),training:g('lx-ts'),word:g('lx-iw'),photoedit:g('lx-pe'),map:g('lx-map')};
+  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),training:g('lx-ts'),word:g('lx-iw'),photoedit:g('lx-pe'),map:g('lx-map'),hypercare:g('lx-hc'),team:g('lx-team'),routing:g('lx-routing')};
   const LEGAL=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>a.id.slice(3));LEGAL.forEach(k=>{views[k]=g('lx-legal')});
   const onClaude=!!(window.claude&&window.claude.use)||/(^|\.)claude(usercontent)?\.(ai|com)$/.test(location.hostname);
   let pfReady=false,checked=false,mapReady=false;
@@ -7101,6 +7432,379 @@ let dq=false;const redraw=()=>{if(dq)return;dq=true;requestAnimationFrame(()=>{d
 OV.on(redraw);
 window.addEventListener('hashchange',()=>{if(location.hash.slice(1)==='venues'){index();draw();setTimeout(()=>q.focus(),30)}});
 index();draw();
+})();
+</script>
+<script>/* Menu Hauler: the venue record. Under the home hub's four steps, one place shows everything saved for the active venue
+   by every tool: menu (with the linter's result), hardware and routing, checklist, training, hypercare, the venue portal,
+   and a timeline of who changed what (with undo). Also here:
+   - the routing map (#routing): menu categories → printers → KDS screens, from the converter's last menu and the
+     tracker's printers and devices, with what routes nowhere;
+   - email templates (welcome, data request, go-live reminder, handover), filled in from the venue, to copy or open in
+     the mail app (nothing is sent from the site).
+   Reads window.OolioVenues only; build_apps.py puts it after venue-link.js. Ids and classes start vr-. */
+(()=>{
+const g=id=>document.getElementById(id),OV=window.OolioVenues;if(!OV)return;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clean=s=>String(s==null?'':s).replace(/\s+/g,' ').trim();
+const IC=n=>window.mhIcon?window.mhIcon(n):'';
+const view=()=>location.hash.slice(1);
+const go=v=>{if(view()===v)window.dispatchEvent(new HashChangeEvent('hashchange'));else location.hash=v};
+const day=t=>t?new Date(t).toLocaleDateString('en-AU',{day:'numeric',month:'short'}):'';
+const fmtDate=d=>d?new Date(d+'T00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short',year:'numeric'}):'';
+const ago=t=>{if(!t)return'';const s=(Date.now()-t)/1000;return s<60?'just now':s<3600?Math.round(s/60)+' min ago':s<86400?Math.round(s/3600)+' h ago':day(t)};
+const plural=(n,w)=>n+' '+w+(n===1?'':'s');
+const fold=s=>clean(s).toLowerCase();
+
+/* ---------- the record panels on the home hub ---------- */
+const hub=g('lx-hub');if(!hub)return;
+const rec=document.createElement('section');rec.id='vr-rec';rec.className='vr-rec';rec.setAttribute('aria-label','Venue record');hub.after(rec);
+let PORTAL=null,PORTAL_FOR='';
+async function loadPortal(id){if(!window.OOLIO_HOSTED){PORTAL=null;return}PORTAL_FOR=id;
+  try{const r=await fetch('/api/intake/status?venue='+encodeURIComponent(id),{credentials:'same-origin'});const j=await r.json();if(PORTAL_FOR===id){PORTAL=j.link||null;draw()}}catch(e){}}
+function hcOf(o){const h=o.hc||{},iss=Object.entries(h.issues||{}).filter(([,x])=>x&&x.t).map(([k,x])=>Object.assign({id:k},x));
+  const open=iss.filter(x=>x.status!=='closed');return{h,iss,open}}
+function routing(o){const m=o.menu||{},P=(o.printers||[]),D=(o.devices||[]);
+  const known=new Map(P.map(p=>[fold(p.name),p]));
+  const cats=(m.cats||[]).map(([c,n,pr])=>({c,n,pr:String(pr||'').split(/\s*,\s*/).filter(Boolean)}));
+  const none=cats.filter(c=>!c.pr.length),unknown=[...new Set(cats.flatMap(c=>c.pr).filter(p=>!/^auto/i.test(p)&&!known.has(fold(p))))];
+  const used=new Set(cats.flatMap(c=>c.pr.map(fold)));
+  const idle=P.filter(p=>p.use!=='Receipts'&&!used.has(fold(p.name))).map(p=>p.name);
+  const nofb=P.filter(p=>p.use!=='Receipts'&&!clean(p.fb)).map(p=>p.name);
+  const kds=D.filter(d=>/kds/i.test(d.role||''));
+  return{cats,P,kds,none,unknown,idle,nofb,known,issues:none.length+unknown.length}}
+function draw(){const a=OV.active();if(!a||view()!==''){rec.hidden=true;return}rec.hidden=false;const o=a,m=o.menu,pr=OV.progress(a.id),late=OV.late(a.id);
+  const tp=window.OolioTraining&&window.OolioTraining.progress?window.OolioTraining.progress(o):null,hc=hcOf(o),rt=routing(o),devs=o.devices||[],prns=(o.printers||[]).filter(p=>p.use!=='Receipts');
+  const card=(cls,icon,title,body,acts)=>'<article class="vr-card '+cls+'"><h3>'+IC(icon)+esc(title)+'</h3>'+body+(acts?'<div class="vr-acts">'+acts+'</div>':'')+'</article>';
+  const btn=(a,t,sec)=>'<button type="button"'+(sec?' class="lx-sec"':'')+' data-vr="'+a+'">'+t+'</button>';
+  const tag=(t,c)=>'<span class="vr-tag'+(c?' '+c:'')+'">'+t+'</span>';
+  const L=[];
+  L.push(card('t-converter','file-spreadsheet','Menu',m?'<p><b>'+m.products+'</b> products in <b>'+(m.cats||[]).length+'</b> categories'+(m.modifiers?', '+m.modifiers+' modifiers':'')+'. Saved '+esc(day(m.at))+((o.menuLog||[]).length>1?' · '+o.menuLog.length+' versions':'')+'.</p>'+
+      (m.lint?'<p>'+(m.lint.block?tag(plural(m.lint.block,'problem')+' to fix','bad'):tag('Pre-flight passed','ok'))+(m.lint.warn?' '+tag(plural(m.lint.warn,'thing')+' to check','warn'):'')+'</p>':''):'<p class="lx-muted">No menu converted yet.</p>',
+    btn('converter',m?'Open converter':'Convert menu',!!m)));
+  L.push(card('t-setup','printer','Hardware and routing',(devs.length||prns.length?'<p><b>'+devs.length+'</b> device'+(devs.length===1?'':'s')+' · <b>'+prns.length+'</b> docket printer'+(prns.length===1?'':'s')+' · <b>'+rt.kds.length+'</b> KDS screen'+(rt.kds.length===1?'':'s')+'</p>':'<p class="lx-muted">No devices or printers listed yet.</p>')+
+      (m&&prns.length?'<p>'+(rt.issues?tag(plural(rt.none.length+rt.unknown.length,'routing gap'),'warn'):tag('Every category prints somewhere','ok'))+(rt.nofb.length?' '+tag(plural(rt.nofb.length,'printer')+' without a fallback','warn'):'')+'</p>':''),
+    btn('routing','Routing map',!m||!prns.length?1:0)+btn('hw','Devices',1)));
+  L.push(card('t-setup','list-checks','Checklist','<p><b>'+pr.done+'</b> of '+pr.total+' steps done'+(late?' · '+tag(plural(late,'overdue step'),'bad'):'')+'</p><p class="lx-muted">'+esc(OV.stage(a.id))+(o.golive?' · go-live '+esc(fmtDate(o.golive)):'')+(o.owner?' · '+esc(o.owner):'')+'</p>',btn('setup','Open checklist',1)));
+  L.push(card('t-training','presentation','Training',tp&&(tp.done||tp.finished)?'<p><b>'+(tp.done||0)+'</b> of '+(tp.total||0)+' run-sheet steps covered'+(tp.finished?', finished '+esc(day(tp.finished)):'')+'.</p>'+(tp.open?'<p>'+tag(plural(tp.open,'open action item'),'warn')+'</p>':''):
+      '<p class="lx-muted">'+(o.training?'Training booked for '+esc(fmtDate(o.training))+'.':'No training session yet.')+'</p>',btn('training','Training session',1)+btn('cheat','Staff cheat sheet',1)));
+  const hst=window.OolioHypercare?window.OolioHypercare.state(o):null,hon=hst&&hst.k!=='none'&&hst.k!=='soon';
+  L.push(card('t-hypercare','life-buoy','Hypercare',hon||hc.iss.length?'<p>'+(hc.open.length?'<b>'+hc.open.length+'</b> open issue'+(hc.open.length===1?'':'s'):'No open issues')+' · '+plural(hc.iss.length,'issue')+' logged</p>'+
+      (hst?'<p class="lx-muted">'+esc(hst.label)+'</p>':''):'<p class="lx-muted">'+(hst&&hst.k==='soon'?esc(hst.label)+'. ':'')+'Starts at go-live. Log issues from the first service on.</p>',btn('hypercare','Open hypercare',1)));
+  if(window.OOLIO_HOSTED){const ap=(PORTAL&&PORTAL.approvals)||{},n=['menu','plan','golive'].filter(k=>ap[k]&&ap[k].decision==='approve').length;
+    L.push(card('t-venues','send','Venue portal',PORTAL?'<p>'+(PORTAL.live?tag('Link live','ok'):tag(PORTAL.revoked?'Turned off':'Expired','warn'))+' '+(PORTAL.submittedAt?'Answers sent '+esc(day(PORTAL.submittedAt))+'.':'')+(PORTAL.files&&PORTAL.files.length?' '+plural(PORTAL.files.length,'file')+'.':'')+'</p><p>'+n+' of 3 sign-offs'+(['menu','plan','golive'].some(k=>ap[k]&&ap[k].decision==='changes')?' · '+tag('changes asked for','warn'):'')+'</p>':
+      '<p class="lx-muted">No portal link yet. The venue tracks progress, uploads files and signs off through it.</p>',btn('portal',PORTAL?'Open portal page':'Make a portal link',1)));}
+  L.push(card('t-venue','mail','Emails','<p class="lx-muted">Welcome, data request, go-live reminder and handover, filled in from this venue.</p>',btn('emails','Write an email',1)));
+  rec.innerHTML='<h2 class="lx-toolsh">'+IC('book-open')+'Venue record</h2><div class="vr-grid">'+L.join('')+'</div>'+
+    '<div class="vr-tl"><div class="vr-tlh"><h2 class="lx-toolsh">'+IC('history')+'Timeline</h2><span class="lx-muted lx-small">Every change to this venue, newest first. Undo puts the old values back.</span></div><ol id="vr-tl" class="vr-tlist" aria-live="polite"><li class="lx-muted">Loading…</li></ol></div>';
+  drawTimeline(a.id)}
+let TL=[],TLFOR='',TLSEQ=0;
+async function drawTimeline(id){const seq=++TLSEQ;const L=await OV.log(id,40);if(seq!==TLSEQ)return;TL=L;TLFOR=id;const el=g('vr-tl');if(!el)return;
+  const ids=[...new Set(L.map(e=>e.by).filter(Boolean))];if(OV.names)OV.names(ids);
+  el.innerHTML=L.length?L.map(e=>'<li class="vr-ev'+(e.undone?' undone':'')+'"><span class="vr-when" title="'+esc(new Date(e.at).toLocaleString('en-AU'))+'">'+esc(ago(e.at))+'</span>'+
+      '<span class="vr-what">'+esc(e.text)+'<small>'+esc([OV.name(e.by)||(e.by?'a teammate':''),e.tool].filter(Boolean).join(' · '))+(e.undone?' · undone':'')+'</small></span>'+
+      (e.prev&&!e.undone&&!OV.readOnly?'<button type="button" class="lx-link vr-undo" data-undo="'+esc(e.id)+'">'+IC('undo-2')+'Undo</button>':'')+'</li>').join(''):
+    '<li class="lx-muted">Nothing recorded yet. Changes made from now on show here.</li>'}
+rec.addEventListener('click',e=>{const u=e.target.closest('[data-undo]');if(u){const ev=TL.find(x=>x.id===u.dataset.undo),a=OV.active();if(!ev||!a)return;
+    const newer=TL.filter(x=>x.at>ev.at&&!x.undone&&x.key===ev.key).length;
+    if(!confirm('Undo “'+ev.text+'”?'+(newer?'\n\n'+newer+' later change'+(newer>1?'s':'')+' to the same thing will be overwritten too.':'')))return;
+    if(OV.undo(a.id,ev))setTimeout(()=>drawTimeline(a.id),400);return}
+  const b=e.target.closest('[data-vr]');if(!b)return;const a=OV.active();if(!a)return;const k=b.dataset.vr;
+  if(k==='converter'||k==='training'||k==='hypercare')go(k);
+  else if(k==='setup'){go('setup');OV.open(a.id)}
+  else if(k==='hw'){go('setup');OV.open(a.id);setTimeout(()=>{const s=g('st-prep-hw')||document.querySelector('[id^="st-prep-hw"]');if(s)s.scrollIntoView({behavior:'smooth'})},300)}
+  else if(k==='routing')go('routing');
+  else if(k==='emails')emails(a);
+  else if(k==='cheat'){go('training');setTimeout(()=>{if(window.OolioTraining&&window.OolioTraining.cheatSheet)window.OolioTraining.cheatSheet()},100)}
+  else if(k==='portal'){go('setup');OV.open(a.id);setTimeout(()=>{if(window.OolioIntakeOpen)window.OolioIntakeOpen(a.id)},200)}});
+window.addEventListener('oolio:log',e=>{const a=OV.active();if(a&&e.detail&&e.detail.id===a.id&&view()===''){clearTimeout(drawTimeline.t);drawTimeline.t=setTimeout(()=>drawTimeline(a.id),700)}});
+let last='',lastA='';
+function sync(){const a=OV.active(),id=a?a.id:'';if(id!==lastA){lastA=id;PORTAL=null;if(id)loadPortal(id)}
+  if(view()!=='')return void(rec.hidden=true);
+  const sig=a?JSON.stringify([a.updatedAt,PORTAL&&PORTAL.submittedAt]):'';if(sig===last&&!rec.hidden)return;last=sig;draw()}
+OV.on(()=>{last='';sync()});window.addEventListener('hashchange',()=>{last='';sync();drawRouting()});sync();
+
+/* ---------- routing map (#routing) ---------- */
+// the view's box (#lx-routing) is in the launcher's page (build_apps.py), so the launcher can show and hide it
+const rv=g('lx-routing');
+function drawRouting(){if(!rv)return;if(view()!=='routing')return;const el=g('vr-routing'),a=OV.active();
+  if(!a){el.innerHTML='<h1>Routing map</h1><p class="vs-sub">Pick a venue at the top first.</p>';return}
+  const r=routing(a),m=a.menu;
+  if(!m){el.innerHTML='<h1>Routing map: '+esc(a.name)+'</h1><p class="vs-sub">Convert the venue’s menu first. The map uses the categories and printers from the last download.</p><div class="lx-row"><button type="button" data-rt="converter">Open the converter</button></div>';return}
+  const pname=p=>/^auto/i.test(p)?'Auto (per item: food to the kitchen, drinks to the bar)':p;
+  const kdsFor=p=>{const P=r.known.get(fold(p)),loc=fold((P&&(P._l||P.loc))||'').split('·')[0].trim(),n=fold(p);
+    return r.kds.filter(d=>{const dl=fold(d.loc),dn=fold(d.name);return(loc&&(dl===loc||dn.includes(loc)))||dn.includes(n)||(dl&&n.includes(dl))})};
+  const byP=new Map();r.cats.forEach(c=>{(c.pr.length?c.pr:['']).forEach(p=>{(byP.get(p)||byP.set(p,[]).get(p)).push(c)})});
+  const lanes=[...byP].sort((x,y)=>(x[0]?0:1)-(y[0]?0:1)||x[0].localeCompare(y[0])).map(([p,cs])=>{const P=r.known.get(fold(p)),k=p?kdsFor(p):[],bad=!p||(!/^auto/i.test(p)&&!P);
+    return '<li class="vr-lane'+(bad?' bad':'')+'"><div class="vr-cats">'+cs.map(c=>'<span class="vr-chip">'+esc(c.c||'(no category)')+' <small>'+c.n+'</small></span>').join('')+'</div>'+
+      '<div class="vr-arrow" aria-hidden="true">'+IC('arrow-right')+'</div>'+
+      '<div class="vr-dest"><b>'+IC('printer')+esc(p?pname(p):'No printer')+'</b>'+(P?'<small>'+esc([P.kind,P.loc,P.ip&&P.ip!=='1.1.1.1'?'IP '+P.ip:'',P.fb?'fallback → '+P.fb:'no fallback'].filter(Boolean).join(' · '))+'</small>':
+        p&&!/^auto/i.test(p)?'<small class="vr-bad">Not a printer listed for this venue in the Setup Tracker</small>':!p?'<small class="vr-bad">These categories don’t print a docket anywhere</small>':'')+'</div>'+
+      '<div class="vr-arrow" aria-hidden="true">'+(k.length?IC('arrow-right'):'')+'</div><div class="vr-dest">'+(k.length?k.map(d=>'<b>'+IC('monitor')+esc(d.name)+'</b><small>'+esc([d.profile,d.loc].filter(Boolean).join(' · '))+'</small>').join(''):p?'<small class="lx-muted">No KDS screen at this printer’s location</small>':'')+'</div></li>'}).join('');
+  const prob=[[r.none.length,r.none.length===1?'category with no printer':'categories with no printer','They never reach the kitchen or bar. Set a printer for them in the converter (step 3).',r.none.map(c=>c.c)],
+    [r.unknown.length,r.unknown.length===1?'printer in the menu that isn’t listed for the venue':'printers in the menu that aren’t listed for the venue','Add them to the Setup Tracker’s printers, or change the menu’s printer.',r.unknown],
+    [r.idle.length,r.idle.length===1?'printer nothing is sent to':'printers nothing is sent to','Fine for a spare or receipt printer; otherwise route a category to it.',r.idle],
+    [r.nofb.length,r.nofb.length===1?'printer without a fallback':'printers without a fallback','If one jams, its dockets are lost. Pair it with another printer.',r.nofb]].filter(x=>x[0]);
+  el.innerHTML='<h1>Routing map: '+esc(a.name)+'</h1><p class="vs-sub">Where each menu category prints and which KDS screen shows it. From the menu saved '+esc(day(m.at))+' and the printers and devices in the Setup Tracker. KDS screens are matched to printers by location and name.</p>'+
+    (prob.length?'<div class="vr-probs">'+prob.map(([n,t,h,l])=>'<details class="vr-prob"><summary><b>'+n+'</b> '+esc(t)+'</summary><p class="lx-muted">'+esc(h)+'</p><p>'+l.map(esc).join(', ')+'</p></details>').join('')+'</div>':'<p class="vr-okline">'+IC('circle-check')+'Every category prints somewhere and every printer has a fallback.</p>')+
+    '<div class="vr-lanehead"><span>Menu categories</span><span></span><span>Printer</span><span></span><span>KDS</span></div><ol class="vr-lanes">'+lanes+'</ol>'+
+    '<div class="lx-row" style="margin-top:12px"><button type="button" data-rt="converter" class="lx-sec">Change printers in the converter</button><button type="button" data-rt="hw" class="lx-sec">Edit printers and devices</button><button type="button" data-rt="copy" class="lx-sec">'+IC('copy')+'Copy as text</button></div>'}
+if(rv)rv.addEventListener('click',async e=>{const b=e.target.closest('[data-rt]');if(!b)return;const a=OV.active(),k=b.dataset.rt;
+  if(k==='converter')go('converter');else if(k==='hw'&&a){go('setup');OV.open(a.id)}
+  else if(k==='copy'&&a){const r=routing(a),t=['Routing map: '+a.name,''].concat(r.cats.map(c=>c.c+' ('+c.n+') → '+(c.pr.join(', ')||'NO PRINTER'))).join('\n');try{await navigator.clipboard.writeText(t);b.lastChild.textContent='Copied'}catch(x){prompt('Copy:',t)}}});
+OV.on(()=>drawRouting());
+
+/* ---------- email templates ---------- */
+const first=s=>clean(s).split(/\s+/)[0]||'there';
+function fields(a){const o=OV.get(a.id)||a,c=o.contact||{},me=(window.MH_ME&&window.MH_ME.name)||'';
+  const cname=OV.field(a.id,'biz-contact','name')||c.name||'',cmail=OV.field(a.id,'biz-contact','email')||c.email||'';
+  return{venue:o.name||'your venue',contact:cname,first:first(cname),email:cmail,golive:o.golive?fmtDate(o.golive):'[go-live date]',training:o.training?fmtDate(o.training):'[training date]',
+    me:me||'[your name]',owner:o.owner||me||'[your name]',portal:PORTAL&&PORTAL.live?PORTAL.url:'[portal link]',products:o.menu?o.menu.products:'',
+    open:(OV.steps?OV.steps(a.id):[]).filter(s=>!s.s&&s.phase==='pre').slice(0,8).map(s=>s.t)}}
+const TPL=[
+  {k:'welcome',t:'Welcome',s:f=>'Welcome to Oolio, '+f.venue,b:f=>'Hi '+f.first+',\n\nWelcome to Oolio! I’m '+f.me+' and I’ll be looking after '+f.venue+'’s setup through to go-live'+(f.golive.startsWith('[')?'':' on '+f.golive)+'.\n\nHere’s how it will run:\n1. You send us your menus, logo, floor plan and staff list (link below).\n2. We build your menu, devices and printers in Oolio One.\n3. We book a training session with your team'+(f.training.startsWith('[')?'':' ('+f.training+')')+'.\n4. You go live, and we stay close for the first two weeks.\n\nYou can upload files, see where we’re up to and approve the menu here:\n'+f.portal+'\n\nAny questions, just reply to this email.\n\nThanks,\n'+f.me},
+  {k:'data',t:'Data request',s:f=>'What we need for '+f.venue+'’s setup',b:f=>'Hi '+f.first+',\n\nTo build '+f.venue+' in Oolio we still need:\n- Your current menus (PDF, photos or a POS export) with prices and sizes\n- Your logo\n- A floor plan or table layout\n- Your staff list (name and role for each person)\n- Which printers and screens go where\n\nYou can upload everything here; it saves as you go:\n'+f.portal+'\n\nIf it’s easier, reply with attachments instead.\n\nThanks,\n'+f.me},
+  {k:'golive',t:'Go-live reminder',s:f=>f.venue+' goes live on '+f.golive,b:f=>'Hi '+f.first+',\n\nA reminder that '+f.venue+' goes live on Oolio on '+f.golive+'.\n\nBefore then, please:\n- Check the menu and prices in the portal and approve them: '+f.portal+'\n- Make sure every staff member has their login\n- Have the devices and printers powered on and connected to the network\n'+(f.open.length?'\nStill open on our side:\n'+f.open.map(x=>'- '+x).join('\n')+'\n':'')+'\nWe’ll be on hand on the day. Reply here or call if anything comes up.\n\nThanks,\n'+f.me},
+  {k:'handover',t:'Handover to support',s:f=>f.venue+': setup complete, handing over to Oolio Support',b:f=>'Hi '+f.first+',\n\nThanks for a smooth setup. '+f.venue+' is now live'+(f.products?' with '+f.products+' products':'')+', and our two weeks of hypercare are done.\n\nFrom here, Oolio Support looks after you day to day:\n- Help guides: https://help.oolio.com\n- Support: through the help centre or the number in your welcome pack\n\nIt’s been great working with you and the team.\n\nThanks,\n'+f.me}];
+function emails(a){const d=g('lx-dlg'),f=fields(a);let cur=TPL[0];
+  const fill=()=>{g('vr-es').value=cur.s(f);g('vr-eb').value=cur.b(f)};
+  d.innerHTML='<form method="dialog" class="lx-form vr-mail"><h2>'+IC('mail')+'Email for '+esc(f.venue)+'</h2>'+
+    '<div class="vr-tabs" role="tablist">'+TPL.map((t,i)=>'<button type="button" role="tab" class="lx-sec" aria-selected="'+(i?'false':'true')+'" data-t="'+t.k+'">'+esc(t.t)+'</button>').join('')+'</div>'+
+    '<label>To<input id="vr-et" value="'+esc(f.email)+'" placeholder="venue contact’s email"></label><label>Subject<input id="vr-es"></label><label>Message<textarea id="vr-eb" rows="14"></textarea></label>'+
+    '<p class="lx-cn">Gaps in [brackets] weren’t found on the venue. Fill them before sending. Nothing is sent from Menu Hauler: copy it, or open it in your mail app.</p>'+
+    '<div class="lx-row"><button type="button" id="vr-ecopy">'+IC('copy')+'Copy</button><button type="button" id="vr-eopen" class="lx-sec">'+IC('send')+'Open in mail app</button><button value="cancel" class="lx-sec">Close</button></div></form>';
+  d.classList.add('vr-wide');d.addEventListener('close',()=>d.classList.remove('vr-wide'),{once:true});d.showModal();fill();
+  d.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{cur=TPL.find(t=>t.k===b.dataset.t);d.querySelectorAll('[data-t]').forEach(x=>x.setAttribute('aria-selected',x===b?'true':'false'));fill()});
+  g('vr-ecopy').onclick=async()=>{const t='Subject: '+g('vr-es').value+'\n\n'+g('vr-eb').value;try{await navigator.clipboard.writeText(t);g('vr-ecopy').lastChild.textContent='Copied'}catch(e){prompt('Copy:',t)}};
+  g('vr-eopen').onclick=()=>{const u='mailto:'+encodeURIComponent(g('vr-et').value.trim())+'?subject='+encodeURIComponent(g('vr-es').value)+'&body='+encodeURIComponent(g('vr-eb').value);if(u.length>1900){alert('This email is too long to open in the mail app. Use Copy instead.');return}location.href=u}}
+window.mhEmails=()=>{const a=OV.active();if(a)emails(a)};
+})();
+</script>
+<script>/* Menu Hauler: Hypercare. The first days after a venue goes live (14 by default, changeable per venue): the team logs
+   each issue (what it's about, how bad), closes it with what fixed it and its root cause, and the tab shows which
+   setup steps keep causing problems across all venues, so they can be fixed upstream (converter, routing, hardware,
+   training). Team only: venues don't log issues here. Saved on the venue record as o.hc
+   {start:'YYYY-MM-DD', days, ended, issues:{<id>:{t, area, sev, status, note, cause, fix, by, at, closedAt, closedBy}}}.
+   Reads and writes through window.OolioVenues; build_apps.py puts it after venue-link.js. Ids and classes start hc-. */
+(()=>{
+const g=id=>document.getElementById(id),OV=window.OolioVenues,root=g('hc-root');if(!OV||!root)return;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clean=s=>String(s==null?'':s).replace(/\s+/g,' ').trim();
+const IC=n=>window.mhIcon?window.mhIcon(n):'';
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const addDays=(d,n)=>{const x=new Date(d+'T00:00');x.setDate(x.getDate()+n);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0')};
+const daysBetween=(a,b)=>Math.round((new Date(b+'T00:00')-new Date(a+'T00:00'))/864e5);
+const fmt=d=>d?new Date(d+'T00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'}):'';
+const when=t=>t?new Date(t).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'}):'';
+const DAYS=14;
+const AREAS=[['menu','Menu or prices'],['print','Printers or KDS'],['pay','Payments or EFTPOS'],['device','Devices or network'],['staff','Staff or training'],['online','Online ordering or delivery'],['reports','Reports or end of day'],['other','Something else']];
+const SEV=[['blocker','Stops service'],['high','Slows service'],['normal','Annoying'],['low','Cosmetic']];
+// root causes, and where each is fixed upstream so the next venue doesn't hit it
+const CAUSES=[['menu','Menu built wrong (item, price, size, modifier)','Menu Converter: the pre-flight check and linter','converter'],
+  ['routing','Printer or KDS routing set up wrong','Routing map before go-live','routing'],
+  ['hardware','Hardware or network','Setup Tracker: hardware and network steps','setup'],
+  ['config','Oolio One setting missed','Setup Tracker: the checklist step it belongs to','setup'],
+  ['training','Staff weren’t shown how','Training Session run sheet','training'],
+  ['request','Venue asked for a change','Nothing upstream: a new request',''],
+  ['bug','Oolio product fault','Raise with product; nothing upstream',''],
+  ['third','Third party (bank, delivery app, ISP)','Nothing upstream',''],
+  ['unknown','Not sure','','']];
+const NAME=(L,k)=>(L.find(x=>x[0]===k)||[k,k])[1];
+const hcOf=o=>o&&o.hc||{};
+const startOf=o=>hcOf(o).start||o.golive||'';
+const issues=o=>Object.entries(hcOf(o).issues||{}).filter(([,x])=>x&&x.t).map(([id,x])=>Object.assign({id},x)).sort((a,b)=>(a.status==='closed')-(b.status==='closed')||SEV.findIndex(s=>s[0]===a.sev)-SEV.findIndex(s=>s[0]===b.sev)||b.at-a.at);
+function state(o){const s=startOf(o),h=hcOf(o),n=h.days||DAYS,t=today(),open=issues(o).filter(x=>x.status!=='closed').length;
+  if(h.ended)return{k:'ended',s,n,open,label:'Handed over '+fmt(h.ended)};
+  if(!s)return{k:'none',s,n,open,label:'No go-live date'};
+  const d=daysBetween(s,t);if(d<0)return{k:'soon',s,n,open,label:'Starts '+fmt(s)+' (in '+(-d)+' day'+(d===-1?'':'s')+')'};
+  if(d<n)return{k:'on',s,n,open,day:d+1,label:'Day '+(d+1)+' of '+n};
+  return{k:'over',s,n,open,label:'Window ended '+fmt(addDays(s,n))+(open?', issues still open':'')}}
+let SEL='',SHOWALL=false;
+function venues(){return OV.list().map(o=>({o,st:state(o)})).filter(x=>x.st.k==='on'||x.st.open||(x.st.k==='soon'&&daysBetween(today(),x.st.s)<=7)||(x.st.k==='over'&&!hcOf(x.o).ended&&daysBetween(addDays(x.st.s,x.st.n),today())<=14))
+  .sort((a,b)=>b.st.open-a.st.open||(a.st.s||'').localeCompare(b.st.s||''))}
+function draw(){if(location.hash.slice(1)!=='hypercare')return;const a=OV.active(),L=venues();
+  if(!SEL||!OV.get(SEL))SEL=a?a.id:(L[0]?L[0].o.id:'');const o=OV.get(SEL);
+  root.innerHTML='<h1>Hypercare</h1><p class="vs-sub">The first '+DAYS+' days after go-live. Log every issue the venue raises, close it with what fixed it and why it happened, and see which setup steps keep causing problems.</p>'+
+    '<div class="hc-layout"><aside class="hc-side"><h2>In hypercare</h2>'+(L.length?'<ul class="hc-vlist">'+L.map(x=>'<li><button type="button" data-v="'+esc(x.o.id)+'"'+(x.o.id===SEL?' aria-current="true"':'')+'><b>'+esc(x.o.name||'Untitled')+'</b><span>'+esc(x.st.label)+(x.st.open?' · <em>'+x.st.open+' open</em>':'')+'</span></button></li>').join('')+'</ul>':
+      '<p class="lx-muted lx-small">No venue is in its first '+DAYS+' days. Venues show here a week before go-live.</p>')+
+    (a&&!L.some(x=>x.o.id===a.id)?'<p class="lx-small"><button type="button" class="lx-link" data-v="'+esc(a.id)+'">Show '+esc(a.name)+'</button></p>':'')+'</aside>'+
+    '<section class="hc-main">'+(o?venueHtml(o):'<p class="lx-muted">Pick a venue at the top or from the list.</p>')+'</section></div>'+insights()}
+function venueHtml(o){const st=state(o),L=issues(o),ro=OV.readOnly,open=L.filter(x=>x.status!=='closed');
+  return '<div class="hc-vhead"><div><h2>'+esc(o.name||'Untitled')+'</h2><p class="lx-muted">'+esc(st.label)+(st.s?' · went live '+esc(fmt(st.s)):'')+'</p></div>'+
+    (st.k==='on'?'<div class="hc-days" aria-label="'+esc(st.label)+'">'+Array.from({length:st.n},(_,i)=>'<i class="'+(i<st.day?'on':'')+'"></i>').join('')+'</div>':'')+'</div>'+
+    (ro?'':'<form class="hc-add" id="hc-add"><label class="hc-t">What happened<input id="hc-t" required maxlength="200" placeholder="e.g. Pizza dockets printing at the bar"></label>'+
+      '<label>About<select id="hc-area">'+AREAS.map(([k,t])=>'<option value="'+k+'">'+esc(t)+'</option>').join('')+'</select></label>'+
+      '<label>How bad<select id="hc-sev">'+SEV.map(([k,t])=>'<option value="'+k+'"'+(k==='normal'?' selected':'')+'>'+esc(t)+'</option>').join('')+'</select></label>'+
+      '<button type="submit">'+IC('plus')+'Log issue</button></form>')+
+    (L.length?'<ul class="hc-list">'+L.map(x=>issueHtml(x,ro)).join('')+'</ul>':'<p class="lx-muted">No issues logged'+(st.k==='soon'?' yet. Hypercare starts at go-live.':'. Log the first one above when the venue calls.')+'</p>')+
+    (ro?'':'<div class="lx-row hc-foot">'+(st.k==='none'?'<label class="lx-small">Hypercare starts <input type="date" id="hc-start" value=""></label>':'<label class="lx-small">Starts <input type="date" id="hc-start" value="'+esc(st.s)+'"></label><label class="lx-small">for <input type="number" id="hc-days" min="1" max="90" value="'+st.n+'" style="width:4.5em"> days</label>')+
+      (hcOf(o).ended?'<button type="button" class="lx-sec" data-a="reopen">Reopen hypercare</button>':'<button type="button" class="lx-sec" data-a="end"'+(open.length?' title="'+open.length+' issue'+(open.length===1?' is':'s are')+' still open"':'')+'>'+IC('send')+'End and hand over to support</button>')+'</div>')}
+function issueHtml(x,ro){const c=x.status==='closed',cz=CAUSES.find(z=>z[0]===x.cause);
+  return '<li class="hc-is sev-'+esc(x.sev||'normal')+(c?' closed':'')+'"><div class="hc-ih"><span class="hc-sev">'+esc(NAME(SEV,x.sev||'normal'))+'</span><b>'+esc(x.t)+'</b><span class="lx-muted lx-small">'+esc(NAME(AREAS,x.area||'other'))+' · '+esc(when(x.at))+(x.by?' · '+esc(OV.name(x.by)||'a teammate'):'')+'</span></div>'+
+    (x.note?'<p class="lx-small">'+esc(x.note)+'</p>':'')+
+    (c?'<p class="lx-small hc-fix">'+IC('circle-check')+'<span><b>Fixed '+esc(when(x.closedAt))+':</b> '+esc(x.fix||'(no note)')+(cz?' · Cause: '+esc(cz[1])+(cz[2]?' → fix upstream in '+esc(cz[2]):''):'')+'</span></p>'+(ro?'':'<button type="button" class="lx-link lx-small" data-a="reopenIssue" data-i="'+esc(x.id)+'">Reopen</button>'):
+      ro?'':'<details class="hc-close"><summary>Close this issue</summary><div class="hc-cf"><label>What fixed it<input data-f="fix" maxlength="300"></label><label>Why it happened<select data-f="cause">'+CAUSES.map(([k,t])=>'<option value="'+k+'">'+esc(t)+'</option>').join('')+'</select></label>'+
+        '<button type="button" data-a="close" data-i="'+esc(x.id)+'">Close issue</button><button type="button" class="lx-link lx-bad lx-small" data-a="del" data-i="'+esc(x.id)+'">Delete</button></div></details>')+'</li>'}
+// across every venue: what keeps going wrong, and where to fix it
+function insights(){const all=[];OV.list().forEach(o=>issues(o).forEach(x=>all.push(Object.assign({venue:o.name},x))));
+  const since=Date.now()-120*864e5,L=all.filter(x=>x.at>since);if(!L.length)return'';
+  const by=(k,list)=>{const m=new Map();list.forEach(x=>m.set(x[k]||'unknown',(m.get(x[k]||'unknown')||0)+1));return[...m].sort((a,b)=>b[1]-a[1])};
+  const closed=L.filter(x=>x.status==='closed'),causes=by('cause',closed),areas=by('area',L),max=Math.max(...causes.map(c=>c[1]),1),venuesN=new Set(L.map(x=>x.venue)).size;
+  const hrs=closed.filter(x=>x.closedAt).map(x=>(x.closedAt-x.at)/36e5).sort((a,b)=>a-b),med=hrs.length?hrs[hrs.length>>1]:null;
+  return '<section class="hc-ins"><h2>'+IC('chart-column')+'What keeps going wrong <span class="lx-muted lx-small">last 120 days · '+L.length+' issue'+(L.length===1?'':'s')+' at '+venuesN+' venue'+(venuesN===1?'':'s')+(med!=null?' · half fixed within '+(med<1?Math.round(med*60)+' min':Math.round(med)+' h'):'')+'</span></h2>'+
+    '<div class="hc-insg"><div><h3>Root causes (closed issues)</h3>'+(causes.length?'<ul class="hc-bars">'+causes.map(([k,n])=>{const z=CAUSES.find(c=>c[0]===k)||[k,k,'',''];
+      return '<li><span>'+esc(z[1])+'</span><i style="--w:'+Math.round(n/max*100)+'%"></i><b>'+n+'</b>'+(z[2]?'<small>Fix upstream: '+(z[3]?'<button type="button" class="lx-link" data-go="'+z[3]+'">'+esc(z[2])+'</button>':esc(z[2]))+'</small>':'')+'</li>'}).join('')+'</ul>':'<p class="lx-muted lx-small">Close issues with a cause to see this.</p>')+'</div>'+
+    '<div><h3>What issues are about</h3><ul class="hc-bars">'+areas.map(([k,n])=>'<li><span>'+esc(NAME(AREAS,k))+'</span><i style="--w:'+Math.round(n/Math.max(...areas.map(a=>a[1]))*100)+'%"></i><b>'+n+'</b></li>').join('')+'</ul></div></div></section>'}
+function patch(id,p,text){OV.save(id,{hc:p},{text})}
+root.addEventListener('submit',e=>{if(e.target.id!=='hc-add')return;e.preventDefault();const o=OV.get(SEL);if(!o)return;const t=clean(g('hc-t').value);if(!t)return;
+  const iid='i'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),me=OV.me()||'';
+  const p={issues:{[iid]:{t,area:g('hc-area').value,sev:g('hc-sev').value,status:'open',by:me,at:Date.now()}}};if(!hcOf(o).start&&o.golive)p.start=o.golive;
+  patch(o.id,p,'Hypercare: logged “'+t+'”');g('hc-t').value=''});
+root.addEventListener('click',e=>{const v=e.target.closest('[data-v]');if(v){SEL=v.dataset.v;OV.setActive(SEL);draw();return}
+  const b=e.target.closest('[data-a]');if(!b)return;const o=OV.get(SEL);if(!o)return;const a=b.dataset.a,iid=b.dataset.i,x=iid&&(hcOf(o).issues||{})[iid];
+  if(a==='close'&&x){const box=b.closest('.hc-cf'),fix=clean(box.querySelector('[data-f="fix"]').value),cause=box.querySelector('[data-f="cause"]').value;
+    patch(o.id,{issues:{[iid]:{status:'closed',fix,cause,closedAt:Date.now(),closedBy:OV.me()||''}}},'Hypercare: closed “'+x.t+'”')}
+  else if(a==='reopenIssue'&&x)patch(o.id,{issues:{[iid]:{status:'open',closedAt:null}}},'Hypercare: reopened “'+x.t+'”');
+  else if(a==='del'&&x){if(confirm('Delete “'+x.t+'”? Use this for issues logged by mistake; close real ones instead.'))patch(o.id,{issues:{[iid]:{t:'',deleted:Date.now()}}},'Hypercare: deleted “'+x.t+'”')}
+  else if(a==='end'){const n=issues(o).filter(z=>z.status!=='closed').length;if(n&&!confirm(n+' issue'+(n===1?' is':'s are')+' still open. End hypercare anyway?'))return;
+    OV.save(o.id,{hc:{ended:today()},stage:'done'},{text:'Hypercare ended; handed over to support'});if(window.mhEmails&&confirm('Write the handover email now?'))setTimeout(()=>{if(OV.activeId!==o.id)OV.setActive(o.id);window.mhEmails()},50)}
+  else if(a==='reopen')patch(o.id,{ended:null},'Hypercare reopened')});
+root.addEventListener('change',e=>{const o=OV.get(SEL);if(!o)return;
+  if(e.target.id==='hc-start'&&e.target.value)patch(o.id,{start:e.target.value},'Hypercare start set to '+e.target.value);
+  if(e.target.id==='hc-days'){const n=Math.max(1,Math.min(90,parseInt(e.target.value,10)||DAYS));patch(o.id,{days:n},'Hypercare window set to '+n+' days')}});
+OV.on(()=>{if(document.activeElement&&root.contains(document.activeElement)&&/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName))return;draw()});
+window.addEventListener('hashchange',draw);draw();
+// for the metrics view and the venue record
+window.OolioHypercare={issues,state,AREAS,CAUSES,SEV};
+})();
+</script>
+<script>/* Menu Hauler: Team tab. Two views of every venue the team has saved:
+   - Workload: who has which venues, their go-live and training dates over the next six weeks, and clashes
+     (one person with two go-lives, or a go-live and a training, on the same or the next day).
+   - Metrics: time from adding a venue to go-live, where venues get stuck (overdue and open checklist steps),
+     post-go-live issues per venue (Hypercare), the menu linter's results, and (admins, on the website) this month's
+     AI and Firecrawl spend per tool.
+   Nothing here costs anything: it reads the records already loaded. build_apps.py puts it after hypercare.js. Ids/classes tm-. */
+(()=>{
+const g=id=>document.getElementById(id),OV=window.OolioVenues,root=g('tm-root');if(!OV||!root)return;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clean=s=>String(s==null?'':s).replace(/\s+/g,' ').trim();
+const IC=n=>window.mhIcon?window.mhIcon(n):'';
+const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+const today=()=>iso(new Date());
+const dd=(a,b)=>Math.round((new Date(b+'T00:00')-new Date(a+'T00:00'))/864e5);
+const fmt=d=>d?new Date(d+'T00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}):'';
+const med=L=>{if(!L.length)return null;const s=L.slice().sort((a,b)=>a-b);return s[s.length>>1]};
+const KEY='tm.view';let V='workload';try{V=localStorage.getItem(KEY)||'workload'}catch(e){}
+const HC=()=>window.OolioHypercare;
+function person(o){return clean(o.owner)||'Unassigned'}
+function active(){return OV.list().filter(o=>o.stage!=='done')}
+function draw(){if(location.hash.slice(1)!=='team')return;
+  root.innerHTML='<h1>Team</h1><div class="tm-switch" role="tablist">'+[['workload','users','Workload'],['metrics','chart-column','Metrics']].map(([k,i,t])=>'<button type="button" role="tab" aria-selected="'+(V===k)+'" data-tv="'+k+'">'+IC(i)+t+'</button>').join('')+'</div><div id="tm-body"></div>';
+  g('tm-body').innerHTML=V==='metrics'?metrics():workload();if(V==='metrics')spend()}
+
+/* ---------- workload ---------- */
+function workload(){const A=active(),t=today(),W=6,start=new Date(t+'T00:00');start.setDate(start.getDate()-((start.getDay()+6)%7));
+  const people=new Map();A.forEach(o=>{const p=person(o);(people.get(p)||people.set(p,[]).get(p)).push(o)});
+  // the dates each person is busy: go-lives and trainings
+  const ev=[];A.forEach(o=>{if(o.golive)ev.push({p:person(o),d:o.golive,k:'golive',o});if(o.training)ev.push({p:person(o),d:o.training,k:'training',o})});
+  const clash=[];const byP=new Map();ev.forEach(e=>(byP.get(e.p)||byP.set(e.p,[]).get(e.p)).push(e));
+  byP.forEach((L,p)=>{if(p==='Unassigned')return;L.sort((a,b)=>a.d.localeCompare(b.d));for(let i=1;i<L.length;i++){const a=L[i-1],b=L[i];
+    if(dd(t,b.d)>=0&&dd(a.d,b.d)<=1&&a.o.id!==b.o.id&&(a.k==='golive'||b.k==='golive'))clash.push({p,a,b})}});
+  const lab=e=>(e.k==='golive'?'go-live':'training')+' at '+(e.o.name||'Untitled')+' '+fmt(e.d);
+  const weeks=Array.from({length:W},(_,i)=>{const d=new Date(start);d.setDate(d.getDate()+i*7);return iso(d)});
+  const names=[...people.keys()].sort((a,b)=>(a==='Unassigned')-(b==='Unassigned')||people.get(b).length-people.get(a).length);
+  const cell=(p,w)=>{const L=ev.filter(e=>e.p===p&&dd(w,e.d)>=0&&dd(w,e.d)<7).sort((a,b)=>a.d.localeCompare(b.d));
+    return '<td>'+L.map(e=>'<button type="button" class="tm-ev '+e.k+'" data-o="'+esc(e.o.id)+'" title="'+esc(lab(e))+'">'+(e.k==='golive'?IC('zap'):IC('presentation'))+esc(new Date(e.d+'T00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric'}))+' '+esc(e.o.name||'')+'</button>').join('')+'</td>'};
+  const soon=o=>o.golive&&dd(t,o.golive)>=0&&dd(t,o.golive)<=14;
+  return (clash.length?'<div class="tm-clash" role="alert">'+IC('triangle-alert')+'<div><b>'+clash.length+' clash'+(clash.length===1?'':'es')+'</b><ul>'+clash.map(c=>'<li>'+esc(c.p)+': '+esc(lab(c.a))+' and '+esc(lab(c.b))+'</li>').join('')+'</ul></div></div>':'')+
+    (A.length?'<div class="tm-cal"><table><thead><tr><th>Person</th>'+weeks.map(w=>'<th>Week of '+esc(new Date(w+'T00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'}))+'</th>').join('')+'</tr></thead><tbody>'+
+      names.map(p=>'<tr><th>'+esc(p)+'<small>'+people.get(p).length+' venue'+(people.get(p).length===1?'':'s')+'</small></th>'+weeks.map(w=>cell(p,w)).join('')+'</tr>').join('')+'</tbody></table></div>':'<p class="lx-muted">No venues in progress.</p>')+
+    '<div class="tm-cols">'+names.map(p=>{const L=people.get(p).sort((a,b)=>(a.golive||'9999').localeCompare(b.golive||'9999'));
+      return '<section class="tm-col"><h2>'+IC(p==='Unassigned'?'user-x':'user')+esc(p)+' <span class="lx-muted lx-small">'+L.length+' active · '+L.filter(soon).length+' live in 14 days</span></h2><ul>'+L.map(o=>{const pr=OV.progress(o.id),late=OV.late(o.id),open=HC()?HC().issues(o).filter(x=>x.status!=='closed').length:0;
+        return '<li><button type="button" class="tm-v" data-o="'+esc(o.id)+'"><b>'+esc(o.name||'Untitled')+'</b><span>'+esc(OV.stage(o.id))+(o.golive?' · go-live '+esc(fmt(o.golive)):' · no go-live date')+'</span>'+
+          '<span class="tm-mini"><i style="width:'+pr.pct+'%"></i></span><span class="tm-tags">'+(late?'<em class="bad">'+late+' overdue</em>':'')+(open?'<em class="warn">'+open+' open issue'+(open===1?'':'s')+'</em>':'')+(soon(o)?'<em class="on">soon</em>':'')+'</span></button></li>'}).join('')+'</ul></section>'}).join('')+'</div>'+
+    '<p class="lx-muted lx-small">The person is the venue’s owner in the Setup Tracker. Set it on the venue’s checklist page.</p>'}
+
+/* ---------- metrics ---------- */
+function metrics(){const L=OV.list(),t=today(),live=L.filter(o=>o.golive&&o.golive<=t);
+  const ttg=live.map(o=>({o,d:o.createdAt?dd(iso(new Date(o.createdAt)),o.golive):null})).filter(x=>x.d!=null&&x.d>=0);
+  const m=med(ttg.map(x=>x.d));
+  const stages=OV.stages().map(([k,n])=>[n,L.filter(o=>(o.stage||'pre')===k).length]);
+  // stuck: overdue steps across venues in progress, and the steps most often still open
+  const stuck=new Map(),open=new Map();active().forEach(o=>OV.steps(o.id).forEach(s=>{if(s.late)stuck.set(s.t,(stuck.get(s.t)||0)+1);if(!s.s)open.set(s.t,(open.get(s.t)||0)+1)}));
+  const top=(M,n)=>[...M].sort((a,b)=>b[1]-a[1]).slice(0,n);
+  const hc=HC(),issues=hc?L.map(o=>({o,n:hc.issues(o).length,open:hc.issues(o).filter(x=>x.status!=='closed').length})).filter(x=>x.n):[];
+  const withHC=L.filter(o=>o.hc&&(o.hc.start||o.hc.issues)).length||live.length;
+  const lint=L.filter(o=>o.menu&&o.menu.lint),clean0=lint.filter(o=>!o.menu.lint.block).length;
+  const bars=(rows,unit)=>{const mx=Math.max(1,...rows.map(r=>r[1]));return '<ul class="hc-bars">'+rows.map(([k,n])=>'<li><span>'+esc(k)+'</span><i style="--w:'+Math.round(n/mx*100)+'%"></i><b>'+n+(unit||'')+'</b></li>').join('')+'</ul>'};
+  const tile=(n,l,s)=>'<div class="tm-tile"><b>'+n+'</b><span>'+esc(l)+'</span>'+(s?'<small>'+esc(s)+'</small>':'')+'</div>';
+  return '<div class="tm-tiles">'+tile(L.length,'venues saved',active().length+' in progress')+tile(m==null?'–':m+' d','to go-live (median)',ttg.length?'from '+ttg.length+' live venue'+(ttg.length===1?'':'s'):live.length?'needs go-live dates after the venue was added':'no live venues yet')+
+      tile(issues.reduce((s,x)=>s+x.n,0),'hypercare issues',withHC?(Math.round(issues.reduce((s,x)=>s+x.n,0)/withHC*10)/10)+' per live venue':'')+tile(lint.length?Math.round(clean0/lint.length*100)+'%':'–','menus passed pre-flight',lint.length?clean0+' of '+lint.length+' checked':'none checked yet')+'</div>'+
+    '<div class="tm-grid"><section class="tm-card"><h2>Where venues are</h2>'+bars(stages)+'</section>'+
+      '<section class="tm-card"><h2>Overdue steps</h2>'+(stuck.size?bars(top(stuck,8),' venues'):'<p class="lx-muted lx-small">Nothing overdue.</p>')+'</section>'+
+      '<section class="tm-card"><h2>Steps most often still open</h2>'+(open.size?bars(top(open,8)):'<p class="lx-muted lx-small">No venues in progress.</p>')+'</section>'+
+      '<section class="tm-card"><h2>Time to go-live</h2>'+(ttg.length?bars(ttg.sort((a,b)=>b.d-a.d).slice(0,10).map(x=>[x.o.name||'Untitled',x.d]),' d'):'<p class="lx-muted lx-small">Shows once venues have gone live.</p>')+'</section>'+
+      '<section class="tm-card"><h2>Hypercare issues per venue</h2>'+(issues.length?bars(issues.sort((a,b)=>b.n-a.n).slice(0,10).map(x=>[x.o.name+(x.open?' ('+x.open+' open)':''),x.n])):'<p class="lx-muted lx-small">No issues logged yet.</p>')+'</section>'+
+      '<section class="tm-card" id="tm-spend"><h2>AI and Firecrawl spend</h2><p class="lx-muted lx-small">'+(window.OOLIO_HOSTED?'Admins see this month’s spend per tool here.':'Only on the website.')+'</p></section></div>'}
+async function spend(){const el=g('tm-spend');if(!el||!window.OOLIO_HOSTED||!(window.MH_ME&&window.MH_ME.admin))return;
+  try{const r=await fetch('/api/admin/spend',{credentials:'same-origin'}),j=await r.json();if(!r.ok)throw new Error(j.error||r.status);
+    const T=(window.mhTools||[]).reduce((m,t)=>(m[t.k]=t.n,m),{});
+    el.innerHTML='<h2>AI and Firecrawl spend <span class="lx-muted lx-small">'+esc(j.month)+'</span></h2><div class="tm-tiles tm-tiles-s">'+'<div class="tm-tile"><b>US$'+j.claudeUsd.toFixed(2)+'</b><span>AI this month</span><small>'+j.calls+' calls, '+j.cached+' free from saved answers</small></div><div class="tm-tile"><b>'+j.firecrawl.used+'</b><span>Firecrawl credits</span><small>of '+j.firecrawl.cap+' this month</small></div></div>'+
+      (j.tools.length?'<ul class="hc-bars">'+j.tools.map(x=>{const mx=Math.max(...j.tools.map(y=>y.usd),0.01);return '<li><span>'+esc(T[x.tool]||x.tool||'Other')+'</span><i style="--w:'+Math.round(x.usd/mx*100)+'%"></i><b>$'+x.usd.toFixed(2)+'</b><small>'+x.calls+' calls</small></li>'}).join('')+'</ul>':'<p class="lx-muted lx-small">No AI calls this month.</p>')}
+  catch(e){el.querySelector('p').textContent='Couldn’t load spend ('+e.message+').'}}
+root.addEventListener('click',e=>{const v=e.target.closest('[data-tv]');if(v){V=v.dataset.tv;try{localStorage.setItem(KEY,V)}catch(x){}draw();return}
+  const o=e.target.closest('[data-o]');if(o){OV.setActive(o.dataset.o);location.hash='setup';OV.open(o.dataset.o)}});
+OV.on(()=>draw());window.addEventListener('hashchange',draw);draw();
+})();
+</script>
+<script>/* Menu Hauler: search everything from the app bar (the search button, or Ctrl+K / Cmd+K anywhere).
+   Finds tools, venues (name, organisation, suburb, owner), menu items from each venue's last converted menu,
+   help.oolio.com guides (baked into the Setup Tracker), checklist steps, and, for people with the knowledge graph,
+   vault note titles (/api/kg/index: paths only, no note text). Free: it only reads what is already loaded,
+   plus one small index request per page load for the vault. Ids and classes start gs-. */
+(()=>{
+const g=id=>document.getElementById(id),OV=window.OolioVenues;
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fold=s=>String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,' and ').replace(/\s+/g,' ').trim();
+const IC=n=>window.mhIcon?window.mhIcon(n):'';
+const acts=document.querySelector('.lx-acts');if(!acts)return;
+const btn=document.createElement('button');btn.type='button';btn.className='lx-ib gs-open';btn.id='gs-open';btn.setAttribute('aria-label','Search everything (Ctrl+K)');btn.title='Search everything (Ctrl+K)';btn.innerHTML=IC('search');
+acts.prepend(btn);
+const dlg=document.createElement('dialog');dlg.className='gs-dlg';dlg.setAttribute('aria-label','Search everything');
+dlg.innerHTML='<div class="gs-box"><label class="gs-q">'+IC('search')+'<input id="gs-q" type="search" placeholder="Search venues, menu items, guides, tools…" autocomplete="off" aria-controls="gs-list" aria-autocomplete="list"><kbd>Esc</kbd></label>'+
+  '<ul id="gs-list" class="gs-list" role="listbox"></ul><p class="gs-foot"><span>↑↓ to move · Enter to open</span><span id="gs-n"></span></p></div>';
+document.body.append(dlg);
+const q=g('gs-q'),list=g('gs-list');let R=[],SEL=0,VAULT=null;
+const EXTRA=[{k:'hypercare',n:'Hypercare',i:'life-buoy'},{k:'team',n:'Team: workload and metrics',i:'users'},{k:'routing',n:'Routing map',i:'route'},{k:'map',n:'Tool map',i:'map'}];
+async function vault(){if(VAULT||!window.OOLIO_HOSTED||!(window.MH_ME&&window.MH_ME.knowledge))return;VAULT=[];
+  try{const r=await fetch('/api/kg/index',{credentials:'same-origin'}),j=await r.json();VAULT=(j.notes||[]).map(n=>({path:n.path,t:n.path.split('/').pop().replace(/\.md$/,''),dir:n.path.split('/').slice(0,-1).join(' / ')}));if(dlg.open)run()}catch(e){}}
+function sources(){const out=[];
+  (window.mhTools||[]).concat(EXTRA).forEach(t=>{if(t.k&&!document.querySelector('.lx-tab[data-go="'+t.k+'"][hidden]'))out.push({type:'Tool',icon:t.i,t:t.n,s:'',key:fold(t.n),go:()=>{location.hash=t.k}})});
+  if(OV){OV.list().forEach(o=>{const gr=OV.groupOf&&OV.groupOf(o.id),addr=OV.address(o.id)||'';
+      out.push({type:'Venue',icon:'store',t:o.name||'Untitled',s:[gr&&gr.name!==o.name?gr.name:'',addr,OV.stage(o.id),o.owner].filter(Boolean).join(' · '),key:fold([o.name,gr&&gr.name,addr,o.owner].join(' ')),go:()=>{OV.setActive(o.id);location.hash=''}});
+      ((o.menu&&o.menu.names)||[]).forEach(([n,c])=>out.push({type:'Menu item',icon:'utensils',t:n,s:(c?c+' · ':'')+(o.name||''),key:fold(n+' '+(c||'')),w:0.8,go:()=>{OV.setActive(o.id);location.hash='converter'}}))});
+    if(OV.guides)OV.guides().forEach(x=>out.push({type:'Guide',icon:'book-open',t:x.title,s:x.cat+' · help.oolio.com',key:fold(x.title+' '+x.desc+' '+x.heads.join(' ')),w:0.9,url:'https://help.oolio.com/'+x.slug}));
+    const a=OV.active();if(a&&OV.steps)OV.steps(a.id).forEach(x=>out.push({type:'Checklist step',icon:'list-checks',t:x.t,s:x.sec+' · '+(a.name||'')+(x.s==='done'?' · done':''),key:fold(x.t+' '+x.sec),w:0.85,go:()=>{location.hash='setup';OV.open(a.id)}}))}
+  (VAULT||[]).forEach(n=>out.push({type:'Vault note',icon:'share-2',t:n.t,s:n.dir,key:fold(n.t+' '+n.dir),w:0.85,url:'/knowledge#/search/'+encodeURIComponent(n.t)}));
+  return out}
+function score(x,ws){let s=0;const t=fold(x.t);for(const w of ws){if(!x.key.includes(w))return-1;s+=t.startsWith(w)?4:(' '+t).includes(' '+w)?3:1}if(t===ws.join(' '))s+=5;return s*(x.w||1)}
+function run(){const ws=fold(q.value).split(' ').filter(Boolean);let L;
+  if(!ws.length){const a=OV&&OV.active();L=sources().filter(x=>x.type==='Tool'||(x.type==='Venue'&&a&&x.t===a.name)).slice(0,14)}
+  else{L=sources().map(x=>[x,score(x,ws)]).filter(x=>x[1]>=0).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+    // a few of each kind, so one venue's 400 menu items don't push out everything else
+    const per={};L=L.filter(x=>(per[x.type]=(per[x.type]||0)+1)<=(x.type==='Menu item'?8:6)).slice(0,30)}
+  R=L;SEL=0;const mk=s=>{const ws2=fold(q.value).split(' ').filter(w=>w.length>1);let h=esc(s);ws2.forEach(w=>{h=h.replace(new RegExp('('+w.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig'),'<mark>$1</mark>')});return h};
+  list.innerHTML=R.length?R.map((x,i)=>'<li role="option" id="gs-'+i+'" aria-selected="'+(i===SEL)+'" data-i="'+i+'">'+IC(x.icon)+'<span><b>'+mk(x.t)+'</b>'+(x.s?'<small>'+esc(x.s)+'</small>':'')+'</span><em>'+esc(x.type)+(x.url?' '+IC('external-link'):'')+'</em></li>').join(''):'<li class="gs-none">Nothing matches “'+esc(q.value)+'”.</li>';
+  g('gs-n').textContent=ws.length?R.length+(R.length===30?'+':'')+' results':'';q.setAttribute('aria-activedescendant',R.length?'gs-0':'')}
+function pick(i){const x=R[i];if(!x)return;dlg.close();if(x.url)window.open(x.url,/^https?:/.test(x.url)?'_blank':'_self','noopener');else if(x.go)x.go()}
+function move(d){if(!R.length)return;SEL=(SEL+d+R.length)%R.length;list.querySelectorAll('[role=option]').forEach((li,i)=>li.setAttribute('aria-selected',i===SEL));const el=g('gs-'+SEL);if(el){el.scrollIntoView({block:'nearest'});q.setAttribute('aria-activedescendant',el.id)}}
+function open(){if(dlg.open)return;q.value='';dlg.showModal();run();q.focus();vault()}
+btn.addEventListener('click',open);
+q.addEventListener('input',run);
+q.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();move(1)}else if(e.key==='ArrowUp'){e.preventDefault();move(-1)}else if(e.key==='Enter'){e.preventDefault();pick(SEL)}});
+list.addEventListener('click',e=>{const li=e.target.closest('[data-i]');if(li)pick(+li.dataset.i)});
+dlg.addEventListener('click',e=>{if(e.target===dlg)dlg.close()});
+document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.key.toLowerCase()==='k'){e.preventDefault();open()}});
 })();
 </script>
 </body>

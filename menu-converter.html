@@ -56,6 +56,7 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 /* pre-flight result and menu changes in step 7 */
 .pf{border:1px solid var(--line);border-radius:10px;padding:12px 14px;margin:0 0 12px;background:var(--bg)}
 .pf-h{display:flex;align-items:center;gap:10px;font-weight:600}
+.pf-h>span:nth-child(2){flex:1;min-width:0}.pf-copy{font:inherit;font-size:.82rem;font-weight:600;padding:5px 10px;margin:0;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--text);cursor:pointer;flex:none}
 .pf-h .pf-dot{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;flex:none;font-size:.9rem}
 .pf.ok .pf-dot{background:var(--ok)}.pf.warn .pf-dot{background:var(--warn)}.pf.bad .pf-dot{background:var(--bad,#c62828)}
 .pf.bad{border-color:var(--bad,#c62828)}
@@ -688,12 +689,12 @@ function redcatNotes(rows,mb){const notes=[],spice=[];
 const FIELDS=[
  ['name','Product / item name',['itemname','productname','name','item','product','menuitem','dishname','title','modifieritem','modifiername','modifier','optionname']],
  ['variation','Variation / size',['variationname','variation','variantname','variant','size','sizename','portion']],
- ['category','Category',['category','categories','categoryname','categorynames','menucategory','reportingcategory','menugroup','group','section','department']],
+ ['category','Category',['category','categories','categoryname','categorynames','menucategory','reportingcategory','menugroup','group','section','sectionname','department']],
  ['screen','Screen (Lightspeed)',['screenname','screen']],
  ['sub','Subscreen (Lightspeed)',['subscreenname','subscreen']],
  ['menu','Menu name',['menuname','menu']],
- ['price','Price',['price','sellprice','retailprice','unitprice','saleprice','priceinctax','priceincgst','rrp','amount']],
- ['tax','Tax',['tax','taxcode','taxrate','selltax','taxname','gst']],
+ ['price','Price',['price','sellprice','sellpriceinctax','baseprice','retailprice','unitprice','saleprice','priceinctax','priceincgst','rrp','amount']],
+ ['tax','Tax',['tax','taxcode','taxrate','selltax','selltaxcode','taxname','gst']],
  ['description','Description',['description','productdescription','itemdescription','details']],
  ['sku','SKU',['sku','itemcode','productcode']],
  ['barcode','Barcode',['barcode','upc','ean']],
@@ -740,6 +741,8 @@ function analyse(t){
   else if(H.has('printergroup')&&(H.has('systemstate')||H.has('plusgroup')||H.has('optiongroups')))src='ordermate';
   else if(H.has('screenname')||H.has('subscreenname')||H.has('menuname'))src='lightspeed';
   else if(H.has('token')||(H.has('itemname')&&H.has('variationname')))src='square';
+  else if(H.has('productno')&&H.has('sellpriceinctax'))src='oolioexport';
+  else if(H.has('sectionname')&&H.has('itemname')&&H.has('baseprice'))src='hungryhungry';
   else if(H.has('sellprice')||H.has('categorynames')||H.has('printerprofiles')||/pre-?work/i.test(text))src='prework';
   let mk=-1;rows.forEach((r,i)=>{if(i>hdr&&r.some(c=>MARK.test(c)))mk=i});
   // OrderMate: "Group" is the menu group (the category), "Category" is Food/Beverage, "Printer Group" the printer
@@ -751,7 +754,7 @@ function analyse(t){
   if(src==='redcat'){const j=headers.indexOf(REDCAT_PL);if(j>=0&&rows.slice(hdr+1).some(r=>clean(r[j])))pl.push({name:REDCAT_PL,j})}
   return{hdr,headers,map,kind,src,pl,start:mk>=0?mk+1:hdr+1,marker:mk>=0};}
 const OOLIOH=new Set(OUTB.map(N).concat(['productid','measuredby']));
-const SRCNAME={redcat:'Redcat',ordermate:'OrderMate',square:'Square',lightspeed:'Lightspeed',prework:'Oolio pre-work',oolio:'Oolio import file',custom:'Custom spreadsheet',document:'Menu document'};
+const SRCNAME={redcat:'Redcat',ordermate:'OrderMate',square:'Square',lightspeed:'Lightspeed',prework:'Oolio pre-work',oolioexport:'Oolio product export',hungryhungry:'Hungry Hungry item list',oolio:'Oolio import file',custom:'Custom spreadsheet',document:'Menu document'};
 
 /* ---------------- extracting rows ---------------- */
 const num=v=>{let s=String(v==null?'':v).trim();if(!s)return'';
@@ -2229,7 +2232,7 @@ function tplPresets(){const OV=window.OolioVenues,a=OV&&OV.active?OV.active():nu
    Problems stop an upload (missing required values, prices that aren't numbers, half-filled measure columns, rows the
    wizard can't tell apart, sizes with no parent). Things to check won't stop it but are worth a look. */
 let PF=null;
-function preflight(rows){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'),t:ix('Product Type*'),pg:ix('Product Group*'),rg:ix('Reporting Group*'),c:ix('Category*'),
+function preflight(rows,plan){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'),t:ix('Product Type*'),pg:ix('Product Group*'),rg:ix('Reporting Group*'),c:ix('Category*'),
     vg:ix('Variant Group'),vn:ix('Variant Name'),mb:ix('Measured By*'),dv:ix('Default Value'),u:ix('Unit'),pos:ix('POS Name'),pp:ix('Printer Profiles'),p:ix('Sell Price*'),tx:ix('Sell Tax*')};
   const block=[],warn=[],add=(L,msg,list,how)=>{if(list.length)L.push({msg,list:[...new Set(list)],how})};
   const miss={},badP=[],meas=[],dup=new Map(),parents=new Set(),orphan=[],emptyVar=new Map(),prn=[],long=[],odd=[],cats=new Map();
@@ -2258,14 +2261,59 @@ function preflight(rows){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'),t:i
   add(warn,'names have emoji or unusual characters',odd,'Kitchen and bar printers often can’t print them.');
   const tiny=[...cats].filter(([c,n])=>c&&n===1).map(([c])=>c);
   if(tiny.length>=4)add(warn,'categories have only one product',tiny,'Oolio works best with a few broad categories (Hot Coffee, Pizza). Merge small ones in step 3.');
+  lint(rows,I,plan,add,warn);
   return{block,warn,rows:rows.length}}
+/* menu linter: things the wizard accepts but that turn into fixes after go-live (odd prices, food that prints nowhere,
+   sizes priced the wrong way round or named differently from the rest of the category, empty modifier groups) */
+const SIZE_RANK=[[/\b(kids?|mini|baby|piccolo|taster)\b/,1],[/\b(small|sml|sm|short|half)\b/,2],[/\b(regular|reg|standard|std|medium|med|single)\b/,3],
+  [/\b(large|lrg|lge|lg|tall|double|full)\b/,4],[/\b(x-?large|xl|extra large|jumbo|mega|family)\b/,5],[/\bpot|middy\b/,2],[/\bschooner\b/,3],[/\bpint\b/,4],[/\bjug|pitcher\b/,6],
+  [/\bglass\b/,2],[/\bcarafe|half bottle\b/,4],[/\bbottle\b/,5]];
+function sizeRank(s){s=String(s||'').toLowerCase();const ml=s.match(/(\d+(?:\.\d+)?)\s*(ml|l|oz)\b/);
+  if(ml)return +ml[1]*(ml[2]==='l'?1000:ml[2]==='oz'?29.6:1);
+  for(const[re,n]of SIZE_RANK)if(re.test(s))return n*1e5;return null}
+function lint(rows,I,plan,add,warn){const price=r=>{const s=String(r[I.p]==null?'':r[I.p]).trim();return /^\d+(\.\d+)?$/.test(s)?+s:null};
+  const zero=[],noPrn=[],odd=[],order=[],mixed=[],twoCats=[],byCat=new Map(),names=new Map(),fam=new Map();
+  rows.forEach(r=>{if(r[I.t]!=='Product')return;const nm=String(r[I.n]||'').trim(),lbl=nm+(r[I.vn]?' ('+r[I.vn]+')':''),p=price(r),c=String(r[I.c]||'');
+    if(p===0&&!/\b(free|complimentary|staff|tap water|water|n\/?a|open)\b/i.test(nm+' '+(r[I.vn]||'')))zero.push(lbl);
+    if(/food/i.test(String(r[I.rg]||''))&&!String(r[I.pp]||'').trim())noPrn.push(nm);
+    if(p>0)(byCat.get(c)||byCat.set(c,[]).get(c)).push([lbl,p]);
+    const k=nm.toLowerCase().replace(/\s+/g,' ');(names.get(k)||names.set(k,{nm,cats:new Set()}).get(k)).cats.add(c);
+    if(r[I.vn])(fam.get(k)||fam.set(k,{nm,cat:c,sizes:[]}).get(k)).sizes.push([String(r[I.vn]).trim(),p])});
+  // a price far from the rest of its category: likely a typo (4.5 for 45, or 450)
+  byCat.forEach(L=>{if(L.length<4)return;const s=L.map(x=>x[1]).sort((a,b)=>a-b),m=s[s.length>>1];
+    L.forEach(([l,p])=>{if((p>m*4||p<m/4)&&Math.abs(p-m)>5)odd.push(l+': $'+p.toFixed(2)+' (most are about $'+m.toFixed(2)+')')})});
+  // a bigger size that costs less than a smaller one
+  fam.forEach(f=>{const s=f.sizes.map(([n,p])=>[n,p,sizeRank(n)]).filter(x=>x[1]!=null&&x[2]!=null).sort((a,b)=>a[2]-b[2]);
+    for(let i=1;i<s.length;i++)if(s[i][1]<s[i-1][1]){order.push(f.nm+': '+s[i][0]+' $'+s[i][1].toFixed(2)+' is less than '+s[i-1][0]+' $'+s[i-1][1].toFixed(2));break}});
+  // sizes named differently from the rest of the category ("Regular, Large" where the others are "Small, Large")
+  const catF=new Map();fam.forEach(f=>(catF.get(f.cat)||catF.set(f.cat,[]).get(f.cat)).push(f));
+  catF.forEach(L=>{if(L.length<3)return;const key=f=>f.sizes.map(x=>x[0].toLowerCase()).sort().join(' / '),cnt=new Map();L.forEach(f=>cnt.set(key(f),(cnt.get(key(f))||0)+1));
+    const[top,n]=[...cnt].sort((a,b)=>b[1]-a[1])[0];if(n<L.length*0.6)return;const ts=new Set(top.split(' / '));
+    L.forEach(f=>{const k=key(f);if(k!==top&&k.split(' / ').some(x=>ts.has(x)))mixed.push(f.nm+': '+f.sizes.map(x=>x[0]).join(', ')+' (most in '+(f.cat||'this category')+': '+top+')')})});
+  names.forEach(v=>{if(v.cats.size>1)twoCats.push(v.nm+' ('+[...v.cats].filter(Boolean).join(', ')+')')});
+  add(warn,'products are priced $0',zero,'A $0 item usually means the price wasn’t found. Free items are fine; check the rest.');
+  add(warn,'prices are far from the rest of their category',odd,'Often a typo (4.5 for 45). Check against the menu.');
+  add(warn,'size groups have a bigger size costing less than a smaller one',order,'Usually the prices are swapped between sizes.');
+  add(warn,'size groups are named differently from the rest of their category',mixed,'Use the same size names across a category, so staff and reports see one set.');
+  add(warn,'food products have no printer, so they won’t print in the kitchen',noPrn,'Give them a printer or KDS profile in step 3, or the kitchen never sees the order.');
+  add(warn,'products are in more than one category',twoCats,'Fine on purpose (a dish on lunch and dinner menus); otherwise remove the extra one.');
+  if(plan&&plan.groups){const G=[...(plan.groups.values?plan.groups.values():plan.groups)];
+    add(warn,'modifier groups have no modifiers in them',G.filter(g=>g.mods&&!g.mods.size).map(g=>g.name),'Add the options or drop the group from the modifier plan.');
+    add(warn,'modifier groups aren’t linked to any product',G.filter(g=>g.mods&&g.mods.size&&g.links&&!g.links.size).map(g=>g.name),'Link them to products when you build them, or leave them out.')}}
+// the pre-flight result as plain text, for a ticket or the venue's notes
+function pfText(){if(!PF)return'';const L=[(PF.block.length?'NOT READY':'READY')+' – pre-flight check of '+PF.rows+' import rows'+(window.OOLIO_VENUE_NAME?' for '+window.OOLIO_VENUE_NAME:'')+', '+new Date().toLocaleString('en-AU')];
+  const one=(t,x)=>{L.push('','['+t+'] '+(x.list.length?x.list.length+' ':'')+x.msg);if(x.how)L.push('  '+x.how);x.list.slice(0,50).forEach(y=>L.push('  - '+y));if(x.list.length>50)L.push('  … and '+(x.list.length-50)+' more')};
+  PF.block.forEach(x=>one('FIX',x));PF.warn.forEach(x=>one('CHECK',x));if(!PF.block.length&&!PF.warn.length)L.push('','No problems found.');return L.join('\n')}
 function drawPreflight(){const el=$('pf');if(!el)return;if(!res||!res.rows.length){el.innerHTML='';PF=null;return}
-  PF=preflight(res.rows);const nb=PF.block.reduce((s,x)=>s+Math.max(1,x.list.length),0),nw=PF.warn.reduce((s,x)=>s+x.list.length,0);
+  PF=preflight(res.rows,res.plan);const nb=PF.block.reduce((s,x)=>s+Math.max(1,x.list.length),0),nw=PF.warn.reduce((s,x)=>s+x.list.length,0);
   const cls=nb?'bad':nw?'warn':'ok',icon=nb?'!':nw?'?':'✓';
   const list=(L,open)=>L.map(x=>x.list.length?'<details'+(open?' open':'')+'><summary><b>'+x.list.length+'</b> '+esc(x.msg)+'</summary><p class="pf-how">'+esc(x.how||'')+'</p><ul>'+x.list.slice(0,200).map(y=>'<li>'+esc(y)+'</li>').join('')+'</ul></details>':'<p style="margin:8px 0 0">'+esc(x.msg)+'</p>').join('');
   el.innerHTML='<div class="pf '+cls+'" role="status"><div class="pf-h"><span class="pf-dot" aria-hidden="true">'+icon+'</span><span>'+
     (nb?'Fix '+nb+' problem'+(nb>1?'s':'')+' before importing':nw?'Ready to import, with '+nw+' thing'+(nw>1?'s':'')+' to check':'Ready to import')+
-    '<small>Pre-flight check of all '+PF.rows+' rows against what the Oolio setup wizard needs.</small></span></div>'+list(PF.block,true)+list(PF.warn,false)+'</div>'}
+    '<small>Pre-flight check of all '+PF.rows+' rows against what the Oolio setup wizard needs, plus the menu linter (prices, sizes, printers, modifier groups).</small></span>'+
+    '<button type="button" class="pf-copy" id="pfcopy">Copy report</button></div>'+list(PF.block,true)+list(PF.warn,false)+'</div>';
+  window.OOLIO_LINT={block:nb,warn:nw,at:Date.now()};
+  $('pfcopy').onclick=async()=>{const t=pfText();try{await navigator.clipboard.writeText(t);$('pfcopy').textContent='Copied'}catch(e){prompt('Copy the report:',t)}setTimeout(()=>{const b=$('pfcopy');if(b)b.textContent='Copy report'},1800)}}
 // downloading with problems asks first
 function pfGo(){if(!PF||!PF.block.length)return true;return confirm('The pre-flight check found '+PF.block.length+' kind'+(PF.block.length>1?'s':'')+' of problem that will probably stop the Oolio import. Download anyway?')}
 
@@ -2422,7 +2470,7 @@ function announce(file){if(!res)return;const ix=h=>OUT.indexOf(h),iN=ix('Product
   const names=new Map(),cats=new Map();
   res.rows.forEach(r=>{if(r[iT]!=='Product')return;if(!names.has(r[iN]))names.set(r[iN],r[iC]);const c=cats.get(r[iC])||{n:new Set(),p:new Set()};c.n.add(r[iN]);if(r[iP])c.p.add(r[iP]);cats.set(r[iC],c)});
   window.dispatchEvent(new CustomEvent('oolio:menu',{detail:{at:Date.now(),file,products:names.size,variants:res.nV||0,modifiers:res.nM||0,groups:res.nG||0,
-    cats:[...cats].map(([c,v])=>[c,v.n.size,[...v.p].join(', ')]),names:[...names].slice(0,800),
+    cats:[...cats].map(([c,v])=>[c,v.n.size,[...v.p].join(', ')]),names:[...names].slice(0,800),lint:window.OOLIO_LINT?{block:window.OOLIO_LINT.block,warn:window.OOLIO_LINT.warn}:null,
     // every sellable line (product, category, size, price) for the venue's menu history
     items:res.rows.filter(r=>r[iT]==='Product').map(r=>[r[iN],r[iC],r[iV]||'',r[iS]===''?'':+r[iS]]).slice(0,1500),
     sources:tables.filter(t=>t.on&&t.a&&t.a.kind!=='modifiers').map(t=>t.srcLabel||t.file),

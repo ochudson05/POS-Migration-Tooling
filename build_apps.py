@@ -1,4 +1,4 @@
-"""Builds apps.html: one page that launches the Menu Converter, Photo Finder, Restaurant Lookup, Setup Tracker, Training Session and Image to Word,
+"""Builds apps.html: one page that launches the Menu Converter, Photo Finder, Restaurant Lookup, Setup Tracker, Training Session, Hypercare, Team and Image to Word,
 with the legal pages from legal.html (business details in BUSINESS below) and a footer on every view.
 
     python build_apps.py [publish_copy.html]
@@ -87,6 +87,8 @@ THEME = (HERE / "oolio-theme.css").read_text(encoding="utf-8")
 SPRITE = (HERE / "icons.svg").read_text(encoding="utf-8").split("-->", 1)[1].strip()
 SHELL_CSS = (HERE / "shell.css").read_text(encoding="utf-8")
 SHELL_JS = (HERE / "shell.js").read_text(encoding="utf-8")
+# the venue record, routing map, Hypercare, Team and search everything (venue-record.js, hypercare.js, team-views.js, global-search.js)
+OPS_CSS = (HERE / "ops.css").read_text(encoding="utf-8")
 BOOT = "<script>" + (HERE / "theme-boot.js").read_text(encoding="utf-8") + "</script>"
 def ic(name, cls=""):
     return '<svg class="ic' + (" " + cls if cls else "") + '" aria-hidden="true" focusable="false"><use href="#i-' + name + '"/></svg>'
@@ -299,6 +301,8 @@ LAUNCHER_HTML = SPRITE + """
     <button type="button" class="lx-tab" data-go="venue">""" + ic("store") + """<span>Restaurant Lookup</span></button>
     <button type="button" class="lx-tab" data-go="setup">""" + ic("list-checks") + """<span>Setup Tracker</span></button>
     <button type="button" class="lx-tab" data-go="training">""" + ic("presentation") + """<span>Training Session</span></button>
+    <button type="button" class="lx-tab" data-go="hypercare">""" + ic("life-buoy") + """<span>Hypercare</span></button>
+    <button type="button" class="lx-tab" data-go="team">""" + ic("users") + """<span>Team</span></button>
     <button type="button" class="lx-tab" data-go="word">""" + ic("scan-text") + """<span>Image to Word</span></button>
   </nav>
   <label class="lx-venue"><span>Venue</span><select id="lx-venue" aria-label="Venue you are working on"><option value="">Loading venues…</option></select></label>
@@ -362,6 +366,20 @@ LAUNCHER_HTML = SPRITE + """
       <dl class="lx-flow"><dt>Takes</dt><dd>The venue you’re training</dd><dt>Gives</dt><dd>A session report with action items by owner, notes and anything not covered, to copy, print or save as Word</dd></dl>
       <button type="button" class="lx-open" data-go="training">Open Training Session""" + ic("arrow-right") + """</button>
     </article>
+    <article class="lx-card t-hypercare">
+      <div class="lx-cico">""" + ic("life-buoy") + """</div>
+      <h2>Hypercare</h2>
+      <p>The first 14 days after go-live: log each issue the venue raises, close it with what fixed it and why, and see which setup steps keep causing problems.</p>
+      <dl class="lx-flow"><dt>Takes</dt><dd>Issues as the venue reports them</dd><dt>Gives</dt><dd>An issue list per venue, root causes across all venues, and a handover to support</dd></dl>
+      <button type="button" class="lx-open" data-go="hypercare">Open Hypercare""" + ic("arrow-right") + """</button>
+    </article>
+    <article class="lx-card t-team">
+      <div class="lx-cico">""" + ic("users") + """</div>
+      <h2>Team</h2>
+      <p>Who has which venues, their go-live and training dates over the next six weeks with clashes flagged, and metrics on how setups are going.</p>
+      <dl class="lx-flow"><dt>Takes</dt><dd>Nothing: it reads the saved venues</dd><dt>Gives</dt><dd>A workload board, time to go-live, where venues get stuck, hypercare issues and AI spend</dd></dl>
+      <button type="button" class="lx-open" data-go="team">Open Team""" + ic("arrow-right") + """</button>
+    </article>
     <article class="lx-card t-word">
       <div class="lx-cico">""" + ic("scan-text") + """</div>
       <h2>Image to Word</h2>
@@ -374,6 +392,9 @@ LAUNCHER_HTML = SPRITE + """
 <div id="lx-vs" hidden>
 <main class="vs-main" id="vs-root"></main>
 </div>
+<div id="lx-hc" hidden><main id="hc-root"></main></div>
+<div id="lx-team" hidden><main id="tm-root"></main></div>
+<div id="lx-routing" hidden><main class="vr-main" id="vr-routing"></main></div>
 <div id="lx-conv" hidden>
 """ + conv_body + """
 </div>
@@ -409,7 +430,7 @@ LAUNCHER_HTML = SPRITE + """
 
 LAUNCHER_JS = r"""
 (()=>{
-  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),training:g('lx-ts'),word:g('lx-iw'),photoedit:g('lx-pe'),map:g('lx-map')};
+  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),training:g('lx-ts'),word:g('lx-iw'),photoedit:g('lx-pe'),map:g('lx-map'),hypercare:g('lx-hc'),team:g('lx-team'),routing:g('lx-routing')};
   const LEGAL=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>a.id.slice(3));LEGAL.forEach(k=>{views[k]=g('lx-legal')});
   const onClaude=!!(window.claude&&window.claude.use)||/(^|\.)claude(usercontent)?\.(ai|com)$/.test(location.hostname);
   let pfReady=false,checked=false,mapReady=false;
@@ -460,7 +481,7 @@ page = (
     '<meta name="claude:viewport-fit-sides" content="cover">\n'
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>\n'
     + FONT + "\n"
-    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + ts_css + iw_css + pe_css + THEME + SHELL_CSS + "</style>\n"
+    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + ts_css + iw_css + pe_css + THEME + SHELL_CSS + OPS_CSS + "</style>\n"
     + LAUNCHER_HTML
     + "<script>" + SHELL_JS + "</script>\n"
     + "<script>" + (HERE / "menu-knowledge.js").read_text(encoding="utf-8") + "</script>\n"
@@ -473,6 +494,7 @@ page = (
     + "<script>\nconst PF_HTML=" + pf_js + ";\nconst MAP_HTML=" + map_js + ";\n" + LAUNCHER_JS + "</script>\n"
     + "<script>" + (HERE / "venue-link.js").read_text(encoding="utf-8") + "</script>\n"
     + "<script>" + (HERE / "venue-search.js").read_text(encoding="utf-8") + "</script>\n"
+    + "".join("<script>" + (HERE / f).read_text(encoding="utf-8") + "</script>\n" for f in ("venue-record.js", "hypercare.js", "team-views.js", "global-search.js"))
 )
 
 full = (
