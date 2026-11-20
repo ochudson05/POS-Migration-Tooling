@@ -9,43 +9,45 @@
    build_apps.py adds this after every tool's own CSS (and inside the Photo Finder frame), so it only has to restate
    the shared colour tokens and a few shapes. Colours follow oolio.com: purple #673ab6 / #5e35b1, light purple #c1afde,
    charcoal #222, Material green / orange / red for state; type is Inter; buttons have 6px corners.
-   Layout: a deep purple app bar with the tool tabs, then each tool's own page on a faintly purple-tinted ground. */
+   Layout (2026-11-20 restyle, after Linear's 2026 refresh): the app bar is a light surface with a hairline, so the tools lead;
+   purple marks only the logo, the current tab and actions; borders are soft and surfaces flat. */
 :root{
-  --bg:#f5f3f9;--card:#ffffff;--text:#222222;--muted:#5f586d;--line:#e3dded;--tile:#ece7f5;
-  --accent:#673ab6;--accent-strong:#5e35b1;--accent-soft:#efe8f9;--accent-text:#ffffff;
+  --bg:#f7f6f9;--card:#ffffff;--text:#1c1a21;--muted:#625c6e;--line:#ebe8f0;--tile:#f0edf5;
+  --accent:#673ab6;--accent-strong:#5e35b1;--accent-soft:#f1ebfa;--accent-text:#ffffff;
   --ok:#2e7d32;--warn:#b45f00;--bad:#c62828;
-  --bar:#4a2a96;--bar-text:#ffffff;--bar-muted:rgb(255 255 255 / .76);--bar-line:rgb(255 255 255 / .22);--bar-hover:rgb(255 255 255 / .1);
-  --shadow:0 1px 2px rgb(40 22 80 / .06),0 2px 8px rgb(40 22 80 / .05);
+  --bar:#ffffff;--bar-text:#1c1a21;--bar-muted:#6b6577;--bar-line:#ebe8f0;--bar-hover:#f0edf5;--mark:#673ab6;--mark-text:#ffffff;
+  --shadow:0 1px 1px rgb(28 26 33 / .03);
   --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;--f-mono:ui-monospace,SFMono-Regular,Consolas,monospace;
   --r:6px;--r-card:12px}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
-  --bg:#141119;--card:#1e1a26;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;--tile:#272033;
-  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2238;--accent-text:#1a1424;
+  --bg:#121016;--card:#1a1720;--text:#efedf3;--muted:#a59fb0;--line:#2a2631;--tile:#231f2a;
+  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2338;--accent-text:#1a1424;
   --ok:#81c784;--warn:#ffb74d;--bad:#ef9a9a;
-  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247 / .72);--bar-line:rgb(242 239 247 / .18);--bar-hover:rgb(242 239 247 / .08);
-  --shadow:0 1px 2px rgb(0 0 0 / .3);color-scheme:dark}}
+  --bar:#16131b;--bar-text:#efedf3;--bar-muted:#a59fb0;--bar-line:#2a2631;--bar-hover:#231f2a;--mark:#b39ddb;--mark-text:#1a1424;
+  --shadow:none;color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#141119;--card:#1e1a26;--text:#f2eff7;--muted:#a69fb4;--line:#332c40;--tile:#272033;
-  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2238;--accent-text:#1a1424;
+  --bg:#121016;--card:#1a1720;--text:#efedf3;--muted:#a59fb0;--line:#2a2631;--tile:#231f2a;
+  --accent:#b39ddb;--accent-strong:#c7b6e6;--accent-soft:#2a2338;--accent-text:#1a1424;
   --ok:#81c784;--warn:#ffb74d;--bad:#ef9a9a;
-  --bar:#251b3d;--bar-text:#f2eff7;--bar-muted:rgb(242 239 247 / .72);--bar-line:rgb(242 239 247 / .18);--bar-hover:rgb(242 239 247 / .08);
-  --shadow:0 1px 2px rgb(0 0 0 / .3);color-scheme:dark}
+  --bar:#16131b;--bar-text:#efedf3;--bar-muted:#a59fb0;--bar-line:#2a2631;--bar-hover:#231f2a;--mark:#b39ddb;--mark-text:#1a1424;
+  --shadow:none;color-scheme:dark}
 
-body{background:var(--bg);color:var(--text);font-family:var(--f-body);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-h1,h2,h3{letter-spacing:-.01em}
-h1{font-weight:700}
+body{background:var(--bg);color:var(--text);font-family:var(--f-body);font-feature-settings:"cv11","ss01";-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+h1,h2,h3{letter-spacing:-.015em}
+h1{font-weight:650;letter-spacing:-.022em}
+table,.kpi b,.lx-prog,.stat b{font-variant-numeric:tabular-nums}
 a{color:var(--accent)}
 
 /* app bar */
-.lx-bar{background:var(--bar);border-bottom:0;color:var(--bar-text);padding-block:8px}
+.lx-bar{background:var(--bar);border-bottom:1px solid var(--bar-line);color:var(--bar-text);padding-block:8px}
 .lx-brand{color:var(--bar-text);font-weight:700;letter-spacing:-.01em}
 .lx-tab{color:var(--bar-muted);font-weight:600;border-radius:var(--r)}
 .lx-tab:hover{color:var(--bar-text);background:var(--bar-hover)}
-.lx-tab[aria-current="page"]{color:var(--bar);background:var(--bar-text);border-color:transparent}
+.lx-tab[aria-current="page"]{color:var(--bar-text);background:var(--bar-hover);border-color:transparent}
 .lx-venue{color:var(--bar-muted)}
-.lx-venue select{background:var(--bar-hover);color:var(--bar-text);border-color:var(--bar-line);border-radius:var(--r)}
+.lx-venue select{background:var(--bg);color:var(--bar-text);border-color:var(--bar-line);border-radius:var(--r)}
 .lx-venue select option{color:var(--text);background:var(--card)}
-.lx-bar :focus-visible{outline:2px solid var(--bar-text)!important;outline-offset:2px}
+.lx-bar :focus-visible{outline:2px solid var(--accent)!important;outline-offset:2px}
 
 /* buttons, fields and focus */
 button,.btn,.rf button,.st button,.lx-strip button,.lx-row button{border-radius:var(--r)}

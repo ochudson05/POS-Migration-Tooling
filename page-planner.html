@@ -14,14 +14,14 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--veg:#133d28;--veg-t:#c8f0d8;--nv:#4a1f14;--nv-t:#fbd5c8;--lnk:#2f2a66;--lnk-t:#dcd8ff;--oth:#2a2f36;--oth-t:#e6e9ee}}
 :root[data-theme="dark"]{--veg:#133d28;--veg-t:#c8f0d8;--nv:#4a1f14;--nv-t:#fbd5c8;--lnk:#2f2a66;--lnk-t:#dcd8ff;--oth:#2a2f36;--oth-t:#e6e9ee}
 body{margin:0;background:var(--bg,#f6f7f9);color:var(--text,#111);font:15px/1.5 var(--f-body,system-ui,sans-serif)}
-.pp-top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px));background:var(--bar,#222);color:var(--bar-text,#fff)}
+.pp-top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px));background:var(--bar,#222);color:var(--bar-text,#fff);border-bottom:1px solid var(--bar-line,transparent)}
 .pp-top b{font-size:1rem}.pp-top .sp{flex:1}
 .pp-top a{color:var(--bar-text,#fff);text-decoration:none;font-weight:600;font-size:.9rem;padding:5px 10px;border-radius:var(--r,6px)}
 .pp-top a:hover{background:var(--bar-hover,#333)}
 .pp-top b{display:inline-flex;align-items:center;gap:9px}
-.pp-logo{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--bar-text,#fff);color:var(--bar,#222)}
+.pp-logo{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--mark,var(--bar-text,#fff));color:var(--mark-text,var(--bar,#222))}
 .pp-logo .ic{width:17px;height:17px}
-.pp-top a{display:inline-flex;align-items:center;gap:6px}.pp-top a:focus-visible{outline:2px solid var(--bar-text,#fff);outline-offset:2px}
+.pp-top a{display:inline-flex;align-items:center;gap:6px}.pp-top a:focus-visible{outline:2px solid var(--accent,#673ab6);outline-offset:2px}
 .ic{width:1.05em;height:1.05em;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 /* step 1 drop zone and the locked steps 2-5 (same look as the Menu Converter) */
 .dz{position:relative;display:grid;justify-items:center;gap:6px;text-align:center;padding:26px 20px;margin:0;border:2px dashed color-mix(in srgb,var(--accent,#673ab6) 45%,var(--line,#dde));border-radius:12px;background:color-mix(in srgb,var(--accent,#673ab6) 5%,var(--card,#fff));color:var(--text,#111);cursor:pointer;transition:background-color .18s,border-color .18s}

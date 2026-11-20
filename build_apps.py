@@ -229,7 +229,7 @@ LAUNCHER_CSS = r"""
 #lx-hub>p{color:var(--muted);margin:0;max-width:70ch}
 .lx-muted{color:var(--muted)}.lx-small{font-size:.85rem}
 .lx-pick{display:grid;gap:12px}.lx-pick>button{justify-self:start;margin:0}
-.lx-hero{padding:24px}.lx-hero h1{font-size:1.5rem;margin:0;text-wrap:balance}.lx-hero>p{margin:-6px 0 4px}
+.lx-hero{padding:12px 0 8px;background:none!important;border:0!important;box-shadow:none!important}#lx-hub .lx-hero h1{font-size:clamp(1.8rem,1.2rem + 2vw,2.4rem);line-height:1.12;margin:0;text-wrap:balance}.lx-hero>p{margin:-4px 0 6px;font-size:1.02rem}
 .lx-recent{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .lx-recent button{display:grid;gap:2px;text-align:left;margin:0;font-weight:400}
 .lx-recent button span{color:var(--muted);font-size:.82rem}

@@ -15,20 +15,20 @@ button:not(:disabled):active{transform:scale(.97)}
 input:focus-visible,select:focus-visible,textarea:focus-visible{box-shadow:0 0 0 3px var(--accent-soft)}
 
 /* ---------- app bar ---------- */
-.lx-bar{position:sticky;top:0;z-index:20;gap:6px 14px;box-shadow:0 1px 0 rgb(0 0 0/.06),0 6px 18px rgb(30 10 70/.12)}
+.lx-bar{position:sticky;top:0;z-index:20;gap:6px 14px}
 .lx-brand{display:inline-flex;align-items:center;gap:9px}
-.lx-logo{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--bar-text);color:var(--bar)}
+.lx-logo{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--mark,var(--bar-text));color:var(--mark-text,var(--bar))}
 .lx-logo .ic{width:17px;height:17px}
 .lx-tabs{position:relative;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;max-width:100%;min-width:0;flex:1 1 auto}
 .lx-tabs::-webkit-scrollbar{display:none}
 .lx-tab{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;white-space:nowrap;background:none!important;border-color:transparent!important;transition:color .25s}
 .lx-tab .ic{opacity:.85}
-.lx-tab[aria-current="page"]{color:var(--bar)!important}
-.lx-ind{position:absolute;left:0;top:0;z-index:0;border-radius:var(--r);background:var(--bar-text);pointer-events:none;opacity:0;transition:transform .35s var(--ease),width .35s var(--ease),opacity .2s}
+.lx-tab[aria-current="page"]{color:var(--bar-text)!important}
+.lx-ind{position:absolute;left:0;top:0;z-index:0;border-radius:var(--r);background:var(--bar-hover);box-shadow:inset 0 -2px 0 var(--accent);pointer-events:none;opacity:0;transition:transform .35s var(--ease),width .35s var(--ease),opacity .2s}
 .lx-venue{margin-left:0}
 .lx-acts{display:flex;gap:6px;align-items:center;margin-left:auto}
-.lx-ib{display:grid;place-items:center;width:36px;height:36px;padding:0!important;margin:0;border-radius:50%!important;background:var(--bar-hover)!important;border:1px solid var(--bar-line)!important;color:var(--bar-text)!important;cursor:pointer}
-.lx-ib:hover{background:var(--bar-line)!important}
+.lx-ib{display:grid;place-items:center;width:36px;height:36px;padding:0!important;margin:0;border-radius:50%!important;background:transparent!important;border:1px solid var(--bar-line)!important;color:var(--bar-muted)!important;cursor:pointer}
+.lx-ib:hover{background:var(--bar-hover)!important;color:var(--bar-text)!important}
 .lx-ib .ic{width:18px;height:18px;transition:transform .5s var(--ease)}
 #mh-theme:hover .ic{transform:rotate(40deg)}
 .mh-av{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;font-size:.8rem;font-weight:700;letter-spacing:.02em;background:linear-gradient(135deg,#9575cd,#5e35b1);color:#fff}
@@ -47,12 +47,11 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{box-shadow:0 0 0
 .lx-toolsh{display:flex;align-items:center;gap:8px}
 .lx-cards{gap:14px}
 .lx-card{position:relative;overflow:hidden}
-.lx-cards .lx-card::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--tint);transform:scaleX(0);transform-origin:left;transition:transform .35s var(--ease)}
-.lx-cards .lx-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgb(40 22 80/.14);border-color:color-mix(in srgb,var(--tint) 40%,var(--line))}
-.lx-cards .lx-card:hover::before{transform:scaleX(1)}
-.lx-cico{display:grid;place-items:center;width:44px;height:44px;border-radius:12px;color:var(--tint);background:color-mix(in srgb,var(--tint) 13%,transparent);transition:transform .35s var(--ease)}
-.lx-cico .ic{width:22px;height:22px}
-.lx-card:hover .lx-cico{transform:scale(1.08) rotate(-4deg)}
+/* tool cards: flat, the border darkens on hover; small grey icons (no coloured tiles) */
+.lx-cards .lx-card:hover{border-color:color-mix(in srgb,var(--text) 22%,var(--line))}
+.lx-cico{display:block;color:var(--muted);transition:color .2s}
+.lx-cico .ic{width:20px;height:20px}
+.lx-card:hover .lx-cico{color:var(--text)}
 .lx-open{display:inline-flex;align-items:center;gap:6px}
 /* tool cards: the whole card opens the tool; only the venue's next tool gets a filled button */
 .lx-cards .lx-card{cursor:pointer}
