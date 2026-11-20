@@ -57,10 +57,13 @@ window.mhNewVenue=p=>newVenue(p);
 // icons come from shell.js (the Lucide sprite); each step wears its tool's icon and colour
 const IC=n=>window.mhIcon?window.mhIcon(n):'';
 const STEPICON={lookup:'store',menu:'file-spreadsheet',photos:'images',setup:'list-checks'},STEPTOOL={lookup:'venue',menu:'converter',photos:'photos',setup:'setup'};
+// the tool card for the venue's next step gets a filled button and a "Next for <venue>" tag; the rest stay quiet
+function markNext(go,name){document.querySelectorAll('.lx-cards .lx-card').forEach(c=>{const b=c.querySelector('.lx-open'),on=!!go&&!!b&&b.dataset.go===go;c.classList.toggle('lx-next',on);
+  let t=c.querySelector('.lx-nexttag');if(on){if(!t){t=document.createElement('span');t.className='lx-nexttag';c.insertBefore(t,c.querySelector('h2'))}t.textContent='Next for '+(name||'this venue')}else if(t)t.remove()})}
 function drawHub(){const el=g('lx-hub'),a=OV.active();
   if(!a){const L=OV.list().slice(0,8);
-    el.innerHTML='<h1>Menu Hauler</h1><p>Pick the venue you’re setting up. Every tool then works on it: the lookup fills its business details, the converted menu goes to Photo Finder and the checklist, and progress is shared with the team.</p>'+
-      '<div class="lx-card lx-pick">'+(OV.readOnly?'':'<button type="button" data-hub="new">'+IC('plus')+'New venue</button>')+
+    markNext(null);
+    el.innerHTML='<div class="lx-card lx-pick lx-hero"><h1>Which venue are you setting up?</h1><p class="lx-muted">Pick one and every tool works on it, with progress shared with the team.</p>'+(OV.readOnly?'':'<button type="button" data-hub="new">'+IC('plus')+'New venue</button>')+
       (L.length?'<div class="lx-recent">'+L.map(o=>{const p=OV.progress(o.id);return '<div class="lx-vcard"><button type="button" class="lx-sec" data-hub="pick" data-id="'+esc(o.id)+'">'+IC('store')+'<b>'+esc(o.name||'Untitled')+'</b><span>'+(()=>{const gr=OV.groupOf&&OV.groupOf(o.id);return gr&&gr.name!==o.name?esc(gr.name)+' · ':''})()+esc(OV.stage(o.id))+' · '+p.done+'/'+p.total+' steps</span></button>'+
         (OV.readOnly?'':'<button type="button" class="lx-del" data-hub="del" data-id="'+esc(o.id)+'" title="Delete '+esc(o.name||'Untitled')+'" aria-label="Delete '+esc(o.name||'Untitled')+'">Delete</button>')+'</div>'}).join('')+'</div>':
         (OV.ready?'<p class="lx-muted">No venues yet.</p>':'<div class="lx-recent" aria-label="Loading venues"><div class="mh-skel"></div><div class="mh-skel"></div><div class="mh-skel"></div></div>'))+'</div>';
@@ -73,6 +76,7 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
     {k:'photos',t:'Find product photos',done:!!f,s:f?f.saved+' photos saved, '+day(f.at)+'.':(m?'Uses the '+m.products+' converted products.':'Uses the converted menu, so do that first.'),b:'Find photos'},
     {k:'setup',t:'Setup checklist',done:all.total>0&&all.done===all.total,s:'Pre-config '+pre.done+'/'+pre.total+' · Training '+trn.done+'/'+trn.total+(a.training?' · Training '+new Date(a.training+'T00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}):''),b:'Open checklist'}];
   const next=steps.findIndex(s=>!s.done);
+  markNext(next<0?null:STEPTOOL[steps[next].k],a.name);
   const gr=OV.groupOf?OV.groupOf(a.id):null;
   el.innerHTML='<div class="lx-vhead"><div>'+(gr?'<p class="lx-org"><button type="button" class="lx-link" data-hub="org" data-id="'+esc(gr.id)+'">'+esc(gr.name||'Organisation')+'</button>'+(gr.venues.length>1?' · '+gr.venues.length+' venues':'')+'</p>':'')+'<h1>'+esc(a.name||'Untitled')+'</h1><p>'+esc([OV.address(a.id),OV.stage(a.id)].filter(Boolean).join(' · '))+'</p></div>'+
     '<div class="lx-prog"><span class="lx-bar2"><i style="width:'+(all.total?Math.round(all.done/all.total*100):0)+'%"></i></span>'+all.done+'/'+all.total+' steps</div></div>'+

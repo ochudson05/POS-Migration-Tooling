@@ -49,6 +49,8 @@ function applyMotion(){root.classList.toggle('mh-still',S.motion==='reduce');syn
 /* ---------- start page, tab marker and view animation (the launcher calls mhAfterShow after each view change) ---------- */
 const allowed=k=>{const m=window.MH_ME;return!(m&&m.tools&&!m.tools.includes(acc(k)))};
 if(!location.hash){const st=S.start||'home',t=st==='last'?S.last:st;if(t&&t!=='home'&&TOOLS.some(x=>x.k===t)&&allowed(t)){try{history.replaceState(null,'','#'+t)}catch(e){}}}
+// on narrow screens the tab bar scrolls; fade its right edge until it's scrolled to the end
+{const tb=document.querySelector('.lx-tabs');if(tb){const tend=()=>tb.classList.toggle('lx-tend',tb.scrollLeft+tb.clientWidth>=tb.scrollWidth-4);tb.addEventListener('scroll',tend,{passive:true});addEventListener('resize',tend);setTimeout(tend,0)}}
 function moveInd(){const tabs=document.querySelector('.lx-tabs');if(!tabs)return;let ind=tabs.querySelector('.lx-ind');
   if(!ind){ind=document.createElement('span');ind.className='lx-ind';ind.setAttribute('aria-hidden','true');tabs.prepend(ind)}
   const a=tabs.querySelector('.lx-tab[aria-current="page"]');if(!a||a.hidden||!a.offsetWidth){ind.style.opacity='0';return}

@@ -154,7 +154,7 @@ LEGAL_CSS = r"""
 .lg-t th{background:var(--bg);font-weight:600}
 .lg-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:8px 0 14px}.lg-dl dt{color:var(--muted)}.lg-dl dd{margin:0}
 .lx-foot{border-top:1px solid var(--line);background:var(--card);color:var(--muted);font-size:.82rem;padding-block:14px 18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:6px;justify-items:center;text-align:center}
-.lx-foot p{margin:0}.lx-foot nav{display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:center}
+.lx-foot p{margin:0}.lx-foot nav{display:flex;flex-wrap:wrap;gap:0 10px;justify-content:center}.lx-foot nav a{padding:6px 4px;min-height:32px;box-sizing:border-box}
 .lx-cn{font-size:.82rem;color:var(--muted);margin:6px 0 0;line-height:1.4}.lx-cn a{color:var(--accent)}
 @media (max-width:720px){.lx-legal{grid-template-columns:1fr}.lx-lnav{position:static;display:flex;flex-wrap:wrap;gap:4px}.lg-doc{padding:16px}}
 """
@@ -222,13 +222,14 @@ LAUNCHER_CSS = r"""
 .lx-pfwrap .lx-note{margin-left:max(16px,env(safe-area-inset-left,0px));margin-right:max(16px,env(safe-area-inset-right,0px))}
 /* the venue: header picker, home hub, and the strip each tool shows */
 .lx-venue{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:.85rem;color:var(--muted);min-width:0}
-.lx-venue select{font:inherit;font-size:.9rem;font-weight:600;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 8px;max-width:min(260px,60vw);width:auto;margin:0}
-.lx-toolsh{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 -6px}
+.lx-venue select{font:inherit;font-size:.9rem;font-weight:600;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:36px;max-width:min(260px,60vw);width:auto;margin:0}
+.lx-toolsh{font-size:.95rem;font-weight:600;color:var(--muted);margin:14px 0 -6px}
 #lx-hub{display:grid;gap:14px}
 #lx-hub h1{font-size:1.5rem;margin:0;text-wrap:balance}
 #lx-hub>p{color:var(--muted);margin:0;max-width:70ch}
 .lx-muted{color:var(--muted)}.lx-small{font-size:.85rem}
 .lx-pick{display:grid;gap:12px}.lx-pick>button{justify-self:start;margin:0}
+.lx-hero{padding:24px}.lx-hero h1{font-size:1.5rem;margin:0;text-wrap:balance}.lx-hero>p{margin:-6px 0 4px}
 .lx-recent{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .lx-recent button{display:grid;gap:2px;text-align:left;margin:0;font-weight:400}
 .lx-recent button span{color:var(--muted);font-size:.82rem}

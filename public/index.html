@@ -243,6 +243,19 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 #rbDlg::backdrop{background:rgba(0,0,0,.45)}#rbDlg h2{font-size:1.1rem;margin:0 0 4px}
 #rbDlg .rb-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}#rbDlg .rb-btns button{margin:0}
 #rbMsg.err{color:var(--bad,#c62828)}#rbMsg.ok{color:var(--ok)}
+/* step 1 drop zone, "how files are read" help, and the locked steps 2-6 before a menu is added */
+.dz{position:relative;display:grid;justify-items:center;gap:6px;text-align:center;padding:28px 20px;margin:0;border:2px dashed color-mix(in srgb,var(--accent) 45%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--accent) 5%,var(--card));color:var(--text);cursor:pointer;transition:background-color .18s,border-color .18s}
+.dz:hover,.dz:focus-within{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--card))}
+.dz:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.dz-in{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0 0 0 0);margin:0;padding:0;border:0}
+.dz-ic{width:32px;height:32px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.dz-t{font-size:1rem}.dz-t u{color:var(--accent);text-underline-offset:3px}
+.dz-s{font-size:.85rem;color:var(--muted);max-width:52ch}
+.dz-tick{font-size:.85rem;color:var(--muted);margin:14px 0 4px}
+.cv-help{margin-top:10px}.cv-help .warn{margin-top:6px}
+.cv-locked{color:var(--muted);border-style:dashed;background:transparent}
+.cv-locked ol{list-style:none;display:flex;flex-wrap:wrap;gap:6px 22px;margin:0 0 6px;padding:0;font-weight:600;font-size:.95rem}
+.cv-locked p{margin:0;font-size:.85rem}
 
 /* Launcher: a slim bar with the two tools as tabs; the start view shows each tool as a card */
 [hidden]{display:none!important}
@@ -268,13 +281,14 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .lx-pfwrap .lx-note{margin-left:max(16px,env(safe-area-inset-left,0px));margin-right:max(16px,env(safe-area-inset-right,0px))}
 /* the venue: header picker, home hub, and the strip each tool shows */
 .lx-venue{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:.85rem;color:var(--muted);min-width:0}
-.lx-venue select{font:inherit;font-size:.9rem;font-weight:600;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 8px;max-width:min(260px,60vw);width:auto;margin:0}
-.lx-toolsh{font-size:.8rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:14px 0 -6px}
+.lx-venue select{font:inherit;font-size:.9rem;font-weight:600;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-height:36px;max-width:min(260px,60vw);width:auto;margin:0}
+.lx-toolsh{font-size:.95rem;font-weight:600;color:var(--muted);margin:14px 0 -6px}
 #lx-hub{display:grid;gap:14px}
 #lx-hub h1{font-size:1.5rem;margin:0;text-wrap:balance}
 #lx-hub>p{color:var(--muted);margin:0;max-width:70ch}
 .lx-muted{color:var(--muted)}.lx-small{font-size:.85rem}
 .lx-pick{display:grid;gap:12px}.lx-pick>button{justify-self:start;margin:0}
+.lx-hero{padding:24px}.lx-hero h1{font-size:1.5rem;margin:0;text-wrap:balance}.lx-hero>p{margin:-6px 0 4px}
 .lx-recent{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
 .lx-recent button{display:grid;gap:2px;text-align:left;margin:0;font-weight:400}
 .lx-recent button span{color:var(--muted);font-size:.82rem}
@@ -385,7 +399,7 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .lg-t th{background:var(--bg);font-weight:600}
 .lg-dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:8px 0 14px}.lg-dl dt{color:var(--muted)}.lg-dl dd{margin:0}
 .lx-foot{border-top:1px solid var(--line);background:var(--card);color:var(--muted);font-size:.82rem;padding-block:14px 18px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:6px;justify-items:center;text-align:center}
-.lx-foot p{margin:0}.lx-foot nav{display:flex;flex-wrap:wrap;gap:4px 14px;justify-content:center}
+.lx-foot p{margin:0}.lx-foot nav{display:flex;flex-wrap:wrap;gap:0 10px;justify-content:center}.lx-foot nav a{padding:6px 4px;min-height:32px;box-sizing:border-box}
 .lx-cn{font-size:.82rem;color:var(--muted);margin:6px 0 0;line-height:1.4}.lx-cn a{color:var(--accent)}
 @media (max-width:720px){.lx-legal{grid-template-columns:1fr}.lx-lnav{position:static;display:flex;flex-wrap:wrap;gap:4px}.lg-doc{padding:16px}}
 
@@ -926,6 +940,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{box-shadow:0 0 0
 .mh-av{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;font-size:.8rem;font-weight:700;letter-spacing:.02em;background:linear-gradient(135deg,#9575cd,#5e35b1);color:#fff}
 .mh-av.big{width:52px;height:52px;font-size:1.1rem;flex:none}
 /* phones: brand and buttons on the first row, the venue picker under them, then the tools */
+@media (max-width:760px){.lx-tabs:not(.lx-tend){-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent)}.lx-venue select{min-height:44px}}
 @media (max-width:760px){.lx-bar{padding-block:8px}.lx-acts{order:2}.lx-venue{order:3;flex-basis:100%}.lx-venue select{max-width:none;flex:1}.lx-venue>span{display:none}.lx-tabs{order:4;flex-basis:100%}}
 
 /* ---------- views come in gently ---------- */
@@ -938,8 +953,6 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{box-shadow:0 0 0
 .lx-toolsh{display:flex;align-items:center;gap:8px}
 .lx-cards{gap:14px}
 .lx-card{position:relative;overflow:hidden}
-.lx-cards .lx-card{animation:mh-in .45s var(--ease) both}
-.lx-cards .lx-card:nth-child(2){animation-delay:.05s}.lx-cards .lx-card:nth-child(3){animation-delay:.1s}.lx-cards .lx-card:nth-child(4){animation-delay:.15s}.lx-cards .lx-card:nth-child(5){animation-delay:.2s}
 .lx-cards .lx-card::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--tint);transform:scaleX(0);transform-origin:left;transition:transform .35s var(--ease)}
 .lx-cards .lx-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgb(40 22 80/.14);border-color:color-mix(in srgb,var(--tint) 40%,var(--line))}
 .lx-cards .lx-card:hover::before{transform:scaleX(1)}
@@ -947,6 +960,14 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{box-shadow:0 0 0
 .lx-cico .ic{width:22px;height:22px}
 .lx-card:hover .lx-cico{transform:scale(1.08) rotate(-4deg)}
 .lx-open{display:inline-flex;align-items:center;gap:6px}
+/* tool cards: the whole card opens the tool; only the venue's next tool gets a filled button */
+.lx-cards .lx-card{cursor:pointer}
+.lx-cards .lx-open{background:none;color:var(--accent);border:0;padding:4px 0;box-shadow:none}
+.lx-cards .lx-open::after{content:"";position:absolute;inset:0;border-radius:inherit}
+.lx-cards .lx-open:focus-visible{outline:none}.lx-cards .lx-card:has(.lx-open:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.lx-cards .lx-card.lx-next{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.lx-cards .lx-card.lx-next .lx-open{background:var(--accent);color:var(--accent-text);padding:9px 14px;border-radius:8px}
+.lx-nexttag{justify-self:start;font-size:.78rem;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:99px;padding:2px 10px;margin:-2px 0 -4px}
 .lx-open .ic{transition:transform .25s var(--ease)}
 .lx-card:hover .lx-open .ic{transform:translateX(4px)}
 /* the venue hub */
@@ -1215,23 +1236,30 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 </div>
 <div id="lx-conv" hidden>
 <main>
-<h1>Menu converter → Oolio One</h1>
-<p class="sub">Upload a Square or Lightspeed export, an Oolio pre-work spreadsheet, any spreadsheet a customer made, a menu PDF or Word document, a web page or a photo of a menu. You can add several at once, for example a product list and a modifiers sheet. You get one clean file in the Oolio One product import format. Spreadsheets are read in your browser and never leave it. Where Claude is available, menu photos, PDFs, Word documents and web pages are sent to Claude to be read; otherwise they are read in your browser.</p>
+<h1>Menu Converter</h1>
+<p class="sub">Turn any menu into an Oolio One product import file.</p>
 
 <div class="card">
 <h2>1. Source files</h2>
 <div id="rsbox"></div>
-<label for="file">Choose one or more files: spreadsheets (.csv, .xlsx), menu PDFs, Word documents (.docx), saved web pages (.html), text files or photos of a menu (.jpg, .png). You can also drag files onto the page, or paste a screenshot with Ctrl+V.</label>
-<p class="lx-cn" style="margin:0 0 6px">Files are read in your browser and aren’t kept unless you save the result to a venue. Don’t include personal or payment details. <a href="#privacy">Privacy Policy</a> · <a href="#ai">Use of AI</a></p>
-<input type="file" id="file" accept=".csv,.tsv,.txt,.md,.docx,.xlsx,.xlsm,.xls,.ods,.pdf,.html,.htm,.png,.jpg,.jpeg,.webp,.gif" multiple>
-<label class="ck" style="margin-top:8px"><input type="checkbox" id="noprice">Include items without prices (for menus that don’t show them). Their price is set to 0 and they are listed in Checks. Tick this before you add the file, read the page or paste the text.</label>
-<label class="ck" style="margin-top:4px"><input type="checkbox" id="shelf">These are fridge or shelf photos (drinks or products priced on shelf tags, not a printed menu). Claude reads every product, matches it to the price tag under its shelf and sorts it into types like Soft Drinks, Water and Juices. Tick this before you add the photos.</label>
-<div class="warn hosted-only site-claude" style="margin-top:6px">Menu photos, PDFs and Word documents are read by Claude, which the site owner has switched on for your account. Check names and prices against the menu. Take photos straight on, in good light, one page at a time.</div>
-<div class="warn hosted-only ocr-note" style="margin-top:6px">Menu photos and scanned PDFs are read with text recognition (OCR) in your browser, which can take a minute. Check names and prices carefully against the photo. Take photos straight on, in good light, one page at a time.</div>
-<div class="warn claude-only" style="margin-top:6px">Menu photos, PDFs and Word documents are read by Claude, which uses a little of your own Claude usage and also picks up add-ons and choices (e.g. “Add bacon +$4”) as modifier groups. The first time, you’re asked to allow it. Take photos straight on, in good light, one page at a time.</div>
-<div class="two" style="margin-top:10px"><input id="url" type="url" placeholder="Or a menu web page, e.g. https://venue.com.au/menu"><button id="urlb" type="button" class="sec" style="margin:0">Read page</button></div>
-<div class="warn hosted-only" style="margin-top:4px">A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too. Pages are read for free by the website; Firecrawl (the team’s account) is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
-<div class="warn claude-only" style="margin-top:4px">On the shared claude.ai page, web pages are read with your Firecrawl connector (add it once in claude.ai Settings → Connectors). A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too, and Claude reads the menu, using a little of your Claude usage. Pages are read for free first (directly, or with the Claude app’s browser when this page is open in the Claude app); Firecrawl is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
+<label class="dz" for="file"><input type="file" id="file" class="dz-in" accept=".csv,.tsv,.txt,.md,.docx,.xlsx,.xlsm,.xls,.ods,.pdf,.html,.htm,.png,.jpg,.jpeg,.webp,.gif" multiple>
+<svg class="dz-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L7 8m5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
+<span class="dz-t"><b>Drop menu files here</b> or <u>choose files</u></span>
+<span class="dz-s">POS exports, spreadsheets, PDFs, Word documents, saved web pages or menu photos. Add several at once, or paste a screenshot with Ctrl+V.</span></label>
+<p class="lx-cn" style="margin:8px 0 0">Files are read in your browser and aren’t kept unless you save the result to a venue. Don’t include personal or payment details. <a href="#privacy">Privacy Policy</a> · <a href="#ai">Use of AI</a></p>
+<div class="two" style="margin-top:12px"><input id="url" type="url" placeholder="Or a menu web page, e.g. https://venue.com.au/menu" aria-label="Menu web page address"><button id="urlb" type="button" class="sec" style="margin:0">Read page</button></div>
+<p class="dz-tick">Tick these before you add the menu:</p>
+<label class="ck"><input type="checkbox" id="noprice">Include items without prices (set to $0 and listed in Checks)</label>
+<label class="ck" style="margin-top:4px"><input type="checkbox" id="shelf">These are fridge or shelf photos (prices on shelf tags, read by Claude)</label>
+<details class="cv-help"><summary>How files are read</summary>
+<div class="warn">Spreadsheets and POS exports (Square, Lightspeed, Oolio pre-work, or any customer spreadsheet) are read in your browser and never leave it. You can add a product list and a modifiers sheet together and get one clean file.</div>
+<div class="warn hosted-only site-claude">Menu photos, PDFs and Word documents are read by Claude, which the site owner has switched on for your account. Check names and prices against the menu. Take photos straight on, in good light, one page at a time.</div>
+<div class="warn hosted-only ocr-note">Menu photos and scanned PDFs are read with text recognition (OCR) in your browser, which can take a minute. Check names and prices carefully against the photo. Take photos straight on, in good light, one page at a time.</div>
+<div class="warn claude-only">Menu photos, PDFs and Word documents are read by Claude, which uses a little of your own Claude usage and also picks up add-ons and choices (e.g. “Add bacon +$4”) as modifier groups. The first time, you’re asked to allow it. Take photos straight on, in good light, one page at a time.</div>
+<div class="warn">Fridge and shelf photos: Claude reads every product, matches it to the price tag under its shelf and sorts it into types like Soft Drinks, Water and Juices.</div>
+<div class="warn hosted-only">Web pages: a venue’s homepage is enough. Up to 3 of its menu pages and menu PDFs are opened too. Pages are read for free by the website; Firecrawl (the team’s account) is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
+<div class="warn claude-only">Web pages: on the shared claude.ai page they’re read with your Firecrawl connector (add it once in claude.ai Settings → Connectors). A venue’s homepage is enough: up to 3 of its menu pages and menu PDFs are opened too, and Claude reads the menu, using a little of your Claude usage. Pages are read for free first (directly, or with the Claude app’s browser when this page is open in the Claude app); Firecrawl is only used for pages that can’t be read that way, at most 3 times per site. Results are kept for 7 days, so reading the same site again is free.</div>
+</details>
 <details style="margin-top:6px" id="svcbox"><summary>Menu scraper service</summary>
 <div class="warn" style="margin-top:4px">If you run the menu scraper (the menu-scraper folder), web pages are read through it first. It finds the site’s menu pages and PDFs, loads pages that need JavaScript, and reads the menu with Claude when it’s set up to.</div>
 <div class="two" style="margin-top:6px"><input id="svc" type="url" placeholder="Service address, e.g. http://localhost:8787"><input id="svck" type="password" placeholder="API key (if the service has one)" autocomplete="off"></div>
@@ -1241,6 +1269,11 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 <div id="dmsg" class="warn"></div>
 <div id="srcs" style="margin-top:10px"></div>
 <div id="ombox" class="chk" style="display:none;margin-top:12px"></div>
+</div>
+
+<div class="card cv-locked" id="lockcard" aria-live="polite">
+<ol><li>2. Settings</li><li>3. Categories</li><li>4. Variants &amp; modifier groups</li><li>5. Standard option groups</li><li>6. Checks</li></ol>
+<p>Add a menu above and these steps open.</p>
 </div>
 
 <div class="card" id="scard" style="display:none">
@@ -1859,6 +1892,8 @@ function applyMotion(){root.classList.toggle('mh-still',S.motion==='reduce');syn
 /* ---------- start page, tab marker and view animation (the launcher calls mhAfterShow after each view change) ---------- */
 const allowed=k=>{const m=window.MH_ME;return!(m&&m.tools&&!m.tools.includes(acc(k)))};
 if(!location.hash){const st=S.start||'home',t=st==='last'?S.last:st;if(t&&t!=='home'&&TOOLS.some(x=>x.k===t)&&allowed(t)){try{history.replaceState(null,'','#'+t)}catch(e){}}}
+// on narrow screens the tab bar scrolls; fade its right edge until it's scrolled to the end
+{const tb=document.querySelector('.lx-tabs');if(tb){const tend=()=>tb.classList.toggle('lx-tend',tb.scrollLeft+tb.clientWidth>=tb.scrollWidth-4);tb.addEventListener('scroll',tend,{passive:true});addEventListener('resize',tend);setTimeout(tend,0)}}
 function moveInd(){const tabs=document.querySelector('.lx-tabs');if(!tabs)return;let ind=tabs.querySelector('.lx-ind');
   if(!ind){ind=document.createElement('span');ind.className='lx-ind';ind.setAttribute('aria-hidden','true');tabs.prepend(ind)}
   const a=tabs.querySelector('.lx-tab[aria-current="page"]');if(!a||a.hidden||!a.offsetWidth){ind.style.opacity='0';return}
@@ -3697,6 +3732,7 @@ function rebuild(){
   window.catList=cats;
   vg=detectGroups(base).sort((a,b)=>(a.mode==='off')-(b.mode==='off'));flavVar(FLAVVAR());
   const any=tables.length>0;['scard','ccard','vcard','pcard','kcard'].forEach(id=>$(id).style.display=any&&(base.length||mods.length)?'block':'none');
+  $('lockcard').style.display=$('scard').style.display==='block'?'none':'block';
   const sig=base.map(i=>i.name).join('|')+'#'+mods.map(m=>m.group+'/'+m.name).join('|');if(sig!==preSig){preSig=sig;preInit=true}
   renderCats();buildVG();run();}
 function renderCats(){
@@ -6981,10 +7017,13 @@ window.mhNewVenue=p=>newVenue(p);
 // icons come from shell.js (the Lucide sprite); each step wears its tool's icon and colour
 const IC=n=>window.mhIcon?window.mhIcon(n):'';
 const STEPICON={lookup:'store',menu:'file-spreadsheet',photos:'images',setup:'list-checks'},STEPTOOL={lookup:'venue',menu:'converter',photos:'photos',setup:'setup'};
+// the tool card for the venue's next step gets a filled button and a "Next for <venue>" tag; the rest stay quiet
+function markNext(go,name){document.querySelectorAll('.lx-cards .lx-card').forEach(c=>{const b=c.querySelector('.lx-open'),on=!!go&&!!b&&b.dataset.go===go;c.classList.toggle('lx-next',on);
+  let t=c.querySelector('.lx-nexttag');if(on){if(!t){t=document.createElement('span');t.className='lx-nexttag';c.insertBefore(t,c.querySelector('h2'))}t.textContent='Next for '+(name||'this venue')}else if(t)t.remove()})}
 function drawHub(){const el=g('lx-hub'),a=OV.active();
   if(!a){const L=OV.list().slice(0,8);
-    el.innerHTML='<h1>Menu Hauler</h1><p>Pick the venue you’re setting up. Every tool then works on it: the lookup fills its business details, the converted menu goes to Photo Finder and the checklist, and progress is shared with the team.</p>'+
-      '<div class="lx-card lx-pick">'+(OV.readOnly?'':'<button type="button" data-hub="new">'+IC('plus')+'New venue</button>')+
+    markNext(null);
+    el.innerHTML='<div class="lx-card lx-pick lx-hero"><h1>Which venue are you setting up?</h1><p class="lx-muted">Pick one and every tool works on it, with progress shared with the team.</p>'+(OV.readOnly?'':'<button type="button" data-hub="new">'+IC('plus')+'New venue</button>')+
       (L.length?'<div class="lx-recent">'+L.map(o=>{const p=OV.progress(o.id);return '<div class="lx-vcard"><button type="button" class="lx-sec" data-hub="pick" data-id="'+esc(o.id)+'">'+IC('store')+'<b>'+esc(o.name||'Untitled')+'</b><span>'+(()=>{const gr=OV.groupOf&&OV.groupOf(o.id);return gr&&gr.name!==o.name?esc(gr.name)+' · ':''})()+esc(OV.stage(o.id))+' · '+p.done+'/'+p.total+' steps</span></button>'+
         (OV.readOnly?'':'<button type="button" class="lx-del" data-hub="del" data-id="'+esc(o.id)+'" title="Delete '+esc(o.name||'Untitled')+'" aria-label="Delete '+esc(o.name||'Untitled')+'">Delete</button>')+'</div>'}).join('')+'</div>':
         (OV.ready?'<p class="lx-muted">No venues yet.</p>':'<div class="lx-recent" aria-label="Loading venues"><div class="mh-skel"></div><div class="mh-skel"></div><div class="mh-skel"></div></div>'))+'</div>';
@@ -6997,6 +7036,7 @@ function drawHub(){const el=g('lx-hub'),a=OV.active();
     {k:'photos',t:'Find product photos',done:!!f,s:f?f.saved+' photos saved, '+day(f.at)+'.':(m?'Uses the '+m.products+' converted products.':'Uses the converted menu, so do that first.'),b:'Find photos'},
     {k:'setup',t:'Setup checklist',done:all.total>0&&all.done===all.total,s:'Pre-config '+pre.done+'/'+pre.total+' · Training '+trn.done+'/'+trn.total+(a.training?' · Training '+new Date(a.training+'T00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric',month:'short'}):''),b:'Open checklist'}];
   const next=steps.findIndex(s=>!s.done);
+  markNext(next<0?null:STEPTOOL[steps[next].k],a.name);
   const gr=OV.groupOf?OV.groupOf(a.id):null;
   el.innerHTML='<div class="lx-vhead"><div>'+(gr?'<p class="lx-org"><button type="button" class="lx-link" data-hub="org" data-id="'+esc(gr.id)+'">'+esc(gr.name||'Organisation')+'</button>'+(gr.venues.length>1?' · '+gr.venues.length+' venues':'')+'</p>':'')+'<h1>'+esc(a.name||'Untitled')+'</h1><p>'+esc([OV.address(a.id),OV.stage(a.id)].filter(Boolean).join(' · '))+'</p></div>'+
     '<div class="lx-prog"><span class="lx-bar2"><i style="width:'+(all.total?Math.round(all.done/all.total*100):0)+'%"></i></span>'+all.done+'/'+all.total+' steps</div></div>'+

@@ -34,6 +34,7 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{box-shadow:0 0 0
 .mh-av{display:grid;place-items:center;width:100%;height:100%;border-radius:50%;font-size:.8rem;font-weight:700;letter-spacing:.02em;background:linear-gradient(135deg,#9575cd,#5e35b1);color:#fff}
 .mh-av.big{width:52px;height:52px;font-size:1.1rem;flex:none}
 /* phones: brand and buttons on the first row, the venue picker under them, then the tools */
+@media (max-width:760px){.lx-tabs:not(.lx-tend){-webkit-mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent);mask-image:linear-gradient(to right,#000 calc(100% - 40px),transparent)}.lx-venue select{min-height:44px}}
 @media (max-width:760px){.lx-bar{padding-block:8px}.lx-acts{order:2}.lx-venue{order:3;flex-basis:100%}.lx-venue select{max-width:none;flex:1}.lx-venue>span{display:none}.lx-tabs{order:4;flex-basis:100%}}
 
 /* ---------- views come in gently ---------- */
@@ -46,8 +47,6 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{box-shadow:0 0 0
 .lx-toolsh{display:flex;align-items:center;gap:8px}
 .lx-cards{gap:14px}
 .lx-card{position:relative;overflow:hidden}
-.lx-cards .lx-card{animation:mh-in .45s var(--ease) both}
-.lx-cards .lx-card:nth-child(2){animation-delay:.05s}.lx-cards .lx-card:nth-child(3){animation-delay:.1s}.lx-cards .lx-card:nth-child(4){animation-delay:.15s}.lx-cards .lx-card:nth-child(5){animation-delay:.2s}
 .lx-cards .lx-card::before{content:"";position:absolute;inset:0 0 auto;height:3px;background:var(--tint);transform:scaleX(0);transform-origin:left;transition:transform .35s var(--ease)}
 .lx-cards .lx-card:hover{transform:translateY(-3px);box-shadow:0 10px 28px rgb(40 22 80/.14);border-color:color-mix(in srgb,var(--tint) 40%,var(--line))}
 .lx-cards .lx-card:hover::before{transform:scaleX(1)}
@@ -55,6 +54,14 @@ input:focus-visible,select:focus-visible,textarea:focus-visible{box-shadow:0 0 0
 .lx-cico .ic{width:22px;height:22px}
 .lx-card:hover .lx-cico{transform:scale(1.08) rotate(-4deg)}
 .lx-open{display:inline-flex;align-items:center;gap:6px}
+/* tool cards: the whole card opens the tool; only the venue's next tool gets a filled button */
+.lx-cards .lx-card{cursor:pointer}
+.lx-cards .lx-open{background:none;color:var(--accent);border:0;padding:4px 0;box-shadow:none}
+.lx-cards .lx-open::after{content:"";position:absolute;inset:0;border-radius:inherit}
+.lx-cards .lx-open:focus-visible{outline:none}.lx-cards .lx-card:has(.lx-open:focus-visible){outline:2px solid var(--accent);outline-offset:2px}
+.lx-cards .lx-card.lx-next{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.lx-cards .lx-card.lx-next .lx-open{background:var(--accent);color:var(--accent-text);padding:9px 14px;border-radius:8px}
+.lx-nexttag{justify-self:start;font-size:.78rem;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:99px;padding:2px 10px;margin:-2px 0 -4px}
 .lx-open .ic{transition:transform .25s var(--ease)}
 .lx-card:hover .lx-open .ic{transform:translateX(4px)}
 /* the venue hub */
