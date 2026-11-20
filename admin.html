@@ -193,7 +193,7 @@ function draw(){const U=D.users,wk=Date.now()-7*864e5;
   const rows=U.filter(u=>(!q||u.email.includes(q)||nm(u).toLowerCase().includes(q))&&(!sh||(sh==='live'?u.live:sh==='admin'?u.role!=='member':u.status==='blocked')));
   $('people').innerHTML=rows.map(u=>{const fixed=u.role==='owner'||u.email===D.me.email||(D.me.role!=='owner'&&u.role==='admin');
     const tools=u.tools?(u.tools.length?u.tools.map(t=>TOOLNAME[t]).join(', '):'None'):'All tools';
-    const perms=[u.canEdit?'':'View only',u.firecrawl?'':'No Firecrawl',u.claude&&u.role!=='owner'?'Claude':'',u.knowledge?'Knowledge graph':''].filter(Boolean);
+    const perms=[u.canEdit?'':'View only',u.firecrawl?'':'No Firecrawl',u.claude&&u.role!=='owner'?'Claude':''].filter(Boolean);
     return'<tr data-e="'+esc(u.email)+'"><td class="who"><b>'+(u.live?'<span class="dot" title="Signed in"></span>':'')+esc(nm(u))+(u.email===D.me.email?' (you)':'')+'</b><span>'+esc(u.email)+'</span>'+(u.note?'<span>'+esc(u.note)+'</span>':'')+'</td>'+
       '<td><span class="pill '+u.role+'">'+(u.role==='owner'?'Owner':u.role==='admin'?'Admin':'Member')+'</span> '+(u.status==='blocked'?'<span class="pill blocked">Blocked</span>':'')+(perms.length?'<div class="small muted">'+perms.join(' · ')+'</div>':'')+'</td>'+
       '<td class="hide-s small">'+esc(tools)+'</td><td class="small">'+ago(u.lastSeen)+(u.lastTool?'<div class="muted">'+esc(TOOLNAME[u.lastTool]||'')+'</div>':'')+'</td><td class="hide-s num">'+u.signIns+'</td>'+
@@ -245,7 +245,7 @@ function open(u){editing=u;$('fmsg').textContent='';$('dtitle').textContent=u?'E
   document.querySelector('input[name=status][value='+(u&&u.status==='blocked'?'blocked':'active')+']').checked=true;
   $('f-tools').querySelectorAll('input').forEach(c=>{c.checked=!u||!u.tools||u.tools.includes(c.value)});
   $('f-edit').checked=!u||u.canEdit;$('f-fc').checked=!u||u.firecrawl;$('f-note').value=u?u.note:'';
-  $('f-kg').hidden=D.me.role!=='owner';$('f-knowledge').checked=!!(u&&u.knowledge);
+  $('f-kg').hidden=true;/* everyone signed in reads the knowledge graph now */$('f-knowledge').checked=!!(u&&u.knowledge);
   $('f-cl').hidden=D.me.role!=='owner';$('f-claude').checked=!!(u&&u.claude);$('f-cap').value=u&&u.claudeCap!=null?u.claudeCap:'';
   $('f-hist').hidden=!u;if(u){$('f-feed').innerHTML='<li><span></span><span class="muted">Loading…</span></li>';
     call('activity?'+new URLSearchParams({email:u.email,limit:30})).then(r=>{$('f-feed').innerHTML=r.items.map(a=>'<li><time>'+when(a.at)+'</time><span>'+line(a)+'</span></li>').join('')||'<li><span></span><span class="muted">Nothing yet.</span></li>'}).catch(()=>{})}

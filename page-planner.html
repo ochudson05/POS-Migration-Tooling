@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Page Planner · Menu Hauler</title>
 <!-- build_apps.py adds the Inter font and oolio-theme.css here and writes public/planner.html
-     (relay-worker.js serves it at /planner to the PLANNER accounts only; everyone else gets a 403) -->
+     (relay-worker.js serves it at /planner to everyone signed in) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 [hidden]{display:none!important}
@@ -482,7 +482,7 @@ function setPlan(x,fresh){
   $('pp-cnt').textContent=P.order.length+' buttons, '+r.mods+' modifier rows left out';
   if(fresh){build();changed()}else draw()}
 
-/* ---------------- saving: the website (only the two planner accounts), else this browser ---------------- */
+/* ---------------- saving: the website (everyone signed in), else this browser ---------------- */
 const DRAFT='pp-draft',LOCAL='pp-local';
 function packed(){return {id:P.id,name:$('pp-name').value.trim()||P.source.file.replace(/\.[^.]+$/,''),settings:P.settings,source:P.source,pages:P.pages}}
 function keepDraft(){try{localStorage.setItem(DRAFT,JSON.stringify(packed()))}catch(e){}}

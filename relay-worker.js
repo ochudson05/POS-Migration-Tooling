@@ -12,9 +12,9 @@
      /api/db/list|get|set|update|delete   the shared venue records (D1 database "oolio-tools", table docs)
      /api/report              "Report a bug / error": saved, emailed to the owner; /api/report/inbox|seen is the owner's bell
      /planner, /api/planner/list|get|save|delete   the POS Page Planner and its saved plans (D1 table planner_plans);
-                              only the PLANNER accounts, everyone else gets 403
+                              everyone signed in
      /knowledge, /api/kg/list|index|push|rebuild   the knowledge graph of the owner's Obsidian vault (D1 table kg_notes):
-                              the PLANNER accounts always, others only when the owner ticks them on /admin (read-only);
+                              everyone signed in can read it;
                               only the PLANNER accounts upload vault notes. Venue notes are written here from Setup Tracker.
      /api/fc                  Firecrawl scrape / search with the team's key, capped per month
      /api/fetch?url=...       downloads a web page, PDF, menu feed or picture for the page (free; the browser can't)
@@ -80,13 +80,14 @@ const RELAY = new Set(['/ping', '/place', '/page', '/search']);
 
 /* ---------- sign-in: a 6-digit code by email, then a 30-day session cookie ---------- */
 const OWNER = 'ochudson05@gmail.com';
-// the POS Page Planner (/planner and /api/planner/*) is for these accounts only; admins and the per-tool list on /admin don't change it
+// the owner's two accounts: the only ones that sync the knowledge graph with the Obsidian vault
 const PLANNER = [OWNER, 'oscar.hudson@oolio.com'];
-const canPlan = user => !!user && PLANNER.includes(user.email);
-// the knowledge graph (/knowledge, /api/kg/*): the PLANNER accounts always; anyone else only once the owner ticks them on /admin.
-// Only the PLANNER accounts sync it with the Obsidian vault; ticked people can read it, nothing more.
-const canKnow = user => !!user && (canPlan(user) || !!user.knowledge);
-const canSyncKg = canPlan;
+// the POS Page Planner (/planner and /api/planner/*): everyone signed in (opened to all on 2026-11-20)
+const canPlan = user => !!user;
+// the knowledge graph (/knowledge, /api/kg/*): everyone signed in can read it (opened to all on 2026-11-20).
+// Only the PLANNER accounts sync it with the Obsidian vault.
+const canKnow = user => !!user;
+const canSyncKg = user => !!user && PLANNER.includes(user.email);
 const CODE_MIN = 10, SESSION_DAYS = 30, MAX_TRIES = 5, MAX_SENDS_PER_HOUR = 5;
 const enc = new TextEncoder();
 const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join('');
