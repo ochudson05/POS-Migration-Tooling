@@ -183,6 +183,30 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
 .dl{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
 .dl .card{display:grid;gap:8px;align-content:start;box-shadow:none}
 .dl p{margin:0;font-size:.88rem;color:var(--muted,#667)}
+/* back-office 5x5 build view: same buttons, the way they're typed into the back office */
+.bo{margin-top:10px;padding-top:8px;border-top:1px dashed var(--line,#dde)}
+.bo-h{font-size:.78rem;color:var(--muted,#667);margin:0 0 6px}
+.bo-pages{display:flex;flex-wrap:wrap;gap:10px}
+.bo-pg{flex:1 1 150px;max-width:240px}
+.bo-pg b{display:block;font-size:.74rem;margin-bottom:3px}
+.bo-g{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}
+.bo-g .cell{min-height:30px;font-size:.6rem;padding:2px;border-radius:4px}
+.bo-g .cell small{display:none}
+.cell.arrow,.tg-c.arrow{border:1px solid var(--line,#dde);background:var(--card,#fff);color:var(--muted,#667);cursor:default;font-weight:700;letter-spacing:.3em}
+.cell.off,.tg-c.off{background:repeating-linear-gradient(45deg,transparent 0 4px,color-mix(in srgb,var(--line,#dde) 60%,transparent) 4px 5px);border:1px dashed var(--line,#dde);cursor:default}
+.cell.hl,.tg-c.hl{outline:2px solid var(--warn,#b45f00);outline-offset:1px}
+.bo-tog{display:inline-flex;gap:6px;align-items:center;font-size:.85rem}
+/* grid translator */
+.tg-wrap{display:grid;gap:16px;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}
+@media (max-width:900px){.tg-wrap{grid-template-columns:minmax(0,1fr)}}
+.tg-front{overflow-x:auto}
+.tg-g{display:grid;gap:3px;min-width:0}
+.tg-c{min-width:0;height:44px;border:1px solid var(--line,#dde);border-radius:5px;background:var(--card,#fff);color:var(--text,#111);font:inherit;font-size:.72rem;text-align:center;padding:2px;display:flex;align-items:center;justify-content:center}
+input.tg-c:not(:placeholder-shown){background:color-mix(in srgb,var(--accent,#2554c7) 12%,var(--card,#fff));font-weight:600}
+input.tg-c::placeholder{color:color-mix(in srgb,var(--muted,#667) 55%,transparent);font-size:.6rem}
+.tg-bo .tg-c{height:36px;font-size:.64rem}
+.tg-bo .bo-pages{gap:12px}.tg-bo .bo-pg{max-width:none;flex-basis:200px}
+.cap{font-size:.8rem;color:var(--muted,#667);margin:0 0 6px}
 @media (max-width:520px){.pages{grid-template-columns:minmax(0,1fr)}.cell{font-size:.68rem;min-height:44px}}
 </style>
 </head>
@@ -273,7 +297,7 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
     <span class="dz-t"><b>Drop an Oolio One import here</b> or <u>choose a file</u></span>
     <span class="dz-s">The .xlsx or .csv the Menu Converter downloads.</span></label>
   <div class="row" style="margin-top:12px">
-    <label class="f" style="flex:1 1 220px">Plan name<input id="pp-name" placeholder="Kesari Clyde"></label>
+    <label class="f" style="flex:1 1 220px">Plan name<input id="pp-name" placeholder="Venue menu grid"></label>
     <button type="button" class="sec" id="pp-save" disabled>Save plan</button>
   </div>
   <p class="msg" id="pp-msg1" role="status" aria-live="polite"></p>
@@ -288,12 +312,14 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
 <section class="card" aria-labelledby="pp-s2" id="pp-set" hidden>
   <h2 id="pp-s2"><span class="n">2</span>Your POS</h2>
   <div class="row">
-    <label class="f">Columns<input type="number" id="s-cols" min="2" max="10" value="5"></label>
-    <label class="f">Rows<input type="number" id="s-rows" min="2" max="10" value="5"></label>
+    <label class="f">Screen columns<input type="number" id="s-cols" min="2" max="10" value="5"></label>
+    <label class="f">Screen rows<input type="number" id="s-rows" min="2" max="10" value="5"></label>
     <label class="f">Toolbar slots before scrolling<input type="number" id="s-slots" min="1" max="30" value="8"></label>
     <label class="f">Most sub-page jumps<select id="s-depth"><option value="0">0 (toolbar only)</option><option value="1">1</option><option value="2" selected>2</option></select></label>
   </div>
+  <p class="small muted" style="margin:8px 0 0">Screen columns and rows are what staff see on the front-of-house POS (up to 10 × 10). The back office still builds in 5 × 5 pages, so each page below also shows how to type it in there.</p>
   <div class="opts">
+    <label class="opt"><input type="checkbox" id="s-arrow" checked><span>The last back-office slot is the page arrows<small>The ‹ › button takes slot 25, so each 5 × 5 page holds 24 buttons.</small></span></label>
     <label class="opt"><input type="checkbox" id="s-link" checked><span>A sub-page link uses a button slot<small>On the page it opens from.</small></span></label>
     <label class="opt"><input type="checkbox" id="s-back" checked><span>A sub-page needs a Back button<small>Takes one slot on every sub-page.</small></span></label>
     <label class="opt"><input type="checkbox" id="s-rowgrp" checked><span>Each sub-group starts a new row<small>E.g. all the Manchurians on one row, all the 65s on the next.</small></span></label>
@@ -319,7 +345,7 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
   <div class="legend"><span><i style="background:var(--veg)"></i>Veg</span><span><i style="background:var(--nv)"></i>Non-veg</span><span><i style="background:var(--oth)"></i>Drinks and other</span><span><i style="background:var(--lnk)"></i>Sub-page link or Back</span><span><i style="box-shadow:inset 0 0 0 2px var(--warn,#b45f00);background:var(--oth)"></i>Copy (also on another page)</span></div>
   <div class="bar" id="pp-bar" hidden></div>
   <div id="pp-trayw" hidden><p class="small" style="margin:0 0 6px"><b>Not on any page</b>: click one, then an empty slot.</p><div class="tray" id="pp-tray"></div></div>
-  <div class="row" style="margin:0 0 12px"><button type="button" class="sec sm" id="pp-undo" disabled>Undo</button><button type="button" class="sec sm" id="pp-add">Add page</button><button type="button" class="sec sm" id="pp-rebuild">Rebuild from scratch</button></div>
+  <div class="row" style="margin:0 0 12px"><button type="button" class="sec sm" id="pp-undo" disabled>Undo</button><button type="button" class="sec sm" id="pp-add">Add page</button><button type="button" class="sec sm" id="pp-rebuild">Rebuild from scratch</button><label class="bo-tog"><input type="checkbox" id="pp-bo">Show the back-office 5 × 5 build under each page</label></div>
   <div class="pages" id="pp-pages"></div>
 </section>
 
@@ -332,6 +358,25 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
       <label class="small" for="pp-pv">Venue</label><select id="pp-pv"><option value="">Loading venues…</option></select><button type="button" class="sec" id="pp-portal">Send to venue portal</button><p class="small muted" id="pp-pmsg" role="status" aria-live="polite"></p></div>
   </div>
 </section>
+
+<section class="card" aria-labelledby="pp-tg">
+  <h2 id="pp-tg"><span class="n">⇄</span>Grid translator</h2>
+  <p class="sub small" style="margin:0 0 10px">No import needed. Type button names on the front-of-house screen (what staff see) and the back-office 5 × 5 pages fill in, or the other way round. The back office is one long run of slots, 5 across; the screen shows the same run wrapped to its own width. Paste a list (one per line) into any box to fill from there.</p>
+  <div class="row">
+    <label class="f">Screen columns<input type="number" id="tg-cols" min="2" max="10" value="10"></label>
+    <label class="f">Screen rows<input type="number" id="tg-rows" min="1" max="10" value="10"></label>
+    <label class="opt" style="align-self:end"><input type="checkbox" id="tg-arrow" checked><span>Slot 25 is the page arrows</span></label>
+    <label class="f" id="tg-fromw" hidden>Fill from a planner page<select id="tg-from"></select></label>
+    <span class="sp" style="flex:1"></span>
+    <button type="button" class="sec sm" id="tg-clear" style="align-self:end">Clear</button>
+    <button type="button" class="sm" id="tg-dl" style="align-self:end">Download build (.xlsx)</button>
+  </div>
+  <p class="small muted" id="tg-sum" role="status" aria-live="polite"></p>
+  <div class="tg-wrap">
+    <div class="tg-front"><p class="cap"><b>Front of house</b> (the POS screen)</p><div class="tg-g" id="tg-front"></div></div>
+    <div class="tg-bo"><p class="cap"><b>Back office</b>: type these into each 5 × 5 page</p><div class="bo-pages" id="tg-bo"></div></div>
+  </div>
+</section>
 </main>
 
 <script>
@@ -342,6 +387,19 @@ const $=id=>document.getElementById(id),esc=t=>String(t==null?'':t).replace(/[&<
 let P=null,sel=null,undo=[],dirty=false,local=false;
 const S=()=>P.settings,N=()=>S().cols*S().rows;
 const uid=()=>Math.random().toString(36).slice(2,9);
+const DEFNAME='Venue menu grid';
+
+/* ---------------- screen <-> back office ----------------
+   The back office builds every page as 5x5 grids: one long run of slots, 5 across, where slot 25 of each
+   5x5 page is the ‹ › arrows (so 24 buttons a page). The POS screen shows that same run wrapped to its own
+   width. Screen slot k (row-major) = back-office run slot k. Read off a real venue's back office + POS photos. */
+const BO=5;
+const boPer=arrow=>arrow?BO*BO-1:BO*BO;
+function boPos(k,arrow){const per=boPer(arrow),j=k%per;return {pg:Math.floor(k/per)+1,r:Math.floor(j/BO)+1,c:j%BO+1,slot:j}}
+// how many 5x5 back-office pages a screen needs: through the last used slot, or all of them for a blank grid
+function boCount(total,arrow,lastUsed){const per=boPer(arrow);return Math.max(1,Math.ceil((lastUsed==null?total:lastUsed+1)/per))}
+// for back-office page pg (0-based), slot j (0..24): the screen slot it feeds, or 'arrow', or 'off' (past the screen)
+function boSlot(pg,j,arrow,total){if(arrow&&j===BO*BO-1)return 'arrow';const k=pg*boPer(arrow)+j;return k<total?k:'off'}
 
 /* ---------------- reading the import file ---------------- */
 const NV=/\b(chicken|goat|lamb|beef|pork|fish|prawns?|shrimp|egg|eggs|gosht|murg|mutton|keema|seafood|crab|lobster|squid|calamari|bacon|ham|salami|duck|turkey|veal|kebab|wings?|tuna|salmon|barramundi|chorizo|pepperoni|anchov\w*|oyster\w*|scallops?|mussels?)\b/i;
@@ -538,9 +596,22 @@ function draw(){
     return '<div class="pg'+(p.parent?' child':'')+(over?' over':'')+'" data-p="'+p.id+'"><div class="pg-h"><div class="t"><input value="'+esc(p.name)+'" data-act="name" aria-label="Page name">'+
       '<button type="button" class="sec sm" data-act="up" aria-label="Move page up">↑</button><button type="button" class="sec sm" data-act="down" aria-label="Move page down">↓</button>'+(cnt?'':'<button type="button" class="bad sm" data-act="del">Delete</button>')+'</div>'+
       '<div class="m"><label>Opens from <select data-act="parent">'+opts+'</select></label><span class="badge'+(over?' bad':'')+'">'+(dd?dd+' jump'+(dd>1?'s':''):'toolbar')+'</span><span>'+cnt+' of '+N()+' used</span></div></div>'+
-      '<div class="grid" style="grid-template-columns:repeat('+s.cols+',minmax(0,1fr))">'+p.cells.map((c,i)=>tile(c,p.id,i,placed.get(c&&c.id))).join('')+'</div></div>'}).join('');
-  drawBar();$('pp-undo').disabled=!undo.length;$('pp-save').disabled=false;
+      '<div class="grid" style="grid-template-columns:repeat('+s.cols+',minmax(0,1fr))">'+p.cells.map((c,i)=>tile(c,p.id,i,placed.get(c&&c.id))).join('')+'</div>'+(showBo?boView(p,placed):'')+'</div>'}).join('');
+  drawBar();$('pp-undo').disabled=!undo.length;$('pp-save').disabled=false;tFromOpts();
 }
+// the same page as it's typed into the back office: 5x5 pages; clicking a slot here works like clicking it on the screen grid
+let showBo=false;try{showBo=localStorage.getItem('pp-bo')==='1'}catch(e){}
+const arrowOn=()=>S().arrow!==false;
+function lastUsed(cells){let l=-1;cells.forEach((c,i)=>{if(c)l=i});return l<0?null:l}
+function boView(p,placed){
+  const ar=arrowOn(),tot=p.cells.length,lu=lastUsed(p.cells),n=lu==null?0:boCount(tot,ar,lu);
+  if(!n)return '<div class="bo"><p class="bo-h">Back office: nothing to enter yet.</p></div>';
+  let h='<div class="bo"><p class="bo-h">Back office: enter this page as <b>'+n+'</b> 5 × 5 page'+(n>1?'s':'')+(ar?' (slot 25 is the ‹ › arrows)':'')+'.</p><div class="bo-pages">';
+  for(let g=0;g<n;g++){h+='<div class="bo-pg"><b>Back-office page '+(g+1)+'</b><div class="bo-g">';
+    for(let j=0;j<BO*BO;j++){const k=boSlot(g,j,ar,tot);
+      h+=k==='arrow'?'<div class="cell arrow" title="Page arrows">‹›</div>':k==='off'?'<div class="cell off" title="Past the end of the screen"></div>':tile(p.cells[k],p.id,k,placed.get(p.cells[k]&&p.cells[k].id))}
+    h+='</div></div>'}
+  return h+'</div></div>'}
 function tile(c,pid,i,copies){
   const issel=sel&&sel.p===pid&&sel.i===i;
   const a='data-p="'+pid+'" data-i="'+esc(i)+'" tabindex="0" role="button"';
@@ -584,7 +655,7 @@ function snap(){undo.push(JSON.stringify(P.pages));if(undo.length>60)undo.shift(
 function changed(){dirty=true;syncLinks();draw();keepDraft()}
 function msg1(t,err){const m=$('pp-msg1');m.textContent=t||'';m.className='msg'+(err?' err':t?' ok':'');if(err)$('pp-msg1').scrollIntoView({block:'nearest'})}
 
-$('pp-pages').addEventListener('click',e=>{const c=e.target.closest('.cell');if(c){clickCell(c.dataset.p,c.dataset.i);return}
+$('pp-pages').addEventListener('click',e=>{const c=e.target.closest('.cell');if(c){if(c.dataset.p)clickCell(c.dataset.p,c.dataset.i);return}
   const b=e.target.closest('button[data-act]');if(!b)return;const p=byId(b.closest('.pg').dataset.p),act=b.dataset.act;
   snap();const ix=P.pages.indexOf(p);
   if(act==='up'||act==='down'){const sib=P.pages.filter(q=>q.parent===p.parent),k=sib.indexOf(p),o=sib[act==='up'?k-1:k+1];if(!o){undo.pop();return}
@@ -592,6 +663,13 @@ $('pp-pages').addEventListener('click',e=>{const c=e.target.closest('.cell');if(
   if(act==='del'){kids(p).forEach(k=>k.parent=p.parent);P.pages.splice(ix,1)}
   changed()});
 $('pp-pages').addEventListener('keydown',e=>{const c=e.target.closest('.cell');if(c&&(e.key==='Enter'||e.key===' ')){e.preventDefault();clickCell(c.dataset.p,c.dataset.i)}});
+// hovering a slot lights up the same slot in the other view (screen <-> back office)
+{const hl=on=>e=>{const c=e.target.closest('.cell[data-p]');if(!c)return;document.querySelectorAll('#pp-pages .cell.hl').forEach(x=>x.classList.remove('hl'));
+    if(on)document.querySelectorAll('#pp-pages .cell[data-p="'+c.dataset.p+'"][data-i="'+c.dataset.i+'"]').forEach(x=>{if(x!==c)x.classList.add('hl')})};
+  $('pp-pages').addEventListener('mouseover',hl(true));$('pp-pages').addEventListener('mouseout',hl(false));
+  $('pp-pages').addEventListener('focusin',hl(true));$('pp-pages').addEventListener('focusout',hl(false))}
+$('pp-bo').checked=showBo;
+$('pp-bo').onchange=()=>{showBo=$('pp-bo').checked;try{localStorage.setItem('pp-bo',showBo?'1':'0')}catch(e){}if(P&&P.pages)draw()};
 $('pp-tray').addEventListener('click',e=>{const c=e.target.closest('.cell');if(c)clickCell('tray',c.dataset.i)});
 $('pp-pages').addEventListener('change',e=>{const el=e.target,pg=el.closest('.pg');if(!pg)return;const p=byId(pg.dataset.p);
   if(el.dataset.act==='name'){snap();p.name=el.value.trim()||'Page';changed()}
@@ -604,12 +682,12 @@ $('pp-add').onclick=()=>{snap();P.pages.push({id:uid(),grp:'Other',name:'New pag
 $('pp-rebuild').onclick=()=>{if(!confirm('Rebuild all pages from the import? Your changes to pages are lost (Undo brings them back).'))return;snap();readSettings();build();sel=null;changed()};
 
 /* ---------------- settings ---------------- */
-const DEF={cols:5,rows:5,slots:8,depth:2,link:true,back:true,rowgrp:true,share:true,sep:true,veg:true};
+const DEF={cols:5,rows:5,slots:8,depth:2,arrow:true,link:true,back:true,rowgrp:true,share:true,sep:true,veg:true};
 function readSettings(){const n=(id,lo,hi,d)=>{const v=Math.round(+$(id).value);return v>=lo&&v<=hi?v:d};
-  const s={cols:n('s-cols',2,10,5),rows:n('s-rows',2,10,5),slots:n('s-slots',1,30,8),depth:+$('s-depth').value,link:$('s-link').checked,back:$('s-back').checked,rowgrp:$('s-rowgrp').checked,share:$('s-share').checked,sep:$('s-sep').checked,veg:$('s-veg').checked,
+  const s={cols:n('s-cols',2,10,5),rows:n('s-rows',2,10,5),slots:n('s-slots',1,30,8),depth:+$('s-depth').value,arrow:$('s-arrow').checked,link:$('s-link').checked,back:$('s-back').checked,rowgrp:$('s-rowgrp').checked,share:$('s-share').checked,sep:$('s-sep').checked,veg:$('s-veg').checked,
     keep:[...document.querySelectorAll('#s-keep input:checked')].map(i=>i.value)};
   const changedGrid=P.settings&&(P.settings.cols!==s.cols||P.settings.rows!==s.rows);P.settings=s;return changedGrid}
-function showSettings(){const s=P.settings||DEF;['cols','rows','slots'].forEach(k=>$('s-'+k).value=s[k]);$('s-depth').value=s.depth;['link','back','rowgrp','share','sep','veg'].forEach(k=>$('s-'+k).checked=!!s[k]);
+function showSettings(){const s=P.settings||DEF;['cols','rows','slots'].forEach(k=>$('s-'+k).value=s[k]);$('s-depth').value=s.depth;$('s-arrow').checked=s.arrow!==false;['link','back','rowgrp','share','sep','veg'].forEach(k=>$('s-'+k).checked=!!s[k]);
   const keep=new Set(s.keep||[]),cats=[];P.order.forEach(id=>{const it=P.items[id];let c=cats.find(x=>x.c===it.cat);if(!c)cats.push(c={c:it.cat,n:0});c.n++});
   $('s-keep').innerHTML=cats.map(c=>'<label class="opt"><input type="checkbox" value="'+esc(c.c)+'"'+(keep.has(c.c)?' checked':'')+'><span>'+esc(c.c)+' <small style="display:inline">'+c.n+'</small></span></label>').join('')}
 $('pp-build').onclick=()=>{if(P.pages&&P.pages.some(p=>p.cells.some(Boolean))&&!confirm('Build the pages again with these settings? Changes you made to pages are lost (Undo brings them back).'))return;
@@ -624,7 +702,8 @@ $('pp-file').onchange=()=>{const f=$('pp-file').files[0];if(f)readFile(f)};
 async function readFile(f){
   try{const src=readBook(await f.arrayBuffer(),f.name);
     const x={source:src};setPlan(x,true);
-    if(!$('pp-name').value)$('pp-name').value=f.name.replace(/\.[^.]+$/,'').replace(/\s*-\s*Oolio One.*$/i,'').trim();
+    // a new import starts a new plan: don't carry the last venue's name over (that's how files ended up called "Kesari Clyde")
+    $('pp-name').value=DEFNAME;
     msg1('Read '+P.order.length+' buttons in '+new Set(P.order.map(id=>P.items[id].cat)).size+' categories from '+f.name+'.');
   }catch(e){msg1(e.message||String(e),1)}
   $('pp-file').value=''}
@@ -638,7 +717,7 @@ function setPlan(x,fresh){
 
 /* ---------------- saving: the website (everyone signed in), else this browser ---------------- */
 const DRAFT='pp-draft',LOCAL='pp-local';
-function packed(){return {id:P.id,name:$('pp-name').value.trim()||P.source.file.replace(/\.[^.]+$/,''),settings:P.settings,source:P.source,pages:P.pages}}
+function packed(){return {id:P.id,name:$('pp-name').value.trim()||DEFNAME,settings:P.settings,source:P.source,pages:P.pages}}
 function keepDraft(){try{localStorage.setItem(DRAFT,JSON.stringify(packed()))}catch(e){}}
 async function api(path,body){const r=await fetch('/api/planner/'+path,body?{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{credentials:'same-origin'});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('The website answered '+r.status+'.'));return j}
@@ -665,8 +744,8 @@ addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='
 
 /* ---------------- downloads ---------------- */
 function safeSheet(n,used){let s=String(n).replace(/[\\\/?*\[\]:]/g,' ').slice(0,28).trim()||'Page',k=s,i=2;while(used.has(k.toLowerCase()))k=s.slice(0,25)+' '+(i++);used.add(k.toLowerCase());return k}
-const where=(p,i)=>'row '+(Math.floor(i/S().cols)+1)+', column '+(i%S().cols+1);
-function fname(t){return(($('pp-name').value.trim()||'Menu')+' - '+t).replace(/[\\\/:*?"<>|]/g,'')}
+const where=(p,i)=>{const b=boPos(i,arrowOn());return 'screen row '+(Math.floor(i/S().cols)+1)+', column '+(i%S().cols+1)+' (back-office page '+b.pg+', row '+b.r+', column '+b.c+')'};
+function fname(t){return(($('pp-name').value.trim()||DEFNAME)+' - '+t).replace(/[\\\/:*?"<>|]/g,'')}
 /* send the pages to a venue's portal (/api/intake/plan): each page with its buttons in order; links shown as "→ page" */
 async function portalVenues(){const sel=$('pp-pv');if(!sel||sel.dataset.ok)return;try{const r=await fetch('/api/db/list?coll=orgs',{credentials:'same-origin'}),j=await r.json();
     const L=(j.docs||[]).map(d=>({id:d.id,name:(d.data&&d.data.name)||'Untitled'})).sort((a,b)=>a.name.localeCompare(b.name));let act='';try{act=localStorage.getItem('ov-active')||''}catch(e){}
@@ -679,14 +758,16 @@ $('pp-portal').onclick=async()=>{const v=$('pp-pv').value,m=$('pp-pmsg');if(!P||
 setTimeout(portalVenues,0);
 $('pp-dl1').onclick=()=>{
   const s=S(),it=P.items,wb=XLSX.utils.book_new(),ord=order(),tops=P.pages.filter(p=>!p.parent),seen=new Map();
-  const list=[['Page','Opens from','Toolbar slot','Jumps','Row','Column','Button','Type','Category in file','Price / sizes']];
-  ord.forEach(([p])=>p.cells.forEach((c,i)=>{if(!c)return;const par=p.parent?byId(p.parent).name:'Toolbar';
-    const base=[p.name,par,p.parent?'':tops.indexOf(p)+1,depth(p),Math.floor(i/s.cols)+1,i%s.cols+1];
+  const ar=arrowOn();
+  const list=[['Page','Opens from','Toolbar slot','Jumps','Screen row','Screen column','Back-office page','Back-office row','Back-office column','Button','Type','Category in file','Price / sizes']];
+  ord.forEach(([p])=>p.cells.forEach((c,i)=>{if(!c)return;const par=p.parent?byId(p.parent).name:'Toolbar',b=boPos(i,ar);
+    const base=[p.name,par,p.parent?'':tops.indexOf(p)+1,depth(p),Math.floor(i/s.cols)+1,i%s.cols+1,b.pg,b.r,b.c];
     if(c.t==='i'){const x=it[c.id];const first=!seen.has(c.id);if(first)seen.set(c.id,p);list.push(base.concat([x.name,first?'Product':'Copy',x.cat,money(x)]))}
     else list.push(base.concat([c.t==='b'?'Back':'Opens '+(byId(c.to)||{}).name,c.t==='b'?'Back button':'Sub-page link','','']))}));
-  const ws=XLSX.utils.aoa_to_sheet(list);ws['!cols']=[{wch:26},{wch:22},{wch:8},{wch:6},{wch:5},{wch:7},{wch:32},{wch:14},{wch:22},{wch:14}];
+  const ws=XLSX.utils.aoa_to_sheet(list);ws['!cols']=[{wch:26},{wch:22},{wch:8},{wch:6},{wch:7},{wch:7},{wch:9},{wch:9},{wch:9},{wch:32},{wch:14},{wch:22},{wch:14}];
   // the steps nobody can import: links, Back buttons, copies, toolbar order
   const steps=[['#','What to do in Oolio One']];let n=1;
+  steps.push([n++,'The screen is '+s.cols+' × '+s.rows+' but the back office builds in 5 × 5 pages. Enter each page from its back-office grids (on its own sheet), left to right, top to bottom'+(ar?'; slot 25 of every 5 × 5 page is the ‹ › arrows, so leave it':'')+'. Row and column below are on the screen; “All buttons” has the back-office page, row and column too.']);
   tops.forEach((p,i)=>steps.push([n++,'Toolbar slot '+(i+1)+': '+p.name+(i>=s.slots?' (past the '+s.slots+' that fit, so staff will need to scroll)':'')]));
   ord.forEach(([p])=>p.cells.forEach((c,i)=>{if(!c)return;
     if(c.t==='l')steps.push([n++,'On '+p.name+', '+where(p,i)+': add a button that opens the page '+(byId(c.to)||{}).name+'.']);
@@ -696,8 +777,14 @@ $('pp-dl1').onclick=()=>{
   const used=new Set(['build steps','all buttons']);
   XLSX.utils.book_append_sheet(wb,wsS,'Build steps');XLSX.utils.book_append_sheet(wb,ws,'All buttons');
   ord.forEach(([p,d])=>{const g=[[p.name+(p.parent?' (opens from '+byId(p.parent).name+')':' (toolbar slot '+(tops.indexOf(p)+1)+')')]];
-    for(let r=0;r<s.rows;r++)g.push(p.cells.slice(r*s.cols,r*s.cols+s.cols).map(c=>!c?'':c.t==='b'?'‹ Back':c.t==='l'?((byId(c.to)||{}).name||'')+' ›':it[c.id].name));
-    const w=XLSX.utils.aoa_to_sheet(g);w['!cols']=Array.from({length:s.cols},()=>({wch:24}));XLSX.utils.book_append_sheet(wb,w,safeSheet(p.name,used))});
+    const lab=c=>!c?'':c.t==='b'?'‹ Back':c.t==='l'?((byId(c.to)||{}).name||'')+' ›':it[c.id].name;
+    g.push(['Front of house screen ('+s.cols+' × '+s.rows+')']);
+    for(let r=0;r<s.rows;r++)g.push(p.cells.slice(r*s.cols,r*s.cols+s.cols).map(lab));
+    // the same page as 5x5 back-office pages
+    const lu=lastUsed(p.cells),nb=lu==null?0:boCount(p.cells.length,ar,lu);
+    for(let b=0;b<nb;b++){g.push([]);g.push(['Back-office page '+(b+1)+' (5 × 5)']);
+      for(let r=0;r<BO;r++){const row=[];for(let c=0;c<BO;c++){const k=boSlot(b,r*BO+c,ar,p.cells.length);row.push(k==='arrow'?'‹ › arrows':k==='off'?'':lab(p.cells[k]))}g.push(row)}}
+    const w=XLSX.utils.aoa_to_sheet(g);w['!cols']=Array.from({length:Math.max(s.cols,BO)},()=>({wch:24}));XLSX.utils.book_append_sheet(wb,w,safeSheet(p.name,used))});
   XLSX.writeFile(wb,fname('POS page layout.xlsx'))};
 $('pp-dl2').onclick=()=>{
   const src=P.source,h=src.head,ci=col(h,'Category'),ord=order(),done=new Set(),out=[];
@@ -708,7 +795,65 @@ $('pp-dl2').onclick=()=>{
   const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet([h].concat(out));XLSX.utils.book_append_sheet(wb,ws,src.sheet.slice(0,31));
   XLSX.writeFile(wb,fname('Oolio One import by page.xlsx'))};
 
+// the arrows option changes only the back-office view, so it applies straight away (no rebuild)
+$('s-arrow').onchange=()=>{if(!P)return;P.settings.arrow=$('s-arrow').checked;$('tg-arrow').checked=P.settings.arrow;T.arrow=P.settings.arrow;tgDraw();if(P.pages){draw();keepDraft()}};
+
+/* ---------------- grid translator: one run of slot names, shown as the screen and as 5x5 back-office pages ---------------- */
+const TKEY='pp-grid';let T={cols:10,rows:10,arrow:true,names:[]};
+try{const t=JSON.parse(localStorage.getItem(TKEY)||'null');if(t&&Array.isArray(t.names))T=Object.assign(T,t)}catch(e){}
+const tTot=()=>T.cols*T.rows;
+function tSave(){try{localStorage.setItem(TKEY,JSON.stringify(T))}catch(e){}}
+function tSum(){const tot=tTot(),used=T.names.slice(0,tot).filter(x=>String(x||'').trim()).length;let lu=-1;T.names.slice(0,tot).forEach((x,i)=>{if(String(x||'').trim())lu=i});
+  const need=lu<0?0:boCount(tot,T.arrow,lu),all=boCount(tot,T.arrow);
+  $('tg-sum').textContent=used+' of '+tot+' screen slots used. '+(need?'Enter them as '+need+' back-office page'+(need>1?'s':'')+(need<all?' (a full '+T.cols+' × '+T.rows+' screen needs '+all+')':'')+'.':'A full '+T.cols+' × '+T.rows+' screen takes '+all+' back-office pages.')}
+const tIn=(k,ph)=>'<input class="tg-c" data-k="'+k+'" value="'+esc(T.names[k]||'')+'" placeholder="'+ph+'" aria-label="Slot '+(k+1)+'">';
+function tDraw(){
+  $('tg-cols').value=T.cols;$('tg-rows').value=T.rows;$('tg-arrow').checked=T.arrow;
+  const tot=tTot(),fg=$('tg-front');
+  fg.style.gridTemplateColumns='repeat('+T.cols+',minmax(56px,1fr))';
+  fg.innerHTML=Array.from({length:tot},(_,k)=>{const b=boPos(k,T.arrow);return tIn(k,'P'+b.pg+' '+b.r+','+b.c)}).join('');
+  const n=boCount(tot,T.arrow);let h='';
+  for(let g=0;g<n;g++){h+='<div class="bo-pg"><b>Back-office page '+(g+1)+'</b><div class="tg-g" style="grid-template-columns:repeat(5,minmax(0,1fr))">';
+    for(let j=0;j<BO*BO;j++){const k=boSlot(g,j,T.arrow,tot);
+      h+=k==='arrow'?'<div class="tg-c arrow" title="Page arrows">‹›</div>':k==='off'?'<div class="tg-c off" title="Past the end of the screen: leave empty"></div>':tIn(k,'R'+(Math.floor(k/T.cols)+1)+' C'+(k%T.cols+1))}
+    h+='</div></div>'}
+  $('tg-bo').innerHTML=h;tSum()}
+const tAll=k=>document.querySelectorAll('.tg-c[data-k="'+k+'"]');
+function tSet(k,v,skip){T.names[k]=v;tAll(k).forEach(x=>{if(x!==skip)x.value=v})}
+['tg-front','tg-bo'].forEach(id=>{const el=$(id);
+  el.addEventListener('input',e=>{const x=e.target.closest('input.tg-c');if(!x)return;tSet(+x.dataset.k,x.value,x);tSave();tSum()});
+  // paste a column of names (or a spreadsheet block) to fill on from this slot, in run order
+  el.addEventListener('paste',e=>{const x=e.target.closest('input.tg-c');if(!x)return;const t=(e.clipboardData||window.clipboardData).getData('text');if(!/[\n\t]/.test(t.trim()))return;
+    e.preventDefault();const vals=t.replace(/\r/g,'').replace(/\n+$/,'').split(/\n|\t/).map(v=>v.trim());let k=+x.dataset.k;const tot=tTot();
+    vals.forEach(v=>{if(k<tot)tSet(k++,v)});tSave();tSum();if(vals.length>tot-(+x.dataset.k))$('tg-sum').textContent+=' '+(vals.length-(tot-(+x.dataset.k)))+' names didn’t fit on the screen.'});
+  const hl=on=>e=>{const x=e.target.closest('.tg-c[data-k]');document.querySelectorAll('.tg-c.hl').forEach(y=>y.classList.remove('hl'));if(on&&x)tAll(x.dataset.k).forEach(y=>{if(y!==x)y.classList.add('hl')})};
+  el.addEventListener('focusin',hl(true));el.addEventListener('focusout',hl(false));el.addEventListener('mouseover',hl(true));el.addEventListener('mouseout',hl(false))});
+// changing the screen size keeps the same run order (the back office doesn't change; the screen re-wraps)
+const tNum=(id,lo,hi)=>{const v=Math.round(+$(id).value);return v>=lo&&v<=hi?v:null};
+$('tg-cols').onchange=()=>{const v=tNum('tg-cols',2,10);if(v)T.cols=v;tSave();tDraw()};
+$('tg-rows').onchange=()=>{const v=tNum('tg-rows',1,10);if(v)T.rows=v;tSave();tDraw()};
+$('tg-arrow').onchange=()=>{T.arrow=$('tg-arrow').checked;tSave();tDraw()};
+$('tg-clear').onclick=()=>{if(T.names.some(x=>String(x||'').trim())&&!confirm('Clear every name in the translator?'))return;T.names=[];tSave();tDraw()};
+function tFromOpts(){const w=$('tg-fromw');if(!P||!P.pages||!P.pages.length){w.hidden=true;return}w.hidden=false;
+  $('tg-from').innerHTML='<option value="">Choose a page…</option>'+P.pages.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')}
+$('tg-from').onchange=()=>{const p=byId($('tg-from').value);$('tg-from').value='';if(!p)return;
+  if(T.names.some(x=>String(x||'').trim())&&!confirm('Replace the names in the translator with '+p.name+'?'))return;
+  T.cols=S().cols;T.rows=S().rows;T.arrow=arrowOn();
+  T.names=p.cells.map(c=>!c?'':c.t==='b'?'‹ Back':c.t==='l'?((byId(c.to)||{}).name||'')+' ›':(P.items[c.id]||{}).name||'');tSave();tDraw()};
+$('tg-dl').onclick=()=>{
+  const tot=tTot(),wb=XLSX.utils.book_new(),g=[['Front of house screen ('+T.cols+' × '+T.rows+')']];
+  for(let r=0;r<T.rows;r++)g.push(Array.from({length:T.cols},(_,c)=>T.names[r*T.cols+c]||''));
+  const list=[['Button','Screen row','Screen column','Back-office page','Back-office row','Back-office column']];
+  for(let b=0;b<boCount(tot,T.arrow);b++){g.push([]);g.push(['Back-office page '+(b+1)+' (5 × 5)']);
+    for(let r=0;r<BO;r++){const row=[];for(let c=0;c<BO;c++){const k=boSlot(b,r*BO+c,T.arrow,tot);row.push(k==='arrow'?'‹ › arrows':k==='off'?'':T.names[k]||'')}g.push(row)}}
+  for(let k=0;k<tot;k++)if(String(T.names[k]||'').trim()){const b=boPos(k,T.arrow);list.push([T.names[k],Math.floor(k/T.cols)+1,k%T.cols+1,b.pg,b.r,b.c])}
+  const w1=XLSX.utils.aoa_to_sheet(g);w1['!cols']=Array.from({length:Math.max(T.cols,BO)},()=>({wch:20}));
+  const w2=XLSX.utils.aoa_to_sheet(list);w2['!cols']=[{wch:30},{wch:10},{wch:12},{wch:14},{wch:14},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,w1,'Grids');XLSX.utils.book_append_sheet(wb,w2,'Where each button goes');
+  XLSX.writeFile(wb,fname('back-office build.xlsx'))};
+
 /* ---------------- start ---------------- */
+tDraw();
 listPlans();
 try{const d=JSON.parse(localStorage.getItem(DRAFT)||'null');if(d&&d.source){$('pp-name').value=d.name||'';setPlan(d,false);P.id=d.id||null;msg1('Picked up where you left off on this device'+(d.name?' ('+d.name+')':'')+'. Save it to keep it on the website.')}}catch(e){}
 window.__pp={get P(){return P},build,checks};
