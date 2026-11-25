@@ -34,6 +34,7 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
 .st-small{font-size:.85rem}
 .st-chip{font-size:.78rem;padding:2px 9px;border-radius:99px;border:1px solid var(--line);background:var(--bg);white-space:nowrap;color:var(--muted)}
 .st-chip.ok{color:var(--ok)}.st-chip.w{color:var(--warn)}.st-chip.a{color:var(--accent)}
+.st-wait{margin-top:4px;color:var(--muted)}.st-wait.late{color:var(--warn);font-weight:600}.st-wait .st-sm{font-weight:400}
 .st-bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;min-width:60px}
 .st-bar i{display:block;height:100%;background:var(--ok);border-radius:4px}
 .st-msg{font-size:.88rem;color:var(--muted);margin:8px 0}
@@ -218,7 +219,14 @@ const GUIDES=/*GUIDES*/{"create-an-oolio-online-store":["Create an Oolio Online 
 /* ---------- what each organisation can have, which turns steps on or off ---------- */
 const FLAGS=[
   ['ecom','Online ordering / e-com sold'],['mpos','MPOS / pay at table'],['moto','MOTO payments'],
-  ['manual','Manual EFTPOS'],['impact','Impact printers'],['booking','7Rooms / NowBookIt'],['loyalty','Loyalty / gift cards'],['kds','KDS'],['kiosk','Kiosk'],['integ','Other integrations']];
+  ['manual','Manual EFTPOS'],['impact','Impact printers'],['booking','7Rooms / NowBookIt'],['loyalty','Loyalty / gift cards'],['kds','KDS'],['kiosk','Kiosk'],['integ','Other integrations'],['tables','Table service / coursing']];
+// user role presets for the menu-roles step: [name, what to allow, what to restrict]
+const ROLE_PRESETS=[
+  ['Manager','Everything at the location: refunds, voids, price changes, discounts, cash up, Manager Functions','Org settings (ABN, address) stay with the owner'],
+  ['Supervisor','Voids with a reason, staff discounts, open and close shifts, reprint and send receipts','Refunds and price changes, unless the venue wants them'],
+  ['Staff','Ordering, payments, open orders, reprinting dockets','Refunds, voids after sending, price changes, custom discounts'],
+  ['Junior staff','Ordering and taking card payments','Cash payments or manual EFTPOS if the venue asks, refunds, voids, discounts'],
+  ['Override user','Manager-only functions (refunds, voids, price changes) for a manager to log into when needed','Back office and settings. Use it instead of a per-function PIN, which Oolio doesn’t have']];
 const STAGES=[['pre','Pre-config'],['ready','Ready for training'],['trained','Training done'],['follow','Follow-ups'],['done','Complete']];
 const TZ=['Australia/Sydney','Australia/Melbourne','Australia/Brisbane','Australia/Adelaide','Australia/Perth','Australia/Hobart','Australia/Darwin','Pacific/Auckland'];
 const TZ_BY_STATE={NSW:'Australia/Sydney',ACT:'Australia/Sydney',VIC:'Australia/Melbourne',QLD:'Australia/Brisbane',SA:'Australia/Adelaide',WA:'Australia/Perth',TAS:'Australia/Hobart',NT:'Australia/Darwin'};
@@ -253,6 +261,11 @@ const SECTIONS=[
   {id:'pay-manual',when:'manual',t:'Manual EFTPOS: surcharge prompt',info:['Avoid manual EFTPOS where possible.','If the venue uses it, consider the surcharge prompt there too.'],why:'Otherwise the reconciliation numbers may not match.',guides:['understand-the-reconciliation-report','troubleshoot-sales-and-payment-discrepancies']},
   {id:'pay-group',t:'Group surcharge',info:['Group surcharge currently only supports 6+ pax.','If the venue wants 8+, 10+ or another threshold, a feature request is needed: note it here.'],fields:[['pax','Venue’s threshold (pax)','text','6']],check:o=>{const p=val(o,'pay-group','pax');return p&&+p!==6?{m:'Needs a feature request: only 6+ pax is supported.'}:null},guides:['create-a-surcharge','disable-a-scheduled-surcharge']},
 ]},
+{id:'disc',phase:'pre',t:'Discounts & surcharges',d:'Decisions the venue makes before training. Record them here so they’re built before the session.',steps:[
+  {id:'disc-staff',t:'Staff discounts',info:['Most venues need a staff discount; some need two (their own staff and a partner’s staff, for example 20% each).','Choose which roles can apply each discount.','Ask whether to remove the custom discount, so staff can only use the set ones.'],fields:[['list','Staff discounts','text','Staff 20%, Partner staff 20%'],['who','Roles that can apply them','text','Manager, Supervisor'],['custom','Custom discount','select',['Keep','Remove']]],guides:['create-a-discount','create-a-discount-by-payment-type']},
+  {id:'disc-weekend',t:'Weekend and public holiday surcharge',info:['Ask the venue. Oolio pre-loads about two years of public holiday dates, so it only needs their decision and rates.','Typical: 15% on public holidays; around 10% on Sundays. Surcharges stack: a public holiday on a Sunday adds both.'],fields:[['decision','Venue’s decision','select',['Weekend and public holidays','Public holidays only','Sundays and public holidays','No surcharge','Waiting on the venue']],['rates','Rates','text','Sat 10%, Sun 10%, PH 15%']],check:o=>{const d=val(o,'disc-weekend','decision');if(!d)return null;return d==='Waiting on the venue'?{m:'Still waiting on the venue’s decision.'}:{ok:1,m:'Decided: '+d+'.'}},guides:['create-a-surcharge','disable-a-scheduled-surcharge']},
+  {id:'disc-opening',t:'Opening offer or event pricing',info:['Optional. For a grand opening (for example 50% off coffee for the day) use a price list, an auto-applied discount for that day, or Schedule Surcharge in Manager Functions, which applies a surcharge or discount for 24 hours.','Event surcharges can be a flat fee or a percentage.'],fields:[['plan','What and how','text','50% off coffee via a price list'],['date','Date','date']],guides:['create-price-lists','create-a-discount']},
+]},
 {id:'ecom',phase:'pre',when:'ecom',t:'Online store / e-commerce',d:'Configure e-com if it was sold, even if the venue isn’t using online ordering straight away.',steps:[
   {id:'ecom-confirm',t:'Confirm e-com was sold (HubSpot)'},
   {id:'ecom-kyc',t:'Check KYC status',info:['The e-com string and surcharge rate can only be added after KYC is approved.','If it isn’t approved yet, mark this step done once you have noted it and come back after approval.'],fields:[['kyc','KYC status','select',['Not started','Pending','Approved']]],check:o=>{const k=val(o,'ecom-kyc','kyc');return k&&k!=='Approved'?{m:'Add the e-com string and surcharge after KYC approval.'}:null}},
@@ -279,7 +292,16 @@ const SECTIONS=[
   {id:'menu-import',t:'Import products',info:['Use the Menu Converter tab to turn the customer’s menu into an Oolio One import. Downloading the import ticks this step.'],extra:o=>menuPanel(o)+historyPanel(o),guides:['create-standard-products','create-modifiers-and-option-groups','create-variant-groups','upload-and-manage-product-images']},
   {id:'menu-photos',t:'Add product photos',info:['Photo Finder takes the products straight from the Menu Converter. Saving the photos ticks this step.','Upload them in Back Office afterwards.'],extra:o=>photoPanel(o),guides:['upload-and-manage-product-images']},
   {id:'menu-pos',t:'Build the POS menu and tables',guides:['create-a-pos-menu','configure-sections-tables','create-courses','create-price-lists']},
+  {id:'menu-roles',t:'Agree custom user roles',info:['The default roles (Manager, Waiter, Location owner) are too permissive for most venues: make custom roles instead.','There’s no PIN lock on a single POS function, so make an “override” user with extra (but limited) permissions for managers to use.','Permissions go down to which payment types a role can take.'],why:'Owners often find out after opening that every staff member can refund or change prices.',extra:o=>rolePanel(o),subs:ROLE_PRESETS.map(r=>r[0]),fields:[['refunds','Who can refund','text','Manager, Supervisor'],['price','Who can change prices / use open price','text','Manager'],['eft','Who can use manual EFTPOS','text','All staff']],guides:['managing-user-roles']},
   {id:'menu-users',t:'Create users and roles',info:['Get the staff list from the customer (or their intake form) and create a user for each person.'],extra:o=>staffPanel(o),check:o=>{const L=o.staff||[];if(!L.length)return null;const n=L.filter(x=>x.done).length;return n===L.length?{ok:1,m:'All '+L.length+' users created.'}:{m:(L.length-n)+' of '+L.length+' users still to create.'}},guides:['create-a-user','managing-user-roles']},
+]},
+{id:'pos',phase:'pre',t:'POS settings',d:'Front of house choices venues make in training. Agree them beforehand where you can.',steps:[
+  {id:'pos-pay',t:'Exact cash and quick pay buttons',info:['Some venues want both removed so staff count the cash and pick the right payment type.'],fields:[['exact','Exact cash button','select',['Keep','Remove']],['quick','Quick pay options','select',['Keep','Remove']]],guides:['create-and-customise-function-maps']},
+  {id:'pos-orders',t:'Takeaway and dine-in prompts',info:['Takeaway can ask for the customer’s name (prints “Order for…”) or use numbered tokens.','Dine-in can ask for a table number; turn it off for pay-as-you-order venues without table stands.'],fields:[['takeaway','Takeaway','select',['Ask for a name','Numbered tokens','No prompt']],['dinein','Dine-in','select',['Ask for a table number','No prompt']]],guides:['place-a-takeaway-order']},
+  {id:'pos-courses',when:'tables',t:'Covers and coursing',info:['Venues with set menus and à la carte usually both use coursing. Banquets need covers and coursing too.','Equal split uses covers, so encourage staff to enter them.','Choose whether all courses fire straight away or are sent by hand.'],fields:[['covers','Covers / seat numbers','select',['Yes','No']],['fire','Courses','select',['Fire all courses','Send courses by hand']]],guides:['create-courses','use-courses','configure-sections-tables']},
+  {id:'pos-tabs',when:'tables',t:'Bar tabs and open tables',info:['Bar devices can run quick service and open table with no dine-in.','Ask for the venue’s tab numbering (some start at 1000) and whether staff need to rename an open table.'],fields:[['start','Tab numbers start at','text','1000'],['bar','Bar devices','select',['Quick service + open table','Same as the restaurant']]],guides:['configure-sections-tables']},
+  {id:'pos-notes',t:'Notes on receipts',info:['Order and item notes print on dockets and are hidden on customer receipts by default.'],fields:[['receipt','Notes on receipts','select',['Hidden (default)','Show']]]},
+  {id:'pos-clock',t:'Clock in and timekeeping',info:['Deputy is native: staff clock in and out from the POS lock screen with their POS PIN.','If staff will use the Deputy phone app (or Employment Hero) instead, remove the POS clock-in button.'],fields:[['sys','Timekeeping','select',['Deputy','Employment Hero','Other','None']],['button','POS clock-in button','select',['Keep','Remove']]],guides:['connect-deputy-to-oolio-one','clock-on-off']},
 ]},
 /* ---------- training: the run sheet itself is the Training Session tab (training-session.html, window.OolioTraining) ---------- */
 {id:'trn',phase:'trn',t:'Training session',d:'Run the session in the Training Session tab: the run sheet, notes at each step, action items and the report.',steps:[
@@ -531,6 +553,8 @@ window.OolioVenues={
   website(id){return ORGS[id]?val(ORGS[id],'prep-gmb','website'):''},
   field(id,step,k){return ORGS[id]?val(ORGS[id],step,k):''},
   late(id){const o=ORGS[id];return o?stepsFor(o).filter(x=>overdue(o,x)).length:0},
+  wait(id){return waitOf(ORGS[id])},
+  markUpdated(id){markUpdated(id)},
   isMine(id){const o=ORGS[id];return!!o&&isMine(o)},
   me(){return ME},
   addMenuVersion(id,snap){return addMenuVersion(id,snap)},
@@ -1046,7 +1070,7 @@ function orgHtml(o,id){const p=progress(o),pp=progress(o,'pre'),tp=progress(o,'t
       (o.group&&GROUPS[o.group]?'':'<option value="" selected>None</option>')+(READONLY?'':'<option value="+">+ New organisation…</option>')+'</select></label></p>'+
     '<div class="st-head st-card"><div class="st-title"><input id="st-name" value="'+esc(o.name)+'" aria-label="Venue name" placeholder="Venue name"'+dis+'>'+
     '<select id="st-stage" aria-label="Stage" style="width:auto"'+dis+'>'+STAGES.map(([k,t])=>'<option value="'+k+'"'+(o.stage===k?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
-    '<div class="st-row st-small"><span class="st-bar st-grow" style="max-width:300px"><i style="width:'+p.pct+'%"></i></span><span>'+p.done+' of '+p.total+' steps</span><span class="st-muted">Pre-config '+pp.done+'/'+pp.total+' · Training '+tp.done+'/'+tp.total+'</span></div>'+
+    '<div class="st-row st-small"><span class="st-bar st-grow" style="max-width:300px"><i style="width:'+p.pct+'%"></i></span><span>'+p.done+' of '+p.total+' steps</span><span class="st-muted">Pre-config '+pp.done+'/'+pp.total+' · Training '+tp.done+'/'+tp.total+'</span></div>'+waitHtml(o)+
     '<div class="st-kv"><label class="st-f">Training date<input type="date" id="st-training" value="'+esc(o.training||'')+'"'+dis+'></label>'+
     '<label class="st-f">Venue contact (training)<input id="st-contact" value="'+esc(o.contact||'')+'" placeholder="Name, mobile"'+dis+'></label>'+
     '<label class="st-f">Go-live date<input type="date" id="st-golive" value="'+esc(o.golive||'')+'"'+dis+'></label>'+
@@ -1087,6 +1111,8 @@ function applyTemplate(id){const o=ORGS[id],T=o&&TEMPLATES[o.vtype];if(!T||READO
   const wf={};Object.entries(T.wf).forEach(([k,x])=>{if(!val(o,'prn-workflow',k))wf[k]=x});
   if(Object.keys(wf).length){patch.steps={'prn-workflow':{v:wf}};done.push('the printing workflow')}
   if(!val(o,'prof-split','list')){patch.steps=Object.assign(patch.steps||{},{'prof-split':{v:{list:T.profiles}}});done.push('device profiles')}
+  // table-service venues get the covers / coursing and bar tab steps
+  if(/^(restaurant|bar|hotel)$/.test(o.vtype)&&(o.flags||{}).tables==null){patch.flags={tables:true};done.push('table service')}
   if(done.length){save(id,patch);render()}
   flash(done.length?'Filled in '+done.join(', ')+' for a '+(VTYPES.find(x=>x[0]===o.vtype)||['',''])[1].toLowerCase()+'. Check them against the hardware diagram.':'Nothing to fill: printers, workflow and profiles are already set.')}
 
@@ -1099,6 +1125,15 @@ function peopleList(){const s=new Set();if(ME)s.add(myName());Object.values(ORGS
 const overdue=(o,x)=>{const s=st(o,x.id);return!!s.due&&!s.s&&s.due<today()};
 function dueChip(o,x){const s=st(o,x.id);if(!s.due||s.s)return'';return '<span class="st-chip '+(s.due<today()?'w':'')+'">'+(s.due<today()?'Overdue ':'Due ')+esc(fmtDate(s.due))+'</span>'}
 const daysTo=d=>Math.round((new Date(d+'T00:00')-new Date(today()+'T00:00'))/864e5);
+/* waiting on us: days since the team last updated the customer (o.cu {at, by}), from when the venue was added if never.
+   Long silences cause escalations, so 2+ days is flagged on the board, the venue page, Hypercare and Team. */
+const WAIT_DAYS=2;
+function waitOf(o){if(!o||o.stage==='done')return null;const at=(o.cu&&o.cu.at)||o.createdAt||0;if(!at)return null;
+  const days=Math.floor((Date.now()-at)/864e5);return{at,by:o.cu&&o.cu.by||'',never:!(o.cu&&o.cu.at),days,late:days>=WAIT_DAYS}}
+function markUpdated(id){if(READONLY||!ORGS[id])return;save(id,{cu:{at:Date.now(),by:ME}},'Customer updated')}
+function waitHtml(o){const w=waitOf(o);if(!w)return'';const ago=w.days===0?'today':w.days===1?'yesterday':w.days+' days ago';
+  return'<div class="st-row st-small st-wait'+(w.late?' late':'')+'"><span>'+(w.never?'No customer update recorded since the venue was added '+ago:'Customer last updated '+ago+(w.by?' by '+esc(who(w.by)):''))+(w.late?': they’re waiting on us':'')+'.</span>'+
+    (READONLY?'':'<button type="button" class="st-sec st-sm" data-a="cu">I’ve updated them today</button>')+'</div>'}
 
 /* ---------- the board: every venue as a card in the column for where it's up to ---------- */
 const COLS=[['lookup','Look up'],['menu','Menu'],['config','Configure'],['training','Training'],['follow','Follow-ups'],['live','Live']];
@@ -1111,7 +1146,7 @@ function boardCard(id,o){const p=progress(o),G=groupOf(o),late=stepsFor(o).filte
     (G&&G.name!==o.name?'<span class="st-small st-muted">'+esc(G.name)+'</span>':'')+
     '<span class="st-bar"><i style="width:'+p.pct+'%"></i></span><span class="st-bmeta">'+
     (gl?'<span class="st-chip'+glc+'">'+(o.stage==='done'?'Live ':'Go-live ')+esc(fmtDate(gl))+(o.stage!=='done'&&dt!=null?(dt<0?' · '+(-dt)+'d late':dt===0?' · today':' · '+dt+'d'):'')+'</span>':'')+
-    (late?'<span class="st-chip w">'+late+' overdue</span>':'')+(w?'<span class="st-chip w">'+w+' to fix</span>':'')+'<span class="st-chip">'+p.done+'/'+p.total+'</span></span>'+
+    (late?'<span class="st-chip w">'+late+' overdue</span>':'')+(w?'<span class="st-chip w">'+w+' to fix</span>':'')+((x=>x&&x.late?'<span class="st-chip w" title="No customer update for '+x.days+' days">'+x.days+'d no update</span>':'')(waitOf(o)))+'<span class="st-chip">'+p.done+'/'+p.total+'</span></span>'+
     (o.owner?'<span class="st-owner" title="Owner: '+esc(o.owner)+'"><span class="st-av">'+esc(clean(o.owner).split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase())+'</span>'+esc(o.owner)+'</span>':'<span class="st-small st-muted">No owner yet</span>')+'</button>'}
 function boardHtml(){const q=VIEW.q.toLowerCase();
   const L=Object.entries(ORGS).filter(([,o])=>(!VIEW.mine||isMine(o))&&(!q||(o.name||'').toLowerCase().includes(q)||((groupOf(o)||{}).name||'').toLowerCase().includes(q)||(o.owner||'').toLowerCase().includes(q)))
@@ -1147,13 +1182,16 @@ function parseStaffText(t){return String(t||'').split(/\r?\n/).map(l=>{l=l.repla
     let name=clean(parts.join(' '));
     // a role written before or after the name with no separator ("Bar staff Mike Brown")
     if(!role){const ws=ROLEW.slice().sort((a,b)=>b.length-a.length);for(const w of ws){const m=name.match(new RegExp('^('+w+')\\s+(.+)$|^(.+?)\\s+('+w+')$','i'));if(m&&(m[2]||m[3]).split(' ').length>=2){role=m[1]||m[4];name=clean(m[2]||m[3]);break}}}return name&&name.length<60?{name,role,contact:[em,clean(ph)].filter(Boolean).join(', '),done:false}:null}).filter(Boolean)}
+// role presets as a table: tick the ones the venue will use (the step's sub-checkboxes), then build them in Back Office
+function rolePanel(o){return'<div class="st-twrap"><table class="st-tbl"><caption class="st-small st-muted" style="text-align:left">Suggested custom roles. Tick the ones the venue will use below, then make them in Back Office → Team → Roles.</caption><thead><tr><th scope="col">Role</th><th scope="col">Allow</th><th scope="col">Restrict</th></tr></thead><tbody>'+
+  ROLE_PRESETS.map(r=>'<tr><th scope="row">'+esc(r[0])+'</th><td>'+esc(r[1])+'</td><td>'+esc(r[2])+'</td></tr>').join('')+'</tbody></table></div>'}
 function staffPanel(o){const L=o.staff||[],dis=READONLY?' disabled':'',n=L.filter(x=>x.done).length;
   let h='<div class="st-staff"><div class="st-row" style="justify-content:space-between"><b>Staff list</b><span class="st-small st-muted">'+(L.length?n+' of '+L.length+' users created':'From the customer: add, paste or upload it')+'</span></div>';
   if(L.length)h+='<div class="st-twrap"><table class="st-tbl"><thead><tr><th scope="col">Created</th><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Email or mobile</th><th scope="col"><span class="st-sr">Remove</span></th></tr></thead><tbody>'+
     L.map((x,i)=>'<tr><td><input type="checkbox" data-staff="'+i+'" data-k="done"'+(x.done?' checked':'')+dis+' aria-label="User created for '+esc(x.name)+'"></td>'+
       '<td><input data-staff="'+i+'" data-k="name" value="'+esc(x.name)+'"'+dis+' aria-label="Name"></td><td><input data-staff="'+i+'" data-k="role" value="'+esc(x.role)+'" list="st-roles"'+dis+' aria-label="Role"></td>'+
       '<td><input data-staff="'+i+'" data-k="contact" value="'+esc(x.contact)+'"'+dis+' aria-label="Email or mobile"></td><td>'+(READONLY?'':'<button type="button" class="st-link" data-sdel="'+i+'" aria-label="Remove '+esc(x.name)+'">Remove</button>')+'</td></tr>').join('')+'</tbody></table></div>'+
-    '<datalist id="st-roles">'+['Owner','Manager','Supervisor','Front of house','Bar','Barista','Kitchen','Chef','Cashier'].map(r=>'<option value="'+r+'">').join('')+'</datalist>';
+    '<datalist id="st-roles">'+['Owner','Manager','Supervisor','Staff','Junior staff','Override user','Front of house','Bar','Barista','Kitchen','Chef','Cashier'].map(r=>'<option value="'+r+'">').join('')+'</datalist>';
   if(!READONLY)h+='<div class="st-tools"><button type="button" class="st-sec st-sm" data-a="staffadd">Add person</button><button type="button" class="st-sec st-sm" data-a="staffpaste">Paste a list</button>'+
     '<label class="st-sec st-sm st-filebtn">Upload a list or photo<input type="file" id="st-sfile" accept=".csv,.txt,.xlsx,.xls,image/*" hidden></label></div><div class="st-small st-muted" id="st-smsg"></div>';
   return h+'<p class="st-small st-muted" style="margin:6px 0 0">Oolio has no staff import, so create each user in Back Office and tick them off here. Contact details are only kept for this setup.</p></div>'}
@@ -1504,6 +1542,7 @@ root.addEventListener('click',e=>{const t=e.target;
   else if(act==='brand')fetchBrand(VIEW.org);
   else if(act==='intake'){if(window.intakeDialog)window.intakeDialog(VIEW.org)}
   else if(act==='tpl')applyTemplate(VIEW.org);
+  else if(act==='cu'){markUpdated(VIEW.org);render()}
   else if(act==='mine'){save(VIEW.org,{owner:myName(),ownerId:ME});render()}
   else if(act==='staffadd'){save(VIEW.org,{staff:(o.staff||[]).concat([{name:'',role:'',contact:'',done:false}])});render()}
   else if(act==='staffpaste'){const t=prompt('Paste the staff list: one person per line, with their role and email or mobile if you have them.');if(t){const n=addStaff(parseStaffText(t));flash(n?'Added '+n+' '+(n===1?'person':'people')+'.':'No names found in that text.')}}

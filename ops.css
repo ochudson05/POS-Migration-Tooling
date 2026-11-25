@@ -134,3 +134,4 @@
 .gs-list mark{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;border-radius:2px}
 .gs-none{padding:14px;color:var(--muted)}
 .gs-foot{display:flex;justify-content:space-between;margin:0;padding:8px 14px;border-top:1px solid var(--line);font-size:.78rem;color:var(--muted)}
+.hc-cu.late{color:var(--warn,#b26a00);font-weight:600}.hc-cu .lx-link{font-weight:400}

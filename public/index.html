@@ -231,6 +231,8 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .pf details{margin:8px 0 0}.pf summary{cursor:pointer;font-size:.9rem}.pf summary b{font-variant-numeric:tabular-nums}
 .pf ul{margin:4px 0 0;padding-left:18px;font-size:.82rem;color:var(--muted);max-height:180px;overflow:auto}
 .pf .pf-how{font-size:.82rem;color:var(--muted);margin:2px 0 0 18px}
+.pf .pf-info{margin-top:8px;padding-top:6px;border-top:1px dashed var(--line,#ddd)}
+.splitbox{margin:0 0 10px;padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:8px}.splitbox .ck{margin:4px 0 0}
 .pf .pf-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.pf .pf-btns button{margin:0}
 .pf-n{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pf-n span{font-size:.8rem;padding:2px 9px;border-radius:99px;border:1px solid var(--line);background:var(--card)}
 #dropov{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);pointer-events:none}#dropov.on{display:flex}
@@ -490,6 +492,7 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .st-small{font-size:.85rem}
 .st-chip{font-size:.78rem;padding:2px 9px;border-radius:99px;border:1px solid var(--line);background:var(--bg);white-space:nowrap;color:var(--muted)}
 .st-chip.ok{color:var(--ok)}.st-chip.w{color:var(--warn)}.st-chip.a{color:var(--accent)}
+.st-wait{margin-top:4px;color:var(--muted)}.st-wait.late{color:var(--warn);font-weight:600}.st-wait .st-sm{font-weight:400}
 .st-bar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;min-width:60px}
 .st-bar i{display:block;height:100%;background:var(--ok);border-radius:4px}
 .st-msg{font-size:.88rem;color:var(--muted);margin:8px 0}
@@ -681,6 +684,9 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .ts-prog{display:flex;gap:8px;align-items:center;font-size:.88rem;font-variant-numeric:tabular-nums}
 .ts-bar{display:block;width:160px;height:8px;border-radius:4px;background:var(--line);overflow:hidden}.ts-bar i{display:block;height:100%;background:var(--ok)}
 .ts-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ts-clock{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:.88rem}
+.ts-clock .ts-ck-t b{font-variant-numeric:tabular-nums;font-size:1rem}.ts-clock .ts-ck-b{display:flex;gap:10px;align-items:center}
+.ts-clock button{margin:0;display:inline-block}.ts-ck-w{flex-basis:100%;color:var(--warn,#b26a00);font-weight:600}
 .ts-chip{font-size:.76rem;padding:2px 9px;border-radius:99px;border:1px solid var(--line);background:var(--bg);color:var(--text);white-space:nowrap}
 .ts-chip.ok{border-color:var(--ok);color:var(--ok)}.ts-chip.w{border-color:var(--warn);color:var(--warn)}.ts-chip.a{border-color:var(--accent);color:var(--accent)}
 .ts-tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin:16px 0}
@@ -1261,6 +1267,7 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
 .gs-list mark{background:color-mix(in srgb,var(--warn) 30%,transparent);color:inherit;border-radius:2px}
 .gs-none{padding:14px;color:var(--muted)}
 .gs-foot{display:flex;justify-content:space-between;margin:0;padding:8px 14px;border-top:1px solid var(--line);font-size:.78rem;color:var(--muted)}
+.hc-cu.late{color:var(--warn,#b26a00);font-weight:600}.hc-cu .lx-link{font-weight:400}
 </style>
 </head>
 <body>
@@ -1536,6 +1543,10 @@ Double Shot=60</textarea></div>
 <div id="kidbox" class="kidbox"><label class="ck"><input type="checkbox" id="kidsz" checked><b>Kids sizes: make kids items a “Kids Size” variant of the main product</b></label>
 <div id="kidmsg" class="kidmsg"></div></div>
 <label class="ck" style="margin:0 0 10px"><input type="checkbox" id="flavvar">Override: make flavours variants too, not just sizes (Chocolate, Vanilla and Strawberry Milkshake become variants of a Milkshake product in a “Milkshake Flavours” variant group). Off by default.</label>
+<div class="splitbox"><b>Split sizes into separate products for:</b>
+<label class="ck"><input type="checkbox" id="splitbeer">Tap beer (Pot / Schooner / Pint become their own products)</label>
+<label class="ck"><input type="checkbox" id="splitpasta">Pasta (Small / Large pasta become their own products)</label>
+<div class="warn" style="margin:2px 0 0">Some venues report and print these better as separate products; coffee and cake usually keep their sizes. Adding a variant in Oolio One can’t be undone, so agree this with the venue first. Saved in this browser.</div></div>
 <div id="vg"></div>
 <div class="two"><input id="kw" placeholder="Make a modifier group by keyword, e.g. milkshake"><button id="kwb" type="button" class="sec" style="margin:0">Add group</button></div>
 <div class="warn" id="kwmsg"></div>
@@ -4032,7 +4043,7 @@ function rebuild(){
     // no printer in the file: "Auto" picks one per item (bar or coffee for drinks, kitchen printers for food)
     const u=[...new Set(ps)];catCfg[c]={rename:'',printer:ps.length?(u.length===1&&ps.length===its.length?u[0]:'*'):'*',rg:'*',meas:'*'};});
   window.catList=cats;
-  vg=detectGroups(base).sort((a,b)=>(a.mode==='off')-(b.mode==='off'));flavVar(FLAVVAR());
+  vg=detectGroups(base).sort((a,b)=>(a.mode==='off')-(b.mode==='off'));flavVar(FLAVVAR());applySplit();
   const any=tables.length>0;['scard','ccard','vcard','pcard','kcard'].forEach(id=>$(id).style.display=any&&(base.length||mods.length)?'block':'none');
   $('lockcard').style.display=$('scard').style.display==='block'?'none':'block';
   const sig=base.map(i=>i.name).join('|')+'#'+mods.map(m=>m.group+'/'+m.name).join('|');if(sig!==preSig){preSig=sig;preInit=true}
@@ -4056,6 +4067,16 @@ const FLAVVAR=()=>{const e=document.getElementById('flavvar');return!!(e&&e.chec
 function flavVar(on){vg.forEach(g=>{const sz=g.members.every(m=>isSize(m.v));
   if(on&&g.mode==='modifier'&&!sz){g.fv=true;g.mode='variant';g.vg0=g.vgroup;g.vgroup=g.mgroup}
   else if(!on&&g.fv){g.fv=false;if(g.mode==='variant')g.mode='modifier';if(g.vgroup===g.mgroup)g.vgroup=g.vg0||g.vgroup}})}
+// split choice (step 4): size groups for tap beer or pasta become separate products; unticking puts back the ones it split
+const SPLIT_BEER=/\b(beers?|lagers?|ales?|ipas?|stouts?|ciders?|pilsners?|draught|on tap|tap)\b/i,SPLIT_BEERSZ=/\b(pot|middy|schooner|pint|jug|pitcher)\b/i,
+  SPLIT_PASTA=/\b(pasta|spaghetti|penne|rigatoni|linguine|gnocchi|fettuccin[ei]|pappardelle|tagliatelle|lasagne|lasagna|ravioli|tortellini|carbonara|bolognese|marinara|risotto|orecchiette|bucatini|casarecce|mafaldine|paccheri)\b/i;
+function splitKind(g){const t=(g.base||'')+' '+(g.cat||'');
+  if(SPLIT_PASTA.test(t))return'pasta';if(SPLIT_BEER.test(t)||g.members.every(m=>SPLIT_BEERSZ.test(m.v)))return'beer';return''}
+function applySplit(){const on={beer:!!($('splitbeer')||{}).checked,pasta:!!($('splitpasta')||{}).checked};
+  vg.forEach(g=>{const k=splitKind(g);if(!k)return;
+    if(on[k]&&g.mode==='variant'&&!g.fv){g.mode='off';g.autoSplit=true}
+    else if(!on[k]&&g.autoSplit){if(g.mode==='off')g.mode='variant';g.autoSplit=false}})}
+function toggleSplit(){applySplit();buildVG();run()}
 function toggleFlavVar(){const e=$('flavvar');
   if(e.checked&&!confirm('Are you sure?\n\nThis makes flavours and types (Chocolate, Vanilla, Strawberry Milkshake) variants instead of one product with a modifier group. Oolio variants are normally for sizes only, so only do this if the venue wants flavours set up as variants.')){e.checked=false;return}
   flavVar(e.checked);buildVG();run();mhNote(e.checked)}
@@ -4456,7 +4477,13 @@ function preflight(rows,plan){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'
   const tiny=[...cats].filter(([c,n])=>c&&n===1).map(([c])=>c);
   if(tiny.length>=4)add(warn,'categories have only one product',tiny,'Oolio works best with a few broad categories (Hot Coffee, Pizza). Merge small ones in step 3.');
   lint(rows,I,plan,add,warn);
-  return{block,warn,rows:rows.length}}
+  // variant preview: adding a variant in Oolio One can't be undone, so list every product that gets sizes before download
+  const info=[],vgOf=new Map(),sz=new Map();
+  rows.forEach(r=>{const k=String(r[I.n]||'').trim().toLowerCase();if(r[I.t]==='Variant')vgOf.set(k,[String(r[I.n]).trim(),r[I.vg]||'',r[I.c]||'']);
+    else if(r[I.t]==='Product'&&r[I.vn])(sz.get(k)||sz.set(k,[]).get(k)).push(String(r[I.vn]).trim())});
+  const vlist=[...vgOf].map(([k,[nm,g,c]])=>nm+': '+(sz.get(k)||[]).join(', ')+(g?' ('+g+')':'')+(c?' · '+c:''));
+  add(info,'products will be imported with sizes (variants)',vlist,'Adding a variant in Oolio One can’t be undone, and a variant can’t have its own variants. Agree the sizes with the venue before importing. To make a group separate products instead (common for tap beer and pasta), set it to Off in step 4 or tick the split options there.');
+  return{block,warn,info,rows:rows.length}}
 /* menu linter: things the wizard accepts but that turn into fixes after go-live (odd prices, food that prints nowhere,
    sizes priced the wrong way round or named differently from the rest of the category, empty modifier groups) */
 const SIZE_RANK=[[/\b(kids?|mini|baby|piccolo|taster)\b/,1],[/\b(small|sml|sm|short|half)\b/,2],[/\b(regular|reg|standard|std|medium|med|single)\b/,3],
@@ -4485,6 +4512,16 @@ function lint(rows,I,plan,add,warn){const price=r=>{const s=String(r[I.p]==null?
     const[top,n]=[...cnt].sort((a,b)=>b[1]-a[1])[0];if(n<L.length*0.6)return;const ts=new Set(top.split(' / '));
     L.forEach(f=>{const k=key(f);if(k!==top&&k.split(' / ').some(x=>ts.has(x)))mixed.push(f.nm+': '+f.sizes.map(x=>x[0]).join(', ')+' (most in '+(f.cat||'this category')+': '+top+')')})});
   names.forEach(v=>{if(v.cats.size>1)twoCats.push(v.nm+' ('+[...v.cats].filter(Boolean).join(', ')+')')});
+  // meal deals: sizes like "Meal" / "with chips", or "Burger" next to "Burger Meal". Oolio has no variants on variants,
+  // so a size that is also a meal ("Large Meal") can't be built that way
+  const MEAL=/\b(meal|combo|deal|with (chips|fries|salad|a side|side)|w\/ ?(chips|fries|salad)|\+ ?(chips|fries|drink))\b/i,meal=[],vov=[];
+  const vovK=new Set();
+  fam.forEach((f,k)=>{const ms=f.sizes.filter(([n])=>MEAL.test(n));if(ms.some(([n])=>sizeRank(n.replace(MEAL,''))!=null)){vov.push(f.nm+': '+f.sizes.map(x=>x[0]).join(', '));vovK.add(k)}});
+  // step 4 groups (sizes or modifier groups) whose options are meals: "Cheeseburger: By itself, Meal"
+  (typeof vg!=='undefined'?vg:[]).forEach(g=>{if(g.mode==='off'||vovK.has(String(g.base||'').toLowerCase()))return;if(g.members.some(m=>MEAL.test(m.v)))meal.push(g.base+': '+g.members.map(m=>m.v).join(', '))});
+  names.forEach((v,k)=>{const m=k.match(/^(.+?)\s+(meal|combo|meal deal)$/);if(m&&names.has(m[1]))meal.push(names.get(m[1]).nm+' and '+v.nm)});
+  add(warn,'items look like meal deals',meal,'Choose one pattern with the venue: a variant “By itself” / “In a meal” plus a required “Meal deal options” group (chips, salad…), a combo, or an add-on modifier. Variants can’t be undone, so decide before importing.');
+  add(warn,'size groups mix sizes and meals (a variant on a variant)',vov,'Oolio One has no variants on variants. Keep the sizes as variants and make the meal a required option group or a combo.');
   add(warn,'products are priced $0',zero,'A $0 item usually means the price wasn’t found. Free items are fine; check the rest.');
   add(warn,'prices are far from the rest of their category',odd,'Often a typo (4.5 for 45). Check against the menu.');
   add(warn,'size groups have a bigger size costing less than a smaller one',order,'Usually the prices are swapped between sizes.');
@@ -4497,7 +4534,7 @@ function lint(rows,I,plan,add,warn){const price=r=>{const s=String(r[I.p]==null?
 // the pre-flight result as plain text, for a ticket or the venue's notes
 function pfText(){if(!PF)return'';const L=[(PF.block.length?'NOT READY':'READY')+' – pre-flight check of '+PF.rows+' import rows'+(window.OOLIO_VENUE_NAME?' for '+window.OOLIO_VENUE_NAME:'')+', '+new Date().toLocaleString('en-AU')];
   const one=(t,x)=>{L.push('','['+t+'] '+(x.list.length?x.list.length+' ':'')+x.msg);if(x.how)L.push('  '+x.how);x.list.slice(0,50).forEach(y=>L.push('  - '+y));if(x.list.length>50)L.push('  … and '+(x.list.length-50)+' more')};
-  PF.block.forEach(x=>one('FIX',x));PF.warn.forEach(x=>one('CHECK',x));if(!PF.block.length&&!PF.warn.length)L.push('','No problems found.');return L.join('\n')}
+  PF.block.forEach(x=>one('FIX',x));PF.warn.forEach(x=>one('CHECK',x));(PF.info||[]).forEach(x=>one('INFO',x));if(!PF.block.length&&!PF.warn.length)L.push('','No problems found.');return L.join('\n')}
 function drawPreflight(){const el=$('pf');if(!el)return;if(!res||!res.rows.length){el.innerHTML='';PF=null;return}
   PF=preflight(res.rows,res.plan);const nb=PF.block.reduce((s,x)=>s+Math.max(1,x.list.length),0),nw=PF.warn.reduce((s,x)=>s+x.list.length,0);
   const cls=nb?'bad':nw?'warn':'ok',icon=nb?'!':nw?'?':'✓';
@@ -4505,7 +4542,7 @@ function drawPreflight(){const el=$('pf');if(!el)return;if(!res||!res.rows.lengt
   el.innerHTML='<div class="pf '+cls+'" role="status"><div class="pf-h"><span class="pf-dot" aria-hidden="true">'+icon+'</span><span>'+
     (nb?'Fix '+nb+' problem'+(nb>1?'s':'')+' before importing':nw?'Ready to import, with '+nw+' thing'+(nw>1?'s':'')+' to check':'Ready to import')+
     '<small>Pre-flight check of all '+PF.rows+' rows against what the Oolio setup wizard needs, plus the menu linter (prices, sizes, printers, modifier groups).</small></span>'+
-    '<button type="button" class="pf-copy" id="pfcopy">Copy report</button></div>'+list(PF.block,true)+list(PF.warn,false)+'</div>';
+    '<button type="button" class="pf-copy" id="pfcopy">Copy report</button></div>'+list(PF.block,true)+list(PF.warn,false)+(PF.info.length?'<div class="pf-info">'+list(PF.info,false)+'</div>':'')+'</div>';
   window.OOLIO_LINT={block:nb,warn:nw,at:Date.now()};
   $('pfcopy').onclick=async()=>{const t=pfText();try{await navigator.clipboard.writeText(t);$('pfcopy').textContent='Copied'}catch(e){prompt('Copy the report:',t)}setTimeout(()=>{const b=$('pfcopy');if(b)b.textContent='Copy report'},1800)}}
 // downloading with problems asks first
@@ -4666,7 +4703,7 @@ async function reReadNP(){
    so a refresh or a closed tab doesn't lose it; the next visit offers to carry on. Settings in step 2 are remembered
    separately. Variant group and standard option group edits aren't kept. */
 const SESS='oolio.convSession',SETK='oolio.convSettings';
-const SET_IDS=['tax','taxfree','pgrp','catmode','comb','mVol','mWt','mVolU','mWtU','sizes'];
+const SET_IDS=['tax','taxfree','pgrp','catmode','comb','mVol','mWt','mVolU','mWtU','sizes','splitbeer','splitpasta'];
 function saveSession(){clearTimeout(saveSession.t);saveSession.t=setTimeout(()=>{if(!tables.length)return;
   const ts=tables.map(t=>({file:t.file,sheet:t.sheet,rows:t.rows,doc:t.doc,on:t.on,err:t.err||'',map:t.a?t.a.map:null,rank:t.rank,srcLabel:t.srcLabel,delivery:t.delivery,urls:t.urls,pl:t.pl||''}));
   try{localStorage.setItem(SESS,JSON.stringify({at:Date.now(),tables:ts,catCfg,PX,SPLIT,np:NOPRICE()}))}catch(e){/* too big for this browser's storage: not kept */}},800)}
@@ -4809,6 +4846,7 @@ $('scard').insertAdjacentHTML('beforeend','<div class="warn" style="margin:12px 
 $('setrst').addEventListener('click',resetSettings);
 $('noprice').addEventListener('change',reReadNP);
 $('flavvar').addEventListener('change',toggleFlavVar);
+['splitbeer','splitpasta'].forEach(id=>$(id).addEventListener('change',toggleSplit));
 $('kidsz').addEventListener('change',()=>{rebuild();if(window.mhToast)window.mhToast($('kidsz').checked?'Kids items are Kids Size variants again.':'Kids items stay on their own kids menu.')});
 (function(){const ov=document.createElement('div');ov.id='dropov';ov.innerHTML='<div>Drop menu files to add them</div>';document.body.appendChild(ov);
   let n=0,pn=0;const vis=()=>$('file').offsetParent!==null,hasF=e=>!!(e.dataTransfer&&[...e.dataTransfer.types].includes('Files'));
@@ -5303,7 +5341,14 @@ const GUIDES=/*GUIDES*/{"create-an-oolio-online-store":["Create an Oolio Online 
 /* ---------- what each organisation can have, which turns steps on or off ---------- */
 const FLAGS=[
   ['ecom','Online ordering / e-com sold'],['mpos','MPOS / pay at table'],['moto','MOTO payments'],
-  ['manual','Manual EFTPOS'],['impact','Impact printers'],['booking','7Rooms / NowBookIt'],['loyalty','Loyalty / gift cards'],['kds','KDS'],['kiosk','Kiosk'],['integ','Other integrations']];
+  ['manual','Manual EFTPOS'],['impact','Impact printers'],['booking','7Rooms / NowBookIt'],['loyalty','Loyalty / gift cards'],['kds','KDS'],['kiosk','Kiosk'],['integ','Other integrations'],['tables','Table service / coursing']];
+// user role presets for the menu-roles step: [name, what to allow, what to restrict]
+const ROLE_PRESETS=[
+  ['Manager','Everything at the location: refunds, voids, price changes, discounts, cash up, Manager Functions','Org settings (ABN, address) stay with the owner'],
+  ['Supervisor','Voids with a reason, staff discounts, open and close shifts, reprint and send receipts','Refunds and price changes, unless the venue wants them'],
+  ['Staff','Ordering, payments, open orders, reprinting dockets','Refunds, voids after sending, price changes, custom discounts'],
+  ['Junior staff','Ordering and taking card payments','Cash payments or manual EFTPOS if the venue asks, refunds, voids, discounts'],
+  ['Override user','Manager-only functions (refunds, voids, price changes) for a manager to log into when needed','Back office and settings. Use it instead of a per-function PIN, which Oolio doesn’t have']];
 const STAGES=[['pre','Pre-config'],['ready','Ready for training'],['trained','Training done'],['follow','Follow-ups'],['done','Complete']];
 const TZ=['Australia/Sydney','Australia/Melbourne','Australia/Brisbane','Australia/Adelaide','Australia/Perth','Australia/Hobart','Australia/Darwin','Pacific/Auckland'];
 const TZ_BY_STATE={NSW:'Australia/Sydney',ACT:'Australia/Sydney',VIC:'Australia/Melbourne',QLD:'Australia/Brisbane',SA:'Australia/Adelaide',WA:'Australia/Perth',TAS:'Australia/Hobart',NT:'Australia/Darwin'};
@@ -5338,6 +5383,11 @@ const SECTIONS=[
   {id:'pay-manual',when:'manual',t:'Manual EFTPOS: surcharge prompt',info:['Avoid manual EFTPOS where possible.','If the venue uses it, consider the surcharge prompt there too.'],why:'Otherwise the reconciliation numbers may not match.',guides:['understand-the-reconciliation-report','troubleshoot-sales-and-payment-discrepancies']},
   {id:'pay-group',t:'Group surcharge',info:['Group surcharge currently only supports 6+ pax.','If the venue wants 8+, 10+ or another threshold, a feature request is needed: note it here.'],fields:[['pax','Venue’s threshold (pax)','text','6']],check:o=>{const p=val(o,'pay-group','pax');return p&&+p!==6?{m:'Needs a feature request: only 6+ pax is supported.'}:null},guides:['create-a-surcharge','disable-a-scheduled-surcharge']},
 ]},
+{id:'disc',phase:'pre',t:'Discounts & surcharges',d:'Decisions the venue makes before training. Record them here so they’re built before the session.',steps:[
+  {id:'disc-staff',t:'Staff discounts',info:['Most venues need a staff discount; some need two (their own staff and a partner’s staff, for example 20% each).','Choose which roles can apply each discount.','Ask whether to remove the custom discount, so staff can only use the set ones.'],fields:[['list','Staff discounts','text','Staff 20%, Partner staff 20%'],['who','Roles that can apply them','text','Manager, Supervisor'],['custom','Custom discount','select',['Keep','Remove']]],guides:['create-a-discount','create-a-discount-by-payment-type']},
+  {id:'disc-weekend',t:'Weekend and public holiday surcharge',info:['Ask the venue. Oolio pre-loads about two years of public holiday dates, so it only needs their decision and rates.','Typical: 15% on public holidays; around 10% on Sundays. Surcharges stack: a public holiday on a Sunday adds both.'],fields:[['decision','Venue’s decision','select',['Weekend and public holidays','Public holidays only','Sundays and public holidays','No surcharge','Waiting on the venue']],['rates','Rates','text','Sat 10%, Sun 10%, PH 15%']],check:o=>{const d=val(o,'disc-weekend','decision');if(!d)return null;return d==='Waiting on the venue'?{m:'Still waiting on the venue’s decision.'}:{ok:1,m:'Decided: '+d+'.'}},guides:['create-a-surcharge','disable-a-scheduled-surcharge']},
+  {id:'disc-opening',t:'Opening offer or event pricing',info:['Optional. For a grand opening (for example 50% off coffee for the day) use a price list, an auto-applied discount for that day, or Schedule Surcharge in Manager Functions, which applies a surcharge or discount for 24 hours.','Event surcharges can be a flat fee or a percentage.'],fields:[['plan','What and how','text','50% off coffee via a price list'],['date','Date','date']],guides:['create-price-lists','create-a-discount']},
+]},
 {id:'ecom',phase:'pre',when:'ecom',t:'Online store / e-commerce',d:'Configure e-com if it was sold, even if the venue isn’t using online ordering straight away.',steps:[
   {id:'ecom-confirm',t:'Confirm e-com was sold (HubSpot)'},
   {id:'ecom-kyc',t:'Check KYC status',info:['The e-com string and surcharge rate can only be added after KYC is approved.','If it isn’t approved yet, mark this step done once you have noted it and come back after approval.'],fields:[['kyc','KYC status','select',['Not started','Pending','Approved']]],check:o=>{const k=val(o,'ecom-kyc','kyc');return k&&k!=='Approved'?{m:'Add the e-com string and surcharge after KYC approval.'}:null}},
@@ -5364,7 +5414,16 @@ const SECTIONS=[
   {id:'menu-import',t:'Import products',info:['Use the Menu Converter tab to turn the customer’s menu into an Oolio One import. Downloading the import ticks this step.'],extra:o=>menuPanel(o)+historyPanel(o),guides:['create-standard-products','create-modifiers-and-option-groups','create-variant-groups','upload-and-manage-product-images']},
   {id:'menu-photos',t:'Add product photos',info:['Photo Finder takes the products straight from the Menu Converter. Saving the photos ticks this step.','Upload them in Back Office afterwards.'],extra:o=>photoPanel(o),guides:['upload-and-manage-product-images']},
   {id:'menu-pos',t:'Build the POS menu and tables',guides:['create-a-pos-menu','configure-sections-tables','create-courses','create-price-lists']},
+  {id:'menu-roles',t:'Agree custom user roles',info:['The default roles (Manager, Waiter, Location owner) are too permissive for most venues: make custom roles instead.','There’s no PIN lock on a single POS function, so make an “override” user with extra (but limited) permissions for managers to use.','Permissions go down to which payment types a role can take.'],why:'Owners often find out after opening that every staff member can refund or change prices.',extra:o=>rolePanel(o),subs:ROLE_PRESETS.map(r=>r[0]),fields:[['refunds','Who can refund','text','Manager, Supervisor'],['price','Who can change prices / use open price','text','Manager'],['eft','Who can use manual EFTPOS','text','All staff']],guides:['managing-user-roles']},
   {id:'menu-users',t:'Create users and roles',info:['Get the staff list from the customer (or their intake form) and create a user for each person.'],extra:o=>staffPanel(o),check:o=>{const L=o.staff||[];if(!L.length)return null;const n=L.filter(x=>x.done).length;return n===L.length?{ok:1,m:'All '+L.length+' users created.'}:{m:(L.length-n)+' of '+L.length+' users still to create.'}},guides:['create-a-user','managing-user-roles']},
+]},
+{id:'pos',phase:'pre',t:'POS settings',d:'Front of house choices venues make in training. Agree them beforehand where you can.',steps:[
+  {id:'pos-pay',t:'Exact cash and quick pay buttons',info:['Some venues want both removed so staff count the cash and pick the right payment type.'],fields:[['exact','Exact cash button','select',['Keep','Remove']],['quick','Quick pay options','select',['Keep','Remove']]],guides:['create-and-customise-function-maps']},
+  {id:'pos-orders',t:'Takeaway and dine-in prompts',info:['Takeaway can ask for the customer’s name (prints “Order for…”) or use numbered tokens.','Dine-in can ask for a table number; turn it off for pay-as-you-order venues without table stands.'],fields:[['takeaway','Takeaway','select',['Ask for a name','Numbered tokens','No prompt']],['dinein','Dine-in','select',['Ask for a table number','No prompt']]],guides:['place-a-takeaway-order']},
+  {id:'pos-courses',when:'tables',t:'Covers and coursing',info:['Venues with set menus and à la carte usually both use coursing. Banquets need covers and coursing too.','Equal split uses covers, so encourage staff to enter them.','Choose whether all courses fire straight away or are sent by hand.'],fields:[['covers','Covers / seat numbers','select',['Yes','No']],['fire','Courses','select',['Fire all courses','Send courses by hand']]],guides:['create-courses','use-courses','configure-sections-tables']},
+  {id:'pos-tabs',when:'tables',t:'Bar tabs and open tables',info:['Bar devices can run quick service and open table with no dine-in.','Ask for the venue’s tab numbering (some start at 1000) and whether staff need to rename an open table.'],fields:[['start','Tab numbers start at','text','1000'],['bar','Bar devices','select',['Quick service + open table','Same as the restaurant']]],guides:['configure-sections-tables']},
+  {id:'pos-notes',t:'Notes on receipts',info:['Order and item notes print on dockets and are hidden on customer receipts by default.'],fields:[['receipt','Notes on receipts','select',['Hidden (default)','Show']]]},
+  {id:'pos-clock',t:'Clock in and timekeeping',info:['Deputy is native: staff clock in and out from the POS lock screen with their POS PIN.','If staff will use the Deputy phone app (or Employment Hero) instead, remove the POS clock-in button.'],fields:[['sys','Timekeeping','select',['Deputy','Employment Hero','Other','None']],['button','POS clock-in button','select',['Keep','Remove']]],guides:['connect-deputy-to-oolio-one','clock-on-off']},
 ]},
 /* ---------- training: the run sheet itself is the Training Session tab (training-session.html, window.OolioTraining) ---------- */
 {id:'trn',phase:'trn',t:'Training session',d:'Run the session in the Training Session tab: the run sheet, notes at each step, action items and the report.',steps:[
@@ -5616,6 +5675,8 @@ window.OolioVenues={
   website(id){return ORGS[id]?val(ORGS[id],'prep-gmb','website'):''},
   field(id,step,k){return ORGS[id]?val(ORGS[id],step,k):''},
   late(id){const o=ORGS[id];return o?stepsFor(o).filter(x=>overdue(o,x)).length:0},
+  wait(id){return waitOf(ORGS[id])},
+  markUpdated(id){markUpdated(id)},
   isMine(id){const o=ORGS[id];return!!o&&isMine(o)},
   me(){return ME},
   addMenuVersion(id,snap){return addMenuVersion(id,snap)},
@@ -6131,7 +6192,7 @@ function orgHtml(o,id){const p=progress(o),pp=progress(o,'pre'),tp=progress(o,'t
       (o.group&&GROUPS[o.group]?'':'<option value="" selected>None</option>')+(READONLY?'':'<option value="+">+ New organisation…</option>')+'</select></label></p>'+
     '<div class="st-head st-card"><div class="st-title"><input id="st-name" value="'+esc(o.name)+'" aria-label="Venue name" placeholder="Venue name"'+dis+'>'+
     '<select id="st-stage" aria-label="Stage" style="width:auto"'+dis+'>'+STAGES.map(([k,t])=>'<option value="'+k+'"'+(o.stage===k?' selected':'')+'>'+t+'</option>').join('')+'</select></div>'+
-    '<div class="st-row st-small"><span class="st-bar st-grow" style="max-width:300px"><i style="width:'+p.pct+'%"></i></span><span>'+p.done+' of '+p.total+' steps</span><span class="st-muted">Pre-config '+pp.done+'/'+pp.total+' · Training '+tp.done+'/'+tp.total+'</span></div>'+
+    '<div class="st-row st-small"><span class="st-bar st-grow" style="max-width:300px"><i style="width:'+p.pct+'%"></i></span><span>'+p.done+' of '+p.total+' steps</span><span class="st-muted">Pre-config '+pp.done+'/'+pp.total+' · Training '+tp.done+'/'+tp.total+'</span></div>'+waitHtml(o)+
     '<div class="st-kv"><label class="st-f">Training date<input type="date" id="st-training" value="'+esc(o.training||'')+'"'+dis+'></label>'+
     '<label class="st-f">Venue contact (training)<input id="st-contact" value="'+esc(o.contact||'')+'" placeholder="Name, mobile"'+dis+'></label>'+
     '<label class="st-f">Go-live date<input type="date" id="st-golive" value="'+esc(o.golive||'')+'"'+dis+'></label>'+
@@ -6172,6 +6233,8 @@ function applyTemplate(id){const o=ORGS[id],T=o&&TEMPLATES[o.vtype];if(!T||READO
   const wf={};Object.entries(T.wf).forEach(([k,x])=>{if(!val(o,'prn-workflow',k))wf[k]=x});
   if(Object.keys(wf).length){patch.steps={'prn-workflow':{v:wf}};done.push('the printing workflow')}
   if(!val(o,'prof-split','list')){patch.steps=Object.assign(patch.steps||{},{'prof-split':{v:{list:T.profiles}}});done.push('device profiles')}
+  // table-service venues get the covers / coursing and bar tab steps
+  if(/^(restaurant|bar|hotel)$/.test(o.vtype)&&(o.flags||{}).tables==null){patch.flags={tables:true};done.push('table service')}
   if(done.length){save(id,patch);render()}
   flash(done.length?'Filled in '+done.join(', ')+' for a '+(VTYPES.find(x=>x[0]===o.vtype)||['',''])[1].toLowerCase()+'. Check them against the hardware diagram.':'Nothing to fill: printers, workflow and profiles are already set.')}
 
@@ -6184,6 +6247,15 @@ function peopleList(){const s=new Set();if(ME)s.add(myName());Object.values(ORGS
 const overdue=(o,x)=>{const s=st(o,x.id);return!!s.due&&!s.s&&s.due<today()};
 function dueChip(o,x){const s=st(o,x.id);if(!s.due||s.s)return'';return '<span class="st-chip '+(s.due<today()?'w':'')+'">'+(s.due<today()?'Overdue ':'Due ')+esc(fmtDate(s.due))+'</span>'}
 const daysTo=d=>Math.round((new Date(d+'T00:00')-new Date(today()+'T00:00'))/864e5);
+/* waiting on us: days since the team last updated the customer (o.cu {at, by}), from when the venue was added if never.
+   Long silences cause escalations, so 2+ days is flagged on the board, the venue page, Hypercare and Team. */
+const WAIT_DAYS=2;
+function waitOf(o){if(!o||o.stage==='done')return null;const at=(o.cu&&o.cu.at)||o.createdAt||0;if(!at)return null;
+  const days=Math.floor((Date.now()-at)/864e5);return{at,by:o.cu&&o.cu.by||'',never:!(o.cu&&o.cu.at),days,late:days>=WAIT_DAYS}}
+function markUpdated(id){if(READONLY||!ORGS[id])return;save(id,{cu:{at:Date.now(),by:ME}},'Customer updated')}
+function waitHtml(o){const w=waitOf(o);if(!w)return'';const ago=w.days===0?'today':w.days===1?'yesterday':w.days+' days ago';
+  return'<div class="st-row st-small st-wait'+(w.late?' late':'')+'"><span>'+(w.never?'No customer update recorded since the venue was added '+ago:'Customer last updated '+ago+(w.by?' by '+esc(who(w.by)):''))+(w.late?': they’re waiting on us':'')+'.</span>'+
+    (READONLY?'':'<button type="button" class="st-sec st-sm" data-a="cu">I’ve updated them today</button>')+'</div>'}
 
 /* ---------- the board: every venue as a card in the column for where it's up to ---------- */
 const COLS=[['lookup','Look up'],['menu','Menu'],['config','Configure'],['training','Training'],['follow','Follow-ups'],['live','Live']];
@@ -6196,7 +6268,7 @@ function boardCard(id,o){const p=progress(o),G=groupOf(o),late=stepsFor(o).filte
     (G&&G.name!==o.name?'<span class="st-small st-muted">'+esc(G.name)+'</span>':'')+
     '<span class="st-bar"><i style="width:'+p.pct+'%"></i></span><span class="st-bmeta">'+
     (gl?'<span class="st-chip'+glc+'">'+(o.stage==='done'?'Live ':'Go-live ')+esc(fmtDate(gl))+(o.stage!=='done'&&dt!=null?(dt<0?' · '+(-dt)+'d late':dt===0?' · today':' · '+dt+'d'):'')+'</span>':'')+
-    (late?'<span class="st-chip w">'+late+' overdue</span>':'')+(w?'<span class="st-chip w">'+w+' to fix</span>':'')+'<span class="st-chip">'+p.done+'/'+p.total+'</span></span>'+
+    (late?'<span class="st-chip w">'+late+' overdue</span>':'')+(w?'<span class="st-chip w">'+w+' to fix</span>':'')+((x=>x&&x.late?'<span class="st-chip w" title="No customer update for '+x.days+' days">'+x.days+'d no update</span>':'')(waitOf(o)))+'<span class="st-chip">'+p.done+'/'+p.total+'</span></span>'+
     (o.owner?'<span class="st-owner" title="Owner: '+esc(o.owner)+'"><span class="st-av">'+esc(clean(o.owner).split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase())+'</span>'+esc(o.owner)+'</span>':'<span class="st-small st-muted">No owner yet</span>')+'</button>'}
 function boardHtml(){const q=VIEW.q.toLowerCase();
   const L=Object.entries(ORGS).filter(([,o])=>(!VIEW.mine||isMine(o))&&(!q||(o.name||'').toLowerCase().includes(q)||((groupOf(o)||{}).name||'').toLowerCase().includes(q)||(o.owner||'').toLowerCase().includes(q)))
@@ -6232,13 +6304,16 @@ function parseStaffText(t){return String(t||'').split(/\r?\n/).map(l=>{l=l.repla
     let name=clean(parts.join(' '));
     // a role written before or after the name with no separator ("Bar staff Mike Brown")
     if(!role){const ws=ROLEW.slice().sort((a,b)=>b.length-a.length);for(const w of ws){const m=name.match(new RegExp('^('+w+')\\s+(.+)$|^(.+?)\\s+('+w+')$','i'));if(m&&(m[2]||m[3]).split(' ').length>=2){role=m[1]||m[4];name=clean(m[2]||m[3]);break}}}return name&&name.length<60?{name,role,contact:[em,clean(ph)].filter(Boolean).join(', '),done:false}:null}).filter(Boolean)}
+// role presets as a table: tick the ones the venue will use (the step's sub-checkboxes), then build them in Back Office
+function rolePanel(o){return'<div class="st-twrap"><table class="st-tbl"><caption class="st-small st-muted" style="text-align:left">Suggested custom roles. Tick the ones the venue will use below, then make them in Back Office → Team → Roles.</caption><thead><tr><th scope="col">Role</th><th scope="col">Allow</th><th scope="col">Restrict</th></tr></thead><tbody>'+
+  ROLE_PRESETS.map(r=>'<tr><th scope="row">'+esc(r[0])+'</th><td>'+esc(r[1])+'</td><td>'+esc(r[2])+'</td></tr>').join('')+'</tbody></table></div>'}
 function staffPanel(o){const L=o.staff||[],dis=READONLY?' disabled':'',n=L.filter(x=>x.done).length;
   let h='<div class="st-staff"><div class="st-row" style="justify-content:space-between"><b>Staff list</b><span class="st-small st-muted">'+(L.length?n+' of '+L.length+' users created':'From the customer: add, paste or upload it')+'</span></div>';
   if(L.length)h+='<div class="st-twrap"><table class="st-tbl"><thead><tr><th scope="col">Created</th><th scope="col">Name</th><th scope="col">Role</th><th scope="col">Email or mobile</th><th scope="col"><span class="st-sr">Remove</span></th></tr></thead><tbody>'+
     L.map((x,i)=>'<tr><td><input type="checkbox" data-staff="'+i+'" data-k="done"'+(x.done?' checked':'')+dis+' aria-label="User created for '+esc(x.name)+'"></td>'+
       '<td><input data-staff="'+i+'" data-k="name" value="'+esc(x.name)+'"'+dis+' aria-label="Name"></td><td><input data-staff="'+i+'" data-k="role" value="'+esc(x.role)+'" list="st-roles"'+dis+' aria-label="Role"></td>'+
       '<td><input data-staff="'+i+'" data-k="contact" value="'+esc(x.contact)+'"'+dis+' aria-label="Email or mobile"></td><td>'+(READONLY?'':'<button type="button" class="st-link" data-sdel="'+i+'" aria-label="Remove '+esc(x.name)+'">Remove</button>')+'</td></tr>').join('')+'</tbody></table></div>'+
-    '<datalist id="st-roles">'+['Owner','Manager','Supervisor','Front of house','Bar','Barista','Kitchen','Chef','Cashier'].map(r=>'<option value="'+r+'">').join('')+'</datalist>';
+    '<datalist id="st-roles">'+['Owner','Manager','Supervisor','Staff','Junior staff','Override user','Front of house','Bar','Barista','Kitchen','Chef','Cashier'].map(r=>'<option value="'+r+'">').join('')+'</datalist>';
   if(!READONLY)h+='<div class="st-tools"><button type="button" class="st-sec st-sm" data-a="staffadd">Add person</button><button type="button" class="st-sec st-sm" data-a="staffpaste">Paste a list</button>'+
     '<label class="st-sec st-sm st-filebtn">Upload a list or photo<input type="file" id="st-sfile" accept=".csv,.txt,.xlsx,.xls,image/*" hidden></label></div><div class="st-small st-muted" id="st-smsg"></div>';
   return h+'<p class="st-small st-muted" style="margin:6px 0 0">Oolio has no staff import, so create each user in Back Office and tick them off here. Contact details are only kept for this setup.</p></div>'}
@@ -6589,6 +6664,7 @@ root.addEventListener('click',e=>{const t=e.target;
   else if(act==='brand')fetchBrand(VIEW.org);
   else if(act==='intake'){if(window.intakeDialog)window.intakeDialog(VIEW.org)}
   else if(act==='tpl')applyTemplate(VIEW.org);
+  else if(act==='cu'){markUpdated(VIEW.org);render()}
   else if(act==='mine'){save(VIEW.org,{owner:myName(),ownerId:ME});render()}
   else if(act==='staffadd'){save(VIEW.org,{staff:(o.staff||[]).concat([{name:'',role:'',contact:'',done:false}])});render()}
   else if(act==='staffpaste'){const t=prompt('Paste the staff list: one person per line, with their role and email or mobile if you have them.');if(t){const n=addStaff(parseStaffText(t));flash(n?'Added '+n+' '+(n===1?'person':'people')+'.':'No names found in that text.')}}
@@ -6660,42 +6736,47 @@ const FLAGS=[['ecom','Online store'],['mpos','mPOS'],['kds','KDS'],['kiosk','Kio
 
 /* ---------- the run sheet (Before → Welcome → POS → Back Office → Reporting → Conclusion) ---------- */
 const RUN=[
-{id:'trb',t:'Before the session',d:'Get the account ready to demo, but leave some building for the customer to do in the session.',steps:[
+{id:'trb',t:'Before the session',min:0,d:'Get the account ready to demo, but leave some building for the customer to do in the session.',steps:[
   {id:'trb-menu',t:'Load the basic menu',info:['Create some options, variations and combos so you can demo them, but leave some for the customer to create during the session.'],subs:['Basic menu in the account','Some options / variations / combos made for the demo','Some left for the customer to create'],guides:['create-modifiers-and-option-groups','create-variant-groups','create-a-standard-combo']},
   {id:'trb-ecom',when:'ecom',t:'Set up the online store',info:['Set the online store up to the best of your knowledge, and enable online ordering in the POS.'],subs:['Online store set up','Online ordering enabled in the POS'],guides:['create-an-oolio-online-store','create-an-online-menu']},
   {id:'trb-features',t:'Enable the features they’ll see',info:['Turn on every feature and device the customer needs to see. Tick the ones this venue uses.'],subs:['KDS','Customer display (CFD)','mPOS','Floor plan','Seats','Courses','Loyalty'],guides:['configure-kitchen-display-screen','configure-customer-display-settings','configure-mpos','configure-sections-tables','configure-seat-management','create-courses','configure-loyalty']},
+  {id:'trb-printers',t:'Printers ready, or virtual printers',info:['Have the venue’s printers set up (or virtual printers) before you demo, or “print failed” pop-ups interrupt the whole session.'],links:[['How to enable a virtual printer (internal)','https://internal.oolio.com/oolioplatform/how-to-enable-a-virtual-printer']]},
+  {id:'trb-test',t:'Make a test product',info:['Build a test product (for example “Test Toast”) to demo with, rather than editing their real menu.']},
 ]},
-{id:'trw',t:'Welcome and discovery',steps:[
-  {id:'trw-teams',t:'Remote: customer joined in the Teams app',info:['If the session is remote, make sure they joined through the Teams app (not the browser), so they can take control later.']},
+{id:'trw',t:'Welcome and discovery',min:10,steps:[
+  {id:'trw-teams',t:'Remote: customer joined in the Teams app',info:['If the session is remote, make sure they joined through the Teams app (not the browser), so they can take control later.','Turn on speaker identification so the transcript shows who said what.','Bad audio: ask them to rejoin without headphones, and use the chat.']},
+  {id:'trw-know',t:'Ask what they already know',info:['Ask early whether they know the difference between products, variants and options. If they do, skip the basics and spend the time on their menu.']},
   {id:'trw-agenda',t:'Explain the agenda',info:['By the end: they know how to use the software, how to maintain the setup, and the system is set up ready for trade.']},
   {id:'trw-modes',t:'Confirm ordering modes and prompts',info:['Tables, pickup, takeaway…, and any prompts needed.'],ph:'Modes: tables, pickup…  Prompts: table number, name…',guides:['place-a-dine-in-order','place-a-pickup-order','place-a-takeaway-order']},
   {id:'trw-print',t:'Confirm what prints where, and test it',info:['Open the hardware diagram with the customer and confirm every printer and device.','Confirm routing (coffees to the bar printer, etc.), set it up and test it during the session.'],subs:['Hardware diagram walked through','Routing confirmed','Set up in Back Office','Test print on every printer'],ph:'What prints where',guides:['configure-printer-profiles','configure-device-profiles','troubleshoot-printing-issues-in-pos']},
   {id:'trw-modules',t:'Confirm other modules',info:['Online store, KDS, kiosk, mPOS, customer display…'],ph:'Modules they’ll use'},
   {id:'trw-other',t:'Check any other info needed',info:['Loyalty, gift cards, integrations, anything else.']},
 ]},
-{id:'trp',t:'POS',steps:[
+{id:'trp',t:'POS',min:45,steps:[
   {id:'trp-order',t:'Layout and ordering',subs:['General layout (pages on the left, products inside pages)','Order a product','…with variations','…with options: required vs optional configs','Order multiple of a product','Delete a product from the cart, or the whole cart','Adjust the price, add notes'],guides:['get-started-with-oolio-one-pos','place-a-dine-in-order']},
   {id:'trp-send',t:'Sending vs paying the order',info:['Explain the prompt options for table number or name.'],guides:['place-a-pickup-order','place-a-takeaway-order']},
   {id:'trp-dockets',t:'Show what the dockets look like',info:['Use a virtual printer if there’s no printer on site.'],links:[['How to enable a virtual printer (internal)','https://internal.oolio.com/oolioplatform/how-to-enable-a-virtual-printer']]},
   {id:'trp-pay',t:'Payments, receipts and customers',subs:['Each payment type','When Manual EFT might be used','Split bills and part payments','Receipt options','Add a customer to an order, touch on loyalty'],guides:['process-a-split-bill','create-customers','enrol-in-loyalty']},
   {id:'trp-open',t:'Open orders and reprinting dockets',guides:['view-open-orders']},
-  {id:'trp-fmap',t:'Function map (bottom of screen)',subs:['Void product vs void cart (it’s permissioned)','Discounts / surcharges','Note on a product or the whole order','Quickpay buttons','Print options'],guides:['void-products-or-orders','create-and-customise-function-maps']},
+  {id:'trp-fmap',t:'Function map (bottom of screen)',subs:['Void product vs void cart (it’s permissioned)','Discounts / surcharges','Note on a product or the whole order','Quickpay buttons','Print options','Hold print: several orders paid separately, one docket','Order notes print at the top, item notes under the item (hidden on receipts)'],guides:['void-products-or-orders','create-and-customise-function-maps']},
   {id:'trp-mgr',t:'Manager functions',subs:['Print shift summary','Money in / out and what it’s used for','End shift button (come back to it later)','Item availability: syncs with kiosk, online store and integrators','Switch menu','Scheduled surcharge (public holidays etc.)'],guides:['use-cash-events','understand-the-shift-summary','track-items-availability','disable-a-scheduled-surcharge']},
   {id:'trp-icons',t:'Printer and heartbeat icons',info:['What the printer and heartbeat icons at the top mean, and how to sync from Back Office.','The heartbeat is also how they’ll know the POS is offline.'],guides:['troubleshoot-printing-issues-in-pos','operate-in-offline-mode']},
-  {id:'trp-nav',t:'Navigation bar',subs:['Order history: refunds (card refunds go back to the customer’s account)','Re-send a receipt','Customers','Manage cash','Switch user, or auto logout after each transaction','Shifts and how to reconcile','How to access Support'],guides:['view-completed-orders','process-a-refund','close-a-shift','understand-the-reconciliation-report']},
+  {id:'trp-nav',t:'Navigation bar',subs:['Order history: refunds (card refunds go back to the customer’s account)','Re-send a receipt','Customers','Manage cash','Switch user, or auto logout after each transaction','Shifts and how to reconcile','How to access Support','Refunds go back to the original payment type','Order timeline: who did what, and when'],guides:['view-completed-orders','process-a-refund','close-a-shift','understand-the-reconciliation-report']},
+  {id:'trp-fix',t:'Quick fixes and support',info:['Most problems are fixed by Force Sync Menu and Sync Settings, at the bottom of the first Settings page (about 9 in 10).','Then the Support button: an AI chat with the help guides; ask it for a person if needed.'],subs:['Force Sync Menu + Sync Settings shown','Support button shown','Don’t press System Log Out (it drops the device back to choosing a profile)','Training mode is per device and doesn’t report']},
   {id:'trp-online',when:'ecom',t:'Online orders in the POS',info:['Put the store into training mode and submit a test order, so they see it arrive.'],subs:['Training mode on','Test order submitted','How online orders come in','Set delay and pause orders','Item availability','Training mode off again'],guides:['manage-online-orders-in-pos','track-items-availability']},
   {id:'trp-kds',when:'kds',t:'KDS and its settings',guides:['manage-orders-on-kitchen-display-screen-','manage-kitchen-display-settings']},
   {id:'trp-mpos',when:'mpos',t:'mPOS',guides:['place-an-order-on-mpos','process-a-payment-on-mpos']},
   {id:'trp-kiosk',when:'kiosk',t:'Kiosk',guides:['configure-kiosk']},
 ]},
-{id:'tro',t:'Back Office',d:'Once users are done, hand control to the customer and let them drive.',steps:[
+{id:'tro',t:'Back Office',min:75,d:'Once users are done, hand control to the customer and let them drive.',steps:[
   {id:'tro-access',t:'Getting to Back Office',info:['From the POS, or via oolio.io.']},
-  {id:'tro-users',t:'Users',info:['Check the owner already has a user and can log in. Create any other users and make sure the customer gets the email and can log in.','From here on, hand control to the customer.'],subs:['Owner has a user and can log in','Other users created','Customer received the email and logged in','Control handed to the customer'],guides:['create-a-user','managing-user-roles']},
+  {id:'tro-users',t:'Users',info:['Check the owner already has a user and can log in. Create any other users and make sure the customer gets the email and can log in.','From here on, hand control to the customer.'],subs:['Owner has a user and can log in','Other users created','Customer received the email and logged in','Control handed to the customer','Custom roles instead of the defaults (too permissive)'],guides:['create-a-user','managing-user-roles']},
+  {id:'tro-vdev',t:'Virtual devices for the owners',info:['Make a virtual device (for example “Owner’s PC”) so owners can try the POS safely.','Logging into the venue’s real device profile from a PC logs the tablet out.']},
   {id:'tro-rg',t:'Reporting groups',info:['Explain what they’re for. Keep them high level: Food, Beverage, Retail.'],guides:['create-product-groups-categories-and-reporting-groups']},
   {id:'tro-cat',t:'Categories',info:['Explain what they’re for and add any missing from the pre-work.'],guides:['create-product-groups-categories-and-reporting-groups']},
-  {id:'tro-var',t:'Variations',info:['Explain what they’re for and add any missed from the pre-work.'],guides:['create-variant-groups']},
-  {id:'tro-opt',t:'Option groups',info:['Remind them what an option is and the configs; jump back into the POS to demo if needed.','Create all the option groups and options they need.'],guides:['create-modifiers-and-option-groups']},
-  {id:'tro-prod',t:'Products',info:['Most of the session’s time should be spent here.','Suggest they pick the Category in the filter before adding a product, and explain why the Category matters.'],subs:['Filters along the top, create / edit / delete buttons','Select the Category filter before adding','Basic product: every required field explained','Product with options: attach configs shown','Product with variations','Customer goes through the whole menu (options, pricing)','Combos created'],guides:['create-standard-products','copy-a-product','bulk-edit-products','create-a-standard-combo','create-a-portion-combo']},
+  {id:'tro-var',t:'Variations',info:['Explain what they’re for and add any missed from the pre-work.','Adding a variant can’t be undone, and a variant can’t have variants: agree the structure before changing anything.'],guides:['create-variant-groups']},
+  {id:'tro-opt',t:'Option groups',info:['Remind them what an option is and the configs; jump back into the POS to demo if needed.','Create all the option groups and options they need.','Option groups can’t be deleted at the moment, so check before creating extras.'],guides:['create-modifiers-and-option-groups']},
+  {id:'tro-prod',t:'Products',info:['Most of the session’s time should be spent here.','Suggest they pick the Category in the filter before adding a product, and explain why the Category matters.'],subs:['Filters along the top, create / edit / delete buttons','Select the Category filter before adding','Basic product: every required field explained','Location set on the Inventory tab (or the item won’t show)','Product with options: attach configs shown','Product with variations','Customer goes through the whole menu (options, pricing)','Combos created'],guides:['create-standard-products','copy-a-product','bulk-edit-products','create-a-standard-combo','create-a-portion-combo']},
   {id:'tro-menu',t:'Menus and layouts',info:['They can have a different menu per device, online store or kiosk, and several menus can use the same products.'],subs:['Menu created','Pages created with categories or products','Menu layout: pages and products moved and coloured'],guides:['create-a-pos-menu','create-an-online-menu']},
   {id:'tro-price',t:'Price lists',info:['Explain what they’re for, set up any needed and show how to schedule one.'],guides:['create-price-lists']},
   {id:'tro-disc',t:'Discounts and surcharges',info:['Set up any needed and show how to schedule them.'],subs:['Discounts / surcharges set up','Scheduling shown','Public holiday surcharge for the next 12 months'],guides:['create-a-discount','create-a-surcharge','disable-a-scheduled-surcharge']},
@@ -6704,7 +6785,7 @@ const RUN=[
   {id:'tro-ecom',when:'ecom',t:'Online store setup',subs:['Sync & Save','Brand colour and logo','Opening hours','Settings','Discounts / surcharges','Orders arriving in POS, set delay and pause shown','Item availability tested'],guides:['create-an-oolio-online-store','create-an-online-menu','manage-online-orders-in-pos']},
   {id:'tro-integ',when:'integ',t:'Plan the integrations',info:['For example: “please have SevenRooms send us the credentials and we’ll reach out to you for training”.'],ph:'Which integrations, and the plan',guides:['connect-xero-to-oolio-one','connect-deputy-to-oolio-one','connect-doshii-to-oolio-one','connect-uber-eats-or-doordash-to-oolio-one']},
 ]},
-{id:'trr',t:'Reporting',steps:[
+{id:'trr',t:'Reporting',min:15,steps:[
   {id:'trr-insights',t:'Insights',subs:['Insights web shown','Insights mobile app downloaded'],guides:['configure-oolio-one-insights-and-widgets']},
   {id:'trr-products',t:'Products report',info:['Show the filters and how drag-to-group works.'],guides:['understand-the-product-report-']},
   {id:'trr-sales',t:'Sales summary',info:['Show how to enable more columns and save the layout.','Explain Net Sales vs Sales Amount vs Amount Collected.'],guides:['understand-the-sales-summary-report','save-and-schedule-reports']},
@@ -6712,7 +6793,7 @@ const RUN=[
   {id:'trr-pay',t:'Payments reports',info:['Explain settlements (next business day) and point out Cost of Transactions.'],guides:['understand-the-payments-report']},
   {id:'trr-emails',t:'Daily and shift summary recipients',info:['Confirm who should get them.'],ph:'Who gets the summaries',guides:['configure-shift-settings']},
 ]},
-{id:'trc',t:'Conclusion',steps:[
+{id:'trc',t:'Conclusion',min:10,steps:[
   {id:'trc-qs',t:'Questions or concerns',info:['Check for any questions or concerns.'],ph:'Questions raised'},
   {id:'trc-ready',t:'Ready for trade?',ready:true,info:['If not, note what still needs doing and the plan for how the customer will finish it.']},
   {id:'trc-support',t:'Support details and follow-up email',subs:['Support details reiterated','Told them a follow-up email is coming']},
@@ -6769,15 +6850,34 @@ function render(){const app=$('ts-app');if(!app)return;if(typing()){DIRTY=true;r
     '<div class="ts-row ts-small">'+(ven.local?'<span class="ts-muted">Sold:</span>'+FLAGS.map(([k,t])=>'<label style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-lflag="'+k+'"'+(ven.flags[k]?' checked':'')+'>'+t+'</label>').join(''):
       '<span class="ts-muted">Sold: '+(sold.length?esc(sold.join(', ')):'nothing extra ticked')+' (set in Setup Tracker)</span>')+
     '<label style="display:flex;gap:4px;align-items:center;margin-left:auto"><input type="checkbox" data-all'+(SHOWALL?' checked':'')+'>Show every step</label></div>'+
-    (d.finished?'<div class="ts-chips"><span class="ts-chip ok">Finished '+esc(fmtD(new Date(d.finished).toISOString()))+'</span></div>':'')+'</div>';
+    (d.finished?'<div class="ts-chips"><span class="ts-chip ok">Finished '+esc(fmtD(new Date(d.finished).toISOString()))+'</span></div>':'')+
+    '<div class="ts-clock" id="ts-clock">'+clockHtml(ven,d,dis)+'</div></div>';
   h+='<div class="ts-tabs" role="tablist">'+[['run','Run sheet'],['actions','Action items'+(openA?' ('+openA+')':'')],['report','Report']].map(([k,t])=>'<button type="button" class="ts-tab" role="tab" data-tab="'+k+'" aria-selected="'+(TAB===k)+'">'+t+'</button>').join('')+'</div>';
   h+=TAB==='actions'?actionsHtml(ven,d):TAB==='report'?reportView(ven,d):runHtml(ven,d);
   app.innerHTML=h;
   if(fk){const el=app.querySelector('[data-fk="'+CSS.escape(fk)+'"]');if(el)el.focus()}}
 
+/* ---------- session clock: elapsed time against a budget per section, so back office isn't squeezed out ---------- */
+const hm=ms=>{const m=Math.max(0,Math.round(ms/60000));return Math.floor(m/60)+':'+String(m%60).padStart(2,'0')};
+function clockInfo(ven,d){const c=d.clock||{},on=!!(c.t0&&!c.t1),el=c.t0?((c.t1||Date.now())-c.t0):0;
+  const secs=RUN.filter(s=>s.min&&s.steps.some(x=>applies(ven,x)));const plan=secs.reduce((a,s)=>a+s.min,0);
+  // current section: the first timed one not yet fully covered
+  const cur=secs.find(s=>{const p=prog(ven,d,s.steps.filter(x=>applies(ven,x)));return p.done<p.total})||null;
+  let by=0;for(const s of secs){by+=s.min;if(s===cur)break}
+  const over=c.t0&&cur?Math.round(el/60000)-by:0,boh=secs.find(s=>s.id==='tro'),bohLeft=boh?prog(ven,d,boh.steps.filter(x=>applies(ven,x))):null;
+  let warn='';
+  if(c.t0&&cur&&cur.id!=='tro'&&boh&&bohLeft.done<bohLeft.total&&plan*60000-el<boh.min*60000*0.6)warn='Not much time left for Back Office. Speed up, or book Back Office as a separate session.';
+  else if(over>=10)warn=cur.t+' is running '+over+' min over its budget.';
+  return{c,on,el,plan,cur,by,over,warn}}
+function clockHtml(ven,d,dis){const k=clockInfo(ven,d);
+  return'<span class="ts-ck-t"><b>'+(k.c.t0?hm(k.el):'0:00')+'</b> of about '+hm(k.plan*60000)+' planned'+(k.cur&&k.c.t0?' · now: '+esc(k.cur.t)+' (budget to here '+hm(k.by*60000)+')':'')+'</span>'+
+    (dis?'':'<span class="ts-ck-b">'+(k.on?'<button type="button" class="ts-sec" data-clock="stop">Pause clock</button>':'<button type="button" class="ts-sec" data-clock="start">'+(k.c.t0?'Resume clock':'Start session clock')+'</button>')+
+    (k.c.t0?'<button type="button" class="ts-link" data-clock="reset">Reset</button>':'')+'</span>')+
+    (k.warn?'<span class="ts-ck-w" role="status">'+esc(k.warn)+'</span>':'')}
+setInterval(()=>{const el=$('ts-clock'),ven=venue();if(!el||!ven||document.hidden)return;const d=D();if(d.clock&&d.clock.t0&&!d.clock.t1)el.innerHTML=clockHtml(ven,d,RO()?' disabled':'')},20000);
 function runHtml(ven,d){let nav='',body='';const dis=RO()?' disabled':'';
   RUN.forEach(s=>{const L=s.steps.filter(x=>applies(ven,x));if(!L.length)return;const p=prog(ven,d,L);
-    nav+='<button type="button" data-jump="'+s.id+'" class="'+(p.done===p.total?'done':'')+'">'+esc(s.t)+'<span>'+p.done+'/'+p.total+'</span></button>';
+    nav+='<button type="button" data-jump="'+s.id+'" class="'+(p.done===p.total?'done':'')+'">'+esc(s.t)+'<span>'+(s.min?'~'+s.min+' min · ':'')+p.done+'/'+p.total+'</span></button>';
     body+='<section class="ts-sec" id="ts-s-'+s.id+'"><h3>'+esc(s.t)+'</h3>'+(s.d?'<p>'+esc(s.d)+'</p>':'')+L.map(x=>stepHtml(d,x,dis)).join('')+'</section>'});
   body+='<section class="ts-sec"><h3>General session notes</h3><textarea data-gnote data-fk="gnote" placeholder="Anything that doesn’t belong to one step"'+dis+'>'+esc(d.gnote||'')+'</textarea></section>';
   return'<div class="ts-grid"><nav class="ts-nav" aria-label="Run sheet sections">'+nav+'</nav><div>'+body+'</div></div>'}
@@ -6885,6 +6985,8 @@ function wire(){const app=$('ts-app');if(!app||app.dataset.w)return;app.dataset.
   app.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
     if(b.dataset.tick){e.preventDefault();const id=b.dataset.tick;save({ticks:{[id]:tick(D(),id)===1?0:1}});return}
     if(b.dataset.na){const id=b.dataset.na;save({ticks:{[id]:tick(D(),id)==='na'?0:'na'}});return}
+    if(b.dataset.clock){const c=D().clock||{},n=Date.now(),k=b.dataset.clock;
+      save({clock:k==='start'?{t0:c.t0&&c.t1?n-(c.t1-c.t0):n,t1:0}:k==='stop'?{t0:c.t0,t1:n}:{t0:0,t1:0}});return}
     if(b.dataset.tab){TAB=b.dataset.tab;ls.set('ts-tab',TAB);render();return}
     if(b.dataset.jump){const s=$('ts-s-'+b.dataset.jump);if(s)s.scrollIntoView({behavior:'smooth'});return}
     if(b.dataset.goto){TAB='run';ls.set('ts-tab',TAB);OPEN.add(b.dataset.goto);render();const el=app.querySelector('[data-sid="'+b.dataset.goto+'"]');if(el)el.scrollIntoView({block:'center'});return}
@@ -8175,7 +8277,9 @@ function draw(){if(location.hash.slice(1)!=='hypercare')return;const a=OV.active
     (a&&!L.some(x=>x.o.id===a.id)?'<p class="lx-small"><button type="button" class="lx-link" data-v="'+esc(a.id)+'">Show '+esc(a.name)+'</button></p>':'')+'</aside>'+
     '<section class="hc-main">'+(o?venueHtml(o):'<p class="lx-muted">Pick a venue at the top or from the list.</p>')+'</section></div>'+insights()}
 function venueHtml(o){const st=state(o),L=issues(o),ro=OV.readOnly,open=L.filter(x=>x.status!=='closed');
-  return '<div class="hc-vhead"><div><h2>'+esc(o.name||'Untitled')+'</h2><p class="lx-muted">'+esc(st.label)+(st.s?' · went live '+esc(fmt(st.s)):'')+'</p></div>'+
+  // with open issues, show when the venue last heard from us: long silences are what turn issues into escalations
+  const cu=o.cu&&o.cu.at,cd=cu?Math.floor((Date.now()-cu)/864e5):null,cuLine=open.length?'<p class="lx-small hc-cu'+(cd==null||cd>=2?' late':'')+'">'+(cu?'Customer last updated '+(cd===0?'today':cd===1?'yesterday':cd+' days ago'):'No customer update recorded')+(cd==null||cd>=2?': they’re waiting on us.':'.')+(ro?'':' <button type="button" class="lx-link" data-a="cu">I’ve updated them today</button>')+'</p>':'';
+  return '<div class="hc-vhead"><div><h2>'+esc(o.name||'Untitled')+'</h2><p class="lx-muted">'+esc(st.label)+(st.s?' · went live '+esc(fmt(st.s)):'')+'</p>'+cuLine+'</div>'+
     (st.k==='on'?'<div class="hc-days" aria-label="'+esc(st.label)+'">'+Array.from({length:st.n},(_,i)=>'<i class="'+(i<st.day?'on':'')+'"></i>').join('')+'</div>':'')+'</div>'+
     (ro?'':'<form class="hc-add" id="hc-add"><label class="hc-t">What happened<input id="hc-t" required maxlength="200" placeholder="e.g. Pizza dockets printing at the bar"></label>'+
       '<label>About<select id="hc-area">'+AREAS.map(([k,t])=>'<option value="'+k+'">'+esc(t)+'</option>').join('')+'</select></label>'+
@@ -8211,6 +8315,7 @@ root.addEventListener('click',e=>{const v=e.target.closest('[data-v]');if(v){SEL
     patch(o.id,{issues:{[iid]:{status:'closed',fix,cause,closedAt:Date.now(),closedBy:OV.me()||''}}},'Hypercare: closed “'+x.t+'”')}
   else if(a==='reopenIssue'&&x)patch(o.id,{issues:{[iid]:{status:'open',closedAt:null}}},'Hypercare: reopened “'+x.t+'”');
   else if(a==='del'&&x){if(confirm('Delete “'+x.t+'”? Use this for issues logged by mistake; close real ones instead.'))patch(o.id,{issues:{[iid]:{t:'',deleted:Date.now()}}},'Hypercare: deleted “'+x.t+'”')}
+  else if(a==='cu'){if(OV.markUpdated)OV.markUpdated(o.id);draw()}
   else if(a==='end'){const n=issues(o).filter(z=>z.status!=='closed').length;if(n&&!confirm(n+' issue'+(n===1?' is':'s are')+' still open. End hypercare anyway?'))return;
     OV.save(o.id,{hc:{ended:today()},stage:'done'},{text:'Hypercare ended; handed over to support'});if(window.mhEmails&&confirm('Write the handover email now?'))setTimeout(()=>{if(OV.activeId!==o.id)OV.setActive(o.id);window.mhEmails()},50)}
   else if(a==='reopen')patch(o.id,{ended:null},'Hypercare reopened')});
@@ -8262,13 +8367,16 @@ function workload(){const A=active(),t=today(),W=6,start=new Date(t+'T00:00');st
   const cell=(p,w)=>{const L=ev.filter(e=>e.p===p&&dd(w,e.d)>=0&&dd(w,e.d)<7).sort((a,b)=>a.d.localeCompare(b.d));
     return '<td>'+L.map(e=>'<button type="button" class="tm-ev '+e.k+'" data-o="'+esc(e.o.id)+'" title="'+esc(lab(e))+'">'+(e.k==='golive'?IC('zap'):IC('presentation'))+esc(new Date(e.d+'T00:00').toLocaleDateString('en-AU',{weekday:'short',day:'numeric'}))+' '+esc(e.o.name||'')+'</button>').join('')+'</td>'};
   const soon=o=>o.golive&&dd(t,o.golive)>=0&&dd(t,o.golive)<=14;
-  return (clash.length?'<div class="tm-clash" role="alert">'+IC('triangle-alert')+'<div><b>'+clash.length+' clash'+(clash.length===1?'':'es')+'</b><ul>'+clash.map(c=>'<li>'+esc(c.p)+': '+esc(lab(c.a))+' and '+esc(lab(c.b))+'</li>').join('')+'</ul></div></div>':'')+
+  // waiting on us: venues with no customer update for 2+ days (Setup Tracker → "I've updated them today")
+  const wait=A.map(o=>({o,w:OV.wait?OV.wait(o.id):null})).filter(x=>x.w&&x.w.late).sort((a,b)=>b.w.days-a.w.days);
+  return (wait.length?'<div class="tm-clash" role="status">'+IC('clock')+'<div><b>'+wait.length+' venue'+(wait.length===1?' is':'s are')+' waiting on us</b> (no customer update for '+2+'+ days)<ul>'+wait.map(x=>'<li><button type="button" class="lx-link" data-o="'+esc(x.o.id)+'">'+esc(x.o.name||'Untitled')+'</button>: '+x.w.days+' days'+(x.w.never?' since it was added':'')+' · '+esc(person(x.o))+'</li>').join('')+'</ul></div></div>':'')+
+    (clash.length?'<div class="tm-clash" role="alert">'+IC('triangle-alert')+'<div><b>'+clash.length+' clash'+(clash.length===1?'':'es')+'</b><ul>'+clash.map(c=>'<li>'+esc(c.p)+': '+esc(lab(c.a))+' and '+esc(lab(c.b))+'</li>').join('')+'</ul></div></div>':'')+
     (A.length?'<div class="tm-cal"><table><thead><tr><th>Person</th>'+weeks.map(w=>'<th>Week of '+esc(new Date(w+'T00:00').toLocaleDateString('en-AU',{day:'numeric',month:'short'}))+'</th>').join('')+'</tr></thead><tbody>'+
       names.map(p=>'<tr><th>'+esc(p)+'<small>'+people.get(p).length+' venue'+(people.get(p).length===1?'':'s')+'</small></th>'+weeks.map(w=>cell(p,w)).join('')+'</tr>').join('')+'</tbody></table></div>':'<p class="lx-muted">No venues in progress.</p>')+
     '<div class="tm-cols">'+names.map(p=>{const L=people.get(p).sort((a,b)=>(a.golive||'9999').localeCompare(b.golive||'9999'));
       return '<section class="tm-col"><h2>'+IC(p==='Unassigned'?'user-x':'user')+esc(p)+' <span class="lx-muted lx-small">'+L.length+' active · '+L.filter(soon).length+' live in 14 days</span></h2><ul>'+L.map(o=>{const pr=OV.progress(o.id),late=OV.late(o.id),open=HC()?HC().issues(o).filter(x=>x.status!=='closed').length:0;
         return '<li><button type="button" class="tm-v" data-o="'+esc(o.id)+'"><b>'+esc(o.name||'Untitled')+'</b><span>'+esc(OV.stage(o.id))+(o.golive?' · go-live '+esc(fmt(o.golive)):' · no go-live date')+'</span>'+
-          '<span class="tm-mini"><i style="width:'+pr.pct+'%"></i></span><span class="tm-tags">'+(late?'<em class="bad">'+late+' overdue</em>':'')+(open?'<em class="warn">'+open+' open issue'+(open===1?'':'s')+'</em>':'')+(soon(o)?'<em class="on">soon</em>':'')+'</span></button></li>'}).join('')+'</ul></section>'}).join('')+'</div>'+
+          '<span class="tm-mini"><i style="width:'+pr.pct+'%"></i></span><span class="tm-tags">'+(late?'<em class="bad">'+late+' overdue</em>':'')+((w=>w&&w.late?'<em class="warn">'+w.days+'d no update</em>':'')(OV.wait?OV.wait(o.id):null))+(open?'<em class="warn">'+open+' open issue'+(open===1?'':'s')+'</em>':'')+(soon(o)?'<em class="on">soon</em>':'')+'</span></button></li>'}).join('')+'</ul></section>'}).join('')+'</div>'+
     '<p class="lx-muted lx-small">The person is the venue’s owner in the Setup Tracker. Set it on the venue’s checklist page.</p>'}
 
 /* ---------- metrics ---------- */

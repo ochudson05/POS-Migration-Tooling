@@ -38,6 +38,9 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
 .ts-prog{display:flex;gap:8px;align-items:center;font-size:.88rem;font-variant-numeric:tabular-nums}
 .ts-bar{display:block;width:160px;height:8px;border-radius:4px;background:var(--line);overflow:hidden}.ts-bar i{display:block;height:100%;background:var(--ok)}
 .ts-chips{display:flex;flex-wrap:wrap;gap:6px}
+.ts-clock{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);font-size:.88rem}
+.ts-clock .ts-ck-t b{font-variant-numeric:tabular-nums;font-size:1rem}.ts-clock .ts-ck-b{display:flex;gap:10px;align-items:center}
+.ts-clock button{margin:0;display:inline-block}.ts-ck-w{flex-basis:100%;color:var(--warn,#b26a00);font-weight:600}
 .ts-chip{font-size:.76rem;padding:2px 9px;border-radius:99px;border:1px solid var(--line);background:var(--bg);color:var(--text);white-space:nowrap}
 .ts-chip.ok{border-color:var(--ok);color:var(--ok)}.ts-chip.w{border-color:var(--warn);color:var(--warn)}.ts-chip.a{border-color:var(--accent);color:var(--accent)}
 .ts-tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin:16px 0}
@@ -115,42 +118,47 @@ const FLAGS=[['ecom','Online store'],['mpos','mPOS'],['kds','KDS'],['kiosk','Kio
 
 /* ---------- the run sheet (Before → Welcome → POS → Back Office → Reporting → Conclusion) ---------- */
 const RUN=[
-{id:'trb',t:'Before the session',d:'Get the account ready to demo, but leave some building for the customer to do in the session.',steps:[
+{id:'trb',t:'Before the session',min:0,d:'Get the account ready to demo, but leave some building for the customer to do in the session.',steps:[
   {id:'trb-menu',t:'Load the basic menu',info:['Create some options, variations and combos so you can demo them, but leave some for the customer to create during the session.'],subs:['Basic menu in the account','Some options / variations / combos made for the demo','Some left for the customer to create'],guides:['create-modifiers-and-option-groups','create-variant-groups','create-a-standard-combo']},
   {id:'trb-ecom',when:'ecom',t:'Set up the online store',info:['Set the online store up to the best of your knowledge, and enable online ordering in the POS.'],subs:['Online store set up','Online ordering enabled in the POS'],guides:['create-an-oolio-online-store','create-an-online-menu']},
   {id:'trb-features',t:'Enable the features they’ll see',info:['Turn on every feature and device the customer needs to see. Tick the ones this venue uses.'],subs:['KDS','Customer display (CFD)','mPOS','Floor plan','Seats','Courses','Loyalty'],guides:['configure-kitchen-display-screen','configure-customer-display-settings','configure-mpos','configure-sections-tables','configure-seat-management','create-courses','configure-loyalty']},
+  {id:'trb-printers',t:'Printers ready, or virtual printers',info:['Have the venue’s printers set up (or virtual printers) before you demo, or “print failed” pop-ups interrupt the whole session.'],links:[['How to enable a virtual printer (internal)','https://internal.oolio.com/oolioplatform/how-to-enable-a-virtual-printer']]},
+  {id:'trb-test',t:'Make a test product',info:['Build a test product (for example “Test Toast”) to demo with, rather than editing their real menu.']},
 ]},
-{id:'trw',t:'Welcome and discovery',steps:[
-  {id:'trw-teams',t:'Remote: customer joined in the Teams app',info:['If the session is remote, make sure they joined through the Teams app (not the browser), so they can take control later.']},
+{id:'trw',t:'Welcome and discovery',min:10,steps:[
+  {id:'trw-teams',t:'Remote: customer joined in the Teams app',info:['If the session is remote, make sure they joined through the Teams app (not the browser), so they can take control later.','Turn on speaker identification so the transcript shows who said what.','Bad audio: ask them to rejoin without headphones, and use the chat.']},
+  {id:'trw-know',t:'Ask what they already know',info:['Ask early whether they know the difference between products, variants and options. If they do, skip the basics and spend the time on their menu.']},
   {id:'trw-agenda',t:'Explain the agenda',info:['By the end: they know how to use the software, how to maintain the setup, and the system is set up ready for trade.']},
   {id:'trw-modes',t:'Confirm ordering modes and prompts',info:['Tables, pickup, takeaway…, and any prompts needed.'],ph:'Modes: tables, pickup…  Prompts: table number, name…',guides:['place-a-dine-in-order','place-a-pickup-order','place-a-takeaway-order']},
   {id:'trw-print',t:'Confirm what prints where, and test it',info:['Open the hardware diagram with the customer and confirm every printer and device.','Confirm routing (coffees to the bar printer, etc.), set it up and test it during the session.'],subs:['Hardware diagram walked through','Routing confirmed','Set up in Back Office','Test print on every printer'],ph:'What prints where',guides:['configure-printer-profiles','configure-device-profiles','troubleshoot-printing-issues-in-pos']},
   {id:'trw-modules',t:'Confirm other modules',info:['Online store, KDS, kiosk, mPOS, customer display…'],ph:'Modules they’ll use'},
   {id:'trw-other',t:'Check any other info needed',info:['Loyalty, gift cards, integrations, anything else.']},
 ]},
-{id:'trp',t:'POS',steps:[
+{id:'trp',t:'POS',min:45,steps:[
   {id:'trp-order',t:'Layout and ordering',subs:['General layout (pages on the left, products inside pages)','Order a product','…with variations','…with options: required vs optional configs','Order multiple of a product','Delete a product from the cart, or the whole cart','Adjust the price, add notes'],guides:['get-started-with-oolio-one-pos','place-a-dine-in-order']},
   {id:'trp-send',t:'Sending vs paying the order',info:['Explain the prompt options for table number or name.'],guides:['place-a-pickup-order','place-a-takeaway-order']},
   {id:'trp-dockets',t:'Show what the dockets look like',info:['Use a virtual printer if there’s no printer on site.'],links:[['How to enable a virtual printer (internal)','https://internal.oolio.com/oolioplatform/how-to-enable-a-virtual-printer']]},
   {id:'trp-pay',t:'Payments, receipts and customers',subs:['Each payment type','When Manual EFT might be used','Split bills and part payments','Receipt options','Add a customer to an order, touch on loyalty'],guides:['process-a-split-bill','create-customers','enrol-in-loyalty']},
   {id:'trp-open',t:'Open orders and reprinting dockets',guides:['view-open-orders']},
-  {id:'trp-fmap',t:'Function map (bottom of screen)',subs:['Void product vs void cart (it’s permissioned)','Discounts / surcharges','Note on a product or the whole order','Quickpay buttons','Print options'],guides:['void-products-or-orders','create-and-customise-function-maps']},
+  {id:'trp-fmap',t:'Function map (bottom of screen)',subs:['Void product vs void cart (it’s permissioned)','Discounts / surcharges','Note on a product or the whole order','Quickpay buttons','Print options','Hold print: several orders paid separately, one docket','Order notes print at the top, item notes under the item (hidden on receipts)'],guides:['void-products-or-orders','create-and-customise-function-maps']},
   {id:'trp-mgr',t:'Manager functions',subs:['Print shift summary','Money in / out and what it’s used for','End shift button (come back to it later)','Item availability: syncs with kiosk, online store and integrators','Switch menu','Scheduled surcharge (public holidays etc.)'],guides:['use-cash-events','understand-the-shift-summary','track-items-availability','disable-a-scheduled-surcharge']},
   {id:'trp-icons',t:'Printer and heartbeat icons',info:['What the printer and heartbeat icons at the top mean, and how to sync from Back Office.','The heartbeat is also how they’ll know the POS is offline.'],guides:['troubleshoot-printing-issues-in-pos','operate-in-offline-mode']},
-  {id:'trp-nav',t:'Navigation bar',subs:['Order history: refunds (card refunds go back to the customer’s account)','Re-send a receipt','Customers','Manage cash','Switch user, or auto logout after each transaction','Shifts and how to reconcile','How to access Support'],guides:['view-completed-orders','process-a-refund','close-a-shift','understand-the-reconciliation-report']},
+  {id:'trp-nav',t:'Navigation bar',subs:['Order history: refunds (card refunds go back to the customer’s account)','Re-send a receipt','Customers','Manage cash','Switch user, or auto logout after each transaction','Shifts and how to reconcile','How to access Support','Refunds go back to the original payment type','Order timeline: who did what, and when'],guides:['view-completed-orders','process-a-refund','close-a-shift','understand-the-reconciliation-report']},
+  {id:'trp-fix',t:'Quick fixes and support',info:['Most problems are fixed by Force Sync Menu and Sync Settings, at the bottom of the first Settings page (about 9 in 10).','Then the Support button: an AI chat with the help guides; ask it for a person if needed.'],subs:['Force Sync Menu + Sync Settings shown','Support button shown','Don’t press System Log Out (it drops the device back to choosing a profile)','Training mode is per device and doesn’t report']},
   {id:'trp-online',when:'ecom',t:'Online orders in the POS',info:['Put the store into training mode and submit a test order, so they see it arrive.'],subs:['Training mode on','Test order submitted','How online orders come in','Set delay and pause orders','Item availability','Training mode off again'],guides:['manage-online-orders-in-pos','track-items-availability']},
   {id:'trp-kds',when:'kds',t:'KDS and its settings',guides:['manage-orders-on-kitchen-display-screen-','manage-kitchen-display-settings']},
   {id:'trp-mpos',when:'mpos',t:'mPOS',guides:['place-an-order-on-mpos','process-a-payment-on-mpos']},
   {id:'trp-kiosk',when:'kiosk',t:'Kiosk',guides:['configure-kiosk']},
 ]},
-{id:'tro',t:'Back Office',d:'Once users are done, hand control to the customer and let them drive.',steps:[
+{id:'tro',t:'Back Office',min:75,d:'Once users are done, hand control to the customer and let them drive.',steps:[
   {id:'tro-access',t:'Getting to Back Office',info:['From the POS, or via oolio.io.']},
-  {id:'tro-users',t:'Users',info:['Check the owner already has a user and can log in. Create any other users and make sure the customer gets the email and can log in.','From here on, hand control to the customer.'],subs:['Owner has a user and can log in','Other users created','Customer received the email and logged in','Control handed to the customer'],guides:['create-a-user','managing-user-roles']},
+  {id:'tro-users',t:'Users',info:['Check the owner already has a user and can log in. Create any other users and make sure the customer gets the email and can log in.','From here on, hand control to the customer.'],subs:['Owner has a user and can log in','Other users created','Customer received the email and logged in','Control handed to the customer','Custom roles instead of the defaults (too permissive)'],guides:['create-a-user','managing-user-roles']},
+  {id:'tro-vdev',t:'Virtual devices for the owners',info:['Make a virtual device (for example “Owner’s PC”) so owners can try the POS safely.','Logging into the venue’s real device profile from a PC logs the tablet out.']},
   {id:'tro-rg',t:'Reporting groups',info:['Explain what they’re for. Keep them high level: Food, Beverage, Retail.'],guides:['create-product-groups-categories-and-reporting-groups']},
   {id:'tro-cat',t:'Categories',info:['Explain what they’re for and add any missing from the pre-work.'],guides:['create-product-groups-categories-and-reporting-groups']},
-  {id:'tro-var',t:'Variations',info:['Explain what they’re for and add any missed from the pre-work.'],guides:['create-variant-groups']},
-  {id:'tro-opt',t:'Option groups',info:['Remind them what an option is and the configs; jump back into the POS to demo if needed.','Create all the option groups and options they need.'],guides:['create-modifiers-and-option-groups']},
-  {id:'tro-prod',t:'Products',info:['Most of the session’s time should be spent here.','Suggest they pick the Category in the filter before adding a product, and explain why the Category matters.'],subs:['Filters along the top, create / edit / delete buttons','Select the Category filter before adding','Basic product: every required field explained','Product with options: attach configs shown','Product with variations','Customer goes through the whole menu (options, pricing)','Combos created'],guides:['create-standard-products','copy-a-product','bulk-edit-products','create-a-standard-combo','create-a-portion-combo']},
+  {id:'tro-var',t:'Variations',info:['Explain what they’re for and add any missed from the pre-work.','Adding a variant can’t be undone, and a variant can’t have variants: agree the structure before changing anything.'],guides:['create-variant-groups']},
+  {id:'tro-opt',t:'Option groups',info:['Remind them what an option is and the configs; jump back into the POS to demo if needed.','Create all the option groups and options they need.','Option groups can’t be deleted at the moment, so check before creating extras.'],guides:['create-modifiers-and-option-groups']},
+  {id:'tro-prod',t:'Products',info:['Most of the session’s time should be spent here.','Suggest they pick the Category in the filter before adding a product, and explain why the Category matters.'],subs:['Filters along the top, create / edit / delete buttons','Select the Category filter before adding','Basic product: every required field explained','Location set on the Inventory tab (or the item won’t show)','Product with options: attach configs shown','Product with variations','Customer goes through the whole menu (options, pricing)','Combos created'],guides:['create-standard-products','copy-a-product','bulk-edit-products','create-a-standard-combo','create-a-portion-combo']},
   {id:'tro-menu',t:'Menus and layouts',info:['They can have a different menu per device, online store or kiosk, and several menus can use the same products.'],subs:['Menu created','Pages created with categories or products','Menu layout: pages and products moved and coloured'],guides:['create-a-pos-menu','create-an-online-menu']},
   {id:'tro-price',t:'Price lists',info:['Explain what they’re for, set up any needed and show how to schedule one.'],guides:['create-price-lists']},
   {id:'tro-disc',t:'Discounts and surcharges',info:['Set up any needed and show how to schedule them.'],subs:['Discounts / surcharges set up','Scheduling shown','Public holiday surcharge for the next 12 months'],guides:['create-a-discount','create-a-surcharge','disable-a-scheduled-surcharge']},
@@ -159,7 +167,7 @@ const RUN=[
   {id:'tro-ecom',when:'ecom',t:'Online store setup',subs:['Sync & Save','Brand colour and logo','Opening hours','Settings','Discounts / surcharges','Orders arriving in POS, set delay and pause shown','Item availability tested'],guides:['create-an-oolio-online-store','create-an-online-menu','manage-online-orders-in-pos']},
   {id:'tro-integ',when:'integ',t:'Plan the integrations',info:['For example: “please have SevenRooms send us the credentials and we’ll reach out to you for training”.'],ph:'Which integrations, and the plan',guides:['connect-xero-to-oolio-one','connect-deputy-to-oolio-one','connect-doshii-to-oolio-one','connect-uber-eats-or-doordash-to-oolio-one']},
 ]},
-{id:'trr',t:'Reporting',steps:[
+{id:'trr',t:'Reporting',min:15,steps:[
   {id:'trr-insights',t:'Insights',subs:['Insights web shown','Insights mobile app downloaded'],guides:['configure-oolio-one-insights-and-widgets']},
   {id:'trr-products',t:'Products report',info:['Show the filters and how drag-to-group works.'],guides:['understand-the-product-report-']},
   {id:'trr-sales',t:'Sales summary',info:['Show how to enable more columns and save the layout.','Explain Net Sales vs Sales Amount vs Amount Collected.'],guides:['understand-the-sales-summary-report','save-and-schedule-reports']},
@@ -167,7 +175,7 @@ const RUN=[
   {id:'trr-pay',t:'Payments reports',info:['Explain settlements (next business day) and point out Cost of Transactions.'],guides:['understand-the-payments-report']},
   {id:'trr-emails',t:'Daily and shift summary recipients',info:['Confirm who should get them.'],ph:'Who gets the summaries',guides:['configure-shift-settings']},
 ]},
-{id:'trc',t:'Conclusion',steps:[
+{id:'trc',t:'Conclusion',min:10,steps:[
   {id:'trc-qs',t:'Questions or concerns',info:['Check for any questions or concerns.'],ph:'Questions raised'},
   {id:'trc-ready',t:'Ready for trade?',ready:true,info:['If not, note what still needs doing and the plan for how the customer will finish it.']},
   {id:'trc-support',t:'Support details and follow-up email',subs:['Support details reiterated','Told them a follow-up email is coming']},
@@ -224,15 +232,34 @@ function render(){const app=$('ts-app');if(!app)return;if(typing()){DIRTY=true;r
     '<div class="ts-row ts-small">'+(ven.local?'<span class="ts-muted">Sold:</span>'+FLAGS.map(([k,t])=>'<label style="display:flex;gap:4px;align-items:center"><input type="checkbox" data-lflag="'+k+'"'+(ven.flags[k]?' checked':'')+'>'+t+'</label>').join(''):
       '<span class="ts-muted">Sold: '+(sold.length?esc(sold.join(', ')):'nothing extra ticked')+' (set in Setup Tracker)</span>')+
     '<label style="display:flex;gap:4px;align-items:center;margin-left:auto"><input type="checkbox" data-all'+(SHOWALL?' checked':'')+'>Show every step</label></div>'+
-    (d.finished?'<div class="ts-chips"><span class="ts-chip ok">Finished '+esc(fmtD(new Date(d.finished).toISOString()))+'</span></div>':'')+'</div>';
+    (d.finished?'<div class="ts-chips"><span class="ts-chip ok">Finished '+esc(fmtD(new Date(d.finished).toISOString()))+'</span></div>':'')+
+    '<div class="ts-clock" id="ts-clock">'+clockHtml(ven,d,dis)+'</div></div>';
   h+='<div class="ts-tabs" role="tablist">'+[['run','Run sheet'],['actions','Action items'+(openA?' ('+openA+')':'')],['report','Report']].map(([k,t])=>'<button type="button" class="ts-tab" role="tab" data-tab="'+k+'" aria-selected="'+(TAB===k)+'">'+t+'</button>').join('')+'</div>';
   h+=TAB==='actions'?actionsHtml(ven,d):TAB==='report'?reportView(ven,d):runHtml(ven,d);
   app.innerHTML=h;
   if(fk){const el=app.querySelector('[data-fk="'+CSS.escape(fk)+'"]');if(el)el.focus()}}
 
+/* ---------- session clock: elapsed time against a budget per section, so back office isn't squeezed out ---------- */
+const hm=ms=>{const m=Math.max(0,Math.round(ms/60000));return Math.floor(m/60)+':'+String(m%60).padStart(2,'0')};
+function clockInfo(ven,d){const c=d.clock||{},on=!!(c.t0&&!c.t1),el=c.t0?((c.t1||Date.now())-c.t0):0;
+  const secs=RUN.filter(s=>s.min&&s.steps.some(x=>applies(ven,x)));const plan=secs.reduce((a,s)=>a+s.min,0);
+  // current section: the first timed one not yet fully covered
+  const cur=secs.find(s=>{const p=prog(ven,d,s.steps.filter(x=>applies(ven,x)));return p.done<p.total})||null;
+  let by=0;for(const s of secs){by+=s.min;if(s===cur)break}
+  const over=c.t0&&cur?Math.round(el/60000)-by:0,boh=secs.find(s=>s.id==='tro'),bohLeft=boh?prog(ven,d,boh.steps.filter(x=>applies(ven,x))):null;
+  let warn='';
+  if(c.t0&&cur&&cur.id!=='tro'&&boh&&bohLeft.done<bohLeft.total&&plan*60000-el<boh.min*60000*0.6)warn='Not much time left for Back Office. Speed up, or book Back Office as a separate session.';
+  else if(over>=10)warn=cur.t+' is running '+over+' min over its budget.';
+  return{c,on,el,plan,cur,by,over,warn}}
+function clockHtml(ven,d,dis){const k=clockInfo(ven,d);
+  return'<span class="ts-ck-t"><b>'+(k.c.t0?hm(k.el):'0:00')+'</b> of about '+hm(k.plan*60000)+' planned'+(k.cur&&k.c.t0?' · now: '+esc(k.cur.t)+' (budget to here '+hm(k.by*60000)+')':'')+'</span>'+
+    (dis?'':'<span class="ts-ck-b">'+(k.on?'<button type="button" class="ts-sec" data-clock="stop">Pause clock</button>':'<button type="button" class="ts-sec" data-clock="start">'+(k.c.t0?'Resume clock':'Start session clock')+'</button>')+
+    (k.c.t0?'<button type="button" class="ts-link" data-clock="reset">Reset</button>':'')+'</span>')+
+    (k.warn?'<span class="ts-ck-w" role="status">'+esc(k.warn)+'</span>':'')}
+setInterval(()=>{const el=$('ts-clock'),ven=venue();if(!el||!ven||document.hidden)return;const d=D();if(d.clock&&d.clock.t0&&!d.clock.t1)el.innerHTML=clockHtml(ven,d,RO()?' disabled':'')},20000);
 function runHtml(ven,d){let nav='',body='';const dis=RO()?' disabled':'';
   RUN.forEach(s=>{const L=s.steps.filter(x=>applies(ven,x));if(!L.length)return;const p=prog(ven,d,L);
-    nav+='<button type="button" data-jump="'+s.id+'" class="'+(p.done===p.total?'done':'')+'">'+esc(s.t)+'<span>'+p.done+'/'+p.total+'</span></button>';
+    nav+='<button type="button" data-jump="'+s.id+'" class="'+(p.done===p.total?'done':'')+'">'+esc(s.t)+'<span>'+(s.min?'~'+s.min+' min · ':'')+p.done+'/'+p.total+'</span></button>';
     body+='<section class="ts-sec" id="ts-s-'+s.id+'"><h3>'+esc(s.t)+'</h3>'+(s.d?'<p>'+esc(s.d)+'</p>':'')+L.map(x=>stepHtml(d,x,dis)).join('')+'</section>'});
   body+='<section class="ts-sec"><h3>General session notes</h3><textarea data-gnote data-fk="gnote" placeholder="Anything that doesn’t belong to one step"'+dis+'>'+esc(d.gnote||'')+'</textarea></section>';
   return'<div class="ts-grid"><nav class="ts-nav" aria-label="Run sheet sections">'+nav+'</nav><div>'+body+'</div></div>'}
@@ -340,6 +367,8 @@ function wire(){const app=$('ts-app');if(!app||app.dataset.w)return;app.dataset.
   app.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
     if(b.dataset.tick){e.preventDefault();const id=b.dataset.tick;save({ticks:{[id]:tick(D(),id)===1?0:1}});return}
     if(b.dataset.na){const id=b.dataset.na;save({ticks:{[id]:tick(D(),id)==='na'?0:'na'}});return}
+    if(b.dataset.clock){const c=D().clock||{},n=Date.now(),k=b.dataset.clock;
+      save({clock:k==='start'?{t0:c.t0&&c.t1?n-(c.t1-c.t0):n,t1:0}:k==='stop'?{t0:c.t0,t1:n}:{t0:0,t1:0}});return}
     if(b.dataset.tab){TAB=b.dataset.tab;ls.set('ts-tab',TAB);render();return}
     if(b.dataset.jump){const s=$('ts-s-'+b.dataset.jump);if(s)s.scrollIntoView({behavior:'smooth'});return}
     if(b.dataset.goto){TAB='run';ls.set('ts-tab',TAB);OPEN.add(b.dataset.goto);render();const el=app.querySelector('[data-sid="'+b.dataset.goto+'"]');if(el)el.scrollIntoView({block:'center'});return}

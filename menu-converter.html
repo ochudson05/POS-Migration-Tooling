@@ -64,6 +64,8 @@ details summary{cursor:pointer;font-size:.85rem;color:var(--muted)}
 .pf details{margin:8px 0 0}.pf summary{cursor:pointer;font-size:.9rem}.pf summary b{font-variant-numeric:tabular-nums}
 .pf ul{margin:4px 0 0;padding-left:18px;font-size:.82rem;color:var(--muted);max-height:180px;overflow:auto}
 .pf .pf-how{font-size:.82rem;color:var(--muted);margin:2px 0 0 18px}
+.pf .pf-info{margin-top:8px;padding-top:6px;border-top:1px dashed var(--line,#ddd)}
+.splitbox{margin:0 0 10px;padding:8px 10px;border:1px solid var(--line,#ddd);border-radius:8px}.splitbox .ck{margin:4px 0 0}
 .pf .pf-btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.pf .pf-btns button{margin:0}
 .pf-n{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.pf-n span{font-size:.8rem;padding:2px 9px;border-radius:99px;border:1px solid var(--line);background:var(--card)}
 #dropov{position:fixed;inset:0;z-index:9999;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);pointer-events:none}#dropov.on{display:flex}
@@ -188,6 +190,10 @@ Double Shot=60</textarea></div>
 <div id="kidbox" class="kidbox"><label class="ck"><input type="checkbox" id="kidsz" checked><b>Kids sizes: make kids items a “Kids Size” variant of the main product</b></label>
 <div id="kidmsg" class="kidmsg"></div></div>
 <label class="ck" style="margin:0 0 10px"><input type="checkbox" id="flavvar">Override: make flavours variants too, not just sizes (Chocolate, Vanilla and Strawberry Milkshake become variants of a Milkshake product in a “Milkshake Flavours” variant group). Off by default.</label>
+<div class="splitbox"><b>Split sizes into separate products for:</b>
+<label class="ck"><input type="checkbox" id="splitbeer">Tap beer (Pot / Schooner / Pint become their own products)</label>
+<label class="ck"><input type="checkbox" id="splitpasta">Pasta (Small / Large pasta become their own products)</label>
+<div class="warn" style="margin:2px 0 0">Some venues report and print these better as separate products; coffee and cake usually keep their sizes. Adding a variant in Oolio One can’t be undone, so agree this with the venue first. Saved in this browser.</div></div>
 <div id="vg"></div>
 <div class="two"><input id="kw" placeholder="Make a modifier group by keyword, e.g. milkshake"><button id="kwb" type="button" class="sec" style="margin:0">Add group</button></div>
 <div class="warn" id="kwmsg"></div>
@@ -1841,7 +1847,7 @@ function rebuild(){
     // no printer in the file: "Auto" picks one per item (bar or coffee for drinks, kitchen printers for food)
     const u=[...new Set(ps)];catCfg[c]={rename:'',printer:ps.length?(u.length===1&&ps.length===its.length?u[0]:'*'):'*',rg:'*',meas:'*'};});
   window.catList=cats;
-  vg=detectGroups(base).sort((a,b)=>(a.mode==='off')-(b.mode==='off'));flavVar(FLAVVAR());
+  vg=detectGroups(base).sort((a,b)=>(a.mode==='off')-(b.mode==='off'));flavVar(FLAVVAR());applySplit();
   const any=tables.length>0;['scard','ccard','vcard','pcard','kcard'].forEach(id=>$(id).style.display=any&&(base.length||mods.length)?'block':'none');
   $('lockcard').style.display=$('scard').style.display==='block'?'none':'block';
   const sig=base.map(i=>i.name).join('|')+'#'+mods.map(m=>m.group+'/'+m.name).join('|');if(sig!==preSig){preSig=sig;preInit=true}
@@ -1865,6 +1871,16 @@ const FLAVVAR=()=>{const e=document.getElementById('flavvar');return!!(e&&e.chec
 function flavVar(on){vg.forEach(g=>{const sz=g.members.every(m=>isSize(m.v));
   if(on&&g.mode==='modifier'&&!sz){g.fv=true;g.mode='variant';g.vg0=g.vgroup;g.vgroup=g.mgroup}
   else if(!on&&g.fv){g.fv=false;if(g.mode==='variant')g.mode='modifier';if(g.vgroup===g.mgroup)g.vgroup=g.vg0||g.vgroup}})}
+// split choice (step 4): size groups for tap beer or pasta become separate products; unticking puts back the ones it split
+const SPLIT_BEER=/\b(beers?|lagers?|ales?|ipas?|stouts?|ciders?|pilsners?|draught|on tap|tap)\b/i,SPLIT_BEERSZ=/\b(pot|middy|schooner|pint|jug|pitcher)\b/i,
+  SPLIT_PASTA=/\b(pasta|spaghetti|penne|rigatoni|linguine|gnocchi|fettuccin[ei]|pappardelle|tagliatelle|lasagne|lasagna|ravioli|tortellini|carbonara|bolognese|marinara|risotto|orecchiette|bucatini|casarecce|mafaldine|paccheri)\b/i;
+function splitKind(g){const t=(g.base||'')+' '+(g.cat||'');
+  if(SPLIT_PASTA.test(t))return'pasta';if(SPLIT_BEER.test(t)||g.members.every(m=>SPLIT_BEERSZ.test(m.v)))return'beer';return''}
+function applySplit(){const on={beer:!!($('splitbeer')||{}).checked,pasta:!!($('splitpasta')||{}).checked};
+  vg.forEach(g=>{const k=splitKind(g);if(!k)return;
+    if(on[k]&&g.mode==='variant'&&!g.fv){g.mode='off';g.autoSplit=true}
+    else if(!on[k]&&g.autoSplit){if(g.mode==='off')g.mode='variant';g.autoSplit=false}})}
+function toggleSplit(){applySplit();buildVG();run()}
 function toggleFlavVar(){const e=$('flavvar');
   if(e.checked&&!confirm('Are you sure?\n\nThis makes flavours and types (Chocolate, Vanilla, Strawberry Milkshake) variants instead of one product with a modifier group. Oolio variants are normally for sizes only, so only do this if the venue wants flavours set up as variants.')){e.checked=false;return}
   flavVar(e.checked);buildVG();run();mhNote(e.checked)}
@@ -2265,7 +2281,13 @@ function preflight(rows,plan){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'
   const tiny=[...cats].filter(([c,n])=>c&&n===1).map(([c])=>c);
   if(tiny.length>=4)add(warn,'categories have only one product',tiny,'Oolio works best with a few broad categories (Hot Coffee, Pizza). Merge small ones in step 3.');
   lint(rows,I,plan,add,warn);
-  return{block,warn,rows:rows.length}}
+  // variant preview: adding a variant in Oolio One can't be undone, so list every product that gets sizes before download
+  const info=[],vgOf=new Map(),sz=new Map();
+  rows.forEach(r=>{const k=String(r[I.n]||'').trim().toLowerCase();if(r[I.t]==='Variant')vgOf.set(k,[String(r[I.n]).trim(),r[I.vg]||'',r[I.c]||'']);
+    else if(r[I.t]==='Product'&&r[I.vn])(sz.get(k)||sz.set(k,[]).get(k)).push(String(r[I.vn]).trim())});
+  const vlist=[...vgOf].map(([k,[nm,g,c]])=>nm+': '+(sz.get(k)||[]).join(', ')+(g?' ('+g+')':'')+(c?' · '+c:''));
+  add(info,'products will be imported with sizes (variants)',vlist,'Adding a variant in Oolio One can’t be undone, and a variant can’t have its own variants. Agree the sizes with the venue before importing. To make a group separate products instead (common for tap beer and pasta), set it to Off in step 4 or tick the split options there.');
+  return{block,warn,info,rows:rows.length}}
 /* menu linter: things the wizard accepts but that turn into fixes after go-live (odd prices, food that prints nowhere,
    sizes priced the wrong way round or named differently from the rest of the category, empty modifier groups) */
 const SIZE_RANK=[[/\b(kids?|mini|baby|piccolo|taster)\b/,1],[/\b(small|sml|sm|short|half)\b/,2],[/\b(regular|reg|standard|std|medium|med|single)\b/,3],
@@ -2294,6 +2316,16 @@ function lint(rows,I,plan,add,warn){const price=r=>{const s=String(r[I.p]==null?
     const[top,n]=[...cnt].sort((a,b)=>b[1]-a[1])[0];if(n<L.length*0.6)return;const ts=new Set(top.split(' / '));
     L.forEach(f=>{const k=key(f);if(k!==top&&k.split(' / ').some(x=>ts.has(x)))mixed.push(f.nm+': '+f.sizes.map(x=>x[0]).join(', ')+' (most in '+(f.cat||'this category')+': '+top+')')})});
   names.forEach(v=>{if(v.cats.size>1)twoCats.push(v.nm+' ('+[...v.cats].filter(Boolean).join(', ')+')')});
+  // meal deals: sizes like "Meal" / "with chips", or "Burger" next to "Burger Meal". Oolio has no variants on variants,
+  // so a size that is also a meal ("Large Meal") can't be built that way
+  const MEAL=/\b(meal|combo|deal|with (chips|fries|salad|a side|side)|w\/ ?(chips|fries|salad)|\+ ?(chips|fries|drink))\b/i,meal=[],vov=[];
+  const vovK=new Set();
+  fam.forEach((f,k)=>{const ms=f.sizes.filter(([n])=>MEAL.test(n));if(ms.some(([n])=>sizeRank(n.replace(MEAL,''))!=null)){vov.push(f.nm+': '+f.sizes.map(x=>x[0]).join(', '));vovK.add(k)}});
+  // step 4 groups (sizes or modifier groups) whose options are meals: "Cheeseburger: By itself, Meal"
+  (typeof vg!=='undefined'?vg:[]).forEach(g=>{if(g.mode==='off'||vovK.has(String(g.base||'').toLowerCase()))return;if(g.members.some(m=>MEAL.test(m.v)))meal.push(g.base+': '+g.members.map(m=>m.v).join(', '))});
+  names.forEach((v,k)=>{const m=k.match(/^(.+?)\s+(meal|combo|meal deal)$/);if(m&&names.has(m[1]))meal.push(names.get(m[1]).nm+' and '+v.nm)});
+  add(warn,'items look like meal deals',meal,'Choose one pattern with the venue: a variant “By itself” / “In a meal” plus a required “Meal deal options” group (chips, salad…), a combo, or an add-on modifier. Variants can’t be undone, so decide before importing.');
+  add(warn,'size groups mix sizes and meals (a variant on a variant)',vov,'Oolio One has no variants on variants. Keep the sizes as variants and make the meal a required option group or a combo.');
   add(warn,'products are priced $0',zero,'A $0 item usually means the price wasn’t found. Free items are fine; check the rest.');
   add(warn,'prices are far from the rest of their category',odd,'Often a typo (4.5 for 45). Check against the menu.');
   add(warn,'size groups have a bigger size costing less than a smaller one',order,'Usually the prices are swapped between sizes.');
@@ -2306,7 +2338,7 @@ function lint(rows,I,plan,add,warn){const price=r=>{const s=String(r[I.p]==null?
 // the pre-flight result as plain text, for a ticket or the venue's notes
 function pfText(){if(!PF)return'';const L=[(PF.block.length?'NOT READY':'READY')+' – pre-flight check of '+PF.rows+' import rows'+(window.OOLIO_VENUE_NAME?' for '+window.OOLIO_VENUE_NAME:'')+', '+new Date().toLocaleString('en-AU')];
   const one=(t,x)=>{L.push('','['+t+'] '+(x.list.length?x.list.length+' ':'')+x.msg);if(x.how)L.push('  '+x.how);x.list.slice(0,50).forEach(y=>L.push('  - '+y));if(x.list.length>50)L.push('  … and '+(x.list.length-50)+' more')};
-  PF.block.forEach(x=>one('FIX',x));PF.warn.forEach(x=>one('CHECK',x));if(!PF.block.length&&!PF.warn.length)L.push('','No problems found.');return L.join('\n')}
+  PF.block.forEach(x=>one('FIX',x));PF.warn.forEach(x=>one('CHECK',x));(PF.info||[]).forEach(x=>one('INFO',x));if(!PF.block.length&&!PF.warn.length)L.push('','No problems found.');return L.join('\n')}
 function drawPreflight(){const el=$('pf');if(!el)return;if(!res||!res.rows.length){el.innerHTML='';PF=null;return}
   PF=preflight(res.rows,res.plan);const nb=PF.block.reduce((s,x)=>s+Math.max(1,x.list.length),0),nw=PF.warn.reduce((s,x)=>s+x.list.length,0);
   const cls=nb?'bad':nw?'warn':'ok',icon=nb?'!':nw?'?':'✓';
@@ -2314,7 +2346,7 @@ function drawPreflight(){const el=$('pf');if(!el)return;if(!res||!res.rows.lengt
   el.innerHTML='<div class="pf '+cls+'" role="status"><div class="pf-h"><span class="pf-dot" aria-hidden="true">'+icon+'</span><span>'+
     (nb?'Fix '+nb+' problem'+(nb>1?'s':'')+' before importing':nw?'Ready to import, with '+nw+' thing'+(nw>1?'s':'')+' to check':'Ready to import')+
     '<small>Pre-flight check of all '+PF.rows+' rows against what the Oolio setup wizard needs, plus the menu linter (prices, sizes, printers, modifier groups).</small></span>'+
-    '<button type="button" class="pf-copy" id="pfcopy">Copy report</button></div>'+list(PF.block,true)+list(PF.warn,false)+'</div>';
+    '<button type="button" class="pf-copy" id="pfcopy">Copy report</button></div>'+list(PF.block,true)+list(PF.warn,false)+(PF.info.length?'<div class="pf-info">'+list(PF.info,false)+'</div>':'')+'</div>';
   window.OOLIO_LINT={block:nb,warn:nw,at:Date.now()};
   $('pfcopy').onclick=async()=>{const t=pfText();try{await navigator.clipboard.writeText(t);$('pfcopy').textContent='Copied'}catch(e){prompt('Copy the report:',t)}setTimeout(()=>{const b=$('pfcopy');if(b)b.textContent='Copy report'},1800)}}
 // downloading with problems asks first
@@ -2475,7 +2507,7 @@ async function reReadNP(){
    so a refresh or a closed tab doesn't lose it; the next visit offers to carry on. Settings in step 2 are remembered
    separately. Variant group and standard option group edits aren't kept. */
 const SESS='oolio.convSession',SETK='oolio.convSettings';
-const SET_IDS=['tax','taxfree','pgrp','catmode','comb','mVol','mWt','mVolU','mWtU','sizes'];
+const SET_IDS=['tax','taxfree','pgrp','catmode','comb','mVol','mWt','mVolU','mWtU','sizes','splitbeer','splitpasta'];
 function saveSession(){clearTimeout(saveSession.t);saveSession.t=setTimeout(()=>{if(!tables.length)return;
   const ts=tables.map(t=>({file:t.file,sheet:t.sheet,rows:t.rows,doc:t.doc,on:t.on,err:t.err||'',map:t.a?t.a.map:null,rank:t.rank,srcLabel:t.srcLabel,delivery:t.delivery,urls:t.urls,pl:t.pl||''}));
   try{localStorage.setItem(SESS,JSON.stringify({at:Date.now(),tables:ts,catCfg,PX,SPLIT,np:NOPRICE()}))}catch(e){/* too big for this browser's storage: not kept */}},800)}
@@ -2618,6 +2650,7 @@ $('scard').insertAdjacentHTML('beforeend','<div class="warn" style="margin:12px 
 $('setrst').addEventListener('click',resetSettings);
 $('noprice').addEventListener('change',reReadNP);
 $('flavvar').addEventListener('change',toggleFlavVar);
+['splitbeer','splitpasta'].forEach(id=>$(id).addEventListener('change',toggleSplit));
 $('kidsz').addEventListener('change',()=>{rebuild();if(window.mhToast)window.mhToast($('kidsz').checked?'Kids items are Kids Size variants again.':'Kids items stay on their own kids menu.')});
 (function(){const ov=document.createElement('div');ov.id='dropov';ov.innerHTML='<div>Drop menu files to add them</div>';document.body.appendChild(ov);
   let n=0,pn=0;const vis=()=>$('file').offsetParent!==null,hasF=e=>!!(e.dataTransfer&&[...e.dataTransfer.types].includes('Files'));

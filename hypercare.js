@@ -48,7 +48,9 @@ function draw(){if(location.hash.slice(1)!=='hypercare')return;const a=OV.active
     (a&&!L.some(x=>x.o.id===a.id)?'<p class="lx-small"><button type="button" class="lx-link" data-v="'+esc(a.id)+'">Show '+esc(a.name)+'</button></p>':'')+'</aside>'+
     '<section class="hc-main">'+(o?venueHtml(o):'<p class="lx-muted">Pick a venue at the top or from the list.</p>')+'</section></div>'+insights()}
 function venueHtml(o){const st=state(o),L=issues(o),ro=OV.readOnly,open=L.filter(x=>x.status!=='closed');
-  return '<div class="hc-vhead"><div><h2>'+esc(o.name||'Untitled')+'</h2><p class="lx-muted">'+esc(st.label)+(st.s?' · went live '+esc(fmt(st.s)):'')+'</p></div>'+
+  // with open issues, show when the venue last heard from us: long silences are what turn issues into escalations
+  const cu=o.cu&&o.cu.at,cd=cu?Math.floor((Date.now()-cu)/864e5):null,cuLine=open.length?'<p class="lx-small hc-cu'+(cd==null||cd>=2?' late':'')+'">'+(cu?'Customer last updated '+(cd===0?'today':cd===1?'yesterday':cd+' days ago'):'No customer update recorded')+(cd==null||cd>=2?': they’re waiting on us.':'.')+(ro?'':' <button type="button" class="lx-link" data-a="cu">I’ve updated them today</button>')+'</p>':'';
+  return '<div class="hc-vhead"><div><h2>'+esc(o.name||'Untitled')+'</h2><p class="lx-muted">'+esc(st.label)+(st.s?' · went live '+esc(fmt(st.s)):'')+'</p>'+cuLine+'</div>'+
     (st.k==='on'?'<div class="hc-days" aria-label="'+esc(st.label)+'">'+Array.from({length:st.n},(_,i)=>'<i class="'+(i<st.day?'on':'')+'"></i>').join('')+'</div>':'')+'</div>'+
     (ro?'':'<form class="hc-add" id="hc-add"><label class="hc-t">What happened<input id="hc-t" required maxlength="200" placeholder="e.g. Pizza dockets printing at the bar"></label>'+
       '<label>About<select id="hc-area">'+AREAS.map(([k,t])=>'<option value="'+k+'">'+esc(t)+'</option>').join('')+'</select></label>'+
@@ -84,6 +86,7 @@ root.addEventListener('click',e=>{const v=e.target.closest('[data-v]');if(v){SEL
     patch(o.id,{issues:{[iid]:{status:'closed',fix,cause,closedAt:Date.now(),closedBy:OV.me()||''}}},'Hypercare: closed “'+x.t+'”')}
   else if(a==='reopenIssue'&&x)patch(o.id,{issues:{[iid]:{status:'open',closedAt:null}}},'Hypercare: reopened “'+x.t+'”');
   else if(a==='del'&&x){if(confirm('Delete “'+x.t+'”? Use this for issues logged by mistake; close real ones instead.'))patch(o.id,{issues:{[iid]:{t:'',deleted:Date.now()}}},'Hypercare: deleted “'+x.t+'”')}
+  else if(a==='cu'){if(OV.markUpdated)OV.markUpdated(o.id);draw()}
   else if(a==='end'){const n=issues(o).filter(z=>z.status!=='closed').length;if(n&&!confirm(n+' issue'+(n===1?' is':'s are')+' still open. End hypercare anyway?'))return;
     OV.save(o.id,{hc:{ended:today()},stage:'done'},{text:'Hypercare ended; handed over to support'});if(window.mhEmails&&confirm('Write the handover email now?'))setTimeout(()=>{if(OV.activeId!==o.id)OV.setActive(o.id);window.mhEmails()},50)}
   else if(a==='reopen')patch(o.id,{ended:null},'Hypercare reopened')});
