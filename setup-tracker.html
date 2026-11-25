@@ -554,6 +554,14 @@ window.OolioVenues={
   field(id,step,k){return ORGS[id]?val(ORGS[id],step,k):''},
   late(id){const o=ORGS[id];return o?stepsFor(o).filter(x=>overdue(o,x)).length:0},
   wait(id){return waitOf(ORGS[id])},
+  // for the new-venue form and the home hub (venue-link.js)
+  flags(){return FLAGS.slice()},
+  vtypes(){return VTYPES.slice()},
+  myName(){return myName()},
+  applyTemplate(id){return applyTemplate(id)||[]},
+  pack(id){return goLivePack(id)},
+  async intake(id,force){if(!window.OOLIO_HOSTED||!ORGS[id])return null;await intakeLoad(id,force);const S=INTAKE[id];return S&&S.link||null},
+  async makeIntake(id){if(!window.OOLIO_HOSTED||!ORGS[id])return null;const o=ORGS[id],r=await intakeCall('create',{venue:id,venueName:o.name||''});INTAKE[id]={t:0};await intakeLoad(id,true);return r&&r.url||null},
   markUpdated(id){markUpdated(id)},
   isMine(id){const o=ORGS[id];return!!o&&isMine(o)},
   me(){return ME},
@@ -1114,7 +1122,7 @@ function applyTemplate(id){const o=ORGS[id],T=o&&TEMPLATES[o.vtype];if(!T||READO
   // table-service venues get the covers / coursing and bar tab steps
   if(/^(restaurant|bar|hotel)$/.test(o.vtype)&&(o.flags||{}).tables==null){patch.flags={tables:true};done.push('table service')}
   if(done.length){save(id,patch);render()}
-  flash(done.length?'Filled in '+done.join(', ')+' for a '+(VTYPES.find(x=>x[0]===o.vtype)||['',''])[1].toLowerCase()+'. Check them against the hardware diagram.':'Nothing to fill: printers, workflow and profiles are already set.')}
+  flash(done.length?'Filled in '+done.join(', ')+' for a '+(VTYPES.find(x=>x[0]===o.vtype)||['',''])[1].toLowerCase()+'. Check them against the hardware diagram.':'Nothing to fill: printers, workflow and profiles are already set.');return done}
 
 /* ---------- people and dates: the venue's owner, go-live date, and who does each step by when ---------- */
 const today=()=>new Date().toISOString().slice(0,10);

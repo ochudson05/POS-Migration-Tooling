@@ -267,6 +267,12 @@ LAUNCHER_CSS = r"""
 .lx-form label{display:grid;gap:4px;font-size:.85rem;color:var(--muted)}
 .lx-form input{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
 .lx-form .lx-ck{display:flex;gap:8px;align-items:flex-start}.lx-form .lx-ck input{width:auto;margin-top:3px}
+.lx-form select{font:inherit;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;width:100%}
+.lx-dlg.lx-wide{width:min(680px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto}
+.lx-nv fieldset{border:1px solid var(--line);border-radius:10px;padding:10px 12px 12px;margin:0;display:grid;gap:10px}.lx-nv legend{font-size:.8rem;font-weight:700;color:var(--text);padding:0 4px}
+.lx-g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}.lx-flags{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px 12px}
+.lx-opt{font-size:.7rem;font-weight:600;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:1px 7px;vertical-align:middle}
+.lx-wait{margin:4px 0 10px;font-size:.88rem;color:var(--muted)}.lx-wait.late{color:var(--warn);font-weight:600}.lx-wait .lx-link{font-weight:600}
 /* notes that differ between claude.ai and the website (hosted.js adds .oolio-hosted to <html>) */
 .hosted-only{display:none!important}
 html.oolio-hosted .hosted-only{display:block!important}

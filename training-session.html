@@ -195,7 +195,8 @@ const RO=()=>{const v=OV();return!!(v&&v.readOnly)};
 const D=()=>{const v=venue();return v&&v.o.trs||{}};
 function save(patch){const v=venue();if(!v||RO())return;patch=Object.assign({},patch,{at:Date.now()});
   if(v.local){const L=loadLocal();L.trs=deepMerge(L.trs||{},patch);ls.set(LKEY,JSON.stringify(L));render()}
-  else OV().save(v.id,{trs:patch})}
+  // the session date is the venue's training date too, so the tracker, Team calendar and home hub all show the same day
+  else OV().save(v.id,Object.assign({trs:patch},patch.date?{training:patch.date}:{}))}
 function saveLocalTop(p){const L=Object.assign(loadLocal(),p);ls.set(LKEY,JSON.stringify(L));render()}
 
 /* ---------- state helpers ---------- */
