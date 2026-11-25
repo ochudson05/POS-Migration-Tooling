@@ -9,6 +9,9 @@ Menu Hauler loads the libraries below from public CDNs at run time. Each one is 
 | Tesseract.js | 5.1.1 | cdn.jsdelivr.net | Apache License 2.0 | © Tesseract.js contributors |
 | JSZip | 3.10.1 | cdnjs.cloudflare.com | MIT or GPL 3.0 (used under MIT) | © Stuart Knightley and contributors |
 | docx | 8.5.0 | cdn.jsdelivr.net | MIT License | © Dolan Miu |
+| Transformers.js (@huggingface/transformers) | 3.8.1 | cdn.jsdelivr.net | Apache License 2.0 | © Hugging Face |
+| ONNX Runtime Web (loaded by Transformers.js) | bundled | cdn.jsdelivr.net | MIT License | © Microsoft Corporation |
+| ormbg background-removal model (onnx-community/ormbg-ONNX, uint8) | current | huggingface.co | Apache License 2.0 | © Maximilian Schirrmacher |
 | Lucide icons | 0.460.0 | copied into icons.svg (built in) | ISC License; parts from Feather under MIT | © Lucide Contributors; © Cole Bemis (Feather) |
 | Inter typeface | current | fonts.googleapis.com | SIL Open Font License 1.1 | © The Inter Project Authors |
 

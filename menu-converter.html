@@ -201,6 +201,7 @@ Double Shot=60</textarea></div>
 
 <div class="card" id="kcard" style="display:none">
 <h2>6. Checks</h2>
+<div id="combo"></div>
 <div id="checks"></div>
 <div id="npfix"></div>
 <div id="aichk"></div>
@@ -381,6 +382,7 @@ const MENU_RULES=
   '  - price: the extra cost as a number, 0 when free. required: true when the guest must pick (choice of, choose, your way, served with your choice of); max: 1 for pick-one, else 0.\n'+
   '  - for: the item(s) or section the options belong to, as printed (e.g. "Breakfast", "All coffee", "Steaks", "Pizzas").\n'+
   '- Flavours or types of one item at one price ("Milkshake: chocolate, vanilla, strawberry $8") are ONE item ("Milkshake", 8) plus an options group ("Milkshake Flavour", required, max 1). Only sizes and serves get separate item entries.\n'+
+  '- Several different drinks or dishes printed together under one price ("Flat White / Cappuccino / Latte $5.00", "Coke, Sprite or Fanta $4") are separate items: one entry per name, each with that price. Keep them as one item only when the menu says the guest picks one as part of a single item ("choice of", "your choice", "either"); then the choices go in options.\n'+
   '- A set menu, banquet or deal with one price is one item; put the courses in "description".\n'+
   '- Leave out opening hours, addresses, phone numbers and notes about surcharges.\n'+
   '- Copy names and prices exactly as printed; do not invent or correct anything. If part of the menu is unreadable, say what in "notes".';
@@ -1815,8 +1817,8 @@ function renderSources(){
   const c=$('clr');if(c)c.addEventListener('click',()=>{tables=[];catCfg={};PX={};npSig='';$('file').value='';forgetSession();renderSources();rebuild()});}
 
 function rebuild(){
-  readSettings();base=[];mods=[];const OMN=[];INACT=[];
-  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);r.items=omActive(t,r.items,INACT);r.items=plainSizes(omSplit(r.items,OMN),OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods.map(m=>(m.name=properName(m.name),m)));
+  readSettings();base=[];mods=[];const OMN=[];INACT=[];COMBO=[];
+  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);r.items=splitItems(t,omActive(t,r.items,INACT),true);r.items=plainSizes(omSplit(r.items,OMN),OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods.map(m=>(m.name=properName(m.name),m)));
     const el=$('ti'+t.id);if(el)el.textContent=t.doc?r.items.length+' menu lines'+(NOPRICE()?'':' with prices')+' read from the '+t.doc.how+(t.doc.ignored.length?', '+t.doc.ignored.length+' other lines not used (listed in Checks)':'')+'. Check names and prices against the original.':
       r.items.length+' products, '+r.mods.length+' modifiers read'+(t.a.marker?' (template examples above the “below this line” row were skipped)':'')+(t.a.pl&&t.a.pl.length?'. Price lists in it: '+t.a.pl.map(c=>c.name).join(', '):'')+'.';});
   // price lists: columns in Oolio files first, then files used as a price list
@@ -1826,7 +1828,7 @@ function rebuild(){
   if(OMN.split)PLCHK.push({msg:'Sizes with the order type in them (“Regular TAKEAWAY”, “Dine-In”, “Large Dine-In”) were split: '+OMN.split+' items now have plain sizes, with the dine-in price as the menu price and the TAKEAWAY price in the “'+OM_TAKE+'” price list.',list:[],info:true});
   if(OMN.plain)PLCHK.push({msg:OMN.plain+' items had a filler size (“Serve”, “SIDE OF”, “Retail”…) as their only size, which OrderMate needs but Oolio doesn’t. The size was removed so they are plain products.',list:[],info:true});
   if(OMN.length)PLCHK.push({msg:'sizes are only sold as takeaway, so their takeaway price is also used as the menu price. Check these with the venue.',list:OMN.slice()});
-  tables.forEach(t=>{if(!t.on||!t.a||!t.pl)return;const n=t.pl,r=extract(t),miss=[],seen=new Set();r.items=omActive(t,r.items);r.items=plainSizes(omSplit(r.items));if(!PLS.includes(n))PLS.push(n);let hit=0,same=0;
+  tables.forEach(t=>{if(!t.on||!t.a||!t.pl)return;const n=t.pl,r=extract(t),miss=[],seen=new Set();r.items=splitItems(t,omActive(t,r.items),false);r.items=plainSizes(omSplit(r.items));if(!PLS.includes(n))PLS.push(n);let hit=0,same=0;
     r.items.forEach(x=>{const it=byC.get(plKeyC(x))||byK.get(plKey(x));const lab=x.name+(x.variation?' ('+x.variation+')':'')+(x.price?' $'+x.price:'');
       if(!it){miss.push(lab);return}if(x.price===''||seen.has(it))return;seen.add(it);(it.pl=it.pl||{})[n]=x.price;hit++;if(+x.price===+it.price)same++});
     t.info={items:[],mods:[]};const el=$('ti'+t.id);
@@ -2104,7 +2106,7 @@ function run(){
   const hasM=mods.length||res.genMods.length||res.preMods.length||res.om.mods.length;$('dlom').style.display=res.om.rows.length?'inline-block':'none';drawOM();$('dlom').disabled=!res.om.rows.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
   {const hp=res.plan.rows.length||hasM;$('dlpl').style.display=hp?'inline-block':'none';$('dlpl').disabled=!hp}
   $('inaW').style.display=INACT.length?'block':'none';$('inaN').textContent=INACT.length;
-  renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();drawKids();saveSession();}
+  drawCombo();renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();drawKids();saveSession();}
 function drawKids(){const on=KIDSON(),n=kidsMerged.length,el=$('kidmsg');if(!el)return;
   el.innerHTML=(on?'On: Milkshake Chocolate on the kids menu becomes the Kids Size of Chocolate Milkshake, next to Regular and Large. ':'Off: kids items stay as their own products on the kids menu, named with a “Kids” prefix (Kids Milkshake Chocolate). ')+
     (on?'Untick it for venues that want a separate kids menu.':'Tick it to merge them into the main products.')+(n?'<details><summary>'+n+' kids item'+(n===1?'':'s')+(on?' merged':' would be merged')+'</summary><ul>'+kidsMerged.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>':' No kids items on this menu match a main-menu product.')}
@@ -2256,6 +2258,7 @@ function preflight(rows,plan){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'
   add(block,'sizes have no parent row',orphan,'Each size needs a matching Variant row with the same product name.');
   add(block,'size groups have a parent row but no sizes',[...emptyVar.values()],'Remove the parent row or add its sizes.');
   if(!rows.some(r=>r[I.t]==='Product'))block.push({msg:'There are no products to import.',list:[]});
+  add(block,'names in the uploaded spreadsheet hold more than one item',comboWait().map(c=>c.name),'Choose separate items or one item for each at the top of step 6 (Checks).');
   add(warn,'printer profiles aren’t printers listed for this venue in the Setup Tracker',prn,'Create these printer profiles in Oolio, or change the printer in step 3.');
   add(warn,'long product names with no short POS name',long,'They can be cut off on POS buttons and dockets. A POS Name column in the source file sets a shorter one.');
   add(warn,'names have emoji or unusual characters',odd,'Kitchen and bar printers often can’t print them.');
@@ -2367,6 +2370,50 @@ function renderPrev(){
 const PRICE_SHEET='Price request',PREF='Ref (please don’t change)';
 const pxKey=it=>[it.name,it.variation,it.catSrc||it.sub||it.section].map(N).join('|');
 function markNP(items){items.forEach(it=>{if(it.price!=='')return;it._np=true;it._k=pxKey(it)})}
+
+/* ---------------- several items in one name ----------------
+   "Flat White / Cappuccino / Latte $5" is three products at $5 each, not one (user's rule, 2026-11-23). Menus read from
+   photos, PDFs, Word or web pages are split on their own, unless the menu says it's one item with a choice ("choice of",
+   "your choice", "either"). Uploaded spreadsheets (pre-work, imports, POS exports) are never changed on their own: each
+   name like "Bread / Toast" or "Bun / Bagel" is flagged at the top of step 6, a pop-up says so, pre-flight holds the
+   upload until it's answered, and the user picks separate items or one item. Answers are kept with the session.
+   Not a split: slashes inside brackets ("Latte (Soy/Almond)"), fractions and prices (1/2, 5/6), "w/" and "n/a", and
+   names whose parts are all sizes (Glass / Bottle). "Hot / Iced Chocolate" becomes Hot Chocolate and Iced Chocolate. */
+let SPLIT={},COMBO=[],comboSeen='';
+const SPLIT_ADJ=new Set('hot iced ice cold warm red white rose rosé sparkling still dry sweet soy almond oat skim lactose small large regular chicken beef pork lamb fish veg veggie vegetarian vegan prawn tofu plain toasted brown wholemeal multigrain rye sourdough raisin fruit'.split(' '));
+const CHOICE=/\b(choice|choose|either|your way|pick one|pick any)\b/i;
+function splitName(name){const s=String(name||'');if(!s.includes('/'))return null;
+  if(/\d\s*\/\s*\d|(^|\s)[a-z]\s*\/|\/\s*[a-z](\s|$)/i.test(s))return null;
+  let parts=s.replace(/\([^)]*\)/g,m=>m.replace(/\//g,'\u0000')).split(/\s*\/\s*/).map(x=>x.replace(/\u0000/g,'/').trim());
+  if(parts.length<2||parts.length>8||parts.some(p=>!/[a-z].*[a-z]/i.test(p))||parts.every(p=>isSize(p)))return null;
+  const last=parts[parts.length-1],lw=last.split(/\s+/);
+  if(lw.length>=2&&parts.slice(0,-1).every(p=>!/\s/.test(p)&&SPLIT_ADJ.has(p.toLowerCase())))parts=parts.slice(0,-1).map(p=>p+' '+lw.slice(1).join(' ')).concat([last]);
+  parts=parts.filter((p,i)=>parts.findIndex(q=>q.toLowerCase()===p.toLowerCase())===i);
+  return parts.length>1?parts:null}
+const comboKey=it=>N(it.catSrc||it.sub||it.screen||it.section)+'|'+N(it.name);
+// reg: list the name in step 6 (menus and pre-work); price list files only follow the answer the menu got
+function splitItems(t,items,reg){const out=[];
+  items.forEach(it=>{const parts=splitName(it.name);if(!parts){out.push(it);return}
+    const k=comboKey(it),auto=t.doc?(CHOICE.test(it.name+' '+(it.desc||''))?'keep':'split'):'';
+    if(reg){let c=COMBO.find(x=>x.k===k);if(!c){c={k,name:it.name,parts,cat:it.catSrc||it.sub||it.screen||it.section||'',file:t.file,auto,n:0};COMBO.push(c)}c.n++}
+    if((SPLIT[k]||auto)!=='split'){out.push(it);return}
+    parts.forEach(p=>out.push(Object.assign({},it,{name:p,pl:Object.assign({},it.pl),combo:it.name})))});
+  return out}
+const comboWait=()=>COMBO.filter(c=>!c.auto&&!SPLIT[c.k]);
+function drawCombo(){const el=$('combo');if(!el)return;if(!COMBO.length){el.innerHTML='';return}
+  const wait=comboWait(),how=c=>SPLIT[c.k]||c.auto;
+  el.innerHTML='<details class="chk'+(wait.length?'':' i')+'" open><summary><b>'+COMBO.length+'</b> name'+(COMBO.length===1?' holds':'s hold')+' more than one item'+(wait.length?' · <b>'+wait.length+' to choose</b>':'')+'</summary>'+
+    '<div class="warn" style="margin:6px 0">Names like “Flat White / Cappuccino / Latte” are separate products, each at the same price. Menus read from a photo, PDF, Word file or web page are split for you, unless the menu says the guest picks one (“choice of”). Uploaded spreadsheets are left as they are until you choose: separate items, or keep it as one item (for example when the guest picks one as part of the item).</div>'+
+    (wait.length>1?'<div style="margin:0 0 6px"><button type="button" class="sec" data-cball="split">Separate them all</button><button type="button" class="sec" data-cball="keep">Keep them all as one</button></div>':'')+
+    '<div class="scroll" style="max-height:340px"><table><thead><tr><th>Name</th><th>Category</th><th>Becomes</th><th>Layout</th></tr></thead><tbody>'+
+    COMBO.map((c,i)=>{const h=how(c);return'<tr'+(h?'':' style="background:var(--warn-bg,rgba(245,158,11,.12))"')+'><td>'+esc(c.name)+(c.n>1?' <span class="muted">×'+c.n+'</span>':'')+'<div class="muted" style="font-size:.8rem">'+esc(c.file)+'</div></td><td>'+esc(c.cat||'')+'</td>'+
+      '<td>'+(h==='split'?c.parts.map(esc).join('<br>'):h==='keep'?esc(c.name):'<span class="muted">'+c.parts.map(esc).join(' · ')+'</span>')+'</td>'+
+      '<td><select data-cb="'+i+'" aria-label="Layout for '+esc(c.name)+'">'+(h?'':'<option value="" selected>Choose…</option>')+'<option value="split"'+(h==='split'?' selected':'')+'>Separate items ('+c.parts.length+')</option><option value="keep"'+(h==='keep'?' selected':'')+'>Keep as one item</option></select></td></tr>'}).join('')+
+    '</tbody></table></div></details>';
+  el.querySelectorAll('select[data-cb]').forEach(n=>n.addEventListener('change',()=>{if(!n.value)return;SPLIT[COMBO[+n.dataset.cb].k]=n.value;rebuild()}));
+  el.querySelectorAll('[data-cball]').forEach(n=>n.addEventListener('click',()=>{comboWait().forEach(c=>SPLIT[c.k]=n.dataset.cball);rebuild()}));
+  // one pop-up per new set of unanswered names, so the flag isn't missed below the fold
+  const sig=wait.map(c=>c.k).join('#');if(sig&&sig!==comboSeen&&window.mhToast)window.mhToast(wait.length+' name'+(wait.length===1?' in the uploaded spreadsheet holds':'s in the uploaded spreadsheet hold')+' more than one item (like “'+wait[0].name+'”). Choose a layout in step 6.');comboSeen=sig}
 function npItems(){const seen=new Set(),out=[];base.forEach(it=>{if(!it._np||seen.has(it._k))return;seen.add(it._k);out.push(it)});return out}
 const catShown=c=>(catCfg[c]&&catCfg[c].rename)||c;
 function npLeft(its){const n=its.filter(i=>PX[i._k]==null||PX[i._k]==='').length;return n?n+' of '+its.length+' still to fill in':'all '+its.length+' filled in'}
@@ -2431,7 +2478,7 @@ const SESS='oolio.convSession',SETK='oolio.convSettings';
 const SET_IDS=['tax','taxfree','pgrp','catmode','comb','mVol','mWt','mVolU','mWtU','sizes'];
 function saveSession(){clearTimeout(saveSession.t);saveSession.t=setTimeout(()=>{if(!tables.length)return;
   const ts=tables.map(t=>({file:t.file,sheet:t.sheet,rows:t.rows,doc:t.doc,on:t.on,err:t.err||'',map:t.a?t.a.map:null,rank:t.rank,srcLabel:t.srcLabel,delivery:t.delivery,urls:t.urls,pl:t.pl||''}));
-  try{localStorage.setItem(SESS,JSON.stringify({at:Date.now(),tables:ts,catCfg,PX,np:NOPRICE()}))}catch(e){/* too big for this browser's storage: not kept */}},800)}
+  try{localStorage.setItem(SESS,JSON.stringify({at:Date.now(),tables:ts,catCfg,PX,SPLIT,np:NOPRICE()}))}catch(e){/* too big for this browser's storage: not kept */}},800)}
 function forgetSession(){clearTimeout(saveSession.t);try{localStorage.removeItem(SESS)}catch(e){}$('rsbox').innerHTML=''}
 function offerRestore(){let s=null;try{s=JSON.parse(localStorage.getItem(SESS)||'null')}catch(e){}
   if(!s||!Array.isArray(s.tables)||!s.tables.length||tables.length)return;
@@ -2444,7 +2491,7 @@ function restoreSession(s){
   tables=[];s.tables.forEach(o=>{const t=Object.assign({},o);delete t.map;
     t.a=!t.err&&t.rows&&t.rows.length?analyse(t):null;if(t.a&&t.doc)t.a.src='document';if(t.a&&o.map)t.a.map=o.map;
     t.on=!!t.a&&o.on!==false;t.id=tables.length;tables.push(t)});
-  catCfg=s.catCfg||{};PX=s.PX||{};npSig='';$('noprice').checked=!!s.np;renderSources();rebuild();}
+  catCfg=s.catCfg||{};PX=s.PX||{};SPLIT=s.SPLIT||{};npSig='';$('noprice').checked=!!s.np;renderSources();rebuild();}
 const SET_DEF={};
 function loadSettings(){SET_IDS.forEach(id=>{const e=$(id);if(e)SET_DEF[id]=e.type==='checkbox'?e.checked:e.value});
   let s=null;try{s=JSON.parse(localStorage.getItem(SETK)||'null')}catch(e){}if(!s)return;

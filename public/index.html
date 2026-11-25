@@ -797,18 +797,21 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 
 
 .pe *,.pe *::before,.pe *::after{box-sizing:border-box}
+.pe [hidden]{display:none!important}
 .pe{max-width:1180px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
 .pe h1{font-size:1.5rem;margin:0 0 4px;text-wrap:balance}
 .pe h2{font-size:1.05rem;margin:0 0 10px}
+.pe h3{font-size:.9rem;margin:14px 0 8px}
 .pe .pe-sub{color:var(--muted);margin:0 0 18px;max-width:75ch}
 .pe button{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-text);border:0;border-radius:8px;padding:9px 14px;cursor:pointer;margin:0}
 .pe button.pe-sec{background:transparent;color:var(--text);border:1px solid var(--line)}
 .pe button.pe-sm{font-size:.85rem;padding:5px 10px}
 .pe button:disabled{opacity:.5;cursor:default}
-.pe button:focus-visible,.pe input:focus-visible,.pe select:focus-visible,.pe label.pe-drop:focus-within,.pe canvas:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pe button:focus-visible,.pe input:focus-visible,.pe select:focus-visible,.pe label.pe-drop:focus-within,.pe canvas:focus-visible,.pe summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .pe input[type=text],.pe input[type=number],.pe select{font:inherit;font-size:.92rem;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
 .pe input[type=color]{width:42px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px;background:var(--bg);cursor:pointer}
 .pe input[type=range]{width:100%;accent-color:var(--accent)}
+.pe input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin:0}
 .pe-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
 .pe-grid{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start}
 @media (max-width:820px){.pe-grid{grid-template-columns:minmax(0,1fr)}}
@@ -818,14 +821,14 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .pe-f:last-child{margin-bottom:0}
 .pe-two{display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:end}
 .pe-two span{padding-bottom:8px;color:var(--muted)}
-.pe-seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
-.pe-seg button{flex:1;background:transparent!important;color:var(--text)!important;border-radius:0!important;font-size:.85rem;padding:7px 8px;font-weight:500}
+.pe-seg{display:flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.pe-seg button{flex:1 1 auto;background:transparent!important;color:var(--text)!important;border-radius:0!important;font-size:.85rem;padding:7px 8px;font-weight:500}
 .pe-seg button+button{border-left:1px solid var(--line)}
 .pe-seg button[aria-pressed="true"]{background:var(--accent)!important;color:var(--accent-text)!important;font-weight:600}
 .pe-sw{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .pe-sw button{width:34px;height:34px;padding:0;border-radius:8px;border:1px solid var(--line)!important}
 .pe-sw button[aria-pressed="true"]{outline:2px solid var(--accent);outline-offset:2px}
-.pe-sw .pe-chk,.pe-stage.pe-chk{background-color:#fff;background-image:linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%),linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%);background-size:14px 14px;background-position:0 0,7px 7px}
+.pe-sw .pe-chk,.pe-stage.pe-chk,.pe-chk{background-color:#fff;background-image:linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%),linear-gradient(45deg,#ddd 25%,transparent 25%,transparent 75%,#ddd 75%);background-size:14px 14px;background-position:0 0,7px 7px}
 .pe-sw .pe-blur{background:linear-gradient(135deg,#d9a46a,#7c9cbf)!important}
 .pe-drop{position:relative;display:grid;place-items:center;text-align:center;gap:4px;border:2px dashed var(--line);border-radius:12px;padding:22px 14px;cursor:pointer;color:var(--muted);font-size:.9rem}
 .pe-drop strong{color:var(--text);font-size:1rem}
@@ -835,6 +838,9 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .pe-stage{position:relative;display:grid;place-items:center;border-radius:10px;background:var(--bg);border:1px solid var(--line);padding:14px;min-height:320px}
 .pe-stage canvas{max-width:100%;height:auto;display:block;box-shadow:0 1px 6px rgb(0 0 0/.18);cursor:grab;touch-action:none}
 .pe-stage canvas.drag{cursor:grabbing}
+.pe-stage canvas[data-mode=erase],.pe-stage canvas[data-mode=restore]{cursor:none}
+.pe-stage canvas[data-mode=wand],.pe-stage canvas[data-mode=pick]{cursor:crosshair}
+.pe-busy{position:absolute;inset:0;display:grid;place-items:center;background:rgb(0 0 0/.45);color:#fff;border-radius:10px;font-weight:600;text-align:center;padding:20px}
 .pe-empty{color:var(--muted);text-align:center;font-size:.92rem;max-width:36ch}
 .pe-tools{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
 .pe-zoom{display:flex;gap:8px;align-items:center;flex:1 1 220px;font-size:.85rem;color:var(--muted)}
@@ -842,11 +848,32 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .pe-info b{color:var(--text)}
 .pe-msg{font-size:.88rem;min-height:1.3em;margin:6px 0 0;color:var(--ok)}
 .pe-msg.err{color:var(--warn)}
+.pe-adj{border-top:1px solid var(--line);padding-top:10px}
 .pe-adj summary{cursor:pointer;font-weight:600;font-size:.95rem}
 .pe-adj[open] summary{margin-bottom:10px}
-.pe-adj label{display:grid;grid-template-columns:86px 1fr 44px;gap:8px;align-items:center;font-size:.82rem;color:var(--muted);margin-bottom:6px}
+.pe-adj label.pe-sl{display:grid;grid-template-columns:86px 1fr 48px;gap:8px;align-items:center;font-size:.82rem;color:var(--muted);margin-bottom:6px}
 .pe-adj output{text-align:right;font-variant-numeric:tabular-nums}
+.pe-chkl{display:flex;gap:8px;align-items:center;font-size:.85rem;color:var(--text);margin:8px 0 0;cursor:pointer}
 .pe-hint{font-size:.8rem;color:var(--muted);margin:4px 0 0}
+.pe-swatch{display:inline-block;width:34px;height:34px;border-radius:8px;border:1px solid var(--line);vertical-align:middle}
+.pe-mode{display:grid;gap:6px}
+.pe-mode .pe-seg button{min-width:72px}
+/* Oolio online ordering preview: sizes copied from ordering.oolio.io's own CSS */
+.pe-oo{background:#121212;color:#f1f1f1;border-radius:10px;padding:16px;display:grid;gap:8px;font-family:Inter,system-ui,sans-serif;overflow:hidden}
+.pe-oo-cap{font-size:.78rem;color:#a7a7a7;margin:0 0 8px}
+.pe-oo-card{display:flex;width:100%;max-width:420px;background:#1b1b1b;border:1px solid #2c2c2c;border-radius:8px;overflow:hidden}
+.pe-oo-img{position:relative;width:138px;min-height:138px;aspect-ratio:1;flex-shrink:0;background:#262626;overflow:hidden}
+.pe-oo-img img,.pe-oo-sheet img,.pe-oo-fr img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.pe-oo-txt{display:flex;flex-direction:column;justify-content:space-between;padding:14px;font-size:14px;font-weight:500;gap:8px}
+.pe-oo-sheet{width:390px;max-width:100%;background:#1b1b1b;border-radius:8px;overflow:hidden}
+.pe-oo-sheet>div:first-child{position:relative;height:300px;background:#262626}
+.pe-oo-hero{position:relative;height:240px;max-width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;border-radius:8px;overflow:hidden}
+.pe-oo-hero img{width:200px;height:60px;object-fit:contain;z-index:1}
+.pe-oo-hero h4,.pe-oo-fr h4{margin:0;font-size:18px;font-weight:700;line-height:26px;color:#fff;text-shadow:0 0 6px rgba(0,0,0,.6);z-index:1}
+.pe-oo-frs{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-end}
+.pe-oo-fr{position:relative;display:grid;place-items:center;border-radius:6px;overflow:hidden;background:#673ab6;flex:none}
+.pe-oo-fr h4{position:relative;font-size:11px;line-height:1.2}
+.pe-oo-frl{font-size:.75rem;color:#a7a7a7;margin-top:4px}
 /* Oolio One look for Menu Hauler.
    build_apps.py adds this after every tool's own CSS (and inside the Photo Finder frame), so it only has to restate
    the shared colour tokens and a few shapes. Colours follow oolio.com: purple #673ab6 / #5e35b1, light purple #c1afde,
@@ -1522,6 +1549,7 @@ Double Shot=60</textarea></div>
 
 <div class="card" id="kcard" style="display:none">
 <h2>6. Checks</h2>
+<div id="combo"></div>
 <div id="checks"></div>
 <div id="npfix"></div>
 <div id="aichk"></div>
@@ -1661,7 +1689,7 @@ Double Shot=60</textarea></div>
 <div id="lx-pe" hidden>
 <main class="pe" id="pe">
   <h1>Photo Editor</h1>
-  <p class="pe-sub">Sizes one photo to the exact dimensions and file size you need: pick a size, drag and zoom to frame it, and download. Everything happens in your browser; the photo isn’t uploaded anywhere.</p>
+  <p class="pe-sub">Sizes one photo to the exact dimensions and file size you need: pick a size, drag and zoom to frame it, remove the background or change colours, check how it looks on Oolio online ordering, and download. Everything happens in your browser; the photo isn’t uploaded anywhere.</p>
   <div class="pe-grid">
     <div class="pe-side">
       <section class="pe-card" aria-labelledby="pe-h1">
@@ -1678,18 +1706,25 @@ Double Shot=60</textarea></div>
         <h2 id="pe-h2">2. Size</h2>
         <label class="pe-f">Size
           <select id="pe-preset">
-            <option value="1000x1000">Oolio product photo, square 1000 × 1000</option>
-            <option value="2000x2000">Square, large 2000 × 2000</option>
-            <option value="600x600">Square, small 600 × 600</option>
-            <option value="1200x800">Landscape 3:2, 1200 × 800</option>
-            <option value="1920x1080">Landscape 16:9, 1920 × 1080</option>
-            <option value="1200x900">Landscape 4:3, 1200 × 900</option>
-            <option value="800x1200">Portrait 2:3, 800 × 1200</option>
-            <option value="1080x1350">Portrait 4:5, 1080 × 1350</option>
-            <option value="orig">Keep the photo’s own shape</option>
-            <option value="custom">Custom size</option>
+            <optgroup label="Oolio (sized from Oolio online ordering)">
+              <option value="1000x1000">Product photo, square 1000 × 1000</option>
+              <option value="600x180">Logo 600 × 180 (shows at 200 × 60)</option>
+              <option value="2400x600">Banner 2400 × 600 (shows full width × 240)</option>
+            </optgroup>
+            <optgroup label="Other sizes">
+              <option value="2000x2000">Square, large 2000 × 2000</option>
+              <option value="600x600">Square, small 600 × 600</option>
+              <option value="1200x800">Landscape 3:2, 1200 × 800</option>
+              <option value="1920x1080">Landscape 16:9, 1920 × 1080</option>
+              <option value="1200x900">Landscape 4:3, 1200 × 900</option>
+              <option value="800x1200">Portrait 2:3, 800 × 1200</option>
+              <option value="1080x1350">Portrait 4:5, 1080 × 1350</option>
+              <option value="orig">Keep the photo’s own shape</option>
+              <option value="custom">Custom size</option>
+            </optgroup>
           </select>
         </label>
+        <p class="pe-hint" id="pe-presetnote" style="margin:-6px 0 12px"></p>
         <div class="pe-two pe-f" style="margin-bottom:12px">
           <label class="pe-f" style="margin:0">Width (px)<input type="number" id="pe-w" min="16" max="8000" step="1" value="1000"></label>
           <span>×</span>
@@ -1701,7 +1736,7 @@ Double Shot=60</textarea></div>
             <button type="button" data-fit="fit" aria-pressed="false">Fit whole photo</button>
           </div>
         </div>
-        <div class="pe-f">Background <span id="pe-bgnote">(shows when the photo doesn’t fill the frame)</span>
+        <div class="pe-f">Background <span id="pe-bgnote">(shows behind a cut-out, or where the photo doesn’t fill the frame)</span>
           <div class="pe-sw" role="group" aria-label="Background">
             <button type="button" data-bg="#ffffff" style="background:#fff" aria-label="White" title="White" aria-pressed="true"></button>
             <button type="button" data-bg="#000000" style="background:#000" aria-label="Black" title="Black" aria-pressed="false"></button>
@@ -1722,35 +1757,118 @@ Double Shot=60</textarea></div>
         </div>
         <p class="pe-hint" id="pe-fmtnote">Oolio accepts JPEG or PNG; 2000 KB (2 MB) keeps it under the upload limit.</p>
         <div class="pe-row" style="margin-top:12px">
-          <button type="button" id="pe-dl" disabled>Download photo</button>
+          <button type="button" id="pe-dl" data-need disabled>Download photo</button>
         </div>
         <p class="pe-msg" id="pe-msg" role="status" aria-live="polite"></p>
       </section>
     </div>
     <section class="pe-card pe-view" aria-labelledby="pe-h4">
       <div class="pe-row" style="justify-content:space-between">
-        <h2 id="pe-h4" style="margin:0">Preview</h2>
+        <h2 id="pe-h4" style="margin:0">Edit</h2>
         <span class="pe-info" id="pe-info"></span>
       </div>
       <div class="pe-stage" id="pe-stage">
         <p class="pe-empty" id="pe-empty">Add a photo to start. Drag it to move it inside the frame and use the zoom slider (or your mouse wheel) to frame it.</p>
-        <canvas id="pe-cv" width="10" height="10" hidden tabindex="0" aria-label="Photo preview. Drag or use the arrow keys to move the photo; plus and minus to zoom."></canvas>
+        <canvas id="pe-cv" width="10" height="10" hidden tabindex="0" data-mode="move" aria-label="Photo. In Move, drag or use the arrow keys to move the photo; plus and minus to zoom."></canvas>
+        <div class="pe-busy" id="pe-busy" hidden></div>
       </div>
       <div class="pe-tools">
-        <label class="pe-zoom">Zoom<input type="range" id="pe-zoom" min="0.2" max="5" step="0.01" value="1" disabled><output id="pe-zv">100%</output></label>
+        <label class="pe-zoom">Zoom<input type="range" id="pe-zoom" min="0.2" max="5" step="0.01" value="1" data-need disabled><output id="pe-zv">100%</output></label>
         <div class="pe-row">
-          <button type="button" class="pe-sec pe-sm" id="pe-rl" disabled title="Rotate left">⟲ Rotate</button>
-          <button type="button" class="pe-sec pe-sm" id="pe-rr" disabled title="Rotate right">⟳ Rotate</button>
-          <button type="button" class="pe-sec pe-sm" id="pe-fl" disabled title="Mirror left to right">⇆ Flip</button>
-          <button type="button" class="pe-sec pe-sm" id="pe-ct" disabled>Centre</button>
-          <button type="button" class="pe-sec pe-sm" id="pe-rs" disabled>Reset all</button>
+          <button type="button" class="pe-sec pe-sm" id="pe-rl" data-need disabled title="Rotate left">⟲ Rotate</button>
+          <button type="button" class="pe-sec pe-sm" id="pe-rr" data-need disabled title="Rotate right">⟳ Rotate</button>
+          <button type="button" class="pe-sec pe-sm" id="pe-fl" data-need disabled title="Mirror left to right">⇆ Flip</button>
+          <button type="button" class="pe-sec pe-sm" id="pe-ct" data-need disabled>Centre</button>
+          <button type="button" class="pe-sec pe-sm" id="pe-undo" data-need disabled title="Undo the last background or colour change (Ctrl+Z)">↶ Undo</button>
+          <button type="button" class="pe-sec pe-sm" id="pe-rs" data-need disabled title="Back to the photo as it was added">Reset all</button>
         </div>
       </div>
+      <div class="pe-mode">
+        <div class="pe-seg" role="group" aria-label="What dragging on the photo does">
+          <button type="button" data-mode="move" aria-pressed="true" data-need disabled>✥ Move</button>
+          <button type="button" data-mode="erase" aria-pressed="false" data-need disabled>Erase</button>
+          <button type="button" data-mode="restore" aria-pressed="false" data-need disabled>Restore</button>
+          <button type="button" data-mode="wand" aria-pressed="false" data-need disabled>Magic erase</button>
+          <button type="button" data-mode="pick" aria-pressed="false" data-need disabled>Pick colour</button>
+        </div>
+        <label class="pe-zoom" id="pe-brushrow" hidden>Brush size<input type="range" id="pe-brush" min="4" max="120" value="30"><output id="pe-brushv">30</output></label>
+        <p class="pe-hint" id="pe-modehint">Move: drag to position the photo inside the frame.</p>
+      </div>
+      <details class="pe-adj" open>
+        <summary>Remove background</summary>
+        <div class="pe-row">
+          <button type="button" id="pe-ai" data-need disabled>Remove background (AI)</button>
+          <button type="button" class="pe-sec" id="pe-plain" data-need disabled>Remove plain background</button>
+        </div>
+        <p class="pe-hint"><b>AI</b> finds the subject in any photo. The first time, it downloads its model (about 45 MB) and keeps it in your browser. It takes 10–30 seconds a photo. <b>Plain background</b> is instant for products shot on white or one flat colour, and for logos.</p>
+        <label class="pe-sl" style="margin-top:10px">Tolerance<input type="range" id="pe-tol" min="2" max="100" value="25" data-need disabled><output id="pe-tolv">25</output></label>
+        <label class="pe-chkl" style="margin:0 0 6px"><input type="checkbox" id="pe-holes" data-need disabled> Plain background: also remove enclosed spots, like the inside of letters (best for logos)</label>
+        <p class="pe-hint" style="margin-top:-2px">How different a colour can be and still count as background (plain background and Magic erase). Raise it if bits are left behind; lower it if it eats into the product.</p>
+        <div class="pe-row" style="margin-top:10px">
+          <button type="button" class="pe-sec pe-sm" id="pe-trim" data-need disabled title="Crop away transparent space around the cut-out">Trim empty edges</button>
+          <button type="button" class="pe-sec pe-sm" id="pe-back" data-need disabled>Bring background back</button>
+        </div>
+        <label class="pe-chkl"><input type="checkbox" id="pe-shadow" data-need disabled> Soft shadow under the cut-out</label>
+        <p class="pe-hint">Tidy edges with Erase and Restore above. Choose what goes behind the cut-out under Background in step 2 (white, a colour, or transparent for logos).</p>
+      </details>
       <details class="pe-adj">
         <summary>Adjust colours</summary>
-        <label>Brightness<input type="range" id="pe-b" min="50" max="150" value="100" disabled><output>100%</output></label>
-        <label>Contrast<input type="range" id="pe-c" min="50" max="150" value="100" disabled><output>100%</output></label>
-        <label>Saturation<input type="range" id="pe-s" min="0" max="200" value="100" disabled><output>100%</output></label>
+        <div class="pe-row" style="margin-bottom:10px" role="group" aria-label="Quick looks">
+          <button type="button" class="pe-sec pe-sm" data-look="none" data-need disabled>Original</button>
+          <button type="button" class="pe-sec pe-sm" data-look="vivid" data-need disabled>Vivid</button>
+          <button type="button" class="pe-sec pe-sm" data-look="bright" data-need disabled>Bright</button>
+          <button type="button" class="pe-sec pe-sm" data-look="warm" data-need disabled>Warm</button>
+          <button type="button" class="pe-sec pe-sm" data-look="cool" data-need disabled>Cool</button>
+          <button type="button" class="pe-sec pe-sm" data-look="bw" data-need disabled>Black &amp; white</button>
+        </div>
+        <label class="pe-sl">Brightness<input type="range" id="pe-b" min="50" max="150" value="100" data-need disabled><output>100%</output></label>
+        <label class="pe-sl">Contrast<input type="range" id="pe-c" min="50" max="150" value="100" data-need disabled><output>100%</output></label>
+        <label class="pe-sl">Saturation<input type="range" id="pe-s" min="0" max="200" value="100" data-need disabled><output>100%</output></label>
+        <label class="pe-sl">Warmth<input type="range" id="pe-warm" min="-50" max="50" value="0" data-need disabled><output>0</output></label>
+        <label class="pe-sl">Hue<input type="range" id="pe-hue" min="-180" max="180" value="0" data-need disabled><output>0°</output></label>
+        <h3>Change one colour</h3>
+        <p class="pe-hint" style="margin:-4px 0 8px">For example, turn a red cup blue. Pick the colour to change from the photo, choose the new colour, then press Change colour.</p>
+        <div class="pe-row">
+          <span class="pe-swatch pe-chk" id="pe-from" title="Colour to change (not picked yet)"></span>
+          <button type="button" class="pe-sec pe-sm" id="pe-pickbtn" data-need disabled>Pick from photo</button>
+          <span aria-hidden="true">→</span>
+          <input type="color" id="pe-to" value="#1e6fd9" aria-label="New colour" title="New colour" data-need disabled>
+        </div>
+        <label class="pe-sl" style="margin-top:8px">Range<input type="range" id="pe-range" min="5" max="100" value="30" data-need disabled><output id="pe-rangev">30</output></label>
+        <button type="button" class="pe-sm" id="pe-repl" data-need disabled>Change colour</button>
+      </details>
+      <details class="pe-adj" id="pe-oo" open>
+        <summary>Preview on Oolio online ordering</summary>
+        <div class="pe-row" style="justify-content:space-between;margin-bottom:10px">
+          <div class="pe-seg" role="group" aria-label="Preview as">
+            <button type="button" data-kind="product" aria-pressed="true">Product photo</button>
+            <button type="button" data-kind="logo" aria-pressed="false">Logo</button>
+            <button type="button" data-kind="banner" aria-pressed="false">Banner</button>
+          </div>
+          <label class="pe-chkl" style="margin:0"><input type="checkbox" id="pe-guides" checked> Crop guides on the photo</label>
+        </div>
+        <p class="pe-empty" id="pe-ooempty" style="text-align:left;max-width:none">Add a photo to see it as it would appear on the online ordering page.</p>
+        <div id="pe-oo-product" hidden>
+          <div class="pe-oo">
+            <div class="pe-oo-card"><div class="pe-oo-img"><img data-pv alt="Menu list preview"></div><div class="pe-oo-txt"><span class="pe-oo-nm">Product name</span><span>$28.00</span></div></div>
+            <p class="pe-oo-cap">Menu list: cropped to a square, 138 × 138 on screen.</p>
+            <div class="pe-oo-sheet"><div><img data-pv alt="Item pop-up preview"></div><div class="pe-oo-txt"><span class="pe-oo-nm">Product name</span></div></div>
+            <p class="pe-oo-cap">Item pop-up: 300 px tall across the full width (390 × 300 on a computer, about 375 × 300 on a phone), so the top and bottom of a square photo are cut off. Keep the food inside the dashed guide.</p>
+          </div>
+        </div>
+        <div id="pe-oo-logo" hidden>
+          <div class="pe-oo">
+            <div class="pe-oo-hero" id="pe-oo-hero"><img data-pv alt="Logo preview"><h4 class="pe-oo-vn">Venue name</h4></div>
+            <p class="pe-oo-cap">The logo sits in a 200 × 60 box in the middle of the header, shrunk to fit without cropping, over the store’s brand colour (or its banner). A transparent PNG with little empty space around it shows largest.</p>
+            <label class="pe-chkl" style="color:#f1f1f1;margin:0">Brand colour behind it <input type="color" id="pe-herocol" value="#673ab6" aria-label="Store brand colour"></label>
+          </div>
+        </div>
+        <div id="pe-oo-banner" hidden>
+          <div class="pe-oo">
+            <div class="pe-oo-frs" id="pe-oo-frs"></div>
+            <p class="pe-oo-cap">The banner fills the header 240 px tall across the whole screen, so phones show only the middle and wide screens cut off the top and bottom. Keep anything important inside the dashed guide; the store name is written over the middle.</p>
+          </div>
+        </div>
       </details>
     </section>
   </div>
@@ -1812,6 +1930,7 @@ Double Shot=60</textarea></div>
 <tr><td>Pexels, Pixabay, Openverse, Wikimedia Commons, wsrv.nl</td><td>Free product photos in Photo Finder</td><td>Product names; your browser contacts them directly</td><td>Germany, USA, Netherlands</td></tr>
 <tr><td>Menu feeds (me&amp;u / Mr Yum, Hungry Hungry)</td><td>Reading a venue’s online ordering menu</td><td>The venue’s menu address</td><td>Australia</td></tr>
 <tr><td>Google Fonts, cdnjs, jsDelivr</td><td>The page’s font and code libraries</td><td>Your IP address and browser, when the page loads</td><td>Global</td></tr>
+<tr><td>Hugging Face</td><td>The background-removal model, downloaded once the first time you use “Remove background (AI)” in Photo Editor. Your photo isn’t sent: it stays in your browser</td><td>Your IP address and browser</td><td>USA</td></tr>
 <tr><td>Anthropic</td><td>Hosting the claude.ai copy and reading menus with Claude there when you allow it; on the website, reading menus with Claude only for people the site owner has switched it on for</td><td>The menu text or picture: under your own Claude account on claude.ai, under the team’s API account on the website</td><td>USA</td></tr>
 </tbody></table></div>
 <p>We may also disclose information when the law requires it, or to deal with a security incident.</p>
@@ -2001,6 +2120,8 @@ Double Shot=60</textarea></div>
 <tr><td>Tesseract.js 5.1.1</td><td>Text recognition on the website</td><td>Apache 2.0</td></tr>
 <tr><td>JSZip 3.10.1</td><td>Saving photo folders</td><td>MIT (or GPL 3.0)</td></tr>
 <tr><td>docx 8.5.0 (Dolan Miu)</td><td>Making Word files in Image to Word</td><td>MIT</td></tr>
+<tr><td>Transformers.js 3.8.1 (Hugging Face) with ONNX Runtime Web (Microsoft)</td><td>Running the background-removal model in your browser (Photo Editor)</td><td>Apache 2.0; MIT</td></tr>
+<tr><td>ormbg model (Maximilian Schirrmacher), ONNX copy from Hugging Face</td><td>Finding the subject when Photo Editor removes a background</td><td>Apache 2.0</td></tr>
 <tr><td>Lucide icons 0.460.0</td><td>The icons</td><td>ISC (parts from Feather, MIT)</td></tr>
 <tr><td>Inter typeface (Rasmus Andersson)</td><td>The page font</td><td>SIL Open Font License 1.1</td></tr>
 </tbody></table></div>
@@ -2452,6 +2573,7 @@ const MENU_RULES=
   '  - price: the extra cost as a number, 0 when free. required: true when the guest must pick (choice of, choose, your way, served with your choice of); max: 1 for pick-one, else 0.\n'+
   '  - for: the item(s) or section the options belong to, as printed (e.g. "Breakfast", "All coffee", "Steaks", "Pizzas").\n'+
   '- Flavours or types of one item at one price ("Milkshake: chocolate, vanilla, strawberry $8") are ONE item ("Milkshake", 8) plus an options group ("Milkshake Flavour", required, max 1). Only sizes and serves get separate item entries.\n'+
+  '- Several different drinks or dishes printed together under one price ("Flat White / Cappuccino / Latte $5.00", "Coke, Sprite or Fanta $4") are separate items: one entry per name, each with that price. Keep them as one item only when the menu says the guest picks one as part of a single item ("choice of", "your choice", "either"); then the choices go in options.\n'+
   '- A set menu, banquet or deal with one price is one item; put the courses in "description".\n'+
   '- Leave out opening hours, addresses, phone numbers and notes about surcharges.\n'+
   '- Copy names and prices exactly as printed; do not invent or correct anything. If part of the menu is unreadable, say what in "notes".';
@@ -3886,8 +4008,8 @@ function renderSources(){
   const c=$('clr');if(c)c.addEventListener('click',()=>{tables=[];catCfg={};PX={};npSig='';$('file').value='';forgetSession();renderSources();rebuild()});}
 
 function rebuild(){
-  readSettings();base=[];mods=[];const OMN=[];INACT=[];
-  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);r.items=omActive(t,r.items,INACT);r.items=plainSizes(omSplit(r.items,OMN),OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods.map(m=>(m.name=properName(m.name),m)));
+  readSettings();base=[];mods=[];const OMN=[];INACT=[];COMBO=[];
+  tables.forEach(t=>{if(!t.on||!t.a||t.pl)return;const r=extract(t);r.items=splitItems(t,omActive(t,r.items,INACT),true);r.items=plainSizes(omSplit(r.items,OMN),OMN);markNP(r.items);t.info=r;base.push(...r.items);mods.push(...r.mods.map(m=>(m.name=properName(m.name),m)));
     const el=$('ti'+t.id);if(el)el.textContent=t.doc?r.items.length+' menu lines'+(NOPRICE()?'':' with prices')+' read from the '+t.doc.how+(t.doc.ignored.length?', '+t.doc.ignored.length+' other lines not used (listed in Checks)':'')+'. Check names and prices against the original.':
       r.items.length+' products, '+r.mods.length+' modifiers read'+(t.a.marker?' (template examples above the “below this line” row were skipped)':'')+(t.a.pl&&t.a.pl.length?'. Price lists in it: '+t.a.pl.map(c=>c.name).join(', '):'')+'.';});
   // price lists: columns in Oolio files first, then files used as a price list
@@ -3897,7 +4019,7 @@ function rebuild(){
   if(OMN.split)PLCHK.push({msg:'Sizes with the order type in them (“Regular TAKEAWAY”, “Dine-In”, “Large Dine-In”) were split: '+OMN.split+' items now have plain sizes, with the dine-in price as the menu price and the TAKEAWAY price in the “'+OM_TAKE+'” price list.',list:[],info:true});
   if(OMN.plain)PLCHK.push({msg:OMN.plain+' items had a filler size (“Serve”, “SIDE OF”, “Retail”…) as their only size, which OrderMate needs but Oolio doesn’t. The size was removed so they are plain products.',list:[],info:true});
   if(OMN.length)PLCHK.push({msg:'sizes are only sold as takeaway, so their takeaway price is also used as the menu price. Check these with the venue.',list:OMN.slice()});
-  tables.forEach(t=>{if(!t.on||!t.a||!t.pl)return;const n=t.pl,r=extract(t),miss=[],seen=new Set();r.items=omActive(t,r.items);r.items=plainSizes(omSplit(r.items));if(!PLS.includes(n))PLS.push(n);let hit=0,same=0;
+  tables.forEach(t=>{if(!t.on||!t.a||!t.pl)return;const n=t.pl,r=extract(t),miss=[],seen=new Set();r.items=splitItems(t,omActive(t,r.items),false);r.items=plainSizes(omSplit(r.items));if(!PLS.includes(n))PLS.push(n);let hit=0,same=0;
     r.items.forEach(x=>{const it=byC.get(plKeyC(x))||byK.get(plKey(x));const lab=x.name+(x.variation?' ('+x.variation+')':'')+(x.price?' $'+x.price:'');
       if(!it){miss.push(lab);return}if(x.price===''||seen.has(it))return;seen.add(it);(it.pl=it.pl||{})[n]=x.price;hit++;if(+x.price===+it.price)same++});
     t.info={items:[],mods:[]};const el=$('ti'+t.id);
@@ -4175,7 +4297,7 @@ function run(){
   const hasM=mods.length||res.genMods.length||res.preMods.length||res.om.mods.length;$('dlom').style.display=res.om.rows.length?'inline-block':'none';drawOM();$('dlom').disabled=!res.om.rows.length;$('dlm').style.display=hasM?'inline-block':'none';$('dlm').disabled=!hasM;
   {const hp=res.plan.rows.length||hasM;$('dlpl').style.display=hp?'inline-block':'none';$('dlpl').disabled=!hp}
   $('inaW').style.display=INACT.length?'block':'none';$('inaN').textContent=INACT.length;
-  renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();drawKids();saveSession();}
+  drawCombo();renderNP();drawPreflight();drawChanges();drawAIC();drawOCK();drawKids();saveSession();}
 function drawKids(){const on=KIDSON(),n=kidsMerged.length,el=$('kidmsg');if(!el)return;
   el.innerHTML=(on?'On: Milkshake Chocolate on the kids menu becomes the Kids Size of Chocolate Milkshake, next to Regular and Large. ':'Off: kids items stay as their own products on the kids menu, named with a “Kids” prefix (Kids Milkshake Chocolate). ')+
     (on?'Untick it for venues that want a separate kids menu.':'Tick it to merge them into the main products.')+(n?'<details><summary>'+n+' kids item'+(n===1?'':'s')+(on?' merged':' would be merged')+'</summary><ul>'+kidsMerged.map(x=>'<li>'+esc(x)+'</li>').join('')+'</ul></details>':' No kids items on this menu match a main-menu product.')}
@@ -4327,6 +4449,7 @@ function preflight(rows,plan){const ix=h=>OUT.indexOf(h),I={n:ix('Product Name*'
   add(block,'sizes have no parent row',orphan,'Each size needs a matching Variant row with the same product name.');
   add(block,'size groups have a parent row but no sizes',[...emptyVar.values()],'Remove the parent row or add its sizes.');
   if(!rows.some(r=>r[I.t]==='Product'))block.push({msg:'There are no products to import.',list:[]});
+  add(block,'names in the uploaded spreadsheet hold more than one item',comboWait().map(c=>c.name),'Choose separate items or one item for each at the top of step 6 (Checks).');
   add(warn,'printer profiles aren’t printers listed for this venue in the Setup Tracker',prn,'Create these printer profiles in Oolio, or change the printer in step 3.');
   add(warn,'long product names with no short POS name',long,'They can be cut off on POS buttons and dockets. A POS Name column in the source file sets a shorter one.');
   add(warn,'names have emoji or unusual characters',odd,'Kitchen and bar printers often can’t print them.');
@@ -4438,6 +4561,50 @@ function renderPrev(){
 const PRICE_SHEET='Price request',PREF='Ref (please don’t change)';
 const pxKey=it=>[it.name,it.variation,it.catSrc||it.sub||it.section].map(N).join('|');
 function markNP(items){items.forEach(it=>{if(it.price!=='')return;it._np=true;it._k=pxKey(it)})}
+
+/* ---------------- several items in one name ----------------
+   "Flat White / Cappuccino / Latte $5" is three products at $5 each, not one (user's rule, 2026-11-23). Menus read from
+   photos, PDFs, Word or web pages are split on their own, unless the menu says it's one item with a choice ("choice of",
+   "your choice", "either"). Uploaded spreadsheets (pre-work, imports, POS exports) are never changed on their own: each
+   name like "Bread / Toast" or "Bun / Bagel" is flagged at the top of step 6, a pop-up says so, pre-flight holds the
+   upload until it's answered, and the user picks separate items or one item. Answers are kept with the session.
+   Not a split: slashes inside brackets ("Latte (Soy/Almond)"), fractions and prices (1/2, 5/6), "w/" and "n/a", and
+   names whose parts are all sizes (Glass / Bottle). "Hot / Iced Chocolate" becomes Hot Chocolate and Iced Chocolate. */
+let SPLIT={},COMBO=[],comboSeen='';
+const SPLIT_ADJ=new Set('hot iced ice cold warm red white rose rosé sparkling still dry sweet soy almond oat skim lactose small large regular chicken beef pork lamb fish veg veggie vegetarian vegan prawn tofu plain toasted brown wholemeal multigrain rye sourdough raisin fruit'.split(' '));
+const CHOICE=/\b(choice|choose|either|your way|pick one|pick any)\b/i;
+function splitName(name){const s=String(name||'');if(!s.includes('/'))return null;
+  if(/\d\s*\/\s*\d|(^|\s)[a-z]\s*\/|\/\s*[a-z](\s|$)/i.test(s))return null;
+  let parts=s.replace(/\([^)]*\)/g,m=>m.replace(/\//g,'\u0000')).split(/\s*\/\s*/).map(x=>x.replace(/\u0000/g,'/').trim());
+  if(parts.length<2||parts.length>8||parts.some(p=>!/[a-z].*[a-z]/i.test(p))||parts.every(p=>isSize(p)))return null;
+  const last=parts[parts.length-1],lw=last.split(/\s+/);
+  if(lw.length>=2&&parts.slice(0,-1).every(p=>!/\s/.test(p)&&SPLIT_ADJ.has(p.toLowerCase())))parts=parts.slice(0,-1).map(p=>p+' '+lw.slice(1).join(' ')).concat([last]);
+  parts=parts.filter((p,i)=>parts.findIndex(q=>q.toLowerCase()===p.toLowerCase())===i);
+  return parts.length>1?parts:null}
+const comboKey=it=>N(it.catSrc||it.sub||it.screen||it.section)+'|'+N(it.name);
+// reg: list the name in step 6 (menus and pre-work); price list files only follow the answer the menu got
+function splitItems(t,items,reg){const out=[];
+  items.forEach(it=>{const parts=splitName(it.name);if(!parts){out.push(it);return}
+    const k=comboKey(it),auto=t.doc?(CHOICE.test(it.name+' '+(it.desc||''))?'keep':'split'):'';
+    if(reg){let c=COMBO.find(x=>x.k===k);if(!c){c={k,name:it.name,parts,cat:it.catSrc||it.sub||it.screen||it.section||'',file:t.file,auto,n:0};COMBO.push(c)}c.n++}
+    if((SPLIT[k]||auto)!=='split'){out.push(it);return}
+    parts.forEach(p=>out.push(Object.assign({},it,{name:p,pl:Object.assign({},it.pl),combo:it.name})))});
+  return out}
+const comboWait=()=>COMBO.filter(c=>!c.auto&&!SPLIT[c.k]);
+function drawCombo(){const el=$('combo');if(!el)return;if(!COMBO.length){el.innerHTML='';return}
+  const wait=comboWait(),how=c=>SPLIT[c.k]||c.auto;
+  el.innerHTML='<details class="chk'+(wait.length?'':' i')+'" open><summary><b>'+COMBO.length+'</b> name'+(COMBO.length===1?' holds':'s hold')+' more than one item'+(wait.length?' · <b>'+wait.length+' to choose</b>':'')+'</summary>'+
+    '<div class="warn" style="margin:6px 0">Names like “Flat White / Cappuccino / Latte” are separate products, each at the same price. Menus read from a photo, PDF, Word file or web page are split for you, unless the menu says the guest picks one (“choice of”). Uploaded spreadsheets are left as they are until you choose: separate items, or keep it as one item (for example when the guest picks one as part of the item).</div>'+
+    (wait.length>1?'<div style="margin:0 0 6px"><button type="button" class="sec" data-cball="split">Separate them all</button><button type="button" class="sec" data-cball="keep">Keep them all as one</button></div>':'')+
+    '<div class="scroll" style="max-height:340px"><table><thead><tr><th>Name</th><th>Category</th><th>Becomes</th><th>Layout</th></tr></thead><tbody>'+
+    COMBO.map((c,i)=>{const h=how(c);return'<tr'+(h?'':' style="background:var(--warn-bg,rgba(245,158,11,.12))"')+'><td>'+esc(c.name)+(c.n>1?' <span class="muted">×'+c.n+'</span>':'')+'<div class="muted" style="font-size:.8rem">'+esc(c.file)+'</div></td><td>'+esc(c.cat||'')+'</td>'+
+      '<td>'+(h==='split'?c.parts.map(esc).join('<br>'):h==='keep'?esc(c.name):'<span class="muted">'+c.parts.map(esc).join(' · ')+'</span>')+'</td>'+
+      '<td><select data-cb="'+i+'" aria-label="Layout for '+esc(c.name)+'">'+(h?'':'<option value="" selected>Choose…</option>')+'<option value="split"'+(h==='split'?' selected':'')+'>Separate items ('+c.parts.length+')</option><option value="keep"'+(h==='keep'?' selected':'')+'>Keep as one item</option></select></td></tr>'}).join('')+
+    '</tbody></table></div></details>';
+  el.querySelectorAll('select[data-cb]').forEach(n=>n.addEventListener('change',()=>{if(!n.value)return;SPLIT[COMBO[+n.dataset.cb].k]=n.value;rebuild()}));
+  el.querySelectorAll('[data-cball]').forEach(n=>n.addEventListener('click',()=>{comboWait().forEach(c=>SPLIT[c.k]=n.dataset.cball);rebuild()}));
+  // one pop-up per new set of unanswered names, so the flag isn't missed below the fold
+  const sig=wait.map(c=>c.k).join('#');if(sig&&sig!==comboSeen&&window.mhToast)window.mhToast(wait.length+' name'+(wait.length===1?' in the uploaded spreadsheet holds':'s in the uploaded spreadsheet hold')+' more than one item (like “'+wait[0].name+'”). Choose a layout in step 6.');comboSeen=sig}
 function npItems(){const seen=new Set(),out=[];base.forEach(it=>{if(!it._np||seen.has(it._k))return;seen.add(it._k);out.push(it)});return out}
 const catShown=c=>(catCfg[c]&&catCfg[c].rename)||c;
 function npLeft(its){const n=its.filter(i=>PX[i._k]==null||PX[i._k]==='').length;return n?n+' of '+its.length+' still to fill in':'all '+its.length+' filled in'}
@@ -4502,7 +4669,7 @@ const SESS='oolio.convSession',SETK='oolio.convSettings';
 const SET_IDS=['tax','taxfree','pgrp','catmode','comb','mVol','mWt','mVolU','mWtU','sizes'];
 function saveSession(){clearTimeout(saveSession.t);saveSession.t=setTimeout(()=>{if(!tables.length)return;
   const ts=tables.map(t=>({file:t.file,sheet:t.sheet,rows:t.rows,doc:t.doc,on:t.on,err:t.err||'',map:t.a?t.a.map:null,rank:t.rank,srcLabel:t.srcLabel,delivery:t.delivery,urls:t.urls,pl:t.pl||''}));
-  try{localStorage.setItem(SESS,JSON.stringify({at:Date.now(),tables:ts,catCfg,PX,np:NOPRICE()}))}catch(e){/* too big for this browser's storage: not kept */}},800)}
+  try{localStorage.setItem(SESS,JSON.stringify({at:Date.now(),tables:ts,catCfg,PX,SPLIT,np:NOPRICE()}))}catch(e){/* too big for this browser's storage: not kept */}},800)}
 function forgetSession(){clearTimeout(saveSession.t);try{localStorage.removeItem(SESS)}catch(e){}$('rsbox').innerHTML=''}
 function offerRestore(){let s=null;try{s=JSON.parse(localStorage.getItem(SESS)||'null')}catch(e){}
   if(!s||!Array.isArray(s.tables)||!s.tables.length||tables.length)return;
@@ -4515,7 +4682,7 @@ function restoreSession(s){
   tables=[];s.tables.forEach(o=>{const t=Object.assign({},o);delete t.map;
     t.a=!t.err&&t.rows&&t.rows.length?analyse(t):null;if(t.a&&t.doc)t.a.src='document';if(t.a&&o.map)t.a.map=o.map;
     t.on=!!t.a&&o.on!==false;t.id=tables.length;tables.push(t)});
-  catCfg=s.catCfg||{};PX=s.PX||{};npSig='';$('noprice').checked=!!s.np;renderSources();rebuild();}
+  catCfg=s.catCfg||{};PX=s.PX||{};SPLIT=s.SPLIT||{};npSig='';$('noprice').checked=!!s.np;renderSources();rebuild();}
 const SET_DEF={};
 function loadSettings(){SET_IDS.forEach(id=>{const e=$(id);if(e)SET_DEF[id]=e.type==='checkbox'?e.checked:e.value});
   let s=null;try{s=JSON.parse(localStorage.getItem(SETK)||'null')}catch(e){}if(!s)return;
@@ -7115,23 +7282,39 @@ draw();
 <script>
 (()=>{
 const $=id=>document.getElementById(id);
-const st={img:null,name:'',w:1000,h:1000,fit:'fill',bg:'#ffffff',zoom:1,ox:0,oy:0,rot:0,flip:false,b:100,c:100,s:100,preset:'1000x1000'};
-let pr=1,est=0,estTimer=0;
+// sizes measured from ordering.oolio.io (Nov 2026): menu tile 138×138 cover, item pop-up full width×300 cover (max 390 wide),
+// header 240 tall full width with the banner as cover and the logo in a 200×60 contain box
+const OO={product:[1,390/300,375/300],banner:[375/240,768/240,1024/240,1440/240,1920/240]};
+const PK={'1000x1000':'product','600x180':'logo','2400x600':'banner'};
+const NOTES={product:'Square for the menu list. The item pop-up crops the top and bottom, so keep the food in the middle.',
+  logo:'Transparent PNG, fitted without cropping. Remove a white background with “Remove plain background”, then “Trim empty edges”.',
+  banner:'Phones show only the middle and wide screens crop the top and bottom: keep words and food inside the dashed guide.'};
+const MAXS=2500; // the working copy's longest side: enough for every preset, quick enough to edit
+const st={img:null,orig:null,src:null,name:'',w:1000,h:1000,fit:'fill',bg:'#ffffff',zoom:1,ox:0,oy:0,rot:0,flip:false,
+  b:100,c:100,s:100,hue:0,warm:0,shadow:false,guides:true,preset:'1000x1000',kind:'product',mode:'move',brush:30,tol:25,pick:null,hover:null,hero:'#673ab6'};
+let pr=1,est=0,estTimer=0,pvTimer=0,pvUrl='',adjC=null,adjKey='',srcVer=0,raf=0,undo=[];
 const cv=$('pe-cv'),cx=cv.getContext('2d');
-try{const p=JSON.parse(localStorage.getItem('mh.pe')||'{}');if(p.preset)st.preset=p.preset;if(p.w)st.w=p.w;if(p.h)st.h=p.h;if(p.fit)st.fit=p.fit;if(p.bg)st.bg=p.bg;
-  if(p.fmt)$('pe-fmt').value=p.fmt;if(p.max)$('pe-max').value=p.max}catch(e){}
-const remember=()=>{try{localStorage.setItem('mh.pe',JSON.stringify({preset:st.preset,w:st.w,h:st.h,fit:st.fit,bg:st.bg,fmt:$('pe-fmt').value,max:$('pe-max').value}))}catch(e){}};
+try{const p=JSON.parse(localStorage.getItem('mh.pe')||'{}');['preset','w','h','fit','bg','kind','hero','brush','tol'].forEach(k=>{if(p[k]!=null)st[k]=p[k]});
+  if(p.guides===false)st.guides=false;if(p.shadow)st.shadow=true;if(p.fmt)$('pe-fmt').value=p.fmt;if(p.max)$('pe-max').value=p.max}catch(e){}
+const remember=()=>{try{localStorage.setItem('mh.pe',JSON.stringify({preset:st.preset,w:st.w,h:st.h,fit:st.fit,bg:st.bg,kind:st.kind,hero:st.hero,brush:st.brush,tol:st.tol,
+  guides:st.guides,shadow:st.shadow,fmt:$('pe-fmt').value,max:$('pe-max').value}))}catch(e){}};
 const msg=(t,err)=>{const m=$('pe-msg');m.textContent=t||'';m.className='pe-msg'+(err?' err':'')};
 const kb=n=>n>=1048576?(n/1048576).toFixed(2)+' MB':Math.max(1,Math.round(n/1024))+' KB';
+const mk=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
+const clone=c=>{const n=mk(c.width,c.height);n.getContext('2d').drawImage(c,0,0);return n};
+const ctx2=c=>c.getContext('2d',{willReadFrequently:true});
+const busy=t=>{$('pe-busy').hidden=!t;$('pe-busy').textContent=t||''};
 
 /* ---------- loading a photo ---------- */
 function loadFile(f){if(!f||!/^image\//.test(f.type||'')&&!/\.(jpe?g|png|webp|gif|bmp|avif)$/i.test(f.name||'')){msg('That file isn’t a picture.',true);return}
   const url=URL.createObjectURL(f),im=new Image();
-  im.onload=()=>{st.img=im;st.name=(f.name||'Pasted photo.png');st.rot=0;st.flip=false;st.b=st.c=st.s=100;
+  im.onload=()=>{const m=Math.max(im.naturalWidth,im.naturalHeight),k=Math.min(1,MAXS/m),w=Math.max(1,Math.round(im.naturalWidth*k)),h=Math.max(1,Math.round(im.naturalHeight*k));
+    st.orig=mk(w,h);st.orig.getContext('2d').drawImage(im,0,0,w,h);st.src=clone(st.orig);URL.revokeObjectURL(url);
+    st.img=im;st.name=(f.name||'Pasted photo.png');st.rot=0;st.flip=false;resetCols();undo=[];syncUndo();st.pick=null;syncPick();
     $('pe-name').value=st.name.replace(/\.[a-z0-9]+$/i,'');
     $('pe-orig').hidden=false;$('pe-orig').textContent='“'+st.name+'”, '+im.naturalWidth+' × '+im.naturalHeight+' px, '+kb(f.size||0);
-    ['pe-zoom','pe-rl','pe-rr','pe-fl','pe-ct','pe-rs','pe-b','pe-c','pe-s','pe-dl'].forEach(id=>$(id).disabled=false);
-    $('pe-empty').hidden=true;cv.hidden=false;syncAdj();if(st.preset==='orig')origSize();centre();msg('')};
+    document.querySelectorAll('#pe [data-need]').forEach(e=>e.disabled=false);syncUndo();
+    $('pe-empty').hidden=true;cv.hidden=false;syncAdj();if(st.preset==='orig')origSize();touch();centre();msg('')};
   im.onerror=()=>{URL.revokeObjectURL(url);msg('This picture couldn’t be opened. Try saving it as a JPG or PNG first.',true)};
   im.src=url}
 const drop=$('pe-drop');
@@ -7141,46 +7324,98 @@ $('pe-file').addEventListener('change',e=>{loadFile(e.target.files[0]);e.target.
 drop.addEventListener('drop',e=>loadFile(e.dataTransfer.files[0]));
 $('pe-stage').addEventListener('dragover',e=>e.preventDefault());
 $('pe-stage').addEventListener('drop',e=>{e.preventDefault();loadFile(e.dataTransfer.files[0])});
+const showing=()=>{const root=$('pe');return root&&root.offsetParent!==null};
 // a picture pasted while this tool is showing (not into a text box) becomes the photo
-document.addEventListener('paste',e=>{const root=$('pe');if(!root||root.offsetParent===null)return;
+document.addEventListener('paste',e=>{if(!showing())return;
   const f=[...(e.clipboardData&&e.clipboardData.files||[])].find(x=>/^image\//.test(x.type));if(!f)return;e.preventDefault();loadFile(f)});
+document.addEventListener('keydown',e=>{if(!showing()||!st.img)return;if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==='z'&&!/^(INPUT|TEXTAREA|SELECT)$/.test((e.target||{}).tagName||'')){e.preventDefault();doUndo()}});
+
+/* ---------- colour adjustments: one colour matrix applied to the working copy, cached until something changes ---------- */
+function touch(){srcVer++;draw()}
+function adjusted(){const s=st.src;if(st.b===100&&st.c===100&&st.s===100&&!st.hue&&!st.warm)return s;
+  const key=srcVer+'|'+st.b+'|'+st.c+'|'+st.s+'|'+st.hue+'|'+st.warm;if(key===adjKey&&adjC)return adjC;
+  const w=s.width,h=s.height;if(!adjC||adjC.width!==w||adjC.height!==h)adjC=mk(w,h);
+  const id=ctx2(s).getImageData(0,0,w,h),d=id.data;
+  // saturation and hue rotation (the CSS filter matrices), then brightness/contrast scale and a warm/cool shift on red and blue
+  const S=st.s/100,t=st.hue*Math.PI/180,co=Math.cos(t),si=Math.sin(t);
+  const sat=[.213+.787*S,.715-.715*S,.072-.072*S,.213-.213*S,.715+.285*S,.072-.072*S,.213-.213*S,.715-.715*S,.072+.928*S];
+  const hu=[.213+co*.787-si*.213,.715-co*.715-si*.715,.072-co*.072+si*.928,.213-co*.213+si*.143,.715+co*.285+si*.140,.072-co*.072-si*.283,.213-co*.213-si*.787,.715-co*.715+si*.715,.072+co*.928+si*.072];
+  const M=[];for(let r=0;r<3;r++)for(let c=0;c<3;c++)M[r*3+c]=hu[r*3]*sat[c]+hu[r*3+1]*sat[3+c]+hu[r*3+2]*sat[6+c];
+  const bc=(st.b/100)*(st.c/100),off=128*(1-st.c/100),wr=st.warm*.7,wb=-st.warm*.7,wg=st.warm*.1;
+  for(let i=0;i<9;i++)M[i]*=bc;
+  const [a,b,c,e,f,g,p,q,r]=M,o0=off+wr,o1=off+wg,o2=off+wb;
+  for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;const R=d[i],G=d[i+1],B=d[i+2];d[i]=a*R+b*G+c*B+o0;d[i+1]=e*R+f*G+g*B+o1;d[i+2]=p*R+q*G+r*B+o2}
+  adjC.getContext('2d').putImageData(id,0,0);adjKey=key;return adjC}
 
 /* ---------- drawing ---------- */
-const srcW=()=>st.rot%180?st.img.naturalHeight:st.img.naturalWidth,srcH=()=>st.rot%180?st.img.naturalWidth:st.img.naturalHeight;
+const srcW=()=>st.rot%180?st.src.height:st.src.width,srcH=()=>st.rot%180?st.src.width:st.src.height;
 const base=()=>{const a=st.w/srcW(),b=st.h/srcH();return st.fit==='fill'?Math.max(a,b):Math.min(a,b)};
-const filt=()=>(st.b!==100||st.c!==100||st.s!==100)?'brightness('+st.b+'%) contrast('+st.c+'%) saturate('+st.s+'%)':'none';
 // in Fill the photo can't be moved so far that the background shows; in Fit it can't leave the frame
-function clamp(){if(!st.img)return;const k=base()*st.zoom,dw=srcW()*k,dh=srcH()*k;
+function clamp(){if(!st.src)return;const k=base()*st.zoom,dw=srcW()*k,dh=srcH()*k;
   const lx=st.fit==='fill'&&st.zoom>=1?Math.max(0,(dw-st.w)/2):(dw+st.w)/2-Math.min(dw,st.w)*.15,
         ly=st.fit==='fill'&&st.zoom>=1?Math.max(0,(dh-st.h)/2):(dh+st.h)/2-Math.min(dh,st.h)*.15;
   st.ox=Math.max(-lx,Math.min(lx,st.ox));st.oy=Math.max(-ly,Math.min(ly,st.oy))}
-function paint(ctx,W,H,sc){const im=st.img,k=base()*st.zoom;
+function paint(ctx,W,H,sc){const im=adjusted(),k=base()*st.zoom,iw=im.width,ih=im.height;
   ctx.save();ctx.setTransform(sc,0,0,sc,0,0);ctx.clearRect(0,0,W,H);
-  if(st.bg==='blur'){const kb2=Math.max(W/srcW(),H/srcH())*1.25;ctx.save();ctx.filter='blur('+Math.round(Math.max(W,H)/30)+'px) brightness(0.95)';
-    ctx.translate(W/2,H/2);ctx.rotate(st.rot*Math.PI/180);ctx.drawImage(im,-im.naturalWidth*kb2/2,-im.naturalHeight*kb2/2,im.naturalWidth*kb2,im.naturalHeight*kb2);ctx.restore()}
+  if(st.bg==='blur'){const o=st.orig,kb2=Math.max(W/(st.rot%180?o.height:o.width),H/(st.rot%180?o.width:o.height))*1.25;ctx.save();ctx.filter='blur('+Math.round(Math.max(W,H)/30)+'px) brightness(0.95)';
+    ctx.translate(W/2,H/2);ctx.rotate(st.rot*Math.PI/180);ctx.drawImage(o,-o.width*kb2/2,-o.height*kb2/2,o.width*kb2,o.height*kb2);ctx.restore()}
   else if(st.bg!=='none'){ctx.fillStyle=st.bg;ctx.fillRect(0,0,W,H)}
   ctx.translate(W/2+st.ox,H/2+st.oy);ctx.rotate(st.rot*Math.PI/180);if(st.flip)ctx.scale(-1,1);
-  ctx.filter=filt();ctx.imageSmoothingQuality='high';
-  ctx.drawImage(im,-im.naturalWidth*k/2,-im.naturalHeight*k/2,im.naturalWidth*k,im.naturalHeight*k);ctx.restore()}
-function draw(){if(!st.img){info();return}clamp();
+  if(st.shadow){ctx.shadowColor='rgba(0,0,0,.35)';ctx.shadowBlur=Math.max(W,H)*.03*sc;ctx.shadowOffsetY=H*.015*sc}
+  ctx.imageSmoothingQuality='high';
+  ctx.drawImage(im,-iw*k/2,-ih*k/2,iw*k,ih*k);ctx.restore()}
+// the part of the frame Oolio always shows, whatever the screen: the overlap of every crop it makes
+function safeRect(){const rs=OO[st.kind];if(!rs||!st.guides)return null;let vw=st.w,vh=st.h;const ar=st.w/st.h;
+  for(const a of rs){vw=Math.min(vw,ar>a?st.h*a:st.w);vh=Math.min(vh,ar>a?st.h:st.w/a)}
+  return vw>=st.w-1&&vh>=st.h-1?null:{x:(st.w-vw)/2,y:(st.h-vh)/2,w:vw,h:vh}}
+const draw=()=>{if(!raf)raf=requestAnimationFrame(()=>{raf=0;drawNow()})};
+function drawNow(){if(!st.src){info();return}clamp();
   const dpr=window.devicePixelRatio||1,box=Math.max(240,Math.min(($('pe-stage').clientWidth||600)-28,620));
   pr=Math.min(1,box*dpr/Math.max(st.w,st.h));const cw=Math.max(1,Math.round(st.w*pr)),ch=Math.max(1,Math.round(st.h*pr));
   if(cv.width!==cw||cv.height!==ch){cv.width=cw;cv.height=ch}
   const disp=Math.min(box,box*st.w/Math.max(st.w,st.h));cv.style.width=disp+'px';
   paint(cx,st.w,st.h,pr);$('pe-stage').classList.toggle('pe-chk',st.bg==='none');
-  $('pe-zoom').value=st.zoom;$('pe-zv').textContent=Math.round(st.zoom*100)+'%';info();queueEst()}
-function info(){const t=$('pe-info');if(!st.img){t.textContent='';return}
+  const u=st.w/disp; // output pixels per screen pixel
+  cx.save();cx.setTransform(pr,0,0,pr,0,0);
+  const g=safeRect();if(g){cx.fillStyle='rgba(0,0,0,.28)';cx.beginPath();cx.rect(0,0,st.w,st.h);cx.rect(g.x,g.y,g.w,g.h);cx.fill('evenodd');
+    cx.setLineDash([6*u,4*u]);cx.lineWidth=1.5*u;cx.strokeStyle='#fff';cx.strokeRect(g.x,g.y,g.w,g.h);
+    cx.setLineDash([]);cx.font='600 '+(11*u)+'px system-ui,sans-serif';cx.fillStyle='#fff';cx.shadowColor='rgba(0,0,0,.7)';cx.shadowBlur=3*u*pr;
+    cx.fillText(st.kind==='banner'?'Shows on every screen':'Shows in the menu and the item pop-up',g.x+6*u,g.y+15*u)}
+  if(st.hover&&(st.mode==='erase'||st.mode==='restore')){cx.shadowBlur=0;cx.lineWidth=1.5*u;cx.setLineDash([]);
+    cx.strokeStyle='rgba(0,0,0,.8)';cx.beginPath();cx.arc(st.hover.x,st.hover.y,st.brush*u,0,7);cx.stroke();
+    cx.strokeStyle='#fff';cx.beginPath();cx.arc(st.hover.x,st.hover.y,st.brush*u-1.5*u,0,7);cx.stroke()}
+  cx.restore();
+  $('pe-zoom').value=st.zoom;$('pe-zv').textContent=Math.round(st.zoom*100)+'%';info();queueEst();queuePv()}
+function info(){const t=$('pe-info');if(!st.src){t.textContent='';return}
   t.innerHTML='<b>'+st.w+' × '+st.h+' px</b>'+(est?' · about <b>'+kb(est)+'</b>':'')}
-addEventListener('resize',()=>requestAnimationFrame(draw));
-if(window.ResizeObserver)new ResizeObserver(()=>requestAnimationFrame(draw)).observe($('pe-stage'));
+addEventListener('resize',draw);
+if(window.ResizeObserver)new ResizeObserver(draw).observe($('pe-stage'));
 
-/* ---------- moving and zooming ---------- */
-let drag=null;
-cv.addEventListener('pointerdown',e=>{if(!st.img)return;cv.setPointerCapture(e.pointerId);cv.classList.add('drag');drag={x:e.clientX,y:e.clientY,ox:st.ox,oy:st.oy}});
-cv.addEventListener('pointermove',e=>{if(!drag)return;const f=st.w/cv.clientWidth;st.ox=drag.ox+(e.clientX-drag.x)*f;st.oy=drag.oy+(e.clientY-drag.y)*f;draw()});
-const end=()=>{drag=null;cv.classList.remove('drag')};cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
-cv.addEventListener('wheel',e=>{if(!st.img)return;e.preventDefault();setZoom(st.zoom*(e.deltaY<0?1.06:1/1.06))},{passive:false});
-cv.addEventListener('keydown',e=>{if(!st.img)return;const step=(e.shiftKey?50:10)*st.w/cv.clientWidth,m={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+/* ---------- pointer: move, brush, magic erase, pick colour ---------- */
+const outPt=e=>{const r=cv.getBoundingClientRect();return{x:(e.clientX-r.left)*st.w/r.width,y:(e.clientY-r.top)*st.h/r.height}};
+// a point on the frame to a pixel of the working copy (undoes the move, rotate and flip used in paint)
+function toSrc(p){const k=base()*st.zoom,dx=p.x-st.w/2-st.ox,dy=p.y-st.h/2-st.oy,t=-st.rot*Math.PI/180,c=Math.cos(t),s=Math.sin(t);
+  let x=dx*c-dy*s;const y=dx*s+dy*c;if(st.flip)x=-x;return{x:x/k+st.src.width/2,y:y/k+st.src.height/2,k}}
+let drag=null,stroke=null;
+cv.addEventListener('pointerdown',e=>{if(!st.src)return;const p=outPt(e);
+  if(st.mode==='move'){cv.setPointerCapture(e.pointerId);cv.classList.add('drag');drag={x:e.clientX,y:e.clientY,ox:st.ox,oy:st.oy};return}
+  if(st.mode==='erase'||st.mode==='restore'){cv.setPointerCapture(e.pointerId);pushUndo();stroke=p;stamp(p);return}
+  const q=toSrc(p),x=Math.floor(q.x),y=Math.floor(q.y);if(x<0||y<0||x>=st.src.width||y>=st.src.height){msg('That’s outside the photo.',true);return}
+  if(st.mode==='wand')wand(x,y);else if(st.mode==='pick'){const d=ctx2(st.src).getImageData(x,y,1,1).data;
+    if(d[3]<20){msg('That spot is see-through; pick a coloured part of the photo.',true);return}
+    st.pick=[d[0],d[1],d[2]];syncPick();setMode('move');openCols();msg('Picked '+hex(st.pick)+'. Choose the new colour, then press Change colour.')}});
+cv.addEventListener('pointermove',e=>{const p=outPt(e);
+  if(drag){const f=st.w/cv.clientWidth;st.ox=drag.ox+(e.clientX-drag.x)*f;st.oy=drag.oy+(e.clientY-drag.y)*f;draw();return}
+  if(st.mode==='erase'||st.mode==='restore'){st.hover=p;
+    if(stroke){const u=st.w/cv.clientWidth,step=Math.max(1,st.brush*u/3),dx=p.x-stroke.x,dy=p.y-stroke.y,n=Math.ceil(Math.hypot(dx,dy)/step);
+      for(let i=1;i<=n;i++)stamp({x:stroke.x+dx*i/n,y:stroke.y+dy*i/n},true);stroke=p;touch()}else draw()}});
+const end=()=>{drag=null;cv.classList.remove('drag');if(stroke){stroke=null;touch()}};
+cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+cv.addEventListener('pointerleave',()=>{if(st.hover){st.hover=null;draw()}});
+cv.addEventListener('wheel',e=>{if(!st.src)return;e.preventDefault();
+  if(e.shiftKey&&(st.mode==='erase'||st.mode==='restore')){setBrush(st.brush*(e.deltaY<0?1.1:1/1.1));return}
+  setZoom(st.zoom*(e.deltaY<0?1.06:1/1.06))},{passive:false});
+cv.addEventListener('keydown',e=>{if(!st.src)return;const step=(e.shiftKey?50:10)*st.w/cv.clientWidth,m={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
   if(m){e.preventDefault();st.ox+=m[0]*step;st.oy+=m[1]*step;draw()}else if(e.key==='+'||e.key==='='){e.preventDefault();setZoom(st.zoom*1.06)}else if(e.key==='-'){e.preventDefault();setZoom(st.zoom/1.06)}});
 function setZoom(z){const old=st.zoom;st.zoom=Math.max(.2,Math.min(5,z));st.ox*=st.zoom/old;st.oy*=st.zoom/old;draw()}
 $('pe-zoom').addEventListener('input',e=>setZoom(+e.target.value));
@@ -7189,18 +7424,156 @@ $('pe-ct').onclick=centre;
 $('pe-rl').onclick=()=>{st.rot=(st.rot+270)%360;if(st.preset==='orig')origSize();centre()};
 $('pe-rr').onclick=()=>{st.rot=(st.rot+90)%360;if(st.preset==='orig')origSize();centre()};
 $('pe-fl').onclick=()=>{st.flip=!st.flip;st.ox=-st.ox;draw()};
-$('pe-rs').onclick=()=>{st.rot=0;st.flip=false;st.b=st.c=st.s=100;syncAdj();if(st.preset==='orig')origSize();centre()};
+$('pe-rs').onclick=()=>{if(!st.src)return;pushUndo();st.src=clone(st.orig);st.rot=0;st.flip=false;resetCols();syncAdj();if(st.preset==='orig')origSize();touch();centre();msg('Back to the photo as it was added (Undo brings your edits back).')};
+
+const HINTS={move:'Move: drag to position the photo inside the frame.',erase:'Erase: paint over anything to make it see-through. Shift + mouse wheel changes the brush size.',
+  restore:'Restore: paint to bring back parts of the original photo that were removed.',wand:'Magic erase: click a colour to remove it and everything touching it that’s a similar colour (set by Tolerance below).',
+  pick:'Pick colour: click the colour you want to change.'};
+function setMode(m){st.mode=m;st.hover=null;cv.dataset.mode=m;document.querySelectorAll('#pe [data-mode]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.mode===m)));
+  $('pe-brushrow').hidden=!(m==='erase'||m==='restore');$('pe-modehint').textContent=HINTS[m];draw()}
+document.querySelectorAll('#pe [data-mode]').forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+function setBrush(v){st.brush=Math.round(Math.max(4,Math.min(120,v)));$('pe-brush').value=st.brush;$('pe-brushv').textContent=st.brush;remember();draw()}
+$('pe-brush').addEventListener('input',e=>setBrush(+e.target.value));
+
+/* ---------- pixel edits on the working copy (each one can be undone) ---------- */
+function pushUndo(){if(!st.src)return;undo.push({src:clone(st.src),orig:st.orig});if(undo.length>8)undo.shift();syncUndo()}
+function doUndo(){const u=undo.pop();if(!u){msg('Nothing to undo.');return}st.src=u.src;st.orig=u.orig;syncUndo();touch();msg('Undone.')}
+function syncUndo(){$('pe-undo').disabled=!undo.length}
+$('pe-undo').onclick=doUndo;
+function stamp(p,quiet){const q=toSrc(p),r=Math.max(1,st.brush*(st.w/cv.clientWidth)/q.k),c=st.src.getContext('2d');c.save();
+  if(st.mode==='erase'){c.globalCompositeOperation='destination-out';const g=c.createRadialGradient(q.x,q.y,r*.55,q.x,q.y,r);
+    g.addColorStop(0,'rgba(0,0,0,1)');g.addColorStop(1,'rgba(0,0,0,0)');c.fillStyle=g;c.beginPath();c.arc(q.x,q.y,r,0,7);c.fill()}
+  else{c.beginPath();c.arc(q.x,q.y,r,0,7);c.clip();c.globalCompositeOperation='copy';c.drawImage(st.orig,0,0)}
+  c.restore();if(!quiet)touch()}
+function boxBlur(m,w,h,r){const t=new Float32Array(m.length),o=new Float32Array(m.length),n=2*r+1;
+  for(let y=0;y<h;y++){let s=0;const row=y*w;for(let x=-r;x<=r;x++)s+=m[row+Math.min(w-1,Math.max(0,x))];
+    for(let x=0;x<w;x++){t[row+x]=s/n;s+=m[row+Math.min(w-1,x+r+1)]-m[row+Math.max(0,x-r)]}}
+  for(let x=0;x<w;x++){let s=0;for(let y=-r;y<=r;y++)s+=t[Math.min(h-1,Math.max(0,y))*w+x];
+    for(let y=0;y<h;y++){o[y*w+x]=s/n;s+=t[Math.min(h-1,y+r+1)*w+x]-t[Math.max(0,y-r)*w+x]}}
+  return o}
+// remove: 1 = make see-through; feathered a pixel or two so edges aren't jagged
+function removeMask(mask,feather){const w=st.src.width,h=st.src.height,c=ctx2(st.src),id=c.getImageData(0,0,w,h),d=id.data;
+  let m=new Float32Array(w*h);for(let i=0;i<m.length;i++)m[i]=mask[i];if(feather)m=boxBlur(m,w,h,feather);
+  let n=0;for(let i=0;i<m.length;i++)if(m[i]>0){const a=d[i*4+3];d[i*4+3]=Math.round(a*(1-m[i]));if(a&&m[i]>.5)n++}
+  c.putImageData(id,0,0);touch();return n/(w*h)}
+const tol2=()=>{const t=st.tol*2.2;return t*t};
+function flood(d,w,h,seeds,ref){const T=tol2(),mask=new Uint8Array(w*h),q=new Int32Array(w*h);let qt=0,qh=0;
+  const ok=i=>{const j=i*4;if(d[j+3]<8)return true;const a=d[j]-ref[0],b=d[j+1]-ref[1],c=d[j+2]-ref[2];return a*a+b*b+c*c<=T};
+  for(const i of seeds)if(!mask[i]&&ok(i)){mask[i]=1;q[qt++]=i}
+  while(qh<qt){const i=q[qh++],x=i%w;
+    if(x>0&&!mask[i-1]&&ok(i-1)){mask[i-1]=1;q[qt++]=i-1}if(x<w-1&&!mask[i+1]&&ok(i+1)){mask[i+1]=1;q[qt++]=i+1}
+    if(i>=w&&!mask[i-w]&&ok(i-w)){mask[i-w]=1;q[qt++]=i-w}if(i<w*(h-1)&&!mask[i+w]&&ok(i+w)){mask[i+w]=1;q[qt++]=i+w}}
+  return mask}
+function plainBg(){if(!st.src)return;const w=st.src.width,h=st.src.height,d=ctx2(st.src).getImageData(0,0,w,h).data,seeds=[],cols=[[],[],[]];
+  for(let x=0;x<w;x++)seeds.push(x,(h-1)*w+x);for(let y=1;y<h-1;y++)seeds.push(y*w,y*w+w-1);
+  for(const i of seeds){const j=i*4;if(d[j+3]>=8){cols[0].push(d[j]);cols[1].push(d[j+1]);cols[2].push(d[j+2])}}
+  if(!cols[0].length){msg('The edges are already see-through.',true);return}
+  const med=a=>{a.sort((x,y)=>x-y);return a[a.length>>1]},ref=cols.map(med);
+  let mask;if($('pe-holes').checked){const T=tol2();mask=new Uint8Array(w*h);
+    for(let i=0;i<mask.length;i++){const j=i*4,a=d[j]-ref[0],b=d[j+1]-ref[1],c=d[j+2]-ref[2];mask[i]=d[j+3]<8||a*a+b*b+c*c<=T?1:0}}
+  else mask=flood(d,w,h,seeds,ref);
+  pushUndo();const f=removeMask(mask,1);
+  if(f<.01){undo.pop();syncUndo();msg('No plain background found around the edges. Raise Tolerance, or use Remove background (AI).',true);return}
+  if(st.bg!=='none'&&$('pe-fmt').value==='image/jpeg'&&PK[st.preset]==='logo')setBg('none');
+  msg('Removed '+Math.round(f*100)+'% of the photo as background ('+hex(ref)+'). Undo if it went too far.')}
+function wand(x,y){const w=st.src.width,h=st.src.height,d=ctx2(st.src).getImageData(0,0,w,h).data,j=(y*w+x)*4;
+  if(d[j+3]<8){msg('That spot is already see-through.');return}
+  pushUndo();const f=removeMask(flood(d,w,h,[y*w+x],[d[j],d[j+1],d[j+2]]),1);msg('Removed '+(f<.001?'a little':Math.max(1,Math.round(f*100))+'%')+' of the photo. Undo if it took too much.')}
+$('pe-plain').onclick=plainBg;
+function setTol(v){st.tol=+v;$('pe-tol').value=st.tol;$('pe-tolv').textContent=st.tol;remember()}
+$('pe-tol').addEventListener('input',e=>setTol(e.target.value));
+function trim(){if(!st.src)return;const w=st.src.width,h=st.src.height,d=ctx2(st.src).getImageData(0,0,w,h).data;let x0=w,y0=h,x1=-1,y1=-1;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)if(d[(y*w+x)*4+3]>10){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}
+  if(x1<0){msg('The whole photo is see-through.',true);return}
+  const pad=Math.round(Math.max(x1-x0,y1-y0)*.02);x0=Math.max(0,x0-pad);y0=Math.max(0,y0-pad);x1=Math.min(w-1,x1+pad);y1=Math.min(h-1,y1+pad);
+  if(x0===0&&y0===0&&x1===w-1&&y1===h-1){msg('There’s no empty space around the edges to trim. Remove the background first.');return}
+  pushUndo();const cw=x1-x0+1,ch=y1-y0+1,crop=c=>{const n=mk(cw,ch);n.getContext('2d').drawImage(c,-x0,-y0);return n};
+  st.src=crop(st.src);st.orig=crop(st.orig);if(st.preset==='orig')origSize();touch();centre();msg('Trimmed to '+cw+' × '+ch+' px around the cut-out.')}
+$('pe-trim').onclick=trim;
+$('pe-back').onclick=()=>{if(!st.src)return;pushUndo();st.src=clone(st.orig);touch();msg('Background brought back. Colour changes made with “Change colour” were undone too.')};
+$('pe-shadow').addEventListener('change',e=>{st.shadow=e.target.checked;remember();draw()});
+
+/* ---------- AI background removal: ormbg (Apache 2.0, 44 MB) run by Transformers.js in a worker on the processor ----------
+   (BiRefNet lite was tried first: better edges, but its WebGPU shaders failed on our laptops and it runs out of memory without a graphics card) */
+const AIW=`import {pipeline,RawImage,env} from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.8.1';
+env.allowLocalModels=false;let seg=null;
+const pc=p=>{if(p.status==='progress'&&/onnx/.test(p.file||''))postMessage({type:'dl',p:p.progress||0,total:p.total||0})};
+self.onmessage=async e=>{const m=e.data;try{
+  if(!seg)seg=await pipeline('background-removal','onnx-community/ormbg-ONNX',{device:'wasm',dtype:'uint8',progress_callback:pc});
+  postMessage({type:'run'});
+  const out=(await seg(new RawImage(new Uint8ClampedArray(m.data),m.w,m.h,4)))[0],n=out.width*out.height,a=new Uint8Array(n);
+  for(let i=0;i<n;i++)a[i]=out.data[i*out.channels+out.channels-1];
+  postMessage({type:'done',mask:a,mw:out.width,mh:out.height},[a.buffer]);
+}catch(err){postMessage({type:'err',msg:String(err&&err.message||err)})}};`;
+let aiW=null,aiRun=null;
+function aiRemove(){if(!st.src||aiRun)return;
+  const s=st.src,k=Math.min(1,1024/Math.max(s.width,s.height)),w=Math.max(1,Math.round(s.width*k)),h=Math.max(1,Math.round(s.height*k)),sm=mk(w,h),c=ctx2(sm);
+  c.fillStyle='#fff';c.fillRect(0,0,w,h);c.drawImage(s,0,0,w,h);const id=c.getImageData(0,0,w,h);
+  if(!aiW){try{aiW=new Worker(URL.createObjectURL(new Blob([AIW],{type:'text/javascript'})),{type:'module'})}
+    catch(e){msg('This browser can’t run the AI here. Try “Remove plain background”, or Chrome or Edge.',true);return}
+    aiW.onerror=e=>{e.preventDefault&&e.preventDefault();aiW=null;aiFail('The AI couldn’t start ('+(e.message||'the model library didn’t load; check the internet connection')+').')}}
+  aiRun={src:s};$('pe-ai').disabled=true;busy('Starting the AI…');
+  aiW.onmessage=e=>{const m=e.data;
+    if(m.type==='dl')busy('Downloading the AI model, first time only… '+Math.round(m.p)+'%'+(m.total?' of '+kb(m.total):''));
+    else if(m.type==='run')busy('Finding the subject… this can take up to 30 seconds.');
+    else if(m.type==='err')aiFail('The AI couldn’t remove the background ('+m.msg+'). Try “Remove plain background” instead.');
+    else if(m.type==='done')aiDone(m)};
+  aiW.postMessage({w,h,data:id.data.buffer},[id.data.buffer])}
+function aiFail(t){aiRun=null;busy('');$('pe-ai').disabled=!st.src;msg(t,true)}
+function aiDone(m){const run=aiRun;
+  if(!run||run.src!==st.src){aiFail('The photo changed while the AI was working; press Remove background again.');return}
+  const mm=mk(m.mw,m.mh),mc=ctx2(mm),md=mc.createImageData(m.mw,m.mh);let sum=0;
+  for(let i=0;i<m.mask.length;i++){md.data[i*4+3]=m.mask[i];sum+=m.mask[i]}
+  const avg=sum/m.mask.length/255;
+  if(!(avg>.005&&avg<.995)){
+    aiFail('The AI couldn’t find a clear subject in this photo. Try “Remove plain background”, or Magic erase.');return}
+  mc.putImageData(md,0,0);const w=st.src.width,h=st.src.height,big=mk(w,h),bc=ctx2(big);bc.imageSmoothingQuality='high';bc.drawImage(mm,0,0,w,h);
+  const a=bc.getImageData(0,0,w,h).data,c=ctx2(st.src),id=c.getImageData(0,0,w,h),d=id.data;
+  pushUndo();for(let i=3;i<d.length;i+=4)d[i]=Math.round(d[i]*a[i]/255);c.putImageData(id,0,0);
+  aiRun=null;busy('');$('pe-ai').disabled=false;touch();
+  if(st.bg==='blur')setBg('#ffffff');
+  msg('Background removed. Tidy any edges with Erase or Restore; choose what goes behind it under Background.')}
+$('pe-ai').onclick=aiRemove;
 
 /* ---------- colours ---------- */
-function syncAdj(){[['pe-b','b'],['pe-c','c'],['pe-s','s']].forEach(([id,k])=>{$(id).value=st[k];$(id).nextElementSibling.textContent=st[k]+'%'})}
-[['pe-b','b'],['pe-c','c'],['pe-s','s']].forEach(([id,k])=>$(id).addEventListener('input',e=>{st[k]=+e.target.value;e.target.nextElementSibling.textContent=st[k]+'%';draw()}));
+const SL=[['pe-b','b','%'],['pe-c','c','%'],['pe-s','s','%'],['pe-warm','warm',''],['pe-hue','hue','°']];
+function resetCols(){st.b=st.c=st.s=100;st.hue=st.warm=0}
+function syncAdj(){SL.forEach(([id,k,u])=>{$(id).value=st[k];$(id).nextElementSibling.textContent=(k==='warm'&&st[k]>0?'+':'')+st[k]+u})}
+SL.forEach(([id,k])=>$(id).addEventListener('input',e=>{st[k]=+e.target.value;syncAdj();draw()}));
+const LOOKS={none:{},vivid:{s:135,c:110},bright:{b:115,c:105},warm:{warm:22,s:110},cool:{warm:-22},bw:{s:0,c:112}};
+document.querySelectorAll('#pe [data-look]').forEach(b=>b.addEventListener('click',()=>{resetCols();Object.assign(st,LOOKS[b.dataset.look]);syncAdj();draw()}));
+const openCols=()=>{const d=$('pe-repl').closest('details');if(d)d.open=true};
+const hex=c=>'#'+c.map(v=>Math.round(v).toString(16).padStart(2,'0')).join('');
+const unhex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+function rgb2hsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b),l=(mx+mn)/2;let h=0,s=0;
+  if(mx!==mn){const d=mx-mn;s=l>.5?d/(2-mx-mn):d/(mx+mn);h=mx===r?(g-b)/d+(g<b?6:0):mx===g?(b-r)/d+2:(r-g)/d+4;h*=60}return[h,s,l]}
+function hsl2rgb(h,s,l){const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1));return[f(0)*255,f(8)*255,f(4)*255]}
+function syncPick(){const e=$('pe-from');if(st.pick){e.classList.remove('pe-chk');e.style.background=hex(st.pick);e.title='Colour to change: '+hex(st.pick)}else{e.classList.add('pe-chk');e.style.background='';e.title='Colour to change (not picked yet)'}}
+$('pe-pickbtn').onclick=()=>setMode('pick');
+$('pe-range').addEventListener('input',e=>{$('pe-rangev').textContent=e.target.value});
+// shifts every pixel near the picked hue to the new colour, keeping its shading; greys are matched by distance instead
+function replaceColour(){if(!st.src)return;if(!st.pick){setMode('pick');msg('First click the colour you want to change on the photo.');return}
+  const to=unhex($('pe-to').value),R=+$('pe-range').value,[fh,fs,fl]=rgb2hsl(...st.pick),[th,ts,tl]=rgb2hsl(...to),grey=fs<.12;
+  const hueTol=R*.9+4,rgbTol=R*2.2+6,c=ctx2(st.src),w=st.src.width,h=st.src.height,id=c.getImageData(0,0,w,h),d=id.data;let n=0;
+  for(let i=0;i<d.length;i+=4){if(d[i+3]<8)continue;const r=d[i],g=d[i+1],b=d[i+2];let wt,nr,ng,nb;
+    if(grey){const dr=r-st.pick[0],dg=g-st.pick[1],db=b-st.pick[2],dist=Math.sqrt(dr*dr+dg*dg+db*db);wt=1-dist/rgbTol;if(wt<=0)continue;
+      [nr,ng,nb]=[r+to[0]-st.pick[0],g+to[1]-st.pick[1],b+to[2]-st.pick[2]]}
+    else{const[hh,ss,ll]=rgb2hsl(r,g,b);if(ss<.08)continue;let hd=Math.abs(hh-fh);if(hd>180)hd=360-hd;wt=1-hd/hueTol;if(wt<=0)continue;
+      wt*=Math.min(1,ss/.2);[nr,ng,nb]=hsl2rgb(th,Math.min(1,ss*(ts/Math.max(fs,.05))),Math.max(0,Math.min(1,ll+(tl-fl))))}
+    wt=Math.min(1,wt*1.6);d[i]=r+(nr-r)*wt;d[i+1]=g+(ng-g)*wt;d[i+2]=b+(nb-b)*wt;n++}
+  if(!n){msg('No part of the photo matched that colour. Raise Range and try again.',true);return}
+  pushUndo();c.putImageData(id,0,0);touch();msg('Changed '+Math.max(1,Math.round(n*400/d.length))+'% of the photo to '+$('pe-to').value+'. Undo if it caught too much, or lower Range.')}
+$('pe-repl').onclick=replaceColour;
 
 /* ---------- size, fitting and background ---------- */
-function origSize(){if(!st.img)return;let w=srcW(),h=srcH();const m=Math.max(w,h);if(m>2000){w=Math.round(w*2000/m);h=Math.round(h*2000/m)}st.w=w;st.h=h;$('pe-w').value=w;$('pe-h').value=h}
+function origSize(){if(!st.src)return;let w=srcW(),h=srcH();const m=Math.max(w,h);if(m>2000){w=Math.round(w*2000/m);h=Math.round(h*2000/m)}st.w=w;st.h=h;$('pe-w').value=w;$('pe-h').value=h}
 function applyPreset(){const p=st.preset;$('pe-preset').value=p;
   if(/^\d+x\d+$/.test(p)){const[a,b]=p.split('x').map(Number);st.w=a;st.h=b}else if(p==='orig')origSize();
-  $('pe-w').value=st.w;$('pe-h').value=st.h;$('pe-w').readOnly=$('pe-h').readOnly=p!=='custom'}
-$('pe-preset').addEventListener('change',e=>{st.preset=e.target.value;applyPreset();remember();centre()});
+  $('pe-w').value=st.w;$('pe-h').value=st.h;$('pe-w').readOnly=$('pe-h').readOnly=p!=='custom';
+  const k=PK[p];$('pe-presetnote').textContent=k?NOTES[k]:'';$('pe-presetnote').hidden=!k}
+$('pe-preset').addEventListener('change',e=>{st.preset=e.target.value;applyPreset();const k=PK[st.preset];
+  if(k){setKind(k);$('pe-holes').checked=k==='logo';if(k==='logo'){st.fit='fit';syncFit();if(st.bg!=='none')setBg('none')}else{st.fit='fill';syncFit();if(st.bg==='none'){$('pe-fmt').value='image/jpeg';fmtNote();setBg('#ffffff')}}}
+  remember();centre()});
 ['pe-w','pe-h'].forEach(id=>$(id).addEventListener('input',()=>{const w=Math.round(+$('pe-w').value),h=Math.round(+$('pe-h').value);
   if(w>=16&&w<=8000&&h>=16&&h<=8000){st.w=w;st.h=h;remember();centre()}}));
 ['pe-w','pe-h'].forEach(id=>$(id).addEventListener('focus',()=>{if(st.preset!=='custom'){st.preset='custom';applyPreset()}}));
@@ -7212,32 +7585,50 @@ function setBg(v){st.bg=v;syncBg();remember();
   if(v==='none'&&$('pe-fmt').value==='image/jpeg'){$('pe-fmt').value='image/png';fmtNote();msg('Switched to PNG: JPEG can’t be transparent.')}draw()}
 function syncBg(){let hit=false;document.querySelectorAll('#pe [data-bg]').forEach(b=>{const on=b.dataset.bg===st.bg;hit=hit||on;b.setAttribute('aria-pressed',String(on))});
   if(!hit&&/^#/.test(st.bg))$('pe-col').value=st.bg}
-function fmtNote(){const f=$('pe-fmt').value;$('pe-fmtnote').textContent=f==='image/png'?'PNG keeps every detail and transparency but makes bigger files; the size limit can’t be forced, so pick a smaller size if it’s over.':
+function fmtNote(){const f=$('pe-fmt').value;$('pe-fmtnote').textContent=f==='image/png'?'PNG keeps every detail and transparency (best for logos) but makes bigger files; the size limit can’t be forced, so pick a smaller size if it’s over.':
   f==='image/webp'?'WebP makes small files, but not every system accepts it. Oolio accepts JPEG or PNG.':'Oolio accepts JPEG or PNG; 2000 KB (2 MB) keeps it under the upload limit.'}
 $('pe-fmt').addEventListener('change',()=>{if($('pe-fmt').value==='image/jpeg'&&st.bg==='none'){st.bg='#ffffff';syncBg()}fmtNote();remember();draw()});
 $('pe-max').addEventListener('change',()=>{remember();queueEst()});
 
+/* ---------- Oolio online ordering preview ---------- */
+const FR=[['Phone',375],['Laptop',1024],['Wide screen',1920]];
+function buildFrames(){$('pe-oo-frs').innerHTML=FR.map(([n,w])=>{const sc=w===375?.5:w===1024?.36:.3;
+  return '<div><div class="pe-oo-fr" style="width:'+Math.round(w*sc)+'px;height:'+Math.round(240*sc)+'px"><img data-pv alt="Banner on a '+n.toLowerCase()+'"><h4 class="pe-oo-vn">Venue name</h4></div><div class="pe-oo-frl">'+n+', '+w+' px wide</div></div>'}).join('')}
+function setKind(k){st.kind=k;document.querySelectorAll('#pe [data-kind]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.kind===k)));
+  ['product','logo','banner'].forEach(x=>$('pe-oo-'+x).hidden=!st.src||x!==k);$('pe-ooempty').hidden=!!st.src;remember();draw()}
+document.querySelectorAll('#pe [data-kind]').forEach(b=>b.addEventListener('click',()=>setKind(b.dataset.kind)));
+$('pe-guides').addEventListener('change',e=>{st.guides=e.target.checked;remember();draw()});
+$('pe-herocol').addEventListener('input',e=>{st.hero=e.target.value;$('pe-oo-hero').style.background=st.hero;document.querySelectorAll('#pe .pe-oo-fr').forEach(f=>f.style.background=st.hero);remember()});
+$('pe-oo').addEventListener('toggle',()=>queuePv());
+function queuePv(){if(!st.src)return;['product','logo','banner'].forEach(x=>$('pe-oo-'+x).hidden=x!==st.kind);$('pe-ooempty').hidden=true;
+  if(!$('pe-oo').open)return;clearTimeout(pvTimer);pvTimer=setTimeout(()=>{if(!st.src)return;
+  const sc=Math.min(1,1000/Math.max(st.w,st.h)),c=mk(Math.max(1,Math.round(st.w*sc)),Math.max(1,Math.round(st.h*sc)));paint(c.getContext('2d'),st.w,st.h,sc);
+  c.toBlob(b=>{if(!b)return;const u=URL.createObjectURL(b);document.querySelectorAll('#pe img[data-pv]').forEach(i=>i.src=u);if(pvUrl)setTimeout(URL.revokeObjectURL.bind(URL,pvUrl),1000);pvUrl=u},'image/png')},250)}
+$('pe-name').addEventListener('input',()=>{const n=$('pe-name').value.trim();document.querySelectorAll('#pe .pe-oo-nm').forEach(e=>e.textContent=n||'Product name')});
+
 /* ---------- saving ---------- */
 // JPEG and WebP: start at quality .92 and step down until the file fits the limit (not below .4)
-async function encode(){const out=document.createElement('canvas');out.width=st.w;out.height=st.h;const oc=out.getContext('2d');paint(oc,st.w,st.h,1);
+async function encode(){const out=mk(st.w,st.h),oc=out.getContext('2d');paint(oc,st.w,st.h,1);
   const f=$('pe-fmt').value,max=Math.max(20,+$('pe-max').value||2000)*1024;
   const enc=q=>new Promise((res,rej)=>out.toBlob(b=>b?res(b):rej(new Error('The browser couldn’t make this file.')),f,q));
   if(f==='image/png'){const b=await enc();return{blob:b,q:null,over:b.size>max}}
   let q=.92,b=await enc(q);while(b.size>max&&q>.41){q=Math.round((q-.07)*100)/100;b=await enc(q)}
   return{blob:b,q,over:b.size>max}}
-function queueEst(){clearTimeout(estTimer);estTimer=setTimeout(async()=>{if(!st.img)return;try{const r=await encode();est=r.blob.size;info()}catch(e){}},450)}
+function queueEst(){clearTimeout(estTimer);estTimer=setTimeout(async()=>{if(!st.src||stroke||drag)return;try{const r=await encode();est=r.blob.size;info()}catch(e){}},600)}
 function fileName(){const ext={'image/jpeg':'.jpg','image/png':'.png','image/webp':'.webp'}[$('pe-fmt').value];
   return(($('pe-name').value.trim()||'Photo').replace(/[\\/:*?"<>|]/g,'').trim()||'Photo').slice(0,120)+ext}
 async function save(blob,name){let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){}
   if(dl){try{await dl.save({filename:name,data:blob});return true}catch(e){if(e&&e.code!=='declined')msg('The file couldn’t be saved here ('+(e.message||e.code||'unavailable')+').',true);return false}}
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),30000);return true}
-$('pe-dl').addEventListener('click',async()=>{if(!st.img)return;const b=$('pe-dl');b.disabled=true;msg('Making the file…');
+$('pe-dl').addEventListener('click',async()=>{if(!st.src)return;const b=$('pe-dl');b.disabled=true;msg('Making the file…');
   try{const r=await encode(),name=fileName();est=r.blob.size;info();
     if(await save(r.blob,name))msg('Saved “'+name+'”: '+st.w+' × '+st.h+' px, '+kb(r.blob.size)+(r.q!=null&&r.q<.92?' (quality '+Math.round(r.q*100)+'% to fit the limit)':'')+'.'+
       (r.over?' It’s still over '+$('pe-max').value+' KB; choose a smaller size'+($('pe-fmt').value==='image/png'?' or JPEG':'')+' to bring it down.':''),r.over)}
   catch(e){msg(e.message||'The file couldn’t be made.',true)}b.disabled=false});
 
-applyPreset();syncFit();syncBg();fmtNote();
+buildFrames();$('pe-herocol').value=st.hero;$('pe-oo-hero').style.background=st.hero;document.querySelectorAll('#pe .pe-oo-fr').forEach(f=>f.style.background=st.hero);
+$('pe-guides').checked=st.guides;$('pe-shadow').checked=st.shadow;$('pe-holes').checked=PK[st.preset]==='logo';setTol(st.tol);setBrush(st.brush);
+applyPreset();syncFit();syncBg();fmtNote();setKind(st.kind);
 })();
 </script>
 <script>
