@@ -90,9 +90,9 @@ th{font-weight:600}
 
 [hidden]{display:none!important}
 *,*::before,*::after{box-sizing:border-box}
-:root{--veg:#e3f3ea;--veg-t:#14532d;--nv:#fbe7e1;--nv-t:#7a2611;--lnk:#ebe8fd;--lnk-t:#3c3489;--oth:#eef0f3;--oth-t:#1f2933}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--veg:#133d28;--veg-t:#c8f0d8;--nv:#4a1f14;--nv-t:#fbd5c8;--lnk:#2f2a66;--lnk-t:#dcd8ff;--oth:#2a2f36;--oth-t:#e6e9ee}}
-:root[data-theme="dark"]{--veg:#133d28;--veg-t:#c8f0d8;--nv:#4a1f14;--nv-t:#fbd5c8;--lnk:#2f2a66;--lnk-t:#dcd8ff;--oth:#2a2f36;--oth-t:#e6e9ee}
+:root{--veg:#4caf50;--nv:#ff5722;--oth:#607d8b;--lnk:#111;--lnk-t:#fff;--pos-bg:#fff;--pos-empty:#e6e6e6;--bo-empty:#f7f7f7;--bo-strip:#c8c8c8;--pos-line:#d4d4d4}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pos-bg:#1c1f24;--pos-empty:#2e333a;--bo-empty:#262a30;--bo-strip:#3d434b;--pos-line:#3d434b;--lnk:#000}}
+:root[data-theme="dark"]{--pos-bg:#1c1f24;--pos-empty:#2e333a;--bo-empty:#262a30;--bo-strip:#3d434b;--pos-line:#3d434b;--lnk:#000}
 body{margin:0;background:var(--bg,#f6f7f9);color:var(--text,#111);font:15px/1.5 var(--f-body,system-ui,sans-serif)}
 .pp-top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px));background:var(--bar,#222);color:var(--bar-text,#fff);border-bottom:1px solid var(--bar-line,transparent)}
 .pp-top b{font-size:1rem}.pp-top .sp{flex:1}
@@ -148,12 +148,15 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted,#667)}
 .checks li.i{color:var(--muted,#667)}
 .checks li b{color:var(--text,#111)}
 .tb{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
-.tb span{font-size:.82rem;padding:4px 10px;border-radius:99px;border:1px solid var(--line,#dde)}
-.tb span.over{border-color:var(--bad,#b42318);color:var(--bad,#b42318)}
-.tb span.free{border-style:dashed;color:var(--muted,#667)}
+.tb .tbl{font-size:.82rem;color:var(--muted,#667);align-self:center}
+.tb .tt{font:inherit;font-size:.74rem;font-weight:700;text-transform:uppercase;letter-spacing:.01em;line-height:1.15;min-width:104px;max-width:150px;min-height:46px;padding:6px 10px;border-radius:4px;border:0;background:var(--c,#607d8b);color:#fff;text-shadow:0 1px 1px rgb(0 0 0/.25);display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer}
+.tb .tt:hover{filter:brightness(1.07)}
+.tb .tt i{font-style:normal;opacity:.8;margin-right:4px}
+.tb .tt.over{outline:3px solid var(--bad,#b42318);outline-offset:1px;opacity:.75}
+.tb .tt.free{background:var(--pos-empty);color:var(--muted,#667);text-shadow:none;cursor:default;font-weight:600}
 .bar{position:sticky;top:0;z-index:5;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;padding:10px 12px;margin:0 0 12px;border-radius:var(--r,6px);background:var(--card,#fff);border:1px solid var(--accent,#2554c7);box-shadow:0 4px 14px rgb(0 0 0/.08)}
 .bar b{font-size:.95rem}
-.pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:14px}
+.pages{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,var(--pw,340px)),1fr));gap:14px}
 .pg{border:1px solid var(--line,#dde);border-radius:var(--r-card,12px);padding:10px;min-width:0;background:var(--bg,#fafbfc)}
 .pg.child{border-style:dashed}
 .pg.over{border-color:var(--bad,#b42318)}
@@ -164,19 +167,27 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted,#667)}
 .pg-h .m select{font-size:.8rem;padding:3px 6px}
 .badge{font-size:.72rem;font-weight:600;padding:1px 7px;border-radius:99px;background:var(--accent-soft,#e8eefc);color:var(--accent,#2554c7);white-space:nowrap}
 .badge.bad{background:color-mix(in srgb,var(--bad,#b42318) 14%,transparent);color:var(--bad,#b42318)}
-.grid{display:grid;gap:4px}
-.cell{min-height:50px;border-radius:6px;font-size:.74rem;line-height:1.2;padding:4px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;border:1px solid transparent;user-select:none;overflow-wrap:anywhere}
-.cell small{font-size:.66rem;opacity:.75;margin-top:2px}
-.cell.empty{border:1px dashed var(--line,#dde);background:transparent}
-.cell.veg{background:var(--veg);color:var(--veg-t)}.cell.nv{background:var(--nv);color:var(--nv-t)}.cell.oth{background:var(--oth);color:var(--oth-t)}
-.cell.lnk,.cell.back{background:var(--lnk);color:var(--lnk-t);font-weight:600}
-.cell.dup{box-shadow:inset 0 0 0 2px var(--warn,#b45f00)}
+/* the screen grid, styled like the front-of-house POS: solid buttons, white upper-case names, price under, grey empty slots */
+.grid{display:grid;gap:5px;padding:6px;background:var(--pos-bg);border-radius:6px;border:1px solid var(--pos-line)}
+.cell{position:relative;min-height:54px;border-radius:4px;font-size:.7rem;line-height:1.15;padding:4px 5px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;border:0;user-select:none;overflow-wrap:break-word;hyphens:auto;overflow:hidden}
+.cell.it{background:var(--c,#607d8b);color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.01em;text-shadow:0 1px 1px rgb(0 0 0/.22)}
+.cell.it small{font-size:.64rem;font-weight:500;text-transform:none;opacity:.92;margin-top:3px;letter-spacing:0}
+.cell.empty{background:var(--pos-empty)}
+.cell.lnk,.cell.back{background:var(--lnk);color:var(--lnk-t);font-weight:700;text-transform:uppercase;box-shadow:inset 0 -4px 0 var(--c,#2196f3)}
+.cell.back{--c:#9e9e9e}
+/* sized products: a small corner marker, like the POS shows on buttons with a size pick */
+.cell.sz::after{content:"";position:absolute;top:4px;right:4px;border:5px solid transparent;border-top:7px solid #fff;border-bottom:0;opacity:.85}
+/* a copy (also on another page): white corner flag, like the back office's marker */
+.cell.dup::before{content:"";position:absolute;top:0;left:0;border-style:solid;border-width:12px 12px 0 0;border-color:#fff transparent transparent transparent}
 .cell.sel{outline:3px solid var(--accent,#2554c7);outline-offset:1px}
-body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix(in srgb,var(--accent,#2554c7) 6%,transparent)}
+body.picking .cell.empty{background:color-mix(in srgb,var(--accent,#2554c7) 16%,var(--pos-empty));box-shadow:inset 0 0 0 1px var(--accent,#2554c7)}
 .tray{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
-.tray .cell{min-height:0;padding:5px 9px;font-size:.8rem;flex-direction:row}
+.tray .cell{min-height:40px;padding:5px 10px;font-size:.72rem;max-width:180px}
 .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.8rem;color:var(--muted,#667);margin:0 0 12px}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
+.legend .sw{font:inherit;font-size:.78rem;font-weight:600;color:var(--text,#111);background:transparent;border:1px solid var(--line,#dde);border-radius:99px;padding:2px 9px 2px 4px;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
+.legend .sw:hover{border-color:var(--accent,#2554c7);color:var(--text,#111)}
+.legend .sw i{width:14px;height:14px;border-radius:50%;margin:0;background:var(--c)}
 .plans{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px}
 .plans li{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:.9rem;padding:6px 0;border-bottom:1px solid var(--line,#dde)}
 .plans li span{flex:1;min-width:160px}.plans li small{color:var(--muted,#667)}
@@ -190,9 +201,15 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
 .bo-pg{flex:1 1 150px;max-width:240px}
 .bo-pg b{display:block;font-size:.74rem;margin-bottom:3px}
 .bo-g{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:2px}
-.bo-g .cell{min-height:30px;font-size:.6rem;padding:2px;border-radius:4px}
-.bo-g .cell small{display:none}
-.cell.arrow,.tg-c.arrow{border:1px solid var(--line,#dde);background:var(--card,#fff);color:var(--muted,#667);cursor:default;font-weight:700;letter-spacing:.3em}
+/* back-office grids, styled like the back office: dark drag strip on the left, green + in empty slots, white arrows cell */
+.bo-g{padding:4px;background:var(--pos-bg);border-radius:5px;border:1px solid var(--pos-line)}
+.bo-g .cell{min-height:32px;font-size:.56rem;padding:2px 2px 2px 9px;border-radius:3px}
+.bo-g .cell small,.bo-g .cell.sz::after{display:none}
+.bo-g .cell.it,.tg-bo input.tg-c:not(:placeholder-shown){background:linear-gradient(90deg,color-mix(in srgb,var(--c,#009688) 72%,#000) 0 7px,var(--c,#009688) 7px)}
+.bo-g .cell.empty{background:linear-gradient(90deg,var(--bo-strip) 0 7px,var(--bo-empty) 7px)}
+.bo-g .cell.empty::before{content:"+";color:#43a047;font-size:.95rem;font-weight:400;line-height:1}
+.bo-g .cell.lnk,.bo-g .cell.back{box-shadow:none;background:linear-gradient(90deg,#444 0 7px,var(--lnk) 7px)}
+.cell.arrow,.tg-c.arrow{border:1px solid var(--pos-line);background:var(--pos-bg);color:var(--text,#111);cursor:default;font-weight:700;letter-spacing:.35em;padding-left:2px}
 .cell.off,.tg-c.off{background:repeating-linear-gradient(45deg,transparent 0 4px,color-mix(in srgb,var(--line,#dde) 60%,transparent) 4px 5px);border:1px dashed var(--line,#dde);cursor:default}
 .cell.hl,.tg-c.hl{outline:2px solid var(--warn,#b45f00);outline-offset:1px}
 .bo-tog{display:inline-flex;gap:6px;align-items:center;font-size:.85rem}
@@ -201,10 +218,13 @@ body.picking .cell.empty{border-color:var(--accent,#2554c7);background:color-mix
 @media (max-width:900px){.tg-wrap{grid-template-columns:minmax(0,1fr)}}
 .tg-front{overflow-x:auto}
 .tg-g{display:grid;gap:3px;min-width:0}
-.tg-c{min-width:0;height:44px;border:1px solid var(--line,#dde);border-radius:5px;background:var(--card,#fff);color:var(--text,#111);font:inherit;font-size:.72rem;text-align:center;padding:2px;display:flex;align-items:center;justify-content:center}
-input.tg-c:not(:placeholder-shown){background:color-mix(in srgb,var(--accent,#2554c7) 12%,var(--card,#fff));font-weight:600}
-input.tg-c::placeholder{color:color-mix(in srgb,var(--muted,#667) 55%,transparent);font-size:.6rem}
-.tg-bo .tg-c{height:36px;font-size:.64rem}
+.tg-g{padding:6px;background:var(--pos-bg);border-radius:6px;border:1px solid var(--pos-line)}
+.tg-c{position:relative;min-width:0;height:48px;border:0;border-radius:4px;background:var(--pos-empty);color:var(--text,#111);font:inherit;font-size:.68rem;text-align:center;padding:2px;display:flex;align-items:center;justify-content:center}
+input.tg-c:not(:placeholder-shown){background:var(--c,#009688);color:#fff;font-weight:700;text-transform:uppercase;text-shadow:0 1px 1px rgb(0 0 0/.22)}
+input.tg-c:focus{outline:2px solid var(--accent,#2554c7);outline-offset:1px}
+input.tg-c::placeholder{color:color-mix(in srgb,var(--muted,#667) 60%,transparent);font-size:.58rem}
+.tg-bo .tg-c{height:38px;font-size:.6rem;padding-left:9px}
+.tg-bo input.tg-c:placeholder-shown{background:linear-gradient(90deg,var(--bo-strip) 0 7px,var(--bo-empty) 7px)}
 .tg-bo .bo-pages{gap:12px}.tg-bo .bo-pg{max-width:none;flex-basis:200px}
 .cap{font-size:.8rem;color:var(--muted,#667);margin:0 0 6px}
 @media (max-width:520px){.pages{grid-template-columns:minmax(0,1fr)}.cell{font-size:.68rem;min-height:44px}}
@@ -342,7 +362,8 @@ input.tg-c::placeholder{color:color-mix(in srgb,var(--muted,#667) 55%,transparen
   <h2 id="pp-s4"><span class="n">4</span>Pages</h2>
   <p class="sub small" style="margin:0 0 10px">Click a button, then click an empty slot to move it there or another button to swap them. You can copy a button onto another page, for example naan on both curry pages. Choose where each page opens from under its name.</p>
   <div class="tb" id="pp-tb"></div>
-  <div class="legend"><span><i style="background:var(--veg)"></i>Veg</span><span><i style="background:var(--nv)"></i>Non-veg</span><span><i style="background:var(--oth)"></i>Drinks and other</span><span><i style="background:var(--lnk)"></i>Sub-page link or Back</span><span><i style="box-shadow:inset 0 0 0 2px var(--warn,#b45f00);background:var(--oth)"></i>Copy (also on another page)</span></div>
+  <div class="row" style="margin:0 0 8px"><label class="small" for="pp-colour">Button colours</label><select id="pp-colour" style="font-size:.85rem;padding:4px 8px"><option value="cat">POS colours, one per category</option><option value="veg">Veg / non-veg / drinks</option></select><span class="small muted" id="pp-colhint">Click a category to change its colour.</span></div>
+  <div class="legend" id="pp-legend"></div>
   <div class="bar" id="pp-bar" hidden></div>
   <div id="pp-trayw" hidden><p class="small" style="margin:0 0 6px"><b>Not on any page</b>: click one, then an empty slot.</p><div class="tray" id="pp-tray"></div></div>
   <div class="row" style="margin:0 0 12px"><button type="button" class="sec sm" id="pp-undo" disabled>Undo</button><button type="button" class="sec sm" id="pp-add">Add page</button><button type="button" class="sec sm" id="pp-rebuild">Rebuild from scratch</button><label class="bo-tog"><input type="checkbox" id="pp-bo">Show the back-office 5 × 5 build under each page</label></div>
@@ -416,7 +437,7 @@ function readBook(buf,file){
   throw new Error('No “Product Name” column found. Upload the Oolio One import made by Menu Converter.');
 }
 function itemsFrom(src){
-  const h=src.head,c={name:col(h,'Product Name'),type:col(h,'Product Type'),grp:col(h,'Product Group'),cat:col(h,'Category'),vn:col(h,'Variant Name'),price:col(h,'Sell Price'),desc:col(h,'Description')};
+  const h=src.head,c={name:col(h,'Product Name'),type:col(h,'Product Type'),grp:col(h,'Product Group'),cat:col(h,'Category'),vn:col(h,'Variant Name'),price:col(h,'Sell Price'),desc:col(h,'Description'),pos:col(h,'POS Name'),vp:col(h,'Variable Pricing?','Variable Pricing')};
   if(c.name<0||c.cat<0)throw new Error('The file needs “Product Name” and “Category” columns.');
   const items={},order=[];let mods=0,last=null;
   src.rows.forEach((r,ri)=>{
@@ -428,7 +449,9 @@ function itemsFrom(src){
     const key=name.toLowerCase()+'|'+cat.toLowerCase();
     if(items[key]){items[key].rows.push(ri);last=key;return}
     const desc=c.desc>=0?String(r[c.desc]||''):'',txt=name+' '+desc;
-    items[key]={id:key,name,cat,grp:String(c.grp>=0?r[c.grp]:'').trim()||'Other',price:c.price>=0?+r[c.price]||0:0,sizes:[],rows:[ri],
+    // POS Name is what the button shows on the POS; Variable Pricing shows as "Market Price"
+    const pos=c.pos>=0?String(r[c.pos]||'').trim():'',vp=c.vp>=0&&/^(y|yes|true|1)$/i.test(String(r[c.vp]).trim());
+    items[key]={id:key,name,label:pos||name,mkt:vp,cat,grp:String(c.grp>=0?r[c.grp]:'').trim()||'Other',price:c.price>=0?+r[c.price]||0:0,sizes:[],rows:[ri],
       nv:NV.test(name)||(!VEGNEG.test(name)&&NV.test(desc)),ord:order.length};
     order.push(key);last=key;
   });
@@ -584,12 +607,16 @@ function draw(){
   $('pp-kpis').innerHTML=[['Buttons',P.order.length],['Toolbar pages',tops.length+' / '+s.slots,tops.length>s.slots?'bad':'ok'],['Sub-pages',subs],['Deepest jump',maxd,maxd>s.depth?'bad':''],['Empty slots',empty],['Copies',[...placed.values()].reduce((a,n)=>a+n-1,0)]]
     .map(([l,v,c])=>'<div class="kpi '+(c||'')+'"><span>'+l+'</span><b>'+v+'</b></div>').join('');
   $('pp-checks').innerHTML=C.out.map(([k,t])=>'<li class="'+k+'"><span aria-hidden="true">'+({e:'✕',w:'!',i:'·',ok:'✓'})[k]+'</span><span>'+t+'</span></li>').join('');
-  $('pp-tb').innerHTML='<span class="small muted" style="border:0;padding:4px 0">Toolbar:</span>'+tops.map((p,i)=>'<span class="'+(i>=s.slots?'over':'')+'">'+(i+1)+'. '+esc(p.name)+'</span>').join('')+
-    Array.from({length:Math.max(0,s.slots-tops.length)},(_,i)=>'<span class="free">'+(tops.length+i+1)+'. free</span>').join('');
+  // toolbar: tiles like the POS toolbar; click one to jump to that page
+  $('pp-tb').innerHTML='<span class="tbl">Toolbar:</span>'+tops.map((p,i)=>'<button type="button" class="tt'+(i>=s.slots?' over':'')+'" style="--c:'+pageColour(p)+'" data-go="'+p.id+'"'+(i>=s.slots?' title="Past the '+s.slots+' slots that fit: staff have to scroll"':'')+'><span><i>'+(i+1)+'</i>'+esc(p.name)+'</span></button>').join('')+
+    Array.from({length:Math.max(0,s.slots-tops.length)},(_,i)=>'<span class="tt free">'+(tops.length+i+1)+'. free</span>').join('');
+  drawLegend();
   // unplaced tray
   $('pp-trayw').hidden=!C.unplaced.length;
   $('pp-tray').innerHTML=C.unplaced.map(id=>tile({t:'i',id},'tray',id,1)).join('');
   const tl=P.pages.filter(p=>!p.parent);
+  // POS buttons are wide: give each screen column ~92px so names wrap at spaces, not mid-word
+  $('pp-pages').style.setProperty('--pw',Math.max(340,s.cols*92+40)+'px');
   $('pp-pages').innerHTML=order().map(([p,d])=>{
     const opts='<option value="">Toolbar'+(p.parent?'':' (slot '+(tl.indexOf(p)+1)+')')+'</option>'+P.pages.filter(q=>q!==p&&!isUnder(q,p)).map(q=>'<option value="'+q.id+'"'+(p.parent===q.id?' selected':'')+'>Inside '+esc(q.name)+'</option>').join('');
     const cnt=used(p),dd=depth(p),over=dd>s.depth;
@@ -617,10 +644,25 @@ function tile(c,pid,i,copies){
   const a='data-p="'+pid+'" data-i="'+esc(i)+'" tabindex="0" role="button"';
   if(!c)return '<div class="cell empty'+(issel?' sel':'')+'" '+a+' aria-label="Empty slot"></div>';
   if(c.t==='b')return '<div class="cell back'+(issel?' sel':'')+'" '+a+'>‹ Back</div>';
-  if(c.t==='l'){const q=byId(c.to);return '<div class="cell lnk'+(issel?' sel':'')+'" '+a+'>'+esc(q?q.name:'?')+' ›</div>'}
+  if(c.t==='l'){const q=byId(c.to);return '<div class="cell lnk'+(issel?' sel':'')+'" '+a+(q?' style="--c:'+pageColour(q)+'"':'')+'>'+esc(q?q.name:'?')+' ›</div>'}
   const x=P.items[c.id];if(!x)return '<div class="cell empty" '+a+'></div>';
-  const k=x.grp==='Beverage'?'oth':x.nv?'nv':'veg';
-  return '<div class="cell '+k+(copies>1?' dup':'')+(issel?' sel':'')+'" '+a+' title="'+esc(x.cat+' · '+money(x))+'">'+esc(x.name)+(x.sizes.length?'<small>'+esc(x.sizes.join(' / '))+'</small>':'')+'</div>'}
+  const tip=(x.label!==x.name?x.name+' · ':'')+x.cat+' · '+money(x)+(copies>1?' · also on another page':'');
+  return '<div class="cell it'+(x.sizes.length?' sz':'')+(copies>1?' dup':'')+(issel?' sel':'')+'" '+a+' style="--c:'+colourOf(x)+'" title="'+esc(tip)+'">'+esc(x.label||x.name)+'<small>'+esc(priceLine(x))+'</small></div>'}
+/* ---------------- POS colours ----------------
+   The POS colours each button; the import has no colour column, so each category gets one from the POS palette
+   (in menu order) and the user can click a category in the legend to change it. Saved with the plan. */
+const PAL=['#00bcd4','#2196f3','#009688','#ff9800','#4caf50','#9c27b0','#ff5722','#3f51b5','#8bc34a','#e91e63','#673ab7','#795548','#607d8b','#f44336'];
+const PALN=['Cyan','Blue','Teal','Orange','Green','Purple','Deep orange','Indigo','Light green','Pink','Deep purple','Brown','Grey','Red'];
+const catsInOrder=()=>{const o=[];P.order.forEach(id=>{const c=P.items[id].cat;if(!o.includes(c))o.push(c)});return o};
+function catIdx(cat){P.colours=P.colours||{};if(P.colours[cat]==null)P.colours[cat]=Math.max(0,catsInOrder().indexOf(cat))%PAL.length;return P.colours[cat]}
+function colourOf(x){if(S().colour==='veg')return x.grp==='Beverage'?'var(--oth)':x.nv?'var(--nv)':'var(--veg)';return PAL[catIdx(x.cat)]}
+// a page's toolbar colour: the colour of its first product
+function pageColour(p){const c=p.cells.find(c=>c&&c.t==='i'&&P.items[c.id]);return c?colourOf(P.items[c.id]):'#607d8b'}
+const priceLine=x=>x.sizes.length?x.sizes.join(' / '):x.mkt||!x.price?'Market Price':'$'+(+x.price).toFixed(2);
+function drawLegend(){const veg=S().colour==='veg';$('pp-colour').value=veg?'veg':'cat';$('pp-colhint').hidden=veg;
+  const fixed='<span><i style="background:var(--lnk);box-shadow:inset 0 -3px 0 #2196f3"></i>Sub-page link or Back</span><span><i style="background:#607d8b;clip-path:polygon(0 0,100% 0,0 100%)"></i>Copy (also on another page)</span>';
+  $('pp-legend').innerHTML=veg?'<span><i style="background:var(--veg)"></i>Veg</span><span><i style="background:var(--nv)"></i>Non-veg</span><span><i style="background:var(--oth)"></i>Drinks and other</span>'+fixed
+    :catsInOrder().map(c=>'<button type="button" class="sw" data-cat="'+esc(c)+'" style="--c:'+PAL[catIdx(c)]+'" title="'+esc(PALN[catIdx(c)])+': click for the next colour"><i></i>'+esc(c)+'</button>').join('')+fixed}
 function drawBar(){
   document.body.classList.toggle('picking',!!sel);
   if(!sel){$('pp-bar').hidden=true;return}
@@ -669,6 +711,11 @@ $('pp-pages').addEventListener('keydown',e=>{const c=e.target.closest('.cell');i
   $('pp-pages').addEventListener('mouseover',hl(true));$('pp-pages').addEventListener('mouseout',hl(false));
   $('pp-pages').addEventListener('focusin',hl(true));$('pp-pages').addEventListener('focusout',hl(false))}
 $('pp-bo').checked=showBo;
+// colours: switch scheme, or click a category to step it to the next POS colour
+$('pp-colour').onchange=()=>{if(!P)return;P.settings.colour=$('pp-colour').value;dirty=true;draw();keepDraft()};
+$('pp-legend').addEventListener('click',e=>{const b=e.target.closest('.sw');if(!b||!P)return;const c=b.dataset.cat;P.colours[c]=(catIdx(c)+1)%PAL.length;dirty=true;draw();keepDraft();
+  const nb=[...document.querySelectorAll('#pp-legend .sw')].find(x=>x.dataset.cat===c);if(nb)nb.focus()});
+$('pp-tb').addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;const el=document.querySelector('#pp-pages .pg[data-p="'+b.dataset.go+'"]');if(el)el.scrollIntoView({behavior:'smooth',block:'center'})});
 $('pp-bo').onchange=()=>{showBo=$('pp-bo').checked;try{localStorage.setItem('pp-bo',showBo?'1':'0')}catch(e){}if(P&&P.pages)draw()};
 $('pp-tray').addEventListener('click',e=>{const c=e.target.closest('.cell');if(c)clickCell('tray',c.dataset.i)});
 $('pp-pages').addEventListener('change',e=>{const el=e.target,pg=el.closest('.pg');if(!pg)return;const p=byId(pg.dataset.p);
@@ -682,9 +729,9 @@ $('pp-add').onclick=()=>{snap();P.pages.push({id:uid(),grp:'Other',name:'New pag
 $('pp-rebuild').onclick=()=>{if(!confirm('Rebuild all pages from the import? Your changes to pages are lost (Undo brings them back).'))return;snap();readSettings();build();sel=null;changed()};
 
 /* ---------------- settings ---------------- */
-const DEF={cols:5,rows:5,slots:8,depth:2,arrow:true,link:true,back:true,rowgrp:true,share:true,sep:true,veg:true};
+const DEF={cols:5,rows:5,slots:8,depth:2,arrow:true,colour:'cat',link:true,back:true,rowgrp:true,share:true,sep:true,veg:true};
 function readSettings(){const n=(id,lo,hi,d)=>{const v=Math.round(+$(id).value);return v>=lo&&v<=hi?v:d};
-  const s={cols:n('s-cols',2,10,5),rows:n('s-rows',2,10,5),slots:n('s-slots',1,30,8),depth:+$('s-depth').value,arrow:$('s-arrow').checked,link:$('s-link').checked,back:$('s-back').checked,rowgrp:$('s-rowgrp').checked,share:$('s-share').checked,sep:$('s-sep').checked,veg:$('s-veg').checked,
+  const s={cols:n('s-cols',2,10,5),rows:n('s-rows',2,10,5),slots:n('s-slots',1,30,8),depth:+$('s-depth').value,arrow:$('s-arrow').checked,colour:(P.settings&&P.settings.colour)||'cat',link:$('s-link').checked,back:$('s-back').checked,rowgrp:$('s-rowgrp').checked,share:$('s-share').checked,sep:$('s-sep').checked,veg:$('s-veg').checked,
     keep:[...document.querySelectorAll('#s-keep input:checked')].map(i=>i.value)};
   const changedGrid=P.settings&&(P.settings.cols!==s.cols||P.settings.rows!==s.rows);P.settings=s;return changedGrid}
 function showSettings(){const s=P.settings||DEF;['cols','rows','slots'].forEach(k=>$('s-'+k).value=s[k]);$('s-depth').value=s.depth;$('s-arrow').checked=s.arrow!==false;['link','back','rowgrp','share','sep','veg'].forEach(k=>$('s-'+k).checked=!!s[k]);
@@ -709,7 +756,7 @@ async function readFile(f){
   $('pp-file').value=''}
 function setPlan(x,fresh){
   const r=itemsFrom(x.source);
-  P={id:fresh?null:x.id,name:x.name||'',settings:x.settings||Object.assign({},DEF),source:x.source,items:r.items,order:r.order,mods:r.mods,pages:fresh?null:x.pages};
+  P={id:fresh?null:x.id,name:x.name||'',settings:x.settings||Object.assign({},DEF),source:x.source,items:r.items,order:r.order,mods:r.mods,colours:fresh?{}:Object.assign({},x.colours),pages:fresh?null:x.pages};
   if(P.pages){const ok=new Set(P.order);P.pages.forEach(p=>p.cells=p.cells.map(c=>c&&c.t==='i'&&!ok.has(c.id)?null:c))}
   undo=[];sel=null;dirty=!!fresh;showSettings();$('pp-set').hidden=false;$('pp-lock').hidden=true;$('pp-save').disabled=false;
   $('pp-cnt').textContent=P.order.length+' buttons, '+r.mods+' modifier rows left out';
@@ -717,7 +764,7 @@ function setPlan(x,fresh){
 
 /* ---------------- saving: the website (everyone signed in), else this browser ---------------- */
 const DRAFT='pp-draft',LOCAL='pp-local';
-function packed(){return {id:P.id,name:$('pp-name').value.trim()||DEFNAME,settings:P.settings,source:P.source,pages:P.pages}}
+function packed(){return {id:P.id,name:$('pp-name').value.trim()||DEFNAME,settings:P.settings,colours:P.colours||{},source:P.source,pages:P.pages}}
 function keepDraft(){try{localStorage.setItem(DRAFT,JSON.stringify(packed()))}catch(e){}}
 async function api(path,body){const r=await fetch('/api/planner/'+path,body?{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify(body)}:{credentials:'same-origin'});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('The website answered '+r.status+'.'));return j}
