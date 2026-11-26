@@ -70,7 +70,7 @@ const FIELDS = [
   'servesVegetarianFood', 'outdoorSeating', 'liveMusic', 'goodForGroups', 'menuForChildren', 'allowsDogs',
 ].map(f => 'places.' + f).join(',');
 // bump on every change, so /ping shows which version Cloudflare is running
-const VERSION = '2026-11-25.1';
+const VERSION = '2026-11-26.1';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const HEAD = { 'Access-Control-Allow-Origin': '*', 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
 const API_HEAD = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' };
@@ -716,7 +716,8 @@ async function intakeTables(env) {
     env.DB.prepare('CREATE TABLE IF NOT EXISTS intake_seen (email TEXT NOT NULL, token TEXT NOT NULL, seen_at INTEGER, PRIMARY KEY (email, token))'),
   ]);
   // the venue portal (added 2026-11-20): what the team has published for the venue to see, and the venue's sign-offs
-  for (const col of ['portal TEXT', 'approvals TEXT', 'approved_at INTEGER'])
+  // revisions (2026-11-26): page layouts the venue edited and sent back from the portal, newest last
+  for (const col of ['portal TEXT', 'approvals TEXT', 'approved_at INTEGER', 'revisions TEXT'])
     await env.DB.prepare('ALTER TABLE intake ADD COLUMN ' + col).run().catch(() => {});
   ITABLES = true;
 }
@@ -731,6 +732,26 @@ const b64url = bytes => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').
 const TOKEN = /^[A-Za-z0-9_-]{24}$/;
 const filesOf = async (env, token) => ((await env.DB.prepare('SELECT id, name, type, size, kind, at FROM intake_files WHERE token = ?1 ORDER BY at').bind(token).all()).results || []);
 async function dropFile(env, id) { await env.DB.batch([env.DB.prepare('DELETE FROM intake_chunks WHERE file_id = ?1').bind(id), env.DB.prepare('DELETE FROM intake_files WHERE id = ?1').bind(id)]); }
+/* a POS page layout, as the Page Planner sends it and the venue edits it on the portal:
+   {cols, rows, slots, pages: [{id, name, parent, cells: [null | {t:'i', id, n, p, c} | {t:'l', to, c} | {t:'b'}]}]}
+   n = button name, p = price line, c = colour (#rrggbb), id = the planner's product key, to = the page a link opens.
+   Everything is re-built from known fields with lengths capped, so nothing else the browser sends is stored. */
+const REV_MAX = 10, REV_BYTES = 250000;
+function cleanLayout(L) {
+  if (!L || typeof L !== 'object' || !Array.isArray(L.pages)) return null;
+  const num = (v, lo, hi, d) => { v = Math.round(+v); return v >= lo && v <= hi ? v : d; };
+  const str = (v, n) => String(v == null ? '' : v).slice(0, n), hex = v => /^#[0-9a-f]{6}$/i.test(v || '') ? String(v).toLowerCase() : '';
+  const cols = num(L.cols, 2, 10, 5), rows = num(L.rows, 1, 10, 5), max = cols * rows;
+  const pages = L.pages.slice(0, 80).map(p => ({ id: str(p && p.id, 24) || 'p', name: str(p && p.name, 80) || 'Page', parent: p && p.parent ? str(p.parent, 24) : null,
+    cells: (Array.isArray(p && p.cells) ? p.cells : []).slice(0, max).map(c => {
+      if (!c || typeof c !== 'object') return null;
+      if (c.t === 'b') return { t: 'b' };
+      if (c.t === 'l') return { t: 'l', to: str(c.to, 24), c: hex(c.c) };
+      if (c.t === 'i') return { t: 'i', id: str(c.id, 160), n: str(c.n, 80), p: str(c.p, 40), c: hex(c.c) };
+      return null;
+    }) }));
+  return pages.length ? { cols, rows, slots: num(L.slots, 1, 20, 8), pages } : null;
+}
 const linkOf = (u, token) => new URL('/intake/' + token, u).href;
 const liveLink = r => r && !r.revoked && r.expires > Date.now();
 
@@ -746,7 +767,7 @@ async function intakeStaff(path, req, env, user, q, u) {
     const seen = await DB.prepare('SELECT seen_at FROM intake_seen WHERE email = ?1 AND token = ?2').bind(user.email, r.token).first();
     return api({ link: { token: r.token, url: linkOf(u, r.token), createdAt: r.created_at, createdBy: r.created_by, expires: r.expires, live: liveLink(r), revoked: !!r.revoked,
       submittedAt: r.submitted_at, submits: r.submits, seenAt: seen ? seen.seen_at : null, data, files: await filesOf(env, r.token),
-      portal: jsonOr(r.portal, null), approvals: jsonOr(r.approvals, {}), approvedAt: r.approved_at || null } });
+      portal: jsonOr(r.portal, null), approvals: jsonOr(r.approvals, {}), approvedAt: r.approved_at || null, revisions: jsonOr(r.revisions, []) } });
   }
   // every venue's sent-in form from the last INBOX_DAYS, newest first, and whether this person has looked at it since
   // it was last sent. The site's bell and the Setup Tracker use it; only people with the Setup Tracker get any.
@@ -799,15 +820,17 @@ async function intakeStaff(path, req, env, user, q, u) {
     await DB.prepare('UPDATE intake SET expires = ?2, revoked = 0 WHERE token = ?1').bind(String(b.token || ''), now + INTAKE_DAYS * 864e5).run();
     return api({ ok: true });
   }
-  // the Page Planner sends a venue's POS pages to its newest live link: {venue, pages: [[page name, [button, ...]], ...]}
+  // the Page Planner sends a venue's POS pages to its newest live link:
+  // {venue, pages: [[page name, [button, ...]], ...], layout} (layout: the full POS look, see cleanLayout; older planners send none)
   if (path === 'plan') {
     const venue = String(b.venue || '').slice(0, 200), pages = Array.isArray(b.pages) ? b.pages.slice(0, 80) : [];
     if (!venue || !pages.length) return api({ error: 'Pick a venue and build the pages first.' }, 400);
     const r = await DB.prepare('SELECT token, portal, revoked, expires FROM intake WHERE venue = ?1 ORDER BY created_at DESC LIMIT 1').bind(venue).first();
     if (!r || !liveLink(r)) return api({ error: 'This venue has no live portal link. Make one in the Setup Tracker (Intake link) first.' }, 409);
     const clean = pages.map(x => [String((x && x[0]) || 'Page').slice(0, 80), (Array.isArray(x && x[1]) ? x[1] : []).slice(0, 120).map(y => String(y).slice(0, 80))]);
-    const old = jsonOr(r.portal, {}) || {}, sig = JSON.stringify({ pages: clean }), was = old.plan || {};
-    const p = Object.assign({}, old, { plan: { title: 'Your POS pages', body: { pages: clean }, ver: was.sig === sig ? (was.ver || 1) : (was.ver || 0) + 1, sig, at: now } });
+    const layout = cleanLayout(b.layout), body = layout ? { pages: clean, layout } : { pages: clean };
+    const old = jsonOr(r.portal, {}) || {}, sig = JSON.stringify(body), was = old.plan || {};
+    const p = Object.assign({}, old, { plan: { title: 'Your POS pages', body, ver: was.sig === sig ? (was.ver || 1) : (was.ver || 0) + 1, sig, at: now } });
     if (!p.at) p.at = now;
     const json = JSON.stringify(p);
     if (json.length > PORTAL_MAX) return api({ error: 'That plan is too big to send.' }, 413);
@@ -861,8 +884,10 @@ async function intakePublic(rest, req, env) {
     let data = null; try { data = r.data ? JSON.parse(r.data) : null; } catch (e) { }
     const portal = jsonOr(r.portal, null);
     if (portal) { delete portal.by; for (const k of SIGNOFFS) if (portal[k]) delete portal[k].sig; }
+    // the venue's own newest revision of the page layout, so their edits are still there when they come back
+    const revs = jsonOr(r.revisions, []) || [], last = revs[revs.length - 1] || null;
     return api({ venue: r.venue_name || '', expires: r.expires, submittedAt: r.submitted_at, data, files: await filesOf(env, token), limits: { file: FILE_MAX, total: TOKEN_MAX_BYTES, files: TOKEN_MAX_FILES },
-      portal, approvals: jsonOr(r.approvals, {}) });
+      portal, approvals: jsonOr(r.approvals, {}), revision: last });
   }
   if (req.method !== 'POST') return api({ error: 'Use POST.' }, 405);
   if (!action) {
@@ -916,6 +941,26 @@ async function intakePublic(rest, req, env) {
     ap[what] = entry; ap.history = hist.concat([entry]).slice(-40);
     await DB.prepare('UPDATE intake SET approvals = ?2, approved_at = ?3 WHERE token = ?1').bind(token, JSON.stringify(ap), now).run();
     return api({ ok: true, approvals: ap });
+  }
+  // the venue sends back its own version of the page layout: {name, note, layout, ver}. Kept as a revision (newest
+  // REV_MAX) and logged as "asked for changes" on the plan, so the team's bell and the Setup Tracker show it.
+  if (action === 'revise') {
+    const b = await req.json().catch(() => ({}));
+    const name = String(b.name || '').replace(/\s+/g, ' ').trim().slice(0, 100), note = String(b.note || '').slice(0, 2000), layout = cleanLayout(b.layout);
+    if (!name) return api({ error: 'Type your name to send your changes.' }, 400);
+    if (!layout) return api({ error: 'Your changes couldn’t be read. Try again.' }, 400);
+    const portal = jsonOr(r.portal, null);
+    if (!portal || !portal.plan) return api({ error: 'There’s no page layout here to change yet.' }, 409);
+    const ap = jsonOr(r.approvals, {}) || {}, hist = Array.isArray(ap.history) ? ap.history : [];
+    if (hist.length >= 200) return api({ error: 'This link has had too many sign-offs. Ask your Oolio contact for a new one.' }, 429);
+    const ver = portal.plan.ver || 1, rev = { name, note, at: now, ver, layout };
+    const revs = (jsonOr(r.revisions, []) || []).concat([rev]).slice(-REV_MAX);
+    while (revs.length > 1 && JSON.stringify(revs).length > REV_BYTES) revs.shift();
+    if (JSON.stringify(revs).length > REV_BYTES) return api({ error: 'That layout is too big to send.' }, 413);
+    const entry = { what: 'plan', decision: 'changes', name, note: note.trim() || 'Sent back an edited page layout.', at: now, ver, rev: true };
+    ap.plan = entry; ap.history = hist.concat([entry]).slice(-40);
+    await DB.prepare('UPDATE intake SET approvals = ?2, approved_at = ?3, revisions = ?4 WHERE token = ?1').bind(token, JSON.stringify(ap), now, JSON.stringify(revs)).run();
+    return api({ ok: true, approvals: ap, revision: rev });
   }
   return api({ error: 'Unknown address.' }, 404);
 }

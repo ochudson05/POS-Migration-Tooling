@@ -107,6 +107,14 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted,#667)}
 body.picking .cell.empty{background:color-mix(in srgb,var(--accent,#2554c7) 16%,var(--pos-empty));box-shadow:inset 0 0 0 1px var(--accent,#2554c7)}
 .tray{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 .tray .cell{min-height:40px;padding:5px 10px;font-size:.72rem;max-width:180px}
+/* one button's own colour, in the selection bar */
+.tcol{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}
+.tcol .sw{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid var(--card,#fff);background:var(--c);box-shadow:0 0 0 1px var(--line,#dde);cursor:pointer}
+.tcol .sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent,#2554c7)}
+.tcol input[type=color]{width:30px;height:26px;padding:0 2px;border:1px solid var(--line,#dde);border-radius:6px;background:none;cursor:pointer}
+.revs{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
+.revs li{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 10px;border:1px solid var(--line,#dde);border-radius:8px;font-size:.85rem}
+.revs li q{color:var(--muted,#667);flex-basis:100%}
 .legend{display:flex;flex-wrap:wrap;gap:10px;font-size:.8rem;color:var(--muted,#667);margin:0 0 12px}
 .legend i{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-2px;margin-right:4px}
 .legend .sw{font:inherit;font-size:.78rem;font-weight:600;color:var(--text,#111);background:transparent;border:1px solid var(--line,#dde);border-radius:99px;padding:2px 9px 2px 4px;display:inline-flex;align-items:center;gap:5px;cursor:pointer}
@@ -252,7 +260,7 @@ body.tg-dragging,body.tg-dragging *{cursor:grabbing!important;user-select:none}
     <div class="card"><b>Layout workbook</b><p>A grid for every page, a list of every button with its row and column, and the steps to do by hand in Oolio One: sub-page links, Back buttons and copies.</p><button type="button" id="pp-dl1">Download layout (.xlsx)</button></div>
     <div class="card"><b>Import, sorted by page</b><p>Your import file in page order, with Category set to the page each product sits on. Use it if Oolio One builds a page from each category. Note this changes your category names in reports.</p><button type="button" class="sec" id="pp-dl2">Download import (.xlsx)</button></div>
     <div class="card"><b>Venue portal</b><p>Shows these pages to the venue on its portal link, so the owner can approve them or ask for changes. Needs a live portal link for the venue (Setup Tracker → Intake link).</p>
-      <label class="small" for="pp-pv">Venue</label><select id="pp-pv"><option value="">Loading venues…</option></select><button type="button" class="sec" id="pp-portal">Send to venue portal</button><p class="small muted" id="pp-pmsg" role="status" aria-live="polite"></p></div>
+      <label class="small" for="pp-pv">Venue</label><select id="pp-pv"><option value="">Loading venues…</option></select><button type="button" class="sec" id="pp-portal">Send to venue portal</button><p class="small muted" id="pp-pmsg" role="status" aria-live="polite"></p><div id="pp-revs"></div></div>
   </div>
 </section>
 
@@ -535,10 +543,10 @@ function tile(c,pid,i,copies){
   const a='data-p="'+pid+'" data-i="'+esc(i)+'" tabindex="0" role="button"';
   if(!c)return '<div class="cell empty'+(issel?' sel':'')+'" '+a+' aria-label="Empty slot"></div>';
   if(c.t==='b')return '<div class="cell back'+(issel?' sel':'')+'" '+a+'>‹ Back</div>';
-  if(c.t==='l'){const q=byId(c.to);return '<div class="cell lnk'+(issel?' sel':'')+'" '+a+(q?' style="--c:'+pageColour(q)+'"':'')+'>'+esc(q?q.name:'?')+' ›</div>'}
+  if(c.t==='l'){const q=byId(c.to),col=c.c||(q?pageColour(q):'');return '<div class="cell lnk'+(issel?' sel':'')+'" '+a+(col?' style="--c:'+col+'"':'')+'>'+esc(q?q.name:'?')+' ›</div>'}
   const x=P.items[c.id];if(!x)return '<div class="cell empty" '+a+'></div>';
   const tip=(x.label!==x.name?x.name+' · ':'')+x.cat+' · '+money(x)+(copies>1?' · also on another page':'');
-  return '<div class="cell it'+(x.sizes.length?' sz':'')+(copies>1?' dup':'')+(issel?' sel':'')+'" '+a+' style="--c:'+colourOf(x)+'" title="'+esc(tip)+'">'+esc(x.label||x.name)+'<small>'+esc(priceLine(x))+'</small></div>'}
+  return '<div class="cell it'+(x.sizes.length?' sz':'')+(copies>1?' dup':'')+(issel?' sel':'')+'" '+a+' style="--c:'+(c.c||colourOf(x))+'" title="'+esc(tip)+(c.c?' · own colour':'')+'">'+esc(x.label||x.name)+'<small>'+esc(priceLine(x))+'</small></div>'}
 /* ---------------- POS colours ----------------
    The POS colours each button; the import has no colour column, so each category gets one from the POS palette
    (in menu order) and the user can click a category in the legend to change it. Saved with the plan. */
@@ -546,6 +554,8 @@ const PAL=['#00bcd4','#2196f3','#009688','#ff9800','#4caf50','#9c27b0','#ff5722'
 const PALN=['Cyan','Blue','Teal','Orange','Green','Purple','Deep orange','Indigo','Light green','Pink','Deep purple','Brown','Grey','Red'];
 const catsInOrder=()=>{const o=[];P.order.forEach(id=>{const c=P.items[id].cat;if(!o.includes(c))o.push(c)});return o};
 function catIdx(cat){P.colours=P.colours||{};if(P.colours[cat]==null)P.colours[cat]=Math.max(0,catsInOrder().indexOf(cat))%PAL.length;return P.colours[cat]}
+const VARHEX={'var(--veg)':'#4caf50','var(--nv)':'#ff5722','var(--oth)':'#607d8b','var(--lnk)':'#111111'};
+const toHex=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c.toLowerCase():VARHEX[c]||'#607d8b';
 function colourOf(x){if(S().colour==='veg')return x.grp==='Beverage'?'var(--oth)':x.nv?'var(--nv)':'var(--veg)';return PAL[catIdx(x.cat)]}
 // a page's toolbar colour: the colour of its first product
 function pageColour(p){const c=p.cells.find(c=>c&&c.t==='i'&&P.items[c.id]);return c?colourOf(P.items[c.id]):'#607d8b'}
@@ -561,9 +571,15 @@ function drawBar(){
   const nm=c.t==='i'?P.items[c.id].name:c.t==='b'?'Back button':'Link to '+(byId(c.to)||{}).name;
   const copyOpts=c.t==='i'?'<label class="small">Copy to <select id="pp-copyto"><option value="">choose a page…</option>'+P.pages.filter(p=>p.id!==sel.p).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'</select></label>':'';
   $('pp-bar').innerHTML='<b>'+esc(nm)+'</b><span class="small muted">'+(c.t==='i'?'Click an empty slot to move it, or a button to swap.':'Links and Back buttons move within their own page.')+'</span>'+copyOpts+
+    (c.t!=='b'&&sel.p!=='tray'?'<span class="tcol" role="group" aria-label="This button’s colour"><span class="small">Colour</span>'+PAL.map((h,k)=>'<button type="button" class="sw" data-tc="'+h+'" style="--c:'+h+'" title="'+PALN[k]+'" aria-label="'+PALN[k]+'"'+(c.c===h?' aria-pressed="true"':'')+'></button>').join('')+
+      '<input type="color" id="pp-tcol" value="'+toHex(c.c||(c.t==='i'?colourOf(P.items[c.id]):pageColour(byId(c.to)||{cells:[]})))+'" aria-label="Any colour" title="Any colour">'+(c.c?'<button type="button" class="sec sm" id="pp-tcat">'+(c.t==='i'?'Category colour':'Page colour')+'</button>':'')+'</span>':'')+
     (c.t==='i'&&sel.p!=='tray'?'<button type="button" class="bad sm" id="pp-rm">Take off this page</button>':'')+'<button type="button" class="sec sm" id="pp-cancel">Cancel</button>';
+  const setCol=v=>{const cell=byId(sel.p).cells[sel.i];if(!cell)return;snap();if(v)cell.c=v;else delete cell.c;changed()};
+  $('pp-bar').querySelectorAll('[data-tc]').forEach(b=>b.onclick=()=>setCol(b.dataset.tc));
+  if($('pp-tcol'))$('pp-tcol').onchange=e=>setCol(e.target.value.toLowerCase());
+  if($('pp-tcat'))$('pp-tcat').onclick=()=>setCol('');
   const ct=$('pp-copyto');if(ct)ct.onchange=()=>{const p=byId(ct.value);if(!p)return;const i=p.cells.indexOf(null);if(i<0){msg1('That page has no empty slot.',1);return}
-    if(p.cells.some(x=>x&&x.t==='i'&&x.id===c.id)){msg1('It’s already on that page.',1);return}snap();p.cells[i]={t:'i',id:c.id};sel=null;changed()};
+    if(p.cells.some(x=>x&&x.t==='i'&&x.id===c.id)){msg1('It’s already on that page.',1);return}snap();p.cells[i]=c.c?{t:'i',id:c.id,c:c.c}:{t:'i',id:c.id};sel=null;changed()};
   if($('pp-rm'))$('pp-rm').onclick=()=>{snap();byId(sel.p).cells[sel.i]=null;sel=null;changed()};
   $('pp-cancel').onclick=()=>{sel=null;draw()};
 }
@@ -687,12 +703,42 @@ function fname(t){return(($('pp-name').value.trim()||DEFNAME)+' - '+t).replace(/
 /* send the pages to a venue's portal (/api/intake/plan): each page with its buttons in order; links shown as "→ page" */
 async function portalVenues(){const sel=$('pp-pv');if(!sel||sel.dataset.ok)return;try{const r=await fetch('/api/db/list?coll=orgs',{credentials:'same-origin'}),j=await r.json();
     const L=(j.docs||[]).map(d=>({id:d.id,name:(d.data&&d.data.name)||'Untitled'})).sort((a,b)=>a.name.localeCompare(b.name));let act='';try{act=localStorage.getItem('ov-active')||''}catch(e){}
-    sel.innerHTML='<option value="">Pick a venue</option>'+L.map(v=>'<option value="'+esc(v.id)+'"'+(v.id===act?' selected':'')+'>'+esc(v.name)+'</option>').join('');sel.dataset.ok=1}
+    sel.innerHTML='<option value="">Pick a venue</option>'+L.map(v=>'<option value="'+esc(v.id)+'"'+(v.id===act?' selected':'')+'>'+esc(v.name)+'</option>').join('');sel.dataset.ok=1;if(sel.value)loadRevs()}
   catch(e){sel.innerHTML='<option value="">Couldn’t load venues</option>'}}
 function planPages(){const pg=id=>P.pages.find(x=>x.id===id);return P.pages.map(p=>[p.name,p.cells.filter(Boolean).map(c=>c.t==='i'?(P.items[c.id]||{}).name||'':c.t==='l'?'→ '+((pg(c.to)||{}).name||'page'):'← Back').filter(Boolean)])}
+// the whole POS look for the portal: grid size and every page's slots with names, prices and colours (as plain #hex)
+function planLayout(){const s=S();return {cols:s.cols,rows:s.rows,slots:s.slots,pages:P.pages.map(p=>({id:p.id,name:p.name,parent:p.parent&&byId(p.parent)?p.parent:null,
+  cells:p.cells.map(c=>{if(!c)return null;if(c.t==='b')return {t:'b'};
+    if(c.t==='l'){const q=byId(c.to);return q?{t:'l',to:c.to,c:toHex(c.c||pageColour(q))}:null}
+    const x=P.items[c.id];return x?{t:'i',id:c.id,n:x.label||x.name,p:priceLine(x),c:toHex(c.c||colourOf(x))}:null})}))}}
 $('pp-portal').onclick=async()=>{const v=$('pp-pv').value,m=$('pp-pmsg');if(!P||!P.pages||!P.pages.length){m.textContent='Build the pages first.';return}if(!v){m.textContent='Pick the venue.';return}
-  m.textContent='Sending…';try{const r=await fetch('/api/intake/plan',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({venue:v,pages:planPages()})}),j=await r.json().catch(()=>({}));
-    if(!r.ok)throw new Error(j.error||('Error '+r.status));m.textContent='Sent. The venue sees '+P.pages.length+' pages on its portal (version '+j.ver+').'}catch(e){m.textContent=e.message}};
+  m.textContent='Sending…';try{const r=await fetch('/api/intake/plan',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({venue:v,pages:planPages(),layout:planLayout()})}),j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||('Error '+r.status));m.textContent='Sent. The venue sees all '+P.pages.length+' pages as they look on the POS and can edit them (version '+j.ver+').'}catch(e){m.textContent=e.message}};
+/* the venue's edited layouts, sent back from the portal: list them, and load one into this plan */
+let REVS=[];
+async function loadRevs(){const v=$('pp-pv').value,el=$('pp-revs');if(!el)return;if(!v){el.innerHTML='';return}
+  try{const r=await fetch('/api/intake/status?venue='+encodeURIComponent(v),{credentials:'same-origin'}),j=await r.json().catch(()=>({}));
+    REVS=(j.link&&j.link.revisions||[]).slice().reverse();
+    el.innerHTML=REVS.length?'<p class="small" style="margin:10px 0 0"><b>Changes sent back by the venue</b></p><ul class="revs">'+REVS.map((x,i)=>'<li><b>'+esc(x.name)+'</b><span class="muted">'+new Date(x.at).toLocaleString('en-AU',{day:'numeric',month:'short',hour:'numeric',minute:'2-digit'})+' · on version '+x.ver+'</span>'+
+      '<button type="button" class="sec sm" data-rev="'+i+'">Load into the plan</button>'+(x.note?'<q>'+esc(x.note)+'</q>':'')+'</li>').join('')+'</ul>':'<p class="small muted" style="margin:8px 0 0">No changes sent back from this venue yet.</p>'}
+  catch(e){el.innerHTML=''}}
+$('pp-pv').addEventListener('change',loadRevs);
+$('pp-revs').addEventListener('click',e=>{const b=e.target.closest('[data-rev]');if(!b)return;const x=REVS[+b.dataset.rev];if(!x)return;
+  if(!P||!P.pages){$('pp-pmsg').textContent='Open the plan this venue’s pages came from first, then load their changes.';return}
+  if(!confirm('Replace the pages in this plan with '+x.name+'’s version? You can undo it.'))return;$('pp-pmsg').textContent=applyLayout(x.layout)});
+// put a venue's layout back on the plan's pages (matched by page id and product key); returns what happened
+function applyLayout(L){const s=S(),n=N();let pages=0,miss=0,ren=0,cols=0;snap();
+  (L.pages||[]).forEach(rp=>{const p=byId(rp.id);if(!p){miss++;return}const cells=new Array(n).fill(null);
+    (rp.cells||[]).forEach((c,i)=>{if(!c||i>=n)return;
+      if(c.t==='b'){cells[i]={t:'b'};return}
+      if(c.t==='l'){const q=byId(c.to);if(!q){miss++;return}cells[i]={t:'l',to:c.to};if(c.c&&c.c!==toHex(pageColour(q))){cells[i].c=c.c;cols++}return}
+      const x=P.items[c.id];if(!x){miss++;return}
+      if(c.n&&c.n!==(x.label||x.name)){x.label=c.n;ren++}
+      cells[i]={t:'i',id:c.id};if(c.c&&c.c!==toHex(colourOf(x))){cells[i].c=c.c;cols++}});
+    p.cells=cells;pages++});
+  sel=null;changed();
+  return 'Loaded the venue’s version: '+pages+' page'+(pages===1?'':'s')+(ren?', '+ren+' renamed button'+(ren>1?'s':''):'')+(cols?', '+cols+' button'+(cols>1?'s':'')+' with their own colour':'')+'.'+
+    (miss?' '+miss+' button'+(miss>1?'s or pages':' or page')+' weren’t in this plan, so they were left out.':'')+(L.cols!==s.cols||L.rows!==s.rows?' Their screen was '+L.cols+' × '+L.rows+', not '+s.cols+' × '+s.rows+', so check where things landed.':'')+' Undo puts the pages back (renamed buttons keep their new names).'}
 setTimeout(portalVenues,0);
 $('pp-dl1').onclick=()=>{
   const s=S(),it=P.items,wb=XLSX.utils.book_new(),ord=order(),tops=P.pages.filter(p=>!p.parent),seen=new Map();

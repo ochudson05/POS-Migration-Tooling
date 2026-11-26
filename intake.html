@@ -66,6 +66,46 @@ button:not(:disabled):active{transform:scale(.97)}
 .psteps{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:4px;font-size:.9rem}.psteps li{display:flex;gap:6px;align-items:center;color:var(--muted)}.psteps li.done{color:var(--text)}
 .pbody{display:grid;gap:6px;max-height:420px;overflow:auto}.pcat summary{cursor:pointer;padding:4px 0}.ptbl{width:100%;border-collapse:collapse;font-size:.9rem}.ptbl td{padding:3px 4px;border-bottom:1px solid var(--line)}.ptbl .pr{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .pbtns{display:flex;flex-wrap:wrap;gap:4px;padding:4px 0}.pbtns span{border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:.82rem;background:var(--bg)}
+/* the POS page layout, shown like the POS screen and editable by the venue */
+.pbody.lay{max-height:none;overflow:visible}
+.pos{display:grid;gap:10px}
+.pos-help{margin:0;font-size:.88rem;color:var(--muted)}
+.pos-scr{background:#1d2024;border-radius:12px;padding:8px;display:grid;gap:6px;box-shadow:inset 0 0 0 1px rgb(255 255 255/.06)}
+.pos-tb{display:flex;gap:4px;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.pos-tb button{flex:none;min-width:84px;max-width:150px;min-height:40px;padding:4px 8px;border:0;border-radius:6px;background:var(--c,#455a64);color:#fff;font-size:.72rem;font-weight:700;text-transform:uppercase;line-height:1.15;opacity:.72;white-space:normal}
+.pos-tb button[aria-current="page"]{opacity:1;box-shadow:inset 0 -3px 0 #fff}
+.pos-tb button.lt{color:#111}.pos-tb button.lt[aria-current="page"]{box-shadow:inset 0 -3px 0 #111}
+@media (max-width:520px){.pos-c{font-size:.58rem;min-height:52px}.pos-c small{font-size:.54rem}}
+.pos-tb button.drop{outline:3px dashed #fff;outline-offset:-3px;opacity:1}
+.pos-path{display:flex;flex-wrap:wrap;gap:4px;align-items:center;color:#cfd4da;font-size:.78rem;padding:0 2px}
+.pos-path button{background:none;border:0;color:#fff;font-size:.78rem;font-weight:600;padding:2px 4px;text-decoration:underline}
+.pos-g{display:grid;gap:4px;grid-template-columns:repeat(var(--cols,5),minmax(0,1fr))}
+.pos-c{position:relative;min-height:58px;padding:4px 3px;border:0;border-radius:6px;background:var(--c,#009688);color:#fff;font-size:.68rem;font-weight:700;text-transform:uppercase;line-height:1.12;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;overflow:hidden;overflow-wrap:break-word;hyphens:auto;text-shadow:0 1px 1px rgb(0 0 0/.25);touch-action:manipulation}
+.pos-c small{font-size:.6rem;font-weight:600;opacity:.9;text-transform:none}
+.pos-c.lt{color:#111;text-shadow:none}
+.pos-c.empty{background:#3a3f45;box-shadow:none;cursor:default}
+.pos-c.lnk::after{content:"›";position:absolute;right:4px;top:2px;font-size:.9rem}
+.pos-c.back{background:#111}
+.pos-c.sel{outline:3px solid #ffd54f;outline-offset:-3px}
+.pos-c.drop{outline:3px dashed #fff;outline-offset:-3px}
+.pos-c.lift{opacity:.35}
+.pos-c:focus-visible{outline:3px solid var(--accent);outline-offset:1px}
+.pos.picking .pos-c.empty{cursor:pointer;box-shadow:inset 0 0 0 2px #ffd54f66}
+.pos-ghost{position:fixed;left:0;top:0;z-index:60;pointer-events:none;max-width:150px;padding:10px 12px;border-radius:6px;background:var(--c,#009688);color:#fff;font-size:.72rem;font-weight:700;text-transform:uppercase;box-shadow:0 8px 20px rgb(0 0 0/.35)}
+.pos-ghost.lt{color:#111}
+body.pos-dragging,body.pos-dragging *{cursor:grabbing!important;user-select:none}
+.pos-pan{display:grid;gap:10px;padding:12px;border:1px solid var(--accent);border-radius:12px;background:var(--bg)}
+.pos-pan h3{margin:0;font-size:1rem}
+.pos-sw{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.pos-sw button{width:30px;height:30px;padding:0;border-radius:50%;border:2px solid var(--card);background:var(--c);box-shadow:0 0 0 1px var(--line)}
+.pos-sw button[aria-pressed="true"]{box-shadow:0 0 0 3px var(--accent)}
+.pos-sw input[type=color]{width:42px;height:32px;padding:2px;border-radius:8px}
+.pos-tray{display:flex;flex-wrap:wrap;gap:4px}.pos-tray .pos-c{min-height:44px;min-width:90px;flex:0 1 120px}
+.pos-st{margin:0;font-size:.88rem;font-weight:600;color:var(--warn)}
+/* the site theme gives every button a hover colour; tiles keep their own */
+#posed .pos-c:hover,#posed .pos-tb button:hover,#posed .pos-sw button:hover{background:var(--c,#009688);filter:brightness(1.1)}
+#posed .pos-c.empty:hover{background:#4a5057;filter:none}#posed .pos-c.back:hover{background:#111}
+#posed .pos-path button:hover{background:none;color:#fff}
 .prow{display:flex;flex-wrap:wrap;gap:8px}.prow .go{width:auto;padding:10px 18px;font-size:1rem}.muted{color:var(--muted)}#portal{display:grid;gap:16px}#portal[hidden]{display:none}.pst{margin:0;display:flex;gap:6px;align-items:center;font-weight:600}.pst.ok{color:var(--ok)}.pst.warn{color:var(--warn)}
 </style>
 </head>
@@ -196,18 +236,20 @@ $('edit').addEventListener('click',()=>{$('done').hidden=true;form.hidden=false;
 const SIGN={menu:['Your menu','Check every item, size and price. Approve it, or tell us what to change.'],plan:['Your POS pages','How the buttons are laid out on the POS screen.'],golive:['Ready to go live','Confirm you’re ready on the day.']};
 const money=v=>v===''||v==null?'':'$'+(+v).toFixed(2);
 const dfmt=d=>d?new Date(d+'T00:00').toLocaleDateString('en-AU',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'';
-let PORTAL=null,APPROVALS={},NAME='';try{NAME=localStorage.getItem('mh.intake.name')||''}catch(e){}
+let PORTAL=null,APPROVALS={},NAME='',REVISION=null;try{NAME=localStorage.getItem('mh.intake.name')||''}catch(e){}
 function partBody(k,b){if(k==='menu'){const by=new Map();(b.items||[]).forEach(([n,c,sz,pr])=>{const key=c||'Other';(by.get(key)||by.set(key,[]).get(key)).push([n,sz,pr])});
     return'<p class="muted" style="margin:0">'+(b.items||[]).length+' lines in '+by.size+' categories</p>'+[...by].map(([c,L])=>'<details class="pcat"><summary><b>'+esc(c)+'</b> <span class="muted">'+L.length+'</span></summary><table class="ptbl"><tbody>'+
       L.map(([n,sz,pr])=>'<tr><td>'+esc(n)+(sz?' <span class="muted">'+esc(sz)+'</span>':'')+'</td><td class="pr">'+esc(money(pr))+'</td></tr>').join('')+'</tbody></table></details>').join('')}
+  if(k==='plan'&&b.layout)return'<div class="pos" id="posed"></div>';
   if(k==='plan')return(b.pages||[]).map(([pg,L])=>'<details class="pcat"><summary><b>'+esc(pg)+'</b> <span class="muted">'+L.length+' buttons</span></summary><div class="pbtns">'+L.map(x=>'<span>'+esc(x)+'</span>').join('')+'</div></details>').join('');
   return'<p style="margin:0">'+esc(b.statement||'')+'</p>'}
 function partHtml(k){const part=PORTAL[k];if(!part)return'';const a=APPROVALS[k],stale=a&&a.ver!==part.ver,[t,sub]=SIGN[k];
   const st=!a?'':a.decision==='approve'&&!stale?'<p class="pst ok">'+ic('circle-check')+'Approved by '+esc(a.name)+' on '+new Date(a.at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})+'</p>':
     a.decision==='approve'?'<p class="pst warn">'+ic('info')+'Changed since '+esc(a.name)+' approved it. Please check it again.</p>':'<p class="pst warn">'+ic('pencil')+esc(a.name)+' asked for changes: “'+esc(a.note)+'”</p>';
-  return'<section class="card psign" data-k="'+k+'"><h2>'+esc(t)+'</h2><p style="margin:0">'+esc(sub)+'</p>'+st+'<div class="pbody">'+partBody(k,part.body||{})+'</div>'+
+  const lay=k==='plan'&&part.body&&part.body.layout;
+  return'<section class="card psign" data-k="'+k+'"><h2>'+esc(t)+'</h2><p style="margin:0">'+esc(lay?'This is how your POS screen will look. Check every page. You can move buttons, rename them and change their colours, then send your version back to us.':sub)+'</p>'+st+'<div class="pbody'+(lay?' lay':'')+'">'+partBody(k,part.body||{})+'</div>'+
     '<div class="grid"><label class="f">Your name<input data-f="name" value="'+esc(NAME)+'" autocomplete="name"></label></div><label class="f">Note<small>Required if you’re asking for changes</small><textarea data-f="note"></textarea></label>'+
-    '<div class="prow"><button type="button" class="go" data-ap="approve">'+ic('check')+(k==='golive'?'We’re ready':'Approve')+'</button><button type="button" class="sec" data-ap="changes">Ask for changes</button></div><p class="msg" data-f="msg" role="status" aria-live="polite"></p></section>'}
+    '<div class="prow">'+(lay?'<button type="button" class="go" data-ap="revise" id="pos-send" disabled>'+ic('send')+'Send my changes</button>':'')+'<button type="button" class="'+(lay?'sec':'go')+'" data-ap="approve">'+ic('check')+(k==='golive'?'We’re ready':lay?'Approve as it is':'Approve')+'</button><button type="button" class="sec" data-ap="changes">Ask for changes</button></div><p class="msg" data-f="msg" role="status" aria-live="polite"></p></section>'}
 function drawPortal(){const el=$('portal');if(!PORTAL){el.hidden=true;return}el.hidden=false;const P=PORTAL,stg=P.stages||[],ix=Math.max(0,stg.indexOf(P.stageName)),pr=P.progress||{};
   el.innerHTML='<section class="card"><h2>'+ic('list-checks')+'Where your setup is up to</h2>'+
     '<ol class="pstages">'+stg.map((x,i)=>'<li class="'+(i<ix?'done':i===ix?'on':'')+'">'+esc(x)+'</li>').join('')+'</ol>'+
@@ -215,16 +257,119 @@ function drawPortal(){const el=$('portal');if(!PORTAL){el.hidden=true;return}el.
     (pr.total?'<div class="prog"><div class="bar"><i style="width:'+Math.round(pr.done/pr.total*100)+'%"></i></div><span>'+pr.done+' of '+pr.total+' setup steps done</span></div>':'')+
     (P.steps&&P.steps.length?'<details><summary>Setup steps</summary><ul class="psteps">'+P.steps.map(([t,s])=>'<li class="'+(s==='done'?'done':'')+'">'+(s==='done'?ic('circle-check'):ic('clock'))+esc(t)+'</li>').join('')+'</ul></details>':'')+
     '<p class="muted" style="margin:0;font-size:.85rem">Updated '+new Date(P.at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})+(P.contact?' by '+esc(P.contact):'')+'. Your details and files are further down.</p></section>'+
-    ['menu','plan','golive'].map(partHtml).join('')}
+    ['menu','plan','golive'].map(partHtml).join('');if($('posed'))posInit()}
 document.addEventListener('click',async e=>{const b=e.target.closest('[data-ap]');if(!b)return;const sec=b.closest('[data-k]'),k=sec.dataset.k,m=sec.querySelector('[data-f="msg"]');
   const name=sec.querySelector('[data-f="name"]').value.trim(),note=sec.querySelector('[data-f="note"]').value.trim(),decision=b.dataset.ap;m.className='msg';
   if(!name){m.className='msg err';m.textContent='Type your name first.';sec.querySelector('[data-f="name"]').focus();return}
   if(decision==='changes'&&!note){m.className='msg err';m.textContent='Say what needs changing in the note.';sec.querySelector('[data-f="note"]').focus();return}
+  if(decision==='approve'&&k==='plan'&&PDIRTY&&!confirm('You’ve changed the layout but haven’t sent your changes. Approve our version anyway?'))return;
+  if(decision==='revise'){sec.querySelectorAll('button').forEach(x=>x.disabled=true);m.textContent='Sending your changes…';
+    try{const j=await api('/revise',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({name,note,layout:PL,ver:PORTAL.plan.ver})});
+      APPROVALS=j.approvals||APPROVALS;REVISION=j.revision||REVISION;NAME=name;try{localStorage.setItem('mh.intake.name',name);localStorage.removeItem(PKEY())}catch(x){}drawPortal();
+      const s2=document.querySelector('[data-k="plan"] [data-f="msg"]');if(s2){s2.className='msg ok';s2.textContent='Thanks, we’ve got your changes. Your Oolio contact will update the POS and let you know.'}}
+    catch(err){m.className='msg err';m.textContent=err.message;sec.querySelectorAll('button').forEach(x=>x.disabled=false);posStatus()}return}
   sec.querySelectorAll('button').forEach(x=>x.disabled=true);m.textContent='Sending…';
   try{const j=await api('/approve',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({what:k,decision,name,note,ver:PORTAL[k].ver})});
     APPROVALS=j.approvals||APPROVALS;NAME=name;try{localStorage.setItem('mh.intake.name',name)}catch(x){}drawPortal();
     const s2=document.querySelector('[data-k="'+k+'"] [data-f="msg"]');if(s2){s2.className='msg';s2.textContent=decision==='approve'?'Thanks, that’s approved.':'Thanks, we’ll make the changes and let you know.'}}
   catch(err){m.className='msg err';m.textContent=err.message;sec.querySelectorAll('button').forEach(x=>x.disabled=false)}});
+
+/* ---------- the POS page layout editor ----------
+   The team's layout (portal.plan.body.layout: {cols, rows, pages: [{id, name, parent, cells}]}) drawn like the POS
+   screen: toolbar pages along the top, sub-pages opened from their link buttons. The venue can drag a button to move
+   or swap it (or onto a toolbar page to move it there), or tap it, then tap another slot; tapping also opens a panel to
+   rename it, change its colour, move it to another page or take it off. Edits save on this device until
+   "Send my changes" sends the whole layout back (/revise). */
+let PL=null,PBASE=null,PSEL=null,PPAGE=null,PUNDO=[],PDIRTY=false,PTRAY=[],pdrag=null;
+const PAL=['#00bcd4','#2196f3','#009688','#ff9800','#4caf50','#9c27b0','#ff5722','#3f51b5','#8bc34a','#e91e63','#673ab7','#795548','#607d8b','#f44336','#ffeb3b','#212121'];
+const PALN=['Cyan','Blue','Teal','Orange','Green','Purple','Deep orange','Indigo','Light green','Pink','Deep purple','Brown','Grey','Red','Yellow','Black'];
+const PKEY=()=>'mh.intake.plan.'+token+'.'+(PORTAL&&PORTAL.plan?PORTAL.plan.ver:0);
+const clone=x=>JSON.parse(JSON.stringify(x));
+const lightC=c=>{if(!/^#[0-9a-f]{6}$/i.test(c||''))return false;const n=parseInt(c.slice(1),16),f=v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)};return .2126*f(n>>16)+.7152*f(n>>8&255)+.0722*f(n&255)>.45};
+const pgOf=id=>PL.pages.find(p=>p.id===id),tops=()=>PL.pages.filter(p=>!p.parent||!pgOf(p.parent));
+const pcol=p=>{const c=p&&p.cells.find(x=>x&&x.t==='i');return c&&c.c||'#455a64'};
+const padCells=L=>{const n=L.cols*L.rows;L.pages.forEach(p=>{p.cells=(p.cells||[]).slice(0,n);while(p.cells.length<n)p.cells.push(null)});return L};
+function posInit(){const part=PORTAL.plan;PBASE=part.body.layout;let d=null;try{d=JSON.parse(localStorage.getItem(PKEY())||'null')}catch(e){}
+  const rev=REVISION&&REVISION.ver===part.ver?REVISION.layout:null;
+  PL=padCells(clone(d&&d.layout||rev||PBASE));PTRAY=d&&Array.isArray(d.tray)?d.tray:[];PDIRTY=!!d;PSEL=null;PUNDO=[];
+  if(!PPAGE||!pgOf(PPAGE))PPAGE=(tops()[0]||PL.pages[0]).id;posDraw()}
+function posKeep(){PDIRTY=true;try{localStorage.setItem(PKEY(),JSON.stringify({layout:PL,tray:PTRAY}))}catch(e){}}
+function posSnap(){PUNDO.push(JSON.stringify({pages:PL.pages,tray:PTRAY}));if(PUNDO.length>60)PUNDO.shift()}
+function posChanged(){posKeep();posDraw()}
+function tileHtml(c,i,where){const sel=PSEL&&PSEL.w===where&&PSEL.i===i?' sel':'',a=' data-w="'+where+'" data-i="'+i+'"';
+  if(!c)return'<button type="button" class="pos-c empty'+sel+'"'+a+' aria-label="Empty slot"></button>';
+  if(c.t==='b')return'<button type="button" class="pos-c back'+sel+'"'+a+'>‹ Back</button>';
+  if(c.t==='l'){const q=pgOf(c.to),col=c.c||pcol(q);return'<button type="button" class="pos-c lnk'+(lightC(col)?' lt':'')+sel+'"'+a+' style="--c:'+col+'" aria-label="Opens '+esc(q?q.name:'a page')+'">'+esc(q?q.name:'Page')+'</button>'}
+  return'<button type="button" class="pos-c'+(lightC(c.c)?' lt':'')+sel+'"'+a+(c.c?' style="--c:'+c.c+'"':'')+'>'+esc(c.n||'')+(c.p?'<small>'+esc(c.p)+'</small>':'')+'</button>'}
+function posStatus(){const b=$('pos-send');if(b)b.disabled=!PDIRTY;const st=$('pos-st');if(!st)return;
+  st.textContent=PDIRTY?'You’ve made changes that aren’t sent yet. They’re saved on this device.':REVISION&&PORTAL.plan&&REVISION.ver===PORTAL.plan.ver?'This is the version you sent us on '+new Date(REVISION.at).toLocaleDateString('en-AU',{day:'numeric',month:'short'})+'.':''}
+function posDraw(){const el=$('posed');if(!el||!PL)return;const pg=pgOf(PPAGE)||PL.pages[0];PPAGE=pg.id;
+  let top=pg;while(top.parent&&pgOf(top.parent))top=pgOf(top.parent);
+  const path=[];for(let p=pg;p;p=p.parent?pgOf(p.parent):null)path.unshift(p);
+  const c=PSEL?(PSEL.w==='g'?pg.cells[PSEL.i]:PTRAY[PSEL.i]):null;
+  el.classList.toggle('picking',!!PSEL);
+  el.innerHTML='<p class="pos-help">Drag a button to move it, or drop it on a toolbar page to move it there. Or tap a button, then tap another slot. Tapping a button also lets you rename it or change its colour.</p>'+
+    '<div class="pos-scr" style="--cols:'+PL.cols+'"><div class="pos-tb" role="tablist" aria-label="Toolbar pages">'+tops().map(p=>'<button type="button" role="tab" data-pg="'+esc(p.id)+'"'+(lightC(pcol(p))?' class="lt"':'')+' style="--c:'+pcol(p)+'" aria-selected="'+(p.id===top.id)+'"'+(p.id===top.id?' aria-current="page"':'')+'>'+esc(p.name)+'</button>').join('')+'</div>'+
+    (path.length>1?'<div class="pos-path">'+path.map((p,i)=>i<path.length-1?'<button type="button" data-pg="'+esc(p.id)+'">'+esc(p.name)+'</button> ›':'<b>'+esc(p.name)+'</b>').join(' ')+'</div>':'')+
+    '<div class="pos-g">'+pg.cells.map((x,i)=>tileHtml(x,i,'g')).join('')+'</div></div>'+
+    (PTRAY.length?'<div><p class="pos-help"><b>Taken off the pages</b>: tap one, then an empty slot, to put it back.</p><div class="pos-tray">'+PTRAY.map((x,i)=>tileHtml(x,i,'t')).join('')+'</div></div>':'')+
+    (c?panel(c,pg):'')+
+    '<div class="prow"><button type="button" class="sec" id="pos-undo"'+(PUNDO.length?'':' disabled')+'>'+ic('rotate-ccw')+'Undo</button><button type="button" class="sec" id="pos-reset">Start again from our version</button></div><p class="pos-st" id="pos-st" aria-live="polite"></p>';
+  posStatus()}
+function panel(c,pg){const isI=c.t==='i',isL=c.t==='l',inG=PSEL.w==='g',cur=c.c||(isL?pcol(pgOf(c.to)):'');
+  if(c.t==='b')return'<div class="pos-pan"><h3>Back button</h3><p class="pos-help">Takes staff back to the page this one opens from. Tap another slot to move it there.</p><div class="prow"><button type="button" class="sec" data-pa="up">Go back a page</button><button type="button" class="sec" data-pa="done">Done</button></div></div>';
+  return'<div class="pos-pan"><h3>'+esc(isI?c.n||'Button':'Link to '+((pgOf(c.to)||{}).name||'a page'))+'</h3>'+
+    (inG?'<p class="pos-help">Tap another slot to move it there, or a button to swap them.</p>':'<p class="pos-help">Tap an empty slot to put it back on this page.</p>')+
+    (isI&&inG?'<label class="f">Name on the button<input id="pos-name" value="'+esc(c.n||'')+'" maxlength="40" autocomplete="off"></label>':'')+
+    (inG?'<div><p class="pos-help" style="margin-bottom:6px">Colour</p><div class="pos-sw">'+PAL.map((h,k)=>'<button type="button" data-col="'+h+'" style="--c:'+h+'" aria-label="'+PALN[k]+'" title="'+PALN[k]+'"'+(cur===h?' aria-pressed="true"':'')+'></button>').join('')+
+      '<input type="color" id="pos-any" value="'+(/^#[0-9a-f]{6}$/i.test(cur)?cur:'#009688')+'" aria-label="Any colour" title="Any colour"></div></div>':'')+
+    '<div class="prow" style="align-items:end">'+(isL?'<button type="button" class="go" style="width:auto" data-pa="open">Open this page</button>':'')+
+    (isI&&inG?'<label class="f" style="flex:1 1 200px">Move to page<select id="pos-to"><option value="">Choose a page…</option>'+PL.pages.filter(p=>p.id!==pg.id).map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('')+'</select></label><button type="button" class="sec" data-pa="off">Take off this page</button>':'')+
+    '<button type="button" class="sec" data-pa="done">Done</button></div></div>'}
+// move or swap within the shown page; a button from the tray only goes into an empty slot
+function posMove(from,to){const pg=pgOf(PPAGE);if(from.w===to.w&&from.i===to.i)return;
+  if(from.w==='t'){if(pg.cells[to.i])return;posSnap();pg.cells[to.i]=PTRAY.splice(from.i,1)[0];PSEL=null;posChanged();return}
+  posSnap();const a=pg.cells[from.i];pg.cells[from.i]=pg.cells[to.i]||null;pg.cells[to.i]=a;PSEL=null;posChanged()}
+function posToPage(i,pid){const pg=pgOf(PPAGE),dest=pgOf(pid),c=pg.cells[i];if(!dest||!c||c.t!=='i')return false;const j=dest.cells.indexOf(null);
+  if(j<0){alert(dest.name+' has no empty slot. Take something off it first.');return false}posSnap();dest.cells[j]=c;pg.cells[i]=null;PSEL=null;posChanged();return true}
+document.addEventListener('click',e=>{const el=$('posed');if(!el||!el.contains(e.target))return;
+  const t=e.target.closest('[data-pg]');if(t){PPAGE=t.dataset.pg;PSEL=null;posDraw();return}
+  const cell=e.target.closest('.pos-c[data-w]');
+  if(cell){if(pdrag&&pdrag.moved)return;const w=cell.dataset.w,i=+cell.dataset.i,pg=pgOf(PPAGE),c=w==='g'?pg.cells[i]:PTRAY[i];
+    if(PSEL&&w==='g'&&!(PSEL.w==='g'&&PSEL.i===i)){if(PSEL.w==='g'||!c){posMove(PSEL,{w,i});return}}
+    if(!c){PSEL=null;posDraw();return}
+    PSEL=PSEL&&PSEL.w===w&&PSEL.i===i?null:{w,i};posDraw();if(PSEL){const pn=el.querySelector('.pos-pan');if(pn)pn.scrollIntoView({block:'nearest',behavior:'smooth'})}return}
+  const pa=e.target.closest('[data-pa]');if(pa){const a=pa.dataset.pa,pg=pgOf(PPAGE),c=PSEL&&PSEL.w==='g'?pg.cells[PSEL.i]:null;
+    if(a==='open'&&c&&c.t==='l'&&pgOf(c.to))PPAGE=c.to;
+    else if(a==='up'&&pg.parent&&pgOf(pg.parent))PPAGE=pg.parent;
+    else if(a==='off'&&c){posSnap();PTRAY.push(c);pg.cells[PSEL.i]=null;PSEL=null;posChanged();return}
+    PSEL=null;posDraw();return}
+  const sw=e.target.closest('[data-col]');if(sw&&PSEL&&PSEL.w==='g'){const c=pgOf(PPAGE).cells[PSEL.i];if(c){posSnap();c.c=sw.dataset.col;posChanged()}return}
+  if(e.target.closest('#pos-undo')){const u=PUNDO.pop();if(u){const x=JSON.parse(u);PL.pages=x.pages;PTRAY=x.tray;PSEL=null;posChanged()}return}
+  if(e.target.closest('#pos-reset')){if(!confirm('Throw away your changes and start again from our version?'))return;posSnap();PL=padCells(clone(PBASE));PTRAY=[];PSEL=null;
+    try{localStorage.removeItem(PKEY())}catch(x){}PDIRTY=false;if(!pgOf(PPAGE))PPAGE=(tops()[0]||PL.pages[0]).id;posDraw()}});
+document.addEventListener('input',e=>{if(e.target.id!=='pos-name'||!PSEL||PSEL.w!=='g')return;const c=pgOf(PPAGE).cells[PSEL.i];if(!c)return;
+  if(!e.target.dataset.snap){posSnap();e.target.dataset.snap=1;const u=$('pos-undo');if(u)u.disabled=false}c.n=e.target.value;posKeep();posStatus();
+  const t=document.querySelector('#posed .pos-c[data-w="g"][data-i="'+PSEL.i+'"]');if(t)t.innerHTML=esc(c.n)+(c.p?'<small>'+esc(c.p)+'</small>':'');const h=document.querySelector('#posed .pos-pan h3');if(h)h.textContent=c.n||'Button'});
+document.addEventListener('change',e=>{if(!PSEL||PSEL.w!=='g'||!$('posed'))return;const c=pgOf(PPAGE).cells[PSEL.i];if(!c)return;
+  if(e.target.id==='pos-any'){posSnap();c.c=e.target.value.toLowerCase();posChanged()}
+  else if(e.target.id==='pos-to'&&e.target.value)posToPage(PSEL.i,e.target.value)});
+// dragging: a button onto another slot (move or swap) or onto a toolbar page (moves it to that page's first empty slot)
+document.addEventListener('pointerdown',e=>{const t=e.target.closest('#posed .pos-c[data-w]');if(!t||e.button!==0||t.classList.contains('empty'))return;
+  pdrag={w:t.dataset.w,i:+t.dataset.i,x:e.clientX,y:e.clientY,el:t,moved:false}});
+const posAt=e=>{const t=document.elementFromPoint(e.clientX,e.clientY);return t&&t.closest?t.closest('#posed .pos-c[data-w="g"],#posed .pos-tb [data-pg]'):null};
+document.addEventListener('pointermove',e=>{if(!pdrag)return;
+  if(!pdrag.moved){if(Math.hypot(e.clientX-pdrag.x,e.clientY-pdrag.y)<8)return;pdrag.moved=true;document.body.classList.add('pos-dragging');pdrag.el.classList.add('lift');
+    const g=pdrag.g=document.createElement('div');g.className='pos-ghost'+(pdrag.el.classList.contains('lt')?' lt':'');const col=pdrag.el.style.getPropertyValue('--c');if(col)g.style.setProperty('--c',col);
+    g.textContent=pdrag.el.firstChild?pdrag.el.firstChild.textContent:'';document.body.appendChild(g)}
+  e.preventDefault();pdrag.g.style.transform='translate('+(e.clientX+10)+'px,'+(e.clientY+10)+'px)';
+  if(e.clientY<60)scrollBy(0,-14);else if(e.clientY>innerHeight-60)scrollBy(0,14);
+  document.querySelectorAll('#posed .drop').forEach(x=>x.classList.remove('drop'));const t=posAt(e);if(t&&t!==pdrag.el)t.classList.add('drop')});
+function pdEnd(){if(!pdrag)return;if(pdrag.g)pdrag.g.remove();document.body.classList.remove('pos-dragging');document.querySelectorAll('#posed .drop,#posed .lift').forEach(x=>x.classList.remove('drop','lift'))}
+document.addEventListener('pointerup',e=>{if(!pdrag)return;const d=pdrag,t=d.moved?posAt(e):null;pdEnd();
+  if(t){if(t.dataset.pg){if(d.w==='g'&&t.dataset.pg!==PPAGE)posToPage(d.i,t.dataset.pg)}else posMove({w:d.w,i:d.i},{w:'g',i:+t.dataset.i})}
+  setTimeout(()=>{pdrag=null},0)});
+document.addEventListener('pointercancel',()=>{pdEnd();pdrag=null});
 
 /* ---------- start ---------- */
 (async()=>{if(!token){block('This link isn’t complete. Check you copied all of it from your email.');return}
@@ -235,7 +380,7 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-ap]'
     if(d&&(!j.submittedAt||Object.keys(d).length)){fill(d);$('saved').textContent='Your draft is back'}
     if(j.data&&!j.data.trading&&j.venue)form.elements.trading.value=j.venue;
     if(!j.data&&j.venue&&!form.elements.trading.value)form.elements.trading.value=j.venue;
-    PORTAL=j.portal||null;APPROVALS=j.approvals||{};drawPortal();
+    PORTAL=j.portal||null;APPROVALS=j.approvals||{};REVISION=j.revision||null;drawPortal();
     $('loading').hidden=true;form.hidden=false;drawFiles();
     if(j.submittedAt){$('saved').textContent='Sent '+new Date(j.submittedAt).toLocaleDateString('en-AU',{day:'numeric',month:'short'})}}
   catch(e){block(e.message)}})();
