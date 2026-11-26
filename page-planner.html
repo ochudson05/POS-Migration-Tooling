@@ -147,6 +147,16 @@ input.tg-c::placeholder{color:color-mix(in srgb,var(--muted,#667) 60%,transparen
 .tg-bo input.tg-c:placeholder-shown{background:linear-gradient(90deg,var(--bo-strip) 0 7px,var(--bo-empty) 7px)}
 .tg-bo .bo-pages{gap:12px}.tg-bo .bo-pg{max-width:none;flex-basis:200px}
 .cap{font-size:.8rem;color:var(--muted,#667);margin:0 0 6px}
+/* back-office photo reader */
+.tg-ph{display:flex;flex-wrap:wrap;gap:12px;align-items:stretch;margin:12px 0 0}
+.tg-ph .dz{flex:1 1 280px;padding:14px 16px}
+.tg-pho{flex:1 1 240px;display:flex;flex-direction:column;gap:8px;justify-content:center}
+.tg-pho .f{max-width:200px}
+.tg-thumbs{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 8px}
+.tg-thumbs figure{margin:0;display:flex;flex-direction:column;gap:2px;font-size:.72rem;color:var(--muted,#667)}
+.tg-thumbs img{display:block;height:120px;max-width:220px;object-fit:contain;border-radius:6px;border:1px solid var(--pos-line);background:var(--pos-bg);cursor:zoom-in}
+.tg-thumbs img.big{height:auto;max-width:min(100%,900px);cursor:zoom-out}
+input.tg-c.got{box-shadow:inset 0 0 0 2px #ffd54f}
 @media (max-width:520px){.pages{grid-template-columns:minmax(0,1fr)}.cell{font-size:.68rem;min-height:44px}}
 </style>
 </head>
@@ -240,6 +250,15 @@ input.tg-c::placeholder{color:color-mix(in srgb,var(--muted,#667) 60%,transparen
     <button type="button" class="sec sm" id="tg-clear" style="align-self:end">Clear</button>
     <button type="button" class="sm" id="tg-dl" style="align-self:end">Download build (.xlsx)</button>
   </div>
+  <div class="tg-ph">
+    <label class="dz sm" for="tg-photo"><input type="file" id="tg-photo" class="dz-in" accept="image/*" multiple><b>Read a back-office photo</b><span class="small muted">A photo or screenshot of a back-office 5 × 5 page. Several photos fill one page after another.</span></label>
+    <div class="tg-pho">
+      <label class="f">Photo is back-office page<input type="number" id="tg-start" min="1" max="40" value="1"></label>
+      <label class="opt"><input type="checkbox" id="tg-ai"><span>Read with AI (uses your Claude allowance; better on angled phone photos)</span></label>
+    </div>
+  </div>
+  <p class="msg" id="tg-pmsg" role="status" aria-live="polite"></p>
+  <div class="tg-thumbs" id="tg-thumbs" hidden></div>
   <p class="small muted" id="tg-sum" role="status" aria-live="polite"></p>
   <div class="tg-wrap">
     <div class="tg-front"><p class="cap"><b>Front of house</b> (the POS screen)</p><div class="tg-g" id="tg-front"></div></div>
@@ -701,7 +720,8 @@ function tSave(){try{localStorage.setItem(TKEY,JSON.stringify(T))}catch(e){}}
 function tSum(){const tot=tTot(),used=T.names.slice(0,tot).filter(x=>String(x||'').trim()).length;let lu=-1;T.names.slice(0,tot).forEach((x,i)=>{if(String(x||'').trim())lu=i});
   const need=lu<0?0:boCount(tot,T.arrow,lu),all=boCount(tot,T.arrow);
   $('tg-sum').textContent=used+' of '+tot+' screen slots used. '+(need?'Enter them as '+need+' back-office page'+(need>1?'s':'')+(need<all?' (a full '+T.cols+' × '+T.rows+' screen needs '+all+')':'')+'.':'A full '+T.cols+' × '+T.rows+' screen takes '+all+' back-office pages.')}
-const tIn=(k,ph)=>'<input class="tg-c" data-k="'+k+'" value="'+esc(T.names[k]||'')+'" placeholder="'+ph+'" aria-label="Slot '+(k+1)+'">';
+const GOT=new Set();// slots just read from a photo, outlined until edited
+const tIn=(k,ph)=>'<input class="tg-c'+(GOT.has(k)?' got':'')+'" data-k="'+k+'" value="'+esc(T.names[k]||'')+'" placeholder="'+ph+'" aria-label="Slot '+(k+1)+'">';
 function tDraw(){
   $('tg-cols').value=T.cols;$('tg-rows').value=T.rows;$('tg-arrow').checked=T.arrow;
   const tot=tTot(),fg=$('tg-front');
@@ -716,7 +736,7 @@ function tDraw(){
 const tAll=k=>document.querySelectorAll('.tg-c[data-k="'+k+'"]');
 function tSet(k,v,skip){T.names[k]=v;tAll(k).forEach(x=>{if(x!==skip)x.value=v})}
 ['tg-front','tg-bo'].forEach(id=>{const el=$(id);
-  el.addEventListener('input',e=>{const x=e.target.closest('input.tg-c');if(!x)return;tSet(+x.dataset.k,x.value,x);tSave();tSum()});
+  el.addEventListener('input',e=>{const x=e.target.closest('input.tg-c');if(!x)return;if(GOT.delete(+x.dataset.k))tAll(x.dataset.k).forEach(y=>y.classList.remove('got'));tSet(+x.dataset.k,x.value,x);tSave();tSum()});
   // paste a column of names (or a spreadsheet block) to fill on from this slot, in run order
   el.addEventListener('paste',e=>{const x=e.target.closest('input.tg-c');if(!x)return;const t=(e.clipboardData||window.clipboardData).getData('text');if(!/[\n\t]/.test(t.trim()))return;
     e.preventDefault();const vals=t.replace(/\r/g,'').replace(/\n+$/,'').split(/\n|\t/).map(v=>v.trim());let k=+x.dataset.k;const tot=tTot();
@@ -728,7 +748,99 @@ const tNum=(id,lo,hi)=>{const v=Math.round(+$(id).value);return v>=lo&&v<=hi?v:n
 $('tg-cols').onchange=()=>{const v=tNum('tg-cols',2,10);if(v)T.cols=v;tSave();tDraw()};
 $('tg-rows').onchange=()=>{const v=tNum('tg-rows',1,10);if(v)T.rows=v;tSave();tDraw()};
 $('tg-arrow').onchange=()=>{T.arrow=$('tg-arrow').checked;tSave();tDraw()};
-$('tg-clear').onclick=()=>{if(T.names.some(x=>String(x||'').trim())&&!confirm('Clear every name in the translator?'))return;T.names=[];tSave();tDraw()};
+$('tg-clear').onclick=()=>{if(T.names.some(x=>String(x||'').trim())&&!confirm('Clear every name in the translator?'))return;T.names=[];GOT.clear();tSave();tDraw()};
+
+/* ---------------- back-office photo -> translator ----------------
+   A photo of one back-office 5x5 page fills that page's 25 run slots, so the screen grid (any size) shows where
+   each button lands. Free first: the Menu Hauler server's OCR, then grid rules (boFromOcr). Claude reads it when
+   "Read with AI" is ticked, when there's no OCR server, or when the rules can't make a 5x5 grid of the text. */
+const AIKEY='pp-boai';try{$('tg-ai').checked=localStorage.getItem(AIKEY)==='1'}catch(e){}
+$('tg-ai').onchange=()=>{try{localStorage.setItem(AIKEY,$('tg-ai').checked?'1':'0')}catch(e){}};
+let ME=null;
+async function meInfo(){if(ME)return ME;try{const r=await fetch('/api/me',{credentials:'same-origin'});ME=r.ok?await r.json():{}}catch(e){ME={}}return ME}
+function pmsg(t,err){const m=$('tg-pmsg');m.textContent=t||'';m.className='msg'+(err?' err':t?' ok':'')}
+const med=a=>{const s=a.slice().sort((x,y)=>x-y);return s.length?s[s.length>>1]:0};
+async function photoImg(f){const url=URL.createObjectURL(f),img=new Image();img.src=url;
+  try{await img.decode()}catch(e){URL.revokeObjectURL(url);throw new Error(f.name+' couldn’t be opened as a picture (iPhone HEIC photos: share them as JPG, or take a screenshot).')}return {img,url}}
+function photoBlob(img,max){const s=Math.min(1,max/Math.max(img.naturalWidth,img.naturalHeight)),c=document.createElement('canvas');
+  c.width=Math.round(img.naturalWidth*s);c.height=Math.round(img.naturalHeight*s);c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+  return new Promise(r=>c.toBlob(r,'image/jpeg',0.9))}
+const b64=blob=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.onerror=()=>rej(fr.error);fr.readAsDataURL(blob)});
+const MARK=/^[\s+＋⊕‹›<>«»←→]+$/,ARROW=/[‹<«←]|[›>»→]/,PRICE=/^(\$\s*)?\d{1,4}([.,]\d{1,2})?$|^market\s*price$/i;
+// place labels on a 5x5 grid along one axis: cluster the centres, then number the clusters by the button pitch
+function axis(items,lo,hi,get,anchor){
+  const v=items.map(get).slice().sort((a,b)=>a-b),pitch0=(hi-lo)/BO||1,cl=[];
+  v.forEach(x=>{const c=cl[cl.length-1];if(c&&x-c.max<pitch0*0.4){c.max=x;c.sum+=x;c.n++}else cl.push({min:x,max:x,sum:x,n:1})});
+  const m=cl.map(c=>c.sum/c.n),d=m.slice(1).map((x,i)=>x-m[i]);
+  const pitch=d.length?med(d.map(x=>x/Math.max(1,Math.round(x/pitch0)))):pitch0;
+  // the ‹ › cell is always the last column / row; otherwise count from the nearest edge of the text
+  let first=anchor!=null?BO-1-Math.round((anchor-m[0])/pitch):Math.round((m[0]-lo-pitch/2)/pitch);
+  first=Math.max(0,Math.min(BO-1,first));
+  const at=x=>{let i=0;m.forEach((y,j)=>{if(Math.abs(y-x)<Math.abs(m[i]-x))i=j});return first+Math.round((m[i]-m[0])/pitch)};
+  return {n:cl.length,at,over:first+Math.round((m[m.length-1]-m[0])/pitch)>=BO}}
+function boFromOcr(data){
+  const L=(data&&data.lines||[]).filter(l=>l&&Array.isArray(l.box)&&String(l.text||'').trim())
+    .map(l=>({t:String(l.text).replace(/\s+/g,' ').trim(),x0:+l.box[0],y0:+l.box[1],x1:+l.box[2],y1:+l.box[3]}));
+  if(!L.length)return null;
+  const hMed=med(L.map(l=>l.y1-l.y0))||10,marks=L.filter(l=>MARK.test(l.t)),words=L.filter(l=>!MARK.test(l.t)&&!PRICE.test(l.t)).sort((a,b)=>a.y0-b.y0||a.x0-b.x0);
+  // the lines of a two-line name: just below the last line and overlapping it sideways
+  const btn=[];words.forEach(w=>{const b=btn.find(b=>w.y0-b.y1<hMed*0.75&&w.y0>b.y0&&Math.min(b.x1,w.x1)-Math.max(b.x0,w.x0)>0.3*Math.min(b.x1-b.x0,w.x1-w.x0));
+    if(b){b.t+=' '+w.t;b.x0=Math.min(b.x0,w.x0);b.x1=Math.max(b.x1,w.x1);b.y1=Math.max(b.y1,w.y1)}else btn.push(Object.assign({},w))});
+  if(!btn.length)return null;
+  const all=btn.concat(marks),cx=l=>(l.x0+l.x1)/2,cy=l=>(l.y0+l.y1)/2,arr=marks.filter(l=>ARROW.test(l.t));
+  const lox=Math.min(...all.map(l=>l.x0)),hix=Math.max(...all.map(l=>l.x1)),loy=Math.min(...all.map(l=>l.y0)),hiy=Math.max(...all.map(l=>l.y1));
+  const ax=arr.length?arr.reduce((s,l)=>s+cx(l),0)/arr.length:null,ay=arr.length?arr.reduce((s,l)=>s+cy(l),0)/arr.length:null;
+  // per-cell spacing comes from the biggest of the boxes and the text spread, so a photo of the 5x5 alone works
+  const X=axis(all,lox,hix+(hix-lox)/(BO*2),cx,ax),Y=axis(all,loy,hiy+(hiy-loy)/(BO*2),cy,ay);
+  const cells=new Array(BO*BO).fill('');
+  btn.forEach(b=>{const r=Y.at(cy(b)),c=X.at(cx(b));if(r<BO&&c<BO){const i=r*BO+c;cells[i]=cells[i]?cells[i]+' '+b.t:b.t}});
+  if(arr.length)cells[BO*BO-1]=cells[BO*BO-1]||'<>';
+  return {cells,named:cells.filter(x=>x&&x!=='<>').length,messy:X.n>BO||Y.n>BO||X.over||Y.over}}
+const BO_PROMPT='This is a photo or screenshot of a POS back office showing button pages. Each page is a 5 × 5 grid of button slots. '+
+  'Empty slots show a + sign. The bottom-right slot may be the ‹ › page arrows. Read every 5 × 5 page you can see, in order (left to right, then top to bottom). '+
+  'For each slot give the button name exactly as written: keep its capitals, join a name that wraps onto two lines with one space, and leave out prices. '+
+  'Use "" for an empty slot and "<>" for the page arrows. Ignore menus, toolbars and anything outside the 5 × 5 grids. '+
+  'Answer with JSON only, no other text: {"pages":[{"cells":["25 strings, row by row from the top-left"]}]}';
+async function boFromClaude(img){
+  const blob=await photoBlob(img,1568),r=await fetch('/api/claude',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},
+    body:JSON.stringify({prompt:BO_PROMPT,images:[{type:'image/jpeg',data:await b64(blob)}]})});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Claude couldn’t read the photo ('+r.status+').');
+  let v;const t=String(j.text||''),a=t.indexOf('{'),z=t.lastIndexOf('}');try{v=JSON.parse(t.slice(a,z+1))}catch(e){}
+  const pages=(v&&Array.isArray(v.pages)?v.pages:[]).map(p=>Array.isArray(p&&p.cells)?p.cells.slice(0,BO*BO).map(x=>String(x==null?'':x).trim()):null).filter(Boolean);
+  if(!pages.length)throw new Error('Claude’s answer couldn’t be read. Try again, or type the names in.');
+  pages.forEach(p=>{while(p.length<BO*BO)p.push('')});return pages}
+async function readBoPhoto(img){
+  const m=await meInfo(),ai=$('tg-ai').checked;let ocr=null,why='';
+  if(!ai&&m.ocr){try{const d=await fetch('/api/server/ocr',{method:'POST',credentials:'same-origin',headers:{'content-type':'image/jpeg'},body:await photoBlob(img,3000)});
+      const j=await d.json().catch(()=>({}));if(!d.ok)throw new Error(j.error||'OCR answered '+d.status);ocr=boFromOcr(j)}
+    catch(e){why='OCR failed ('+e.message+')'}
+    if(ocr&&ocr.named&&!ocr.messy)return {pages:[ocr.cells],by:'OCR'};
+    if(!why)why=ocr&&ocr.named?'the text didn’t line up as one 5 × 5 page':'OCR found no button names'}
+  if(m.claude)return {pages:await boFromClaude(img),by:'Claude',why:ai?'':why};
+  if(ocr&&ocr.named)return {pages:[ocr.cells],by:'OCR',warn:'The text didn’t line up neatly as one 5 × 5 page, so check every slot.'};
+  if(!m.email&&!m.ocr)throw new Error('Reading photos works on the website (menuhauler.com/planner), where the OCR server and Claude are.');
+  throw new Error(ai?'Claude isn’t switched on for you (the owner turns it on in /admin).':(why||'Nothing could read the photo')+(m.claude?'':'. Claude isn’t switched on for you, so type the names in.'))}
+// put one read page into run slots; returns how many names didn't fit on the screen
+function placeBo(pg0,cells){const per=boPer(T.arrow),tot=tTot();let off=0;
+  cells.forEach((v,j)=>{if(T.arrow&&j===BO*BO-1)return;if(v==='<>')v='';const k=pg0*per+j;T.names[k]=v;if(v){GOT.add(k);if(k>=tot)off++}else GOT.delete(k)});return off}
+$('tg-photo').onchange=async()=>{const files=[...$('tg-photo').files];$('tg-photo').value='';if(!files.length)return;
+  let pg0=Math.max(0,Math.round(+$('tg-start').value||1)-1),read=0,off=0,notes=[],by=new Set();const th=$('tg-thumbs');
+  for(const f of files){let im;try{pmsg('Reading '+f.name+'…');im=await photoImg(f);const res=await readBoPhoto(im.img);by.add(res.by);
+      if(res.why)notes.push(f.name+': '+res.why+', so Claude read it.');if(res.warn)notes.push(f.name+': '+res.warn);
+      // slot 25 tells us whether this back office keeps the page arrows there (only switched when the translator is empty)
+      const s25=res.pages[0][BO*BO-1],empty=!T.names.some(x=>String(x||'').trim());
+      if(empty&&s25&&(s25==='<>')!==T.arrow){T.arrow=s25==='<>';notes.push('Slot 25 '+(T.arrow?'is the page arrows':'has a button')+', so “Slot 25 is the page arrows” is now '+(T.arrow?'ticked':'unticked')+'.')}
+      else if(!empty&&s25&&s25!=='<>'&&T.arrow)notes.push(f.name+': slot 25 has a button ('+s25+') but “Slot 25 is the page arrows” is ticked, so it was left out.');
+      const per=boPer(T.arrow),clash=res.pages.reduce((n,p,i)=>n+p.filter((v,j)=>{const k=(pg0+i)*per+j;const cur=String(T.names[k]||'').trim();return cur&&j<per&&cur!==(v==='<>'?'':v)}).length,0);
+      if(clash&&!confirm(f.name+' would replace '+clash+' name'+(clash>1?'s':'')+' already on back-office page '+(pg0+1)+(res.pages.length>1?'–'+(pg0+res.pages.length):'')+'. Replace them?')){notes.push(f.name+' was skipped.');URL.revokeObjectURL(im.url);continue}
+      const fig=document.createElement('figure');fig.innerHTML='<img alt="Back-office photo '+esc(f.name)+'"><figcaption>Back-office page '+(pg0+1)+(res.pages.length>1?'–'+(pg0+res.pages.length):'')+' · '+res.by+'</figcaption>';
+      fig.querySelector('img').src=im.url;fig.querySelector('img').onclick=e=>e.target.classList.toggle('big');th.appendChild(fig);th.hidden=false;
+      res.pages.forEach(p=>{off+=placeBo(pg0++,p);read++})}
+    catch(e){if(im)URL.revokeObjectURL(im.url);notes.push(e.message);pmsg(notes.join(' '),true)}}
+  $('tg-start').value=pg0+1;tSave();tDraw();
+  if(read){const fit=off?' '+off+' name'+(off>1?'s are':' is')+' past the end of the '+T.cols+' × '+T.rows+' screen: make the screen bigger to see '+(off>1?'them':'it')+'.':'';
+    pmsg('Read '+read+' back-office page'+(read>1?'s':'')+' ('+[...by].join(' and ')+'). Names read from the photo are outlined in yellow; check them and fix any that are wrong.'+fit+(notes.length?' '+notes.join(' '):''),false)}
+  else pmsg(notes.join(' ')||'Nothing was read.',true)};
 function tFromOpts(){const w=$('tg-fromw');if(!P||!P.pages||!P.pages.length){w.hidden=true;return}w.hidden=false;
   $('tg-from').innerHTML='<option value="">Choose a page…</option>'+P.pages.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')}
 $('tg-from').onchange=()=>{const p=byId($('tg-from').value);$('tg-from').value='';if(!p)return;
@@ -751,7 +863,7 @@ $('tg-dl').onclick=()=>{
 tDraw();
 listPlans();
 try{const d=JSON.parse(localStorage.getItem(DRAFT)||'null');if(d&&d.source){$('pp-name').value=d.name||'';setPlan(d,false);P.id=d.id||null;msg1('Picked up where you left off on this device'+(d.name?' ('+d.name+')':'')+'. Save it to keep it on the website.')}}catch(e){}
-window.__pp={get P(){return P},build,checks};
+window.__pp={get P(){return P},get T(){return T},build,checks,boFromOcr};
 })();
 </script>
 </body>
