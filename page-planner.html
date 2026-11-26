@@ -263,6 +263,7 @@ body.tg-dragging,body.tg-dragging *{cursor:grabbing!important;user-select:none}
     <div class="tg-pho">
       <label class="f">Photo is back-office page<input type="number" id="tg-start" min="1" max="40" value="1"></label>
       <label class="opt"><input type="checkbox" id="tg-ai"><span>Read with AI (uses your Claude allowance; better on angled phone photos)</span></label>
+      <button type="button" class="sec sm" id="tg-fresh" style="align-self:flex-start">Remove photos and start again</button>
     </div>
   </div>
   <p class="msg" id="tg-pmsg" role="status" aria-live="polite"></p>
@@ -874,6 +875,11 @@ async function readBoPhoto(img){
 // put one read page into run slots; returns how many names didn't fit on the screen
 function placeBo(pg0,cells,colours){const per=boPer(T.arrow),tot=tTot();let off=0;
   cells.forEach((v,j)=>{if(T.arrow&&j===BO*BO-1)return;if(v==='<>')v='';const k=pg0*per+j;T.names[k]=v;T.bg[k]=v&&colours?colours[j]||'':'';if(v){GOT.add(k);if(k>=tot)off++}else GOT.delete(k)});return off}
+// start again: drop every uploaded photo and everything in the translator (names, colours, moves), back to page 1
+$('tg-fresh').onclick=()=>{const th=$('tg-thumbs'),n=th.querySelectorAll('figure').length,names=T.names.some(x=>String(x||'').trim());
+  if((n||names)&&!confirm('Remove '+(n?n+' uploaded photo'+(n>1?'s':'')+' and ':'')+'every button in the translator, and start again?'))return;
+  th.querySelectorAll('img').forEach(i=>{try{URL.revokeObjectURL(i.src)}catch(e){}});th.innerHTML='';th.hidden=true;
+  T.names=[];T.bg=[];GOT.clear();tMoves.length=0;$('tg-undo').disabled=true;$('tg-start').value=1;tSave();tDraw();pmsg('Photos removed and the grid cleared. Upload a back-office photo to start again.')};
 $('tg-photo').onchange=async()=>{const files=[...$('tg-photo').files];$('tg-photo').value='';if(!files.length)return;
   let pg0=Math.max(0,Math.round(+$('tg-start').value||1)-1),read=0,off=0,notes=[],by=new Set();const th=$('tg-thumbs');
   for(const f of files){let im;try{pmsg('Reading '+f.name+'…');im=await photoImg(f);const res=await readBoPhoto(im.img);by.add(res.by);
