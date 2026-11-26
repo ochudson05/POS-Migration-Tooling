@@ -237,6 +237,13 @@ input.tg-c::placeholder{color:color-mix(in srgb,var(--muted,#667) 60%,transparen
 .tg-thumbs img{display:block;height:120px;max-width:220px;object-fit:contain;border-radius:6px;border:1px solid var(--pos-line);background:var(--pos-bg);cursor:zoom-in}
 .tg-thumbs img.big{height:auto;max-width:min(100%,900px);cursor:zoom-out}
 input.tg-c.got{box-shadow:inset 0 0 0 2px #ffd54f}
+/* light button colours get dark text; dragging */
+input.tg-c.lt:not(:placeholder-shown),.tg-ghost.lt{color:#111;text-shadow:none}
+input.tg-c:not(:placeholder-shown){cursor:grab}
+body.tg-dragging,body.tg-dragging *{cursor:grabbing!important;user-select:none}
+.tg-c.lift{opacity:.35}
+.tg-c.drop{outline:3px dashed var(--accent,#2554c7);outline-offset:1px}
+.tg-ghost{position:fixed;left:0;top:0;z-index:50;pointer-events:none;max-width:160px;padding:10px 12px;border-radius:5px;background:var(--c,#009688);color:#fff;font-weight:700;font-size:.72rem;text-transform:uppercase;box-shadow:0 6px 18px rgb(0 0 0/.3)}
 @media (max-width:520px){.pages{grid-template-columns:minmax(0,1fr)}.cell{font-size:.68rem;min-height:44px}}
 </style>
 </head>
@@ -399,6 +406,7 @@ input.tg-c.got{box-shadow:inset 0 0 0 2px #ffd54f}
     <label class="opt" style="align-self:end"><input type="checkbox" id="tg-arrow" checked><span>Slot 25 is the page arrows</span></label>
     <label class="f" id="tg-fromw" hidden>Fill from a planner page<select id="tg-from"></select></label>
     <span class="sp" style="flex:1"></span>
+    <button type="button" class="sec sm" id="tg-undo" style="align-self:end" disabled title="Undo the last move">Undo move</button>
     <button type="button" class="sec sm" id="tg-clear" style="align-self:end">Clear</button>
     <button type="button" class="sm" id="tg-dl" style="align-self:end">Download build (.xlsx)</button>
   </div>
@@ -412,6 +420,7 @@ input.tg-c.got{box-shadow:inset 0 0 0 2px #ffd54f}
   <p class="msg" id="tg-pmsg" role="status" aria-live="polite"></p>
   <div class="tg-thumbs" id="tg-thumbs" hidden></div>
   <p class="small muted" id="tg-sum" role="status" aria-live="polite"></p>
+  <p class="small muted" style="margin:0 0 8px">Drag a button to move it, on either grid. Drop it on another button to swap them.</p>
   <div class="tg-wrap">
     <div class="tg-front"><p class="cap"><b>Front of house</b> (the POS screen)</p><div class="tg-g" id="tg-front"></div></div>
     <div class="tg-bo"><p class="cap"><b>Back office</b>: type these into each 5 × 5 page</p><div class="bo-pages" id="tg-bo"></div></div>
@@ -865,15 +874,21 @@ $('pp-dl2').onclick=()=>{
 $('s-arrow').onchange=()=>{if(!P)return;P.settings.arrow=$('s-arrow').checked;$('tg-arrow').checked=P.settings.arrow;T.arrow=P.settings.arrow;tgDraw();if(P.pages){draw();keepDraft()}};
 
 /* ---------------- grid translator: one run of slot names, shown as the screen and as 5x5 back-office pages ---------------- */
-const TKEY='pp-grid';let T={cols:10,rows:10,arrow:true,names:[]};
-try{const t=JSON.parse(localStorage.getItem(TKEY)||'null');if(t&&Array.isArray(t.names))T=Object.assign(T,t)}catch(e){}
+// names[k] = button name in run slot k; bg[k] = its colour (#rrggbb from a photo, or a planner colour)
+const TKEY='pp-grid';let T={cols:10,rows:10,arrow:true,names:[],bg:[]};
+try{const t=JSON.parse(localStorage.getItem(TKEY)||'null');if(t&&Array.isArray(t.names))T=Object.assign(T,t);if(!Array.isArray(T.bg))T.bg=[]}catch(e){}
 const tTot=()=>T.cols*T.rows;
 function tSave(){try{localStorage.setItem(TKEY,JSON.stringify(T))}catch(e){}}
 function tSum(){const tot=tTot(),used=T.names.slice(0,tot).filter(x=>String(x||'').trim()).length;let lu=-1;T.names.slice(0,tot).forEach((x,i)=>{if(String(x||'').trim())lu=i});
   const need=lu<0?0:boCount(tot,T.arrow,lu),all=boCount(tot,T.arrow);
   $('tg-sum').textContent=used+' of '+tot+' screen slots used. '+(need?'Enter them as '+need+' back-office page'+(need>1?'s':'')+(need<all?' (a full '+T.cols+' × '+T.rows+' screen needs '+all+')':'')+'.':'A full '+T.cols+' × '+T.rows+' screen takes '+all+' back-office pages.')}
 const GOT=new Set();// slots just read from a photo, outlined until edited
-const tIn=(k,ph)=>'<input class="tg-c'+(GOT.has(k)?' got':'')+'" data-k="'+k+'" value="'+esc(T.names[k]||'')+'" placeholder="'+ph+'" aria-label="Slot '+(k+1)+'">';
+const HEX=/^#[0-9a-f]{6}$/i;
+// light buttons (yellow, pale green…) get dark text, as on the POS
+const light=c=>{if(!HEX.test(c||''))return false;const n=parseInt(c.slice(1),16),f=v=>{v/=255;return v<=0.04045?v/12.92:Math.pow((v+0.055)/1.055,2.4)};
+  return 0.2126*f(n>>16)+0.7152*f(n>>8&255)+0.0722*f(n&255)>0.45};
+const tStyle=k=>{const c=T.bg[k];return c&&(HEX.test(c)||/^var\(--[\w-]+\)$/.test(c))?' style="--c:'+c+'"':''};
+const tIn=(k,ph)=>'<input class="tg-c'+(GOT.has(k)?' got':'')+(light(T.bg[k])?' lt':'')+'"'+tStyle(k)+' data-k="'+k+'" value="'+esc(T.names[k]||'')+'" placeholder="'+ph+'" aria-label="Slot '+(k+1)+'">';
 function tDraw(){
   $('tg-cols').value=T.cols;$('tg-rows').value=T.rows;$('tg-arrow').checked=T.arrow;
   const tot=tTot(),fg=$('tg-front');
@@ -900,7 +915,30 @@ const tNum=(id,lo,hi)=>{const v=Math.round(+$(id).value);return v>=lo&&v<=hi?v:n
 $('tg-cols').onchange=()=>{const v=tNum('tg-cols',2,10);if(v)T.cols=v;tSave();tDraw()};
 $('tg-rows').onchange=()=>{const v=tNum('tg-rows',1,10);if(v)T.rows=v;tSave();tDraw()};
 $('tg-arrow').onchange=()=>{T.arrow=$('tg-arrow').checked;tSave();tDraw()};
-$('tg-clear').onclick=()=>{if(T.names.some(x=>String(x||'').trim())&&!confirm('Clear every name in the translator?'))return;T.names=[];GOT.clear();tSave();tDraw()};
+$('tg-clear').onclick=()=>{if(T.names.some(x=>String(x||'').trim())&&!confirm('Clear every name in the translator?'))return;T.names=[];T.bg=[];GOT.clear();tMoves.length=0;$('tg-undo').disabled=true;tSave();tDraw()};
+
+/* ---------------- moving buttons: drag one onto another slot (front of house or back office) ----------------
+   Dropping on an empty slot moves it; dropping on a button swaps the two. A short press still just edits the name. */
+const tMoves=[];let drag=null;
+function tSwap(a,b){[T.names[a],T.names[b]]=[T.names[b]||'',T.names[a]||''];[T.bg[a],T.bg[b]]=[T.bg[b]||'',T.bg[a]||''];
+  const ga=GOT.has(a),gb=GOT.has(b);GOT.delete(a);GOT.delete(b);if(gb)GOT.add(a);if(ga)GOT.add(b)}
+function tMove(a,b){tSwap(a,b);tMoves.push([a,b]);if(tMoves.length>100)tMoves.shift();$('tg-undo').disabled=false;tSave();tDraw()}
+$('tg-undo').onclick=()=>{const m=tMoves.pop();if(m){tSwap(m[0],m[1]);tSave();tDraw()}$('tg-undo').disabled=!tMoves.length};
+const dropAt=e=>{const t=document.elementFromPoint(e.clientX,e.clientY);return t&&t.closest?t.closest('input.tg-c[data-k]'):null};
+function dragEnd(){if(!drag)return;if(drag.ghost)drag.ghost.remove();document.body.classList.remove('tg-dragging');document.querySelectorAll('.tg-c.drop,.tg-c.lift').forEach(y=>y.classList.remove('drop','lift'));drag=null}
+['tg-front','tg-bo'].forEach(id=>$(id).addEventListener('pointerdown',e=>{const x=e.target.closest('input.tg-c[data-k]');
+  if(!x||e.button!==0||!String(T.names[+x.dataset.k]||'').trim())return;drag={k:+x.dataset.k,x0:e.clientX,y0:e.clientY,src:x,on:false}}));
+document.addEventListener('pointermove',e=>{if(!drag)return;
+  if(!drag.on){if(Math.hypot(e.clientX-drag.x0,e.clientY-drag.y0)<8)return;drag.on=true;drag.src.blur();try{getSelection().removeAllRanges()}catch(_){}
+    document.body.classList.add('tg-dragging');tAll(drag.k).forEach(y=>y.classList.add('lift'));
+    const g=drag.ghost=document.createElement('div');g.className='tg-ghost'+(light(T.bg[drag.k])?' lt':'');g.textContent=T.names[drag.k];
+    if(T.bg[drag.k])g.style.setProperty('--c',T.bg[drag.k]);document.body.appendChild(g)}
+  e.preventDefault();drag.ghost.style.transform='translate('+(e.clientX+10)+'px,'+(e.clientY+10)+'px)';
+  const t=dropAt(e),k=t?+t.dataset.k:null;if(k===drag.over)return;drag.over=k;
+  document.querySelectorAll('.tg-c.drop').forEach(y=>y.classList.remove('drop'));if(k!=null&&k!==drag.k)tAll(k).forEach(y=>y.classList.add('drop'))});
+document.addEventListener('pointerup',e=>{if(!drag)return;const d=drag,t=d.on?dropAt(e):null;dragEnd();if(t&&+t.dataset.k!==d.k)tMove(d.k,+t.dataset.k)});
+document.addEventListener('pointercancel',dragEnd);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drag&&drag.on)dragEnd()});
 
 /* ---------------- back-office photo -> translator ----------------
    A photo of one back-office 5x5 page fills that page's 25 run slots, so the screen grid (any size) shows where
@@ -944,37 +982,50 @@ function boFromOcr(data){
   const ax=arr.length?arr.reduce((s,l)=>s+cx(l),0)/arr.length:null,ay=arr.length?arr.reduce((s,l)=>s+cy(l),0)/arr.length:null;
   // per-cell spacing comes from the biggest of the boxes and the text spread, so a photo of the 5x5 alone works
   const X=axis(all,lox,hix+(hix-lox)/(BO*2),cx,ax),Y=axis(all,loy,hiy+(hiy-loy)/(BO*2),cy,ay);
-  const cells=new Array(BO*BO).fill('');
-  btn.forEach(b=>{const r=Y.at(cy(b)),c=X.at(cx(b));if(r<BO&&c<BO){const i=r*BO+c;cells[i]=cells[i]?cells[i]+' '+b.t:b.t}});
+  const cells=new Array(BO*BO).fill(''),boxes=new Array(BO*BO).fill(null);
+  btn.forEach(b=>{const r=Y.at(cy(b)),c=X.at(cx(b));if(r<BO&&c<BO){const i=r*BO+c;cells[i]=cells[i]?cells[i]+' '+b.t:b.t;boxes[i]=boxes[i]||b}});
   if(arr.length)cells[BO*BO-1]=cells[BO*BO-1]||'<>';
-  return {cells,named:cells.filter(x=>x&&x!=='<>').length,messy:X.n>BO||Y.n>BO||X.over||Y.over}}
+  return {cells,boxes,hMed,named:cells.filter(x=>x&&x!=='<>').length,messy:X.n>BO||Y.n>BO||X.over||Y.over}}
+// a button's colour: the photo just around its name (above, below and beside the text), median of each channel
+function boColours(img,scale,boxes,hMed){
+  const c=document.createElement('canvas'),W=c.width=Math.round(img.naturalWidth*scale),H=c.height=Math.round(img.naturalHeight*scale),g=c.getContext('2d',{willReadFrequently:true});
+  g.drawImage(img,0,0,W,H);const pad=Math.max(3,hMed*0.55),hex=v=>'#'+v.map(x=>Math.round(x).toString(16).padStart(2,'0')).join('');
+  return boxes.map(b=>{if(!b)return '';const mx=(b.x0+b.x1)/2,my=(b.y0+b.y1)/2,R=[],G=[],B=[];
+    [[b.x0,b.y0-pad],[mx,b.y0-pad],[b.x1,b.y0-pad],[b.x0,b.y1+pad],[mx,b.y1+pad],[b.x1,b.y1+pad],[b.x0-pad,my],[b.x1+pad,my],[b.x0-pad,b.y0],[b.x1+pad,b.y1]].forEach(([x,y])=>{
+      x=Math.round(x);y=Math.round(y);if(x<1||y<1||x>=W-1||y>=H-1)return;const d=g.getImageData(x-1,y-1,3,3).data;
+      let r=0,gg=0,bb=0;for(let i=0;i<36;i+=4){r+=d[i];gg+=d[i+1];bb+=d[i+2]}R.push(r/9);G.push(gg/9);B.push(bb/9)});
+    return R.length>=3?hex([med(R),med(G),med(B)]):''})}
+const okHex=x=>{x=String(x||'').trim();return HEX.test(x)?x.toLowerCase():/^#[0-9a-f]{3}$/i.test(x)?('#'+x.slice(1).replace(/./g,'$&$&')).toLowerCase():''};
 const BO_PROMPT='This is a photo or screenshot of a POS back office showing button pages. Each page is a 5 × 5 grid of button slots. '+
   'Empty slots show a + sign. The bottom-right slot may be the ‹ › page arrows. Read every 5 × 5 page you can see, in order (left to right, then top to bottom). '+
   'For each slot give the button name exactly as written: keep its capitals, join a name that wraps onto two lines with one space, and leave out prices. '+
   'Use "" for an empty slot and "<>" for the page arrows. Ignore menus, toolbars and anything outside the 5 × 5 grids. '+
-  'Answer with JSON only, no other text: {"pages":[{"cells":["25 strings, row by row from the top-left"]}]}';
+  'Also give each button\'s background colour as a hex code (for example "#2e7d32"), matching the colour on screen as closely as you can; use "" for empty slots and the arrows. '+
+  'Answer with JSON only, no other text: {"pages":[{"cells":["25 strings, row by row from the top-left"],"colours":["25 hex codes in the same order"]}]}';
 async function boFromClaude(img){
   const blob=await photoBlob(img,1568),r=await fetch('/api/claude',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},
     body:JSON.stringify({prompt:BO_PROMPT,images:[{type:'image/jpeg',data:await b64(blob)}]})});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Claude couldn’t read the photo ('+r.status+').');
   let v;const t=String(j.text||''),a=t.indexOf('{'),z=t.lastIndexOf('}');try{v=JSON.parse(t.slice(a,z+1))}catch(e){}
-  const pages=(v&&Array.isArray(v.pages)?v.pages:[]).map(p=>Array.isArray(p&&p.cells)?p.cells.slice(0,BO*BO).map(x=>String(x==null?'':x).trim()):null).filter(Boolean);
-  if(!pages.length)throw new Error('Claude’s answer couldn’t be read. Try again, or type the names in.');
-  pages.forEach(p=>{while(p.length<BO*BO)p.push('')});return pages}
+  const got=(v&&Array.isArray(v.pages)?v.pages:[]).filter(p=>Array.isArray(p&&p.cells));
+  if(!got.length)throw new Error('Claude’s answer couldn’t be read. Try again, or type the names in.');
+  const fill=(a,f)=>Array.from({length:BO*BO},(_,i)=>f(Array.isArray(a)?a[i]:''));
+  return {pages:got.map(p=>fill(p.cells,x=>String(x==null?'':x).trim())),colours:got.map(p=>fill(p.colours,okHex))}}
 async function readBoPhoto(img){
   const m=await meInfo(),ai=$('tg-ai').checked;let ocr=null,why='';
+  const scale=Math.min(1,3000/Math.max(img.naturalWidth,img.naturalHeight)),cols=o=>{try{return [boColours(img,scale,o.boxes,o.hMed)]}catch(e){return [[]]}};
   if(!ai&&m.ocr){try{const d=await fetch('/api/server/ocr',{method:'POST',credentials:'same-origin',headers:{'content-type':'image/jpeg'},body:await photoBlob(img,3000)});
       const j=await d.json().catch(()=>({}));if(!d.ok)throw new Error(j.error||'OCR answered '+d.status);ocr=boFromOcr(j)}
     catch(e){why='OCR failed ('+e.message+')'}
-    if(ocr&&ocr.named&&!ocr.messy)return {pages:[ocr.cells],by:'OCR'};
+    if(ocr&&ocr.named&&!ocr.messy)return {pages:[ocr.cells],colours:cols(ocr),by:'OCR'};
     if(!why)why=ocr&&ocr.named?'the text didn’t line up as one 5 × 5 page':'OCR found no button names'}
-  if(m.claude)return {pages:await boFromClaude(img),by:'Claude',why:ai?'':why};
-  if(ocr&&ocr.named)return {pages:[ocr.cells],by:'OCR',warn:'The text didn’t line up neatly as one 5 × 5 page, so check every slot.'};
+  if(m.claude)return Object.assign(await boFromClaude(img),{by:'Claude',why:ai?'':why});
+  if(ocr&&ocr.named)return {pages:[ocr.cells],colours:cols(ocr),by:'OCR',warn:'The text didn’t line up neatly as one 5 × 5 page, so check every slot.'};
   if(!m.email&&!m.ocr)throw new Error('Reading photos works on the website (menuhauler.com/planner), where the OCR server and Claude are.');
   throw new Error(ai?'Claude isn’t switched on for you (the owner turns it on in /admin).':(why||'Nothing could read the photo')+(m.claude?'':'. Claude isn’t switched on for you, so type the names in.'))}
 // put one read page into run slots; returns how many names didn't fit on the screen
-function placeBo(pg0,cells){const per=boPer(T.arrow),tot=tTot();let off=0;
-  cells.forEach((v,j)=>{if(T.arrow&&j===BO*BO-1)return;if(v==='<>')v='';const k=pg0*per+j;T.names[k]=v;if(v){GOT.add(k);if(k>=tot)off++}else GOT.delete(k)});return off}
+function placeBo(pg0,cells,colours){const per=boPer(T.arrow),tot=tTot();let off=0;
+  cells.forEach((v,j)=>{if(T.arrow&&j===BO*BO-1)return;if(v==='<>')v='';const k=pg0*per+j;T.names[k]=v;T.bg[k]=v&&colours?colours[j]||'':'';if(v){GOT.add(k);if(k>=tot)off++}else GOT.delete(k)});return off}
 $('tg-photo').onchange=async()=>{const files=[...$('tg-photo').files];$('tg-photo').value='';if(!files.length)return;
   let pg0=Math.max(0,Math.round(+$('tg-start').value||1)-1),read=0,off=0,notes=[],by=new Set();const th=$('tg-thumbs');
   for(const f of files){let im;try{pmsg('Reading '+f.name+'…');im=await photoImg(f);const res=await readBoPhoto(im.img);by.add(res.by);
@@ -987,7 +1038,7 @@ $('tg-photo').onchange=async()=>{const files=[...$('tg-photo').files];$('tg-phot
       if(clash&&!confirm(f.name+' would replace '+clash+' name'+(clash>1?'s':'')+' already on back-office page '+(pg0+1)+(res.pages.length>1?'–'+(pg0+res.pages.length):'')+'. Replace them?')){notes.push(f.name+' was skipped.');URL.revokeObjectURL(im.url);continue}
       const fig=document.createElement('figure');fig.innerHTML='<img alt="Back-office photo '+esc(f.name)+'"><figcaption>Back-office page '+(pg0+1)+(res.pages.length>1?'–'+(pg0+res.pages.length):'')+' · '+res.by+'</figcaption>';
       fig.querySelector('img').src=im.url;fig.querySelector('img').onclick=e=>e.target.classList.toggle('big');th.appendChild(fig);th.hidden=false;
-      res.pages.forEach(p=>{off+=placeBo(pg0++,p);read++})}
+      res.pages.forEach((p,i)=>{off+=placeBo(pg0++,p,(res.colours||[])[i]);read++})}
     catch(e){if(im)URL.revokeObjectURL(im.url);notes.push(e.message);pmsg(notes.join(' '),true)}}
   $('tg-start').value=pg0+1;tSave();tDraw();
   if(read){const fit=off?' '+off+' name'+(off>1?'s are':' is')+' past the end of the '+T.cols+' × '+T.rows+' screen: make the screen bigger to see '+(off>1?'them':'it')+'.':'';
@@ -998,14 +1049,15 @@ function tFromOpts(){const w=$('tg-fromw');if(!P||!P.pages||!P.pages.length){w.h
 $('tg-from').onchange=()=>{const p=byId($('tg-from').value);$('tg-from').value='';if(!p)return;
   if(T.names.some(x=>String(x||'').trim())&&!confirm('Replace the names in the translator with '+p.name+'?'))return;
   T.cols=S().cols;T.rows=S().rows;T.arrow=arrowOn();
-  T.names=p.cells.map(c=>!c?'':c.t==='b'?'‹ Back':c.t==='l'?((byId(c.to)||{}).name||'')+' ›':(P.items[c.id]||{}).name||'');tSave();tDraw()};
+  T.names=p.cells.map(c=>!c?'':c.t==='b'?'‹ Back':c.t==='l'?((byId(c.to)||{}).name||'')+' ›':(P.items[c.id]||{}).name||'');
+  T.bg=p.cells.map(c=>!c?'':c.t==='i'&&P.items[c.id]?colourOf(P.items[c.id]):c.t==='l'?pageColour(byId(c.to)||{cells:[]}):'#111111');GOT.clear();tSave();tDraw()};
 $('tg-dl').onclick=()=>{
   const tot=tTot(),wb=XLSX.utils.book_new(),g=[['Front of house screen ('+T.cols+' × '+T.rows+')']];
   for(let r=0;r<T.rows;r++)g.push(Array.from({length:T.cols},(_,c)=>T.names[r*T.cols+c]||''));
-  const list=[['Button','Screen row','Screen column','Back-office page','Back-office row','Back-office column']];
+  const list=[['Button','Screen row','Screen column','Back-office page','Back-office row','Back-office column','Colour']];
   for(let b=0;b<boCount(tot,T.arrow);b++){g.push([]);g.push(['Back-office page '+(b+1)+' (5 × 5)']);
     for(let r=0;r<BO;r++){const row=[];for(let c=0;c<BO;c++){const k=boSlot(b,r*BO+c,T.arrow,tot);row.push(k==='arrow'?'‹ › arrows':k==='off'?'':T.names[k]||'')}g.push(row)}}
-  for(let k=0;k<tot;k++)if(String(T.names[k]||'').trim()){const b=boPos(k,T.arrow);list.push([T.names[k],Math.floor(k/T.cols)+1,k%T.cols+1,b.pg,b.r,b.c])}
+  for(let k=0;k<tot;k++)if(String(T.names[k]||'').trim()){const b=boPos(k,T.arrow);list.push([T.names[k],Math.floor(k/T.cols)+1,k%T.cols+1,b.pg,b.r,b.c,HEX.test(T.bg[k]||'')?T.bg[k]:''])}
   const w1=XLSX.utils.aoa_to_sheet(g);w1['!cols']=Array.from({length:Math.max(T.cols,BO)},()=>({wch:20}));
   const w2=XLSX.utils.aoa_to_sheet(list);w2['!cols']=[{wch:30},{wch:10},{wch:12},{wch:14},{wch:14},{wch:16}];
   XLSX.utils.book_append_sheet(wb,w1,'Grids');XLSX.utils.book_append_sheet(wb,w2,'Where each button goes');
