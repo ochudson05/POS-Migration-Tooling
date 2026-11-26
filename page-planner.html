@@ -10,7 +10,7 @@
 <style>
 [hidden]{display:none!important}
 *,*::before,*::after{box-sizing:border-box}
-:root{--veg:#4caf50;--nv:#ff5722;--oth:#607d8b;--lnk:#111;--lnk-t:#fff;--pos-bg:#fff;--pos-empty:#e6e6e6;--bo-empty:#f7f7f7;--bo-strip:#c8c8c8;--pos-line:#d4d4d4}
+:root{--veg:#4caf50;--nv:#ff5722;--oth:#2196f3;--lnk:#111;--lnk-t:#fff;--pos-bg:#fff;--pos-empty:#e6e6e6;--bo-empty:#f7f7f7;--bo-strip:#c8c8c8;--pos-line:#d4d4d4}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--pos-bg:#1c1f24;--pos-empty:#2e333a;--bo-empty:#262a30;--bo-strip:#3d434b;--pos-line:#3d434b;--lnk:#000}}
 :root[data-theme="dark"]{--pos-bg:#1c1f24;--pos-empty:#2e333a;--bo-empty:#262a30;--bo-strip:#3d434b;--pos-line:#3d434b;--lnk:#000}
 body{margin:0;background:var(--bg,#f6f7f9);color:var(--text,#111);font:15px/1.5 var(--f-body,system-ui,sans-serif)}
@@ -95,6 +95,7 @@ label.f{display:grid;gap:4px;font-size:.82rem;color:var(--muted,#667)}
 .grid{display:grid;gap:5px;padding:6px;background:var(--pos-bg);border-radius:6px;border:1px solid var(--pos-line)}
 .cell{position:relative;min-height:54px;border-radius:4px;font-size:.7rem;line-height:1.15;padding:4px 5px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;cursor:pointer;border:0;user-select:none;overflow-wrap:break-word;hyphens:auto;overflow:hidden}
 .cell.it{background:var(--c,#607d8b);color:#fff;font-weight:700;text-transform:uppercase;letter-spacing:.01em;text-shadow:0 1px 1px rgb(0 0 0/.22)}
+.cell.it.lt,.cell.lnk.lt{color:#111;text-shadow:none}
 .cell.it small{font-size:.64rem;font-weight:500;text-transform:none;opacity:.92;margin-top:3px;letter-spacing:0}
 .cell.empty{background:var(--pos-empty)}
 .cell.lnk,.cell.back{background:var(--lnk);color:var(--lnk-t);font-weight:700;text-transform:uppercase;box-shadow:inset 0 -4px 0 var(--c,#2196f3)}
@@ -566,18 +567,36 @@ function tile(c,pid,i,copies){
   const a='data-p="'+pid+'" data-i="'+esc(i)+'" tabindex="0" role="button"';
   if(!c)return '<div class="cell empty'+(issel?' sel':'')+'" '+a+' aria-label="Empty slot"></div>';
   if(c.t==='b')return '<div class="cell back'+(issel?' sel':'')+'" '+a+'>‹ Back</div>';
-  if(c.t==='l'){const q=byId(c.to),col=c.c||(q?pageColour(q):'');return '<div class="cell lnk'+(issel?' sel':'')+'" '+a+(col?' style="--c:'+col+'"':'')+'>'+esc(q?q.name:'?')+' ›</div>'}
+  if(c.t==='l'){const q=byId(c.to),col=c.c||(q?pageColour(q):'');return '<div class="cell lnk'+(light(col)?' lt':'')+(issel?' sel':'')+'" '+a+(col?' style="--c:'+col+'"':'')+'>'+esc(q?q.name:'?')+' ›</div>'}
   const x=P.items[c.id];if(!x)return '<div class="cell empty" '+a+'></div>';
   const tip=(x.label!==x.name?x.name+' · ':'')+x.cat+' · '+money(x)+(copies>1?' · also on another page':'');
-  return '<div class="cell it'+(x.sizes.length?' sz':'')+(copies>1?' dup':'')+(issel?' sel':'')+'" '+a+' style="--c:'+(c.c||colourOf(x))+'" title="'+esc(tip)+(c.c?' · own colour':'')+'">'+esc(x.label||x.name)+'<small>'+esc(priceLine(x))+'</small></div>'}
+  return '<div class="cell it'+(light(c.c||colourOf(x))?' lt':'')+(x.sizes.length?' sz':'')+(copies>1?' dup':'')+(issel?' sel':'')+'" '+a+' style="--c:'+(c.c||colourOf(x))+'" title="'+esc(tip)+(c.c?' · own colour':'')+'">'+esc(x.label||x.name)+'<small>'+esc(priceLine(x))+'</small></div>'}
 /* ---------------- POS colours ----------------
    The POS colours each button; the import has no colour column, so each category gets one from the POS palette
    (in menu order) and the user can click a category in the legend to change it. Saved with the plan. */
-const PAL=['#00bcd4','#2196f3','#009688','#ff9800','#4caf50','#9c27b0','#ff5722','#3f51b5','#8bc34a','#e91e63','#673ab7','#795548','#607d8b','#f44336'];
-const PALN=['Cyan','Blue','Teal','Orange','Green','Purple','Deep orange','Indigo','Light green','Pink','Deep purple','Brown','Grey','Red'];
+/* The POS has 16 tile colours (Material 500 shades). PAL keeps its old index order so saved plans keep their category
+   colours (brown and grey, which the POS doesn't have, became light blue and lime, and amber and yellow were added);
+   POSPAL is the order the POS shows them in, used for the colour swatches. */
+const PAL=['#00bcd4','#2196f3','#009688','#ff9800','#4caf50','#9c27b0','#ff5722','#3f51b5','#8bc34a','#e91e63','#673ab7','#03a9f4','#cddc39','#f44336','#ffc107','#ffeb3b'];
+const PALN=['Cyan','Blue','Teal','Orange','Green','Purple','Deep orange','Indigo','Light green','Pink','Deep purple','Light blue','Lime','Red','Amber','Yellow'];
+const POSPAL=[['#f44336','Red'],['#e91e63','Pink'],['#9c27b0','Purple'],['#673ab7','Deep purple'],['#3f51b5','Indigo'],['#2196f3','Blue'],['#03a9f4','Light blue'],['#00bcd4','Cyan'],
+  ['#009688','Teal'],['#4caf50','Green'],['#8bc34a','Light green'],['#cddc39','Lime'],['#ffeb3b','Yellow'],['#ffc107','Amber'],['#ff9800','Orange'],['#ff5722','Deep orange']];
+/* CUSTOM_COLOURS: the POS is getting a hex colour picker. Until it does (switch this to true then), the "any colour"
+   pickers stay hidden and colours read from photos snap to the nearest of the 16 POS colours. The code for both is kept. */
+const CUSTOM_COLOURS=false;
+// nearest POS colour: by hue first (a dim or washed-out photo of an orange tile is still orange), then lightness;
+// near-grey photo colours, which have no clear hue, go by plain Lab distance
+const labOf=h=>{const n=parseInt(h.slice(1),16),f=v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)},r=f(n>>16),g=f(n>>8&255),b=f(n&255);
+  const x=(r*.4124+g*.3576+b*.1805)/.95047,y=r*.2126+g*.7152+b*.0722,z=(r*.0193+g*.1192+b*.9505)/1.08883,t=v=>v>.008856?Math.cbrt(v):7.787*v+16/116;
+  return [116*t(y)-16,500*(t(x)-t(y)),200*(t(y)-t(z))]};
+const POSLAB=POSPAL.map(([h])=>[h,labOf(h)]);
+const posColour=h=>{if(!/^#[0-9a-f]{6}$/i.test(h||''))return '';const a=labOf(h),ch=Math.hypot(a[1],a[2]),hu=Math.atan2(a[2],a[1]);let best='',bd=1e9;
+  POSLAB.forEach(([x,l])=>{let d;if(ch>=8){let dh=Math.abs(hu-Math.atan2(l[2],l[1]));if(dh>Math.PI)dh=2*Math.PI-dh;d=dh*dh+.4*((a[0]-l[0])/100)**2}
+    else d=(a[0]-l[0])**2+(a[1]-l[1])**2+(a[2]-l[2])**2;if(d<bd){bd=d;best=x}});return best};
+const tileColour=h=>!h?'':CUSTOM_COLOURS?h:posColour(h);
 const catsInOrder=()=>{const o=[];P.order.forEach(id=>{const c=P.items[id].cat;if(!o.includes(c))o.push(c)});return o};
 function catIdx(cat){P.colours=P.colours||{};if(P.colours[cat]==null)P.colours[cat]=Math.max(0,catsInOrder().indexOf(cat))%PAL.length;return P.colours[cat]}
-const VARHEX={'var(--veg)':'#4caf50','var(--nv)':'#ff5722','var(--oth)':'#607d8b','var(--lnk)':'#111111'};
+const VARHEX={'var(--veg)':'#4caf50','var(--nv)':'#ff5722','var(--oth)':'#2196f3','var(--lnk)':'#111111'};
 const toHex=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c.toLowerCase():VARHEX[c]||'#607d8b';
 function colourOf(x){if(S().colour==='veg')return x.grp==='Beverage'?'var(--oth)':x.nv?'var(--nv)':'var(--veg)';return PAL[catIdx(x.cat)]}
 // a page's toolbar colour: the colour of its first product
@@ -595,8 +614,8 @@ function drawBar(){
   const nm=c.t==='i'?P.items[c.id].name:c.t==='b'?'Back button':'Link to '+(byId(c.to)||{}).name;
   const copyOpts=c.t==='i'?'<label class="small">Copy to <select id="pp-copyto"><option value="">choose a page…</option>'+P.pages.filter(p=>p.id!==sel.p).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'</select></label>':'';
   $('pp-bar').innerHTML='<b>'+esc(nm)+'</b><span class="small muted">'+(c.t==='i'?'Click an empty slot to move it, or a button to swap.':'Links and Back buttons move within their own page.')+'</span>'+copyOpts+
-    (c.t!=='b'&&sel.p!=='tray'?'<span class="tcol" role="group" aria-label="This button’s colour"><span class="small">Colour</span>'+PAL.map((h,k)=>'<button type="button" class="sw" data-tc="'+h+'" style="--c:'+h+'" title="'+PALN[k]+'" aria-label="'+PALN[k]+'"'+(c.c===h?' aria-pressed="true"':'')+'></button>').join('')+
-      '<input type="color" id="pp-tcol" value="'+toHex(c.c||(c.t==='i'?colourOf(P.items[c.id]):pageColour(byId(c.to)||{cells:[]})))+'" aria-label="Any colour" title="Any colour">'+(c.c?'<button type="button" class="sec sm" id="pp-tcat">'+(c.t==='i'?'Category colour':'Page colour')+'</button>':'')+'</span>':'')+
+    (c.t!=='b'&&sel.p!=='tray'?'<span class="tcol" role="group" aria-label="This button’s colour"><span class="small">Colour</span>'+POSPAL.map(([h,nm])=>'<button type="button" class="sw" data-tc="'+h+'" style="--c:'+h+'" title="'+nm+'" aria-label="'+nm+'"'+(c.c===h?' aria-pressed="true"':'')+'></button>').join('')+
+      (CUSTOM_COLOURS?'<input type="color" id="pp-tcol" value="'+toHex(c.c||(c.t==='i'?colourOf(P.items[c.id]):pageColour(byId(c.to)||{cells:[]})))+'" aria-label="Any colour" title="Any colour">':'')+(c.c?'<button type="button" class="sec sm" id="pp-tcat">'+(c.t==='i'?'Category colour':'Page colour')+'</button>':'')+'</span>':'')+
     (c.t==='i'&&sel.p!=='tray'?'<button type="button" class="bad sm" id="pp-rm">Take off this page</button>':'')+'<button type="button" class="sec sm" id="pp-cancel">Cancel</button>';
   const setCol=v=>{const cell=byId(sel.p).cells[sel.i];if(!cell)return;snap();if(v)cell.c=v;else delete cell.c;changed()};
   $('pp-bar').querySelectorAll('[data-tc]').forEach(b=>b.onclick=()=>setCol(b.dataset.tc));
@@ -721,7 +740,7 @@ function addPhotoPages(list){
   list.forEach(pg=>{let name=(pg.name||'').trim()||'Page '+(pages.length+1),k=name,n=2;while(names.has(k.toLowerCase()))k=name+' '+(n++);name=k;names.add(name.toLowerCase());
     const cells=pg.cells.slice(0,N0).map((t,i)=>{t=strC(t);if(!t||t==='<>')return null;const key0=t.toLowerCase();
       if(!seen[key0]){src.rows.push([t,'Product','',name,phPrice(pg.prices&&pg.prices[i]),'']);seen[key0]=key0+'|'+name.toLowerCase()}
-      buttons++;const col=okHex(pg.colours&&pg.colours[i]);return col?{t:'i',id:seen[key0],c:col}:{t:'i',id:seen[key0]}});
+      buttons++;const col=tileColour(okHex(pg.colours&&pg.colours[i]));return col?{t:'i',id:seen[key0],c:col}:{t:'i',id:seen[key0]}});
     while(cells.length<N0)cells.push(null);pages.push({id:uid(),name,parent:null,cells});added++});
   const settings=fresh?Object.assign({},DEF,{cols:C,rows:R,arrow:$('pp-pharrow').checked}):P.settings;
   setPlan({id:fresh?null:P.id,name:fresh?'':P.name,settings,colours:fresh?{}:P.colours,source:src,pages},false);
@@ -1065,7 +1084,7 @@ async function readBoPhoto(img,aiOver){
   throw new Error(ai?'Claude isn’t switched on for you (the owner turns it on in /admin).':(why||'Nothing could read the photo')+(m.claude?'':'. Claude isn’t switched on for you, so type the names in.'))}
 // put one read page into run slots (the screen gets more pages if it needs them)
 function placeBo(pg0,cells,colours){const per=boPer(T.arrow);
-  cells.forEach((v,j)=>{if(T.arrow&&j===BO*BO-1)return;if(v==='<>')v='';const k=pg0*per+j;T.names[k]=v;T.bg[k]=v&&colours?colours[j]||'':'';if(v)GOT.add(k);else GOT.delete(k)})}
+  cells.forEach((v,j)=>{if(T.arrow&&j===BO*BO-1)return;if(v==='<>')v='';const k=pg0*per+j;T.names[k]=v;T.bg[k]=v&&colours?tileColour(colours[j]||''):'';if(v)GOT.add(k);else GOT.delete(k)})}
 // start again: drop every uploaded photo and everything in the translator (names, colours, moves), back to page 1
 $('tg-fresh').onclick=()=>{const th=$('tg-thumbs'),n=th.querySelectorAll('figure').length,names=T.names.some(x=>String(x||'').trim());
   if((n||names)&&!confirm('Remove '+(n?n+' uploaded photo'+(n>1?'s':'')+' and ':'')+'every button in the translator, and start again?'))return;
@@ -1119,7 +1138,7 @@ window.addEventListener('hashchange',setMode);setMode();
 tDraw();
 listPlans();
 try{const d=JSON.parse(localStorage.getItem(DRAFT)||'null');if(d&&d.source){$('pp-name').value=d.name||'';setPlan(d,false);P.id=d.id||null;msg1('Picked up where you left off on this device'+(d.name?' ('+d.name+')':'')+'. Save it to keep it on the website.')}}catch(e){}
-window.__pp={get P(){return P},get T(){return T},build,checks,boFromOcr};
+window.__pp={get P(){return P},get T(){return T},build,checks,boFromOcr,posColour};
 })();
 </script>
 </body>

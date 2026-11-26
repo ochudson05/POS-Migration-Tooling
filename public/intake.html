@@ -433,8 +433,11 @@ document.addEventListener('click',async e=>{const b=e.target.closest('[data-ap]'
    rename it, change its colour, move it to another page or take it off. Edits save on this device until
    "Send my changes" sends the whole layout back (/revise). */
 let PL=null,PBASE=null,PSEL=null,PPAGE=null,PUNDO=[],PDIRTY=false,PTRAY=[],pdrag=null;
-const PAL=['#00bcd4','#2196f3','#009688','#ff9800','#4caf50','#9c27b0','#ff5722','#3f51b5','#8bc34a','#e91e63','#673ab7','#795548','#607d8b','#f44336','#ffeb3b','#212121'];
-const PALN=['Cyan','Blue','Teal','Orange','Green','Purple','Deep orange','Indigo','Light green','Pink','Deep purple','Brown','Grey','Red','Yellow','Black'];
+// the 16 tile colours the POS offers, in the order it shows them
+const PAL=['#f44336','#e91e63','#9c27b0','#673ab7','#3f51b5','#2196f3','#03a9f4','#00bcd4','#009688','#4caf50','#8bc34a','#cddc39','#ffeb3b','#ffc107','#ff9800','#ff5722'];
+const PALN=['Red','Pink','Purple','Deep purple','Indigo','Blue','Light blue','Cyan','Teal','Green','Light green','Lime','Yellow','Amber','Orange','Deep orange'];
+// CUSTOM_COLOURS: the POS is getting a hex colour picker; until then (switch this to true) the "any colour" picker stays hidden
+const CUSTOM_COLOURS=false;
 const PKEY=()=>'mh.intake.plan.'+token+'.'+(PORTAL&&PORTAL.plan?PORTAL.plan.ver:0);
 const clone=x=>JSON.parse(JSON.stringify(x));
 const lightC=c=>{if(!/^#[0-9a-f]{6}$/i.test(c||''))return false;const n=parseInt(c.slice(1),16),f=v=>{v/=255;return v<=.04045?v/12.92:Math.pow((v+.055)/1.055,2.4)};return .2126*f(n>>16)+.7152*f(n>>8&255)+.0722*f(n&255)>.45};
@@ -474,7 +477,7 @@ function panel(c,pg){const isI=c.t==='i',isL=c.t==='l',inG=PSEL.w==='g',cur=c.c|
     (inG?'<p class="pos-help">Tap another slot to move it there, or a button to swap them.</p>':'<p class="pos-help">Tap an empty slot to put it back on this page.</p>')+
     (isI&&inG?'<label class="f">Name on the button<input id="pos-name" value="'+esc(c.n||'')+'" maxlength="40" autocomplete="off"></label>':'')+
     (inG?'<div><p class="pos-help" style="margin-bottom:6px">Colour</p><div class="pos-sw">'+PAL.map((h,k)=>'<button type="button" data-col="'+h+'" style="--c:'+h+'" aria-label="'+PALN[k]+'" title="'+PALN[k]+'"'+(cur===h?' aria-pressed="true"':'')+'></button>').join('')+
-      '<input type="color" id="pos-any" value="'+(/^#[0-9a-f]{6}$/i.test(cur)?cur:'#009688')+'" aria-label="Any colour" title="Any colour"></div></div>':'')+
+      (CUSTOM_COLOURS?'<input type="color" id="pos-any" value="'+(/^#[0-9a-f]{6}$/i.test(cur)?cur:'#009688')+'" aria-label="Any colour" title="Any colour">':'')+'</div></div>':'')+
     '<div class="prow" style="align-items:end">'+(isL?'<button type="button" class="go" style="width:auto" data-pa="open">Open this page</button>':'')+
     (isI&&inG?'<label class="f" style="flex:1 1 200px">Move to page<select id="pos-to"><option value="">Choose a page…</option>'+PL.pages.filter(p=>p.id!==pg.id).map(p=>'<option value="'+esc(p.id)+'">'+esc(p.name)+'</option>').join('')+'</select></label><button type="button" class="sec" data-pa="off">Take off this page</button>':'')+
     '<button type="button" class="sec" data-pa="done">Done</button></div></div>'}
