@@ -142,7 +142,8 @@ function applyAccess(m){ME_NOW=m;window.MH_ME=m;const ok=t=>!m.tools||m.tools.in
   if(m.admin){const f=document.querySelector('.lx-foot .hosted-only');if(f&&!f.querySelector('a[href="/admin"]')){const a=document.createElement('a');a.href='/admin';a.innerHTML=(window.mhIcon?window.mhIcon('shield-check'):'')+'Admin';f.prepend(a,' · ')}}
   // the Page Planner (/planner) and the knowledge graph (/knowledge) are their own pages, open to everyone signed in
   if(m.knowledge){const nav=document.querySelector('.lx-tab')&&document.querySelector('.lx-tab').parentElement;if(nav&&!nav.querySelector('a[href="/knowledge"]')){const a=document.createElement('a');a.className='lx-tab';a.href='/knowledge';a.style.textDecoration='none';a.innerHTML=(window.mhIcon?window.mhIcon('share-2'):'')+'<span>Knowledge</span>';nav.append(a)}}
-  if(m.planner){const nav=document.querySelector('.lx-tab')&&document.querySelector('.lx-tab').parentElement;if(nav&&!nav.querySelector('a[href="/planner"]')){const a=document.createElement('a');a.className='lx-tab';a.href='/planner';a.style.textDecoration='none';a.innerHTML=(window.mhIcon?window.mhIcon('layout-grid'):'')+'<span>Page Planner</span>';nav.append(a)}}
+  // the launcher's Page Planner tab (a menu: Page Planner for an import file, Photo Grid at /planner#photo for a back-office photo)
+  if(m.planner){const t=document.getElementById('lx-pltools');if(t)t.hidden=false}
   if(m.canEdit===false){const b=document.createElement('div');b.className='oh-banner';b.style.background='var(--accent)';b.innerHTML=(window.mhIcon?window.mhIcon('eye'):'')+'<span>Your access is view-only: you can look at venues but not change them.</span>';document.body.prepend(b)}
   // shell.js redraws the account button and the tab marker
   window.dispatchEvent(new CustomEvent('mh:me',{detail:m}))}
@@ -342,15 +343,16 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .oh-banner button{font:inherit;font-weight:600;background:var(--card);color:var(--text);border:0;border-radius:6px;padding:4px 12px;cursor:pointer;margin:0}
 #lx-mapframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
 #lx-pfframe{display:block;width:100%;border:0;height:calc(100vh - 56px);min-height:520px;background:var(--bg)}
-/* Photo Tools tab and its menu (Photo Finder, Photo Editor) */
+/* tabs with a menu: Photo Tools (Photo Finder, Photo Editor) and Page Planner (Page Planner, Photo Grid) */
 .lx-tab .lx-chev{width:.95em;height:.95em;margin-left:-2px;transition:transform .2s}
 .lx-tab[aria-expanded="true"] .lx-chev{transform:rotate(180deg)}
 .lx-menu{position:fixed;z-index:60;min-width:250px;max-width:calc(100vw - 16px);background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:12px;padding:6px;box-shadow:0 10px 30px rgb(0 0 0/.2);display:grid;gap:2px}
 .lx-menu[hidden]{display:none}
-.lx-menu button{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;font:inherit;background:none;color:var(--text);border:0;border-radius:8px;padding:8px 10px;margin:0;cursor:pointer}
-.lx-menu button:hover,.lx-menu button:focus-visible{background:var(--bg);outline:none}
+.lx-menu button,.lx-menu a{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;font:inherit;background:none;color:var(--text);border:0;border-radius:8px;padding:8px 10px;margin:0;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.lx-menu button:hover,.lx-menu button:focus-visible,.lx-menu a:hover,.lx-menu a:focus-visible{background:var(--bg);outline:none}
 .lx-menu button[aria-current="page"]{background:var(--bg);box-shadow:inset 3px 0 0 var(--accent)}
 .lx-menu .ic{margin-top:3px;color:var(--t-photos)}
+#lx-plmenu .ic{color:var(--accent)}
 .lx-menu span{display:grid}.lx-menu b{font-size:.92rem}.lx-menu small{font-size:.8rem;color:var(--muted);font-weight:400}
 
 /* Venues tab: search the team's saved venues */
@@ -1361,11 +1363,17 @@ html.mh-still *,html.mh-still *::before,html.mh-still *::after{animation:none!im
     <button type="button" class="lx-tab" data-go="hypercare"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-life-buoy"/></svg><span>Hypercare</span></button>
     <button type="button" class="lx-tab" data-go="team"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-users"/></svg><span>Team</span></button>
     <button type="button" class="lx-tab" data-go="word"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-scan-text"/></svg><span>Image to Word</span></button>
+    <button type="button" class="lx-tab lx-tmenu" id="lx-pltools" hidden aria-haspopup="menu" aria-expanded="false" aria-controls="lx-plmenu"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-layout-grid"/></svg><span>Page Planner</span><svg class="ic lx-chev" aria-hidden="true" focusable="false"><use href="#i-chevron-down"/></svg></button>
   </nav>
   <label class="lx-venue"><span>Venue</span><select id="lx-venue" aria-label="Venue you are working on"><option value="">Loading venues…</option></select></label>
   <div class="lx-menu" id="lx-pmenu" role="menu" aria-label="Photo Tools" hidden>
     <button type="button" role="menuitem" data-go="photos"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-images"/></svg><span><b>Photo Finder</b><small>Free photos for every product on a menu</small></span></button>
     <button type="button" role="menuitem" data-go="photoedit"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-crop"/></svg><span><b>Photo Editor</b><small>Resize and crop one photo to the right size</small></span></button>
+  </div>
+  <!-- Page Planner is its own page (/planner) on the website; hosted.js shows this tab to people who can use it -->
+  <div class="lx-menu" id="lx-plmenu" role="menu" aria-label="Page Planner" hidden>
+    <a role="menuitem" href="/planner"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-file-spreadsheet"/></svg><span><b>Page Planner</b><small>Lay out an import file (CSV or Excel) as POS pages</small></span></a>
+    <a role="menuitem" href="/planner#photo"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-images"/></svg><span><b>Photo Grid</b><small>Read a back-office photo onto any size of screen</small></span></a>
   </div>
   <div class="lx-acts"><button type="button" class="lx-ib" id="mh-theme" aria-label="Switch theme"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-moon"/></svg></button><button type="button" class="lx-ib" id="mh-open" aria-label="Settings and account" aria-haspopup="dialog"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-settings"/></svg></button></div>
 </header>
@@ -7775,19 +7783,21 @@ const MAP_HTML="<!DOCTYPE html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf
   document.addEventListener('click',e=>{const b=e.target.closest('[data-go]');if(!b)return;const v=b.dataset.go;
     if(location.hash.slice(1)===v)return;if(v)location.hash=v;else{history.pushState?history.pushState(null,'',location.pathname+location.search):location.hash='';show()}});
   window.addEventListener('hashchange',show);window.addEventListener('popstate',show);
-  // Photo Tools: a tab that opens a small menu (Photo Finder, Photo Editor). The menu sits outside the scrolling tab row
-  // so it isn't clipped, and is placed under the tab each time it opens.
-  function closeMenu(){const m=g('lx-pmenu'),b=g('lx-ptools');if(m&&!m.hidden){m.hidden=true;b.setAttribute('aria-expanded','false')}}
-  function openMenu(focus){const m=g('lx-pmenu'),b=g('lx-ptools'),r=b.getBoundingClientRect(),z=+getComputedStyle(document.body).zoom||1;
+  // Photo Tools and Page Planner: tabs that open a small menu. Each menu sits outside the scrolling tab row
+  // so it isn't clipped, and is placed under its tab each time it opens.
+  const MENUS=[['lx-ptools','lx-pmenu'],['lx-pltools','lx-plmenu']],items=m=>[...m.querySelectorAll('[role="menuitem"]')].filter(x=>!x.hidden);
+  function closeMenu(){MENUS.forEach(([bi,mi])=>{const m=g(mi),b=g(bi);if(m&&!m.hidden){m.hidden=true;b.setAttribute('aria-expanded','false')}})}
+  function openMenu(bi,mi,focus){closeMenu();const m=g(mi),b=g(bi),r=b.getBoundingClientRect(),z=+getComputedStyle(document.body).zoom||1;
     m.hidden=false;b.setAttribute('aria-expanded','true');const w=m.offsetWidth;
     m.style.top=(r.bottom/z+6)+'px';m.style.left=Math.max(8,Math.min(r.left/z,innerWidth/z-w-8))+'px';
-    if(focus){const it=[...m.querySelectorAll('[data-go]')].filter(x=>!x.hidden);(it.find(x=>x.getAttribute('aria-current'))||it[0]).focus()}}
-  g('lx-ptools').addEventListener('click',e=>{e.stopPropagation();if(g('lx-pmenu').hidden)openMenu(e.detail===0);else closeMenu()});
-  g('lx-ptools').addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();openMenu(true)}});
-  g('lx-pmenu').addEventListener('keydown',e=>{const it=[...g('lx-pmenu').querySelectorAll('[data-go]')].filter(x=>!x.hidden),i=it.indexOf(document.activeElement);
-    if(e.key==='Escape'){closeMenu();g('lx-ptools').focus()}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();it[(i+(e.key==='ArrowDown'?1:-1)+it.length)%it.length].focus()}else if(e.key==='Tab')closeMenu()});
-  document.addEventListener('click',e=>{if(!e.target.closest('#lx-pmenu'))closeMenu()});
-  g('lx-pmenu').addEventListener('click',()=>setTimeout(closeMenu));
+    if(focus){const it=items(m);(it.find(x=>x.getAttribute('aria-current'))||it[0]).focus()}}
+  MENUS.forEach(([bi,mi])=>{const b=g(bi),m=g(mi);if(!b||!m)return;
+    b.addEventListener('click',e=>{e.stopPropagation();if(m.hidden)openMenu(bi,mi,e.detail===0);else closeMenu()});
+    b.addEventListener('keydown',e=>{if(e.key==='ArrowDown'){e.preventDefault();openMenu(bi,mi,true)}});
+    m.addEventListener('keydown',e=>{const it=items(m),i=it.indexOf(document.activeElement);
+      if(e.key==='Escape'){closeMenu();b.focus()}else if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();it[(i+(e.key==='ArrowDown'?1:-1)+it.length)%it.length].focus()}else if(e.key==='Tab')closeMenu()});
+    m.addEventListener('click',()=>setTimeout(closeMenu))});
+  document.addEventListener('click',e=>{if(!e.target.closest('.lx-menu'))closeMenu()});
   window.addEventListener('resize',closeMenu);document.querySelector('.lx-tabs').addEventListener('scroll',closeMenu,{passive:true});
   g('lx-pfsave').addEventListener('click',async()=>{const m=g('lx-pfmsg');m.textContent='';
     let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){}

@@ -96,6 +96,10 @@ th{font-weight:600}
 body{margin:0;background:var(--bg,#f6f7f9);color:var(--text,#111);font:15px/1.5 var(--f-body,system-ui,sans-serif)}
 .pp-top{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:10px max(16px,env(safe-area-inset-left,0px));background:var(--bar,#222);color:var(--bar-text,#fff);border-bottom:1px solid var(--bar-line,transparent)}
 .pp-top b{font-size:1rem}.pp-top .sp{flex:1}
+/* two tools in one page: Page Planner (an import file) and Photo Grid (a back-office photo); #photo picks Photo Grid */
+.pp-modes{display:flex;gap:4px}
+.pp-top .pp-modes a{opacity:.75}.pp-top .pp-modes a[aria-current="page"]{opacity:1;background:var(--bar-hover,#333);box-shadow:inset 0 -2px 0 var(--accent,#673ab6)}
+body[data-mode="photo"] .pp-imp,body:not([data-mode="photo"]) .pp-pho{display:none!important}
 .pp-top a{color:var(--bar-text,#fff);text-decoration:none;font-weight:600;font-size:.9rem;padding:5px 10px;border-radius:var(--r,6px)}
 .pp-top a:hover{background:var(--bar-hover,#333)}
 .pp-top b{display:inline-flex;align-items:center;gap:9px}
@@ -323,14 +327,18 @@ body.tg-dragging,body.tg-dragging *{cursor:grabbing!important;user-select:none}
 <symbol id="i-flask-conical" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2" /> <path d="M8.5 2h7" /> <path d="M7 16h10" /></symbol>
 <symbol id="i-monitor-smartphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h8" /> <path d="M10 19v-3.96 3.15" /> <path d="M7 19h5" /> <rect width="6" height="10" x="16" y="12" rx="2" /></symbol>
 </svg>
-<header class="pp-top"><b><span class="pp-logo"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-utensils"/></svg></span>Menu Hauler</b><span class="tag">Page Planner</span><span class="sp"></span><a href="/"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-house"/></svg>Back to the tools</a></header>
+<header class="pp-top"><b><span class="pp-logo"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-utensils"/></svg></span>Menu Hauler</b><nav class="pp-modes" aria-label="Page tools"><a href="#import" data-mode="import"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-layout-grid"/></svg>Page Planner</a><a href="#photo" data-mode="photo"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-images"/></svg>Photo Grid</a></nav><span class="sp"></span><a href="/"><svg class="ic" aria-hidden="true" focusable="false"><use href="#i-house"/></svg>Back to the tools</a></header>
 <main>
-<div>
+<div class="pp-imp">
   <h1>Page Planner</h1>
-  <p class="sub">Lay out an Oolio One import as POS toolbar pages, then fix anything by hand and download the layout.</p>
+  <p class="sub">Lay out an Oolio One import (CSV or Excel) as POS toolbar pages, then fix anything by hand and download the layout. To start from a photo of the back office instead, use <a href="#photo">Photo Grid</a>.</p>
+</div>
+<div class="pp-pho">
+  <h1>Photo Grid</h1>
+  <p class="sub">Read a photo of a back-office 5 × 5 page, then move the buttons around on any size of front-of-house screen, over as many pages as it needs. To lay out an import file instead, use <a href="#import">Page Planner</a>.</p>
 </div>
 
-<section class="card" aria-labelledby="pp-s1">
+<section class="card pp-imp" aria-labelledby="pp-s1">
   <h2 id="pp-s1"><span class="n">1</span>Import list</h2>
   <label class="dz" for="pp-file" id="pp-dz"><input type="file" id="pp-file" class="dz-in" accept=".xlsx,.xls,.csv">
     <svg class="dz-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15V3m0 0L7 8m5-5 5 5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/></svg>
@@ -344,12 +352,12 @@ body.tg-dragging,body.tg-dragging *{cursor:grabbing!important;user-select:none}
   <details id="pp-saved"><summary class="small">Saved plans <span id="pp-where" class="muted"></span></summary><ul class="plans" id="pp-plans"></ul></details>
 </section>
 
-<section class="card pp-locked" id="pp-lock" aria-live="polite">
+<section class="card pp-imp pp-locked" id="pp-lock" aria-live="polite">
   <ol><li>2. Your POS</li><li>3. Sanity checks</li><li>4. Pages</li><li>5. Downloads</li></ol>
   <p>Add an import above, or open a saved plan, and these steps open.</p>
 </section>
 
-<section class="card" aria-labelledby="pp-s2" id="pp-set" hidden>
+<section class="card pp-imp" aria-labelledby="pp-s2" id="pp-set" hidden>
   <h2 id="pp-s2"><span class="n">2</span>Your POS</h2>
   <div class="row">
     <label class="f">Screen columns<input type="number" id="s-cols" min="2" max="10" value="5"></label>
@@ -372,13 +380,13 @@ body.tg-dragging,body.tg-dragging *{cursor:grabbing!important;user-select:none}
   <div class="row" style="margin-top:14px"><button type="button" id="pp-build">Build pages</button><span class="small muted" id="pp-cnt"></span></div>
 </section>
 
-<section class="card" aria-labelledby="pp-s3" id="pp-chk" hidden>
+<section class="card pp-imp" aria-labelledby="pp-s3" id="pp-chk" hidden>
   <h2 id="pp-s3"><span class="n">3</span>Sanity checks</h2>
   <div class="kpis" id="pp-kpis"></div>
   <ul class="checks" id="pp-checks"></ul>
 </section>
 
-<section class="card" aria-labelledby="pp-s4" id="pp-ed" hidden>
+<section class="card pp-imp" aria-labelledby="pp-s4" id="pp-ed" hidden>
   <h2 id="pp-s4"><span class="n">4</span>Pages</h2>
   <p class="sub small" style="margin:0 0 10px">Click a button, then click an empty slot to move it there or another button to swap them. You can copy a button onto another page, for example naan on both curry pages. Choose where each page opens from under its name.</p>
   <div class="tb" id="pp-tb"></div>
@@ -390,7 +398,7 @@ body.tg-dragging,body.tg-dragging *{cursor:grabbing!important;user-select:none}
   <div class="pages" id="pp-pages"></div>
 </section>
 
-<section class="card" aria-labelledby="pp-s5" id="pp-out" hidden>
+<section class="card pp-imp" aria-labelledby="pp-s5" id="pp-out" hidden>
   <h2 id="pp-s5"><span class="n">5</span>Downloads</h2>
   <div class="dl">
     <div class="card"><b>Layout workbook</b><p>A grid for every page, a list of every button with its row and column, and the steps to do by hand in Oolio One: sub-page links, Back buttons and copies.</p><button type="button" id="pp-dl1">Download layout (.xlsx)</button></div>
@@ -400,9 +408,9 @@ body.tg-dragging,body.tg-dragging *{cursor:grabbing!important;user-select:none}
   </div>
 </section>
 
-<section class="card" aria-labelledby="pp-tg">
+<section class="card pp-pho" aria-labelledby="pp-tg">
   <h2 id="pp-tg"><span class="n">⇄</span>Grid translator</h2>
-  <p class="sub small" style="margin:0 0 10px">No import needed. Type button names on the front-of-house screen (what staff see) and the back-office 5 × 5 pages fill in, or the other way round. The back office is one long run of slots, 5 across; the screen shows the same run wrapped to its own width. Paste a list (one per line) into any box to fill from there.</p>
+  <p class="sub small" style="margin:0 0 10px">Type button names on the front-of-house screen (what staff see) and the back-office 5 × 5 pages fill in, or the other way round. The back office is one long run of slots, 5 across; the screen shows the same run wrapped to its own width. Paste a list (one per line) into any box to fill from there.</p>
   <div class="row">
     <label class="f">Screen columns<input type="number" id="tg-cols" min="2" max="10" value="10"></label>
     <label class="f">Screen rows<input type="number" id="tg-rows" min="1" max="10" value="10"></label>
@@ -1094,6 +1102,12 @@ $('tg-dl').onclick=()=>{
   const w2=XLSX.utils.aoa_to_sheet(list);w2['!cols']=[{wch:30},{wch:12},{wch:10},{wch:12},{wch:14},{wch:14},{wch:16},{wch:10}];
   XLSX.utils.book_append_sheet(wb,w1,'Grids');XLSX.utils.book_append_sheet(wb,w2,'Where each button goes');
   XLSX.writeFile(wb,fname('back-office build.xlsx'))};
+
+/* ---------------- which tool: Page Planner (#import or no hash) or Photo Grid (#photo) ---------------- */
+function setMode(){const m=location.hash==='#photo'?'photo':'import';document.body.dataset.mode=m;
+  document.title=(m==='photo'?'Photo Grid':'Page Planner')+' · Menu Hauler';
+  document.querySelectorAll('.pp-modes a').forEach(a=>{if(a.dataset.mode===m)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});scrollTo(0,0)}
+window.addEventListener('hashchange',setMode);setMode();
 
 /* ---------------- start ---------------- */
 tDraw();

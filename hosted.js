@@ -136,7 +136,8 @@ function applyAccess(m){ME_NOW=m;window.MH_ME=m;const ok=t=>!m.tools||m.tools.in
   if(m.admin){const f=document.querySelector('.lx-foot .hosted-only');if(f&&!f.querySelector('a[href="/admin"]')){const a=document.createElement('a');a.href='/admin';a.innerHTML=(window.mhIcon?window.mhIcon('shield-check'):'')+'Admin';f.prepend(a,' · ')}}
   // the Page Planner (/planner) and the knowledge graph (/knowledge) are their own pages, open to everyone signed in
   if(m.knowledge){const nav=document.querySelector('.lx-tab')&&document.querySelector('.lx-tab').parentElement;if(nav&&!nav.querySelector('a[href="/knowledge"]')){const a=document.createElement('a');a.className='lx-tab';a.href='/knowledge';a.style.textDecoration='none';a.innerHTML=(window.mhIcon?window.mhIcon('share-2'):'')+'<span>Knowledge</span>';nav.append(a)}}
-  if(m.planner){const nav=document.querySelector('.lx-tab')&&document.querySelector('.lx-tab').parentElement;if(nav&&!nav.querySelector('a[href="/planner"]')){const a=document.createElement('a');a.className='lx-tab';a.href='/planner';a.style.textDecoration='none';a.innerHTML=(window.mhIcon?window.mhIcon('layout-grid'):'')+'<span>Page Planner</span>';nav.append(a)}}
+  // the launcher's Page Planner tab (a menu: Page Planner for an import file, Photo Grid at /planner#photo for a back-office photo)
+  if(m.planner){const t=document.getElementById('lx-pltools');if(t)t.hidden=false}
   if(m.canEdit===false){const b=document.createElement('div');b.className='oh-banner';b.style.background='var(--accent)';b.innerHTML=(window.mhIcon?window.mhIcon('eye'):'')+'<span>Your access is view-only: you can look at venues but not change them.</span>';document.body.prepend(b)}
   // shell.js redraws the account button and the tab marker
   window.dispatchEvent(new CustomEvent('mh:me',{detail:m}))}
