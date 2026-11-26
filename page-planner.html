@@ -137,6 +137,9 @@ body.picking .cell.empty{background:color-mix(in srgb,var(--accent,#2554c7) 16%,
 .tg-wrap{display:grid;gap:16px;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr)}
 @media (max-width:900px){.tg-wrap{grid-template-columns:minmax(0,1fr)}}
 .tg-front{overflow-x:auto}
+.tg-sps{display:flex;flex-direction:column;gap:12px}
+.tg-sp .cap{margin:0 0 4px}
+.tg-sbar{gap:8px;margin:0 0 8px;align-items:center}.tg-sbar .opt{font-size:.82rem}
 .tg-g{display:grid;gap:3px;min-width:0}
 .tg-g{padding:6px;background:var(--pos-bg);border-radius:6px;border:1px solid var(--pos-line)}
 .tg-c{position:relative;min-width:0;height:48px;border:0;border-radius:4px;background:var(--pos-empty);color:var(--text,#111);font:inherit;font-size:.68rem;text-align:center;padding:2px;display:flex;align-items:center;justify-content:center}
@@ -271,7 +274,10 @@ body.tg-dragging,body.tg-dragging *{cursor:grabbing!important;user-select:none}
   <p class="small muted" id="tg-sum" role="status" aria-live="polite"></p>
   <p class="small muted" style="margin:0 0 8px">Drag a button to move it, on either grid. Drop it on another button to swap them.</p>
   <div class="tg-wrap">
-    <div class="tg-front"><p class="cap"><b>Front of house</b> (the POS screen)</p><div class="tg-g" id="tg-front"></div></div>
+    <div class="tg-front"><p class="cap"><b>Front of house</b> (the POS screen)</p>
+      <div class="row tg-sbar"><button type="button" class="sec sm" id="tg-sadd">Add screen page</button><button type="button" class="sec sm" id="tg-sdel" title="Removes the last screen page when it's empty">Remove empty page</button>
+        <label class="opt"><input type="checkbox" id="tg-sarrow"><span>Last screen slot is the page arrows</span></label></div>
+      <div class="tg-sps" id="tg-front"></div></div>
     <div class="tg-bo"><p class="cap"><b>Back office</b>: type these into each 5 × 5 page</p><div class="bo-pages" id="tg-bo"></div></div>
   </div>
 </section>
@@ -720,17 +726,29 @@ $('pp-dl2').onclick=()=>{
   XLSX.writeFile(wb,fname('Oolio One import by page.xlsx'))};
 
 // the arrows option changes only the back-office view, so it applies straight away (no rebuild)
-$('s-arrow').onchange=()=>{if(!P)return;P.settings.arrow=$('s-arrow').checked;$('tg-arrow').checked=P.settings.arrow;T.arrow=P.settings.arrow;tgDraw();if(P.pages){draw();keepDraft()}};
+$('s-arrow').onchange=()=>{if(!P)return;P.settings.arrow=$('s-arrow').checked;$('tg-arrow').checked=P.settings.arrow;T.arrow=P.settings.arrow;tSave();tDraw();if(P.pages){draw();keepDraft()}};
 
 /* ---------------- grid translator: one run of slot names, shown as the screen and as 5x5 back-office pages ---------------- */
 // names[k] = button name in run slot k; bg[k] = its colour (#rrggbb from a photo, or a planner colour)
 const TKEY='pp-grid';let T={cols:10,rows:10,arrow:true,names:[],bg:[]};
 try{const t=JSON.parse(localStorage.getItem(TKEY)||'null');if(t&&Array.isArray(t.names))T=Object.assign(T,t);if(!Array.isArray(T.bg))T.bg=[]}catch(e){}
-const tTot=()=>T.cols*T.rows;
+const tTot=()=>T.cols*T.rows;// slots on one screen page
+/* screen pages: when the run is longer than one screen, the POS screen shows it page after page. Screen page p holds
+   run slots p*per .. p*per+per-1, where per = the screen's slots, less one if its last slot is the page arrows (T.sarrow).
+   The screen shows as many pages as the last name needs, or more if added by hand (T.spn). */
+const tPer=()=>Math.max(1,tTot()-(T.sarrow?1:0));
+const tLast=()=>{let l=-1;T.names.forEach((x,i)=>{if(String(x||'').trim())l=i});return l};
+const tPages=()=>Math.max(1,T.spn||1,Math.ceil((tLast()+1)/tPer()));
+const tRun=()=>tPages()*tPer();// run slots shown on the screen pages
+// screen page p, slot i: the run slot it shows, or 'arrow'
+const tScr=(p,i)=>T.sarrow&&i===tTot()-1?'arrow':p*tPer()+i;
+// where run slot k sits on the screen: page, row, column (1-based)
+const tWhere=k=>{const per=tPer(),i=k%per;return {p:Math.floor(k/per)+1,r:Math.floor(i/T.cols)+1,c:i%T.cols+1}};
 function tSave(){try{localStorage.setItem(TKEY,JSON.stringify(T))}catch(e){}}
-function tSum(){const tot=tTot(),used=T.names.slice(0,tot).filter(x=>String(x||'').trim()).length;let lu=-1;T.names.slice(0,tot).forEach((x,i)=>{if(String(x||'').trim())lu=i});
-  const need=lu<0?0:boCount(tot,T.arrow,lu),all=boCount(tot,T.arrow);
-  $('tg-sum').textContent=used+' of '+tot+' screen slots used. '+(need?'Enter them as '+need+' back-office page'+(need>1?'s':'')+(need<all?' (a full '+T.cols+' × '+T.rows+' screen needs '+all+')':'')+'.':'A full '+T.cols+' × '+T.rows+' screen takes '+all+' back-office pages.')}
+function tSum(){const run=tRun(),used=T.names.slice(0,run).filter(x=>String(x||'').trim()).length,lu=tLast(),np=tPages();
+  const need=lu<0?0:boCount(run,T.arrow,lu),all=boCount(run,T.arrow);
+  $('tg-sum').textContent=used+' button'+(used===1?'':'s')+' on '+np+' screen page'+(np>1?'s':'')+' ('+T.cols+' × '+T.rows+(T.sarrow?', '+tPer()+' buttons a page':'')+'). '+
+    (need?'Enter them as '+need+' back-office page'+(need>1?'s':'')+'.':'A full screen page takes '+boCount(tTot(),T.arrow)+' back-office pages.')}
 const GOT=new Set();// slots just read from a photo, outlined until edited
 const HEX=/^#[0-9a-f]{6}$/i;
 // light buttons (yellow, pale green…) get dark text, as on the POS
@@ -740,13 +758,15 @@ const tStyle=k=>{const c=T.bg[k];return c&&(HEX.test(c)||/^var\(--[\w-]+\)$/.tes
 const tIn=(k,ph)=>'<input class="tg-c'+(GOT.has(k)?' got':'')+(light(T.bg[k])?' lt':'')+'"'+tStyle(k)+' data-k="'+k+'" value="'+esc(T.names[k]||'')+'" placeholder="'+ph+'" aria-label="Slot '+(k+1)+'">';
 function tDraw(){
   $('tg-cols').value=T.cols;$('tg-rows').value=T.rows;$('tg-arrow').checked=T.arrow;
-  const tot=tTot(),fg=$('tg-front');
-  fg.style.gridTemplateColumns='repeat('+T.cols+',minmax(56px,1fr))';
-  fg.innerHTML=Array.from({length:tot},(_,k)=>{const b=boPos(k,T.arrow);return tIn(k,'P'+b.pg+' '+b.r+','+b.c)}).join('');
-  const n=boCount(tot,T.arrow);let h='';
+  const tot=tTot(),np=tPages(),run=tRun(),fg=$('tg-front'),cols='repeat('+T.cols+',minmax(56px,1fr))';$('tg-sarrow').checked=!!T.sarrow;
+  let f='';for(let p=0;p<np;p++){f+='<div class="tg-sp"><p class="cap"><b>Screen page '+(p+1)+'</b>'+(np>1?' of '+np:'')+'</p><div class="tg-g" style="grid-template-columns:'+cols+'">';
+    for(let i=0;i<tot;i++){const k=tScr(p,i);if(k==='arrow'){f+='<div class="tg-c arrow" title="Screen page arrows">‹›</div>';continue}const b=boPos(k,T.arrow);f+=tIn(k,'P'+b.pg+' '+b.r+','+b.c)}
+    f+='</div></div>'}
+  fg.innerHTML=f;$('tg-sdel').disabled=np<=1||Math.ceil((tLast()+1)/tPer())>=np;
+  const n=boCount(run,T.arrow);let h='';
   for(let g=0;g<n;g++){h+='<div class="bo-pg"><b>Back-office page '+(g+1)+'</b><div class="tg-g" style="grid-template-columns:repeat(5,minmax(0,1fr))">';
-    for(let j=0;j<BO*BO;j++){const k=boSlot(g,j,T.arrow,tot);
-      h+=k==='arrow'?'<div class="tg-c arrow" title="Page arrows">‹›</div>':k==='off'?'<div class="tg-c off" title="Past the end of the screen: leave empty"></div>':tIn(k,'R'+(Math.floor(k/T.cols)+1)+' C'+(k%T.cols+1))}
+    for(let j=0;j<BO*BO;j++){const k=boSlot(g,j,T.arrow,run);
+      h+=k==='arrow'?'<div class="tg-c arrow" title="Page arrows">‹›</div>':k==='off'?'<div class="tg-c off" title="Past the last screen page: leave empty"></div>':(w=>tIn(k,(np>1?'S'+w.p+' ':'')+'R'+w.r+' C'+w.c))(tWhere(k))}
     h+='</div></div>'}
   $('tg-bo').innerHTML=h;tSum()}
 const tAll=k=>document.querySelectorAll('.tg-c[data-k="'+k+'"]');
@@ -755,8 +775,8 @@ function tSet(k,v,skip){T.names[k]=v;tAll(k).forEach(x=>{if(x!==skip)x.value=v})
   el.addEventListener('input',e=>{const x=e.target.closest('input.tg-c');if(!x)return;if(GOT.delete(+x.dataset.k))tAll(x.dataset.k).forEach(y=>y.classList.remove('got'));tSet(+x.dataset.k,x.value,x);tSave();tSum()});
   // paste a column of names (or a spreadsheet block) to fill on from this slot, in run order
   el.addEventListener('paste',e=>{const x=e.target.closest('input.tg-c');if(!x)return;const t=(e.clipboardData||window.clipboardData).getData('text');if(!/[\n\t]/.test(t.trim()))return;
-    e.preventDefault();const vals=t.replace(/\r/g,'').replace(/\n+$/,'').split(/\n|\t/).map(v=>v.trim());let k=+x.dataset.k;const tot=tTot();
-    vals.forEach(v=>{if(k<tot)tSet(k++,v)});tSave();tSum();if(vals.length>tot-(+x.dataset.k))$('tg-sum').textContent+=' '+(vals.length-(tot-(+x.dataset.k)))+' names didn’t fit on the screen.'});
+    e.preventDefault();const vals=t.replace(/\r/g,'').replace(/\n+$/,'').split(/\n|\t/).map(v=>v.trim());let k=+x.dataset.k;const np=tPages();
+    vals.forEach(v=>tSet(k++,v));tSave();if(tPages()!==np)tDraw();else tSum()});
   const hl=on=>e=>{const x=e.target.closest('.tg-c[data-k]');document.querySelectorAll('.tg-c.hl').forEach(y=>y.classList.remove('hl'));if(on&&x)tAll(x.dataset.k).forEach(y=>{if(y!==x)y.classList.add('hl')})};
   el.addEventListener('focusin',hl(true));el.addEventListener('focusout',hl(false));el.addEventListener('mouseover',hl(true));el.addEventListener('mouseout',hl(false))});
 // changing the screen size keeps the same run order (the back office doesn't change; the screen re-wraps)
@@ -764,7 +784,10 @@ const tNum=(id,lo,hi)=>{const v=Math.round(+$(id).value);return v>=lo&&v<=hi?v:n
 $('tg-cols').onchange=()=>{const v=tNum('tg-cols',2,10);if(v)T.cols=v;tSave();tDraw()};
 $('tg-rows').onchange=()=>{const v=tNum('tg-rows',1,10);if(v)T.rows=v;tSave();tDraw()};
 $('tg-arrow').onchange=()=>{T.arrow=$('tg-arrow').checked;tSave();tDraw()};
-$('tg-clear').onclick=()=>{if(T.names.some(x=>String(x||'').trim())&&!confirm('Clear every name in the translator?'))return;T.names=[];T.bg=[];GOT.clear();tMoves.length=0;$('tg-undo').disabled=true;tSave();tDraw()};
+$('tg-sarrow').onchange=()=>{T.sarrow=$('tg-sarrow').checked;tSave();tDraw()};
+$('tg-sadd').onclick=()=>{T.spn=tPages()+1;tSave();tDraw();const l=$('tg-front').lastElementChild;if(l)l.scrollIntoView({block:'nearest',behavior:'smooth'})};
+$('tg-sdel').onclick=()=>{const need=Math.max(1,Math.ceil((tLast()+1)/tPer()));T.spn=Math.max(need,tPages()-1);tSave();tDraw()};
+$('tg-clear').onclick=()=>{if(T.names.some(x=>String(x||'').trim())&&!confirm('Clear every name in the translator?'))return;T.names=[];T.bg=[];T.spn=1;GOT.clear();tMoves.length=0;$('tg-undo').disabled=true;tSave();tDraw()};
 
 /* ---------------- moving buttons: drag one onto another slot (front of house or back office) ----------------
    Dropping on an empty slot moves it; dropping on a button swaps the two. A short press still just edits the name. */
@@ -782,6 +805,8 @@ document.addEventListener('pointermove',e=>{if(!drag)return;
     document.body.classList.add('tg-dragging');tAll(drag.k).forEach(y=>y.classList.add('lift'));
     const g=drag.ghost=document.createElement('div');g.className='tg-ghost'+(light(T.bg[drag.k])?' lt':'');g.textContent=T.names[drag.k];
     if(T.bg[drag.k])g.style.setProperty('--c',T.bg[drag.k]);document.body.appendChild(g)}
+  // near the top or bottom of the window, scroll so a button can be dragged to another screen page
+  if(e.clientY<70)scrollBy(0,-18);else if(e.clientY>innerHeight-70)scrollBy(0,18);
   e.preventDefault();drag.ghost.style.transform='translate('+(e.clientX+10)+'px,'+(e.clientY+10)+'px)';
   const t=dropAt(e),k=t?+t.dataset.k:null;if(k===drag.over)return;drag.over=k;
   document.querySelectorAll('.tg-c.drop').forEach(y=>y.classList.remove('drop'));if(k!=null&&k!==drag.k)tAll(k).forEach(y=>y.classList.add('drop'))});
@@ -872,16 +897,16 @@ async function readBoPhoto(img){
   if(ocr&&ocr.named)return {pages:[ocr.cells],colours:cols(ocr),by:'OCR',warn:'The text didn’t line up neatly as one 5 × 5 page, so check every slot.'};
   if(!m.email&&!m.ocr)throw new Error('Reading photos works on the website (menuhauler.com/planner), where the OCR server and Claude are.');
   throw new Error(ai?'Claude isn’t switched on for you (the owner turns it on in /admin).':(why||'Nothing could read the photo')+(m.claude?'':'. Claude isn’t switched on for you, so type the names in.'))}
-// put one read page into run slots; returns how many names didn't fit on the screen
-function placeBo(pg0,cells,colours){const per=boPer(T.arrow),tot=tTot();let off=0;
-  cells.forEach((v,j)=>{if(T.arrow&&j===BO*BO-1)return;if(v==='<>')v='';const k=pg0*per+j;T.names[k]=v;T.bg[k]=v&&colours?colours[j]||'':'';if(v){GOT.add(k);if(k>=tot)off++}else GOT.delete(k)});return off}
+// put one read page into run slots (the screen gets more pages if it needs them)
+function placeBo(pg0,cells,colours){const per=boPer(T.arrow);
+  cells.forEach((v,j)=>{if(T.arrow&&j===BO*BO-1)return;if(v==='<>')v='';const k=pg0*per+j;T.names[k]=v;T.bg[k]=v&&colours?colours[j]||'':'';if(v)GOT.add(k);else GOT.delete(k)})}
 // start again: drop every uploaded photo and everything in the translator (names, colours, moves), back to page 1
 $('tg-fresh').onclick=()=>{const th=$('tg-thumbs'),n=th.querySelectorAll('figure').length,names=T.names.some(x=>String(x||'').trim());
   if((n||names)&&!confirm('Remove '+(n?n+' uploaded photo'+(n>1?'s':'')+' and ':'')+'every button in the translator, and start again?'))return;
   th.querySelectorAll('img').forEach(i=>{try{URL.revokeObjectURL(i.src)}catch(e){}});th.innerHTML='';th.hidden=true;
-  T.names=[];T.bg=[];GOT.clear();tMoves.length=0;$('tg-undo').disabled=true;$('tg-start').value=1;tSave();tDraw();pmsg('Photos removed and the grid cleared. Upload a back-office photo to start again.')};
+  T.names=[];T.bg=[];T.spn=1;GOT.clear();tMoves.length=0;$('tg-undo').disabled=true;$('tg-start').value=1;tSave();tDraw();pmsg('Photos removed and the grid cleared. Upload a back-office photo to start again.')};
 $('tg-photo').onchange=async()=>{const files=[...$('tg-photo').files];$('tg-photo').value='';if(!files.length)return;
-  let pg0=Math.max(0,Math.round(+$('tg-start').value||1)-1),read=0,off=0,notes=[],by=new Set();const th=$('tg-thumbs');
+  let pg0=Math.max(0,Math.round(+$('tg-start').value||1)-1),read=0,np0=tPages(),notes=[],by=new Set();const th=$('tg-thumbs');
   for(const f of files){let im;try{pmsg('Reading '+f.name+'…');im=await photoImg(f);const res=await readBoPhoto(im.img);by.add(res.by);
       if(res.why)notes.push(f.name+': '+res.why+', so Claude read it.');if(res.warn)notes.push(f.name+': '+res.warn);
       // slot 25 tells us whether this back office keeps the page arrows there (only switched when the translator is empty)
@@ -892,28 +917,29 @@ $('tg-photo').onchange=async()=>{const files=[...$('tg-photo').files];$('tg-phot
       if(clash&&!confirm(f.name+' would replace '+clash+' name'+(clash>1?'s':'')+' already on back-office page '+(pg0+1)+(res.pages.length>1?'–'+(pg0+res.pages.length):'')+'. Replace them?')){notes.push(f.name+' was skipped.');URL.revokeObjectURL(im.url);continue}
       const fig=document.createElement('figure');fig.innerHTML='<img alt="Back-office photo '+esc(f.name)+'"><figcaption>Back-office page '+(pg0+1)+(res.pages.length>1?'–'+(pg0+res.pages.length):'')+' · '+res.by+'</figcaption>';
       fig.querySelector('img').src=im.url;fig.querySelector('img').onclick=e=>e.target.classList.toggle('big');th.appendChild(fig);th.hidden=false;
-      res.pages.forEach((p,i)=>{off+=placeBo(pg0++,p,(res.colours||[])[i]);read++})}
+      res.pages.forEach((p,i)=>{placeBo(pg0++,p,(res.colours||[])[i]);read++})}
     catch(e){if(im)URL.revokeObjectURL(im.url);notes.push(e.message);pmsg(notes.join(' '),true)}}
   $('tg-start').value=pg0+1;tSave();tDraw();
-  if(read){const fit=off?' '+off+' name'+(off>1?'s are':' is')+' past the end of the '+T.cols+' × '+T.rows+' screen: make the screen bigger to see '+(off>1?'them':'it')+'.':'';
+  if(read){const np=tPages(),fit=np>np0?' The screen now has '+np+' pages to hold them all.':'';
     pmsg('Read '+read+' back-office page'+(read>1?'s':'')+' ('+[...by].join(' and ')+'). Names read from the photo are outlined in yellow; check them and fix any that are wrong.'+fit+(notes.length?' '+notes.join(' '):''),false)}
   else pmsg(notes.join(' ')||'Nothing was read.',true)};
 function tFromOpts(){const w=$('tg-fromw');if(!P||!P.pages||!P.pages.length){w.hidden=true;return}w.hidden=false;
   $('tg-from').innerHTML='<option value="">Choose a page…</option>'+P.pages.map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')}
 $('tg-from').onchange=()=>{const p=byId($('tg-from').value);$('tg-from').value='';if(!p)return;
   if(T.names.some(x=>String(x||'').trim())&&!confirm('Replace the names in the translator with '+p.name+'?'))return;
-  T.cols=S().cols;T.rows=S().rows;T.arrow=arrowOn();
+  T.cols=S().cols;T.rows=S().rows;T.arrow=arrowOn();T.sarrow=false;T.spn=1;
   T.names=p.cells.map(c=>!c?'':c.t==='b'?'‹ Back':c.t==='l'?((byId(c.to)||{}).name||'')+' ›':(P.items[c.id]||{}).name||'');
   T.bg=p.cells.map(c=>!c?'':c.t==='i'&&P.items[c.id]?colourOf(P.items[c.id]):c.t==='l'?pageColour(byId(c.to)||{cells:[]}):'#111111');GOT.clear();tSave();tDraw()};
 $('tg-dl').onclick=()=>{
-  const tot=tTot(),wb=XLSX.utils.book_new(),g=[['Front of house screen ('+T.cols+' × '+T.rows+')']];
-  for(let r=0;r<T.rows;r++)g.push(Array.from({length:T.cols},(_,c)=>T.names[r*T.cols+c]||''));
-  const list=[['Button','Screen row','Screen column','Back-office page','Back-office row','Back-office column','Colour']];
-  for(let b=0;b<boCount(tot,T.arrow);b++){g.push([]);g.push(['Back-office page '+(b+1)+' (5 × 5)']);
-    for(let r=0;r<BO;r++){const row=[];for(let c=0;c<BO;c++){const k=boSlot(b,r*BO+c,T.arrow,tot);row.push(k==='arrow'?'‹ › arrows':k==='off'?'':T.names[k]||'')}g.push(row)}}
-  for(let k=0;k<tot;k++)if(String(T.names[k]||'').trim()){const b=boPos(k,T.arrow);list.push([T.names[k],Math.floor(k/T.cols)+1,k%T.cols+1,b.pg,b.r,b.c,HEX.test(T.bg[k]||'')?T.bg[k]:''])}
+  const tot=tTot(),np=tPages(),run=tRun(),wb=XLSX.utils.book_new(),g=[];
+  for(let p=0;p<np;p++){if(p)g.push([]);g.push(['Front of house screen page '+(p+1)+(np>1?' of '+np:'')+' ('+T.cols+' × '+T.rows+')']);
+    for(let r=0;r<T.rows;r++)g.push(Array.from({length:T.cols},(_,c)=>{const k=tScr(p,r*T.cols+c);return k==='arrow'?'‹ › arrows':T.names[k]||''}))}
+  const list=[['Button','Screen page','Screen row','Screen column','Back-office page','Back-office row','Back-office column','Colour']];
+  for(let b=0;b<boCount(run,T.arrow);b++){g.push([]);g.push(['Back-office page '+(b+1)+' (5 × 5)']);
+    for(let r=0;r<BO;r++){const row=[];for(let c=0;c<BO;c++){const k=boSlot(b,r*BO+c,T.arrow,run);row.push(k==='arrow'?'‹ › arrows':k==='off'?'':T.names[k]||'')}g.push(row)}}
+  for(let k=0;k<run;k++)if(String(T.names[k]||'').trim()){const b=boPos(k,T.arrow),w=tWhere(k);list.push([T.names[k],w.p,w.r,w.c,b.pg,b.r,b.c,HEX.test(T.bg[k]||'')?T.bg[k]:''])}
   const w1=XLSX.utils.aoa_to_sheet(g);w1['!cols']=Array.from({length:Math.max(T.cols,BO)},()=>({wch:20}));
-  const w2=XLSX.utils.aoa_to_sheet(list);w2['!cols']=[{wch:30},{wch:10},{wch:12},{wch:14},{wch:14},{wch:16}];
+  const w2=XLSX.utils.aoa_to_sheet(list);w2['!cols']=[{wch:30},{wch:12},{wch:10},{wch:12},{wch:14},{wch:14},{wch:16},{wch:10}];
   XLSX.utils.book_append_sheet(wb,w1,'Grids');XLSX.utils.book_append_sheet(wb,w2,'Where each button goes');
   XLSX.writeFile(wb,fname('back-office build.xlsx'))};
 
