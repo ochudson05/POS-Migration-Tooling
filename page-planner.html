@@ -112,6 +112,11 @@ body.picking .cell.empty{background:color-mix(in srgb,var(--accent,#2554c7) 16%,
 .tcol .sw{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid var(--card,#fff);background:var(--c);box-shadow:0 0 0 1px var(--line,#dde);cursor:pointer}
 .tcol .sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent,#2554c7)}
 .tcol input[type=color]{width:30px;height:26px;padding:0 2px;border:1px solid var(--line,#dde);border-radius:6px;background:none;cursor:pointer}
+/* step 1: start from photos of the POS */
+.pp-phx{margin:12px 0 0;border:1px solid var(--line,#dde);border-radius:10px;padding:10px 12px}
+.pp-phx summary{cursor:pointer}.pp-phb{display:grid;gap:10px;margin-top:10px}
+.pp-kind{border:0;margin:0;padding:0;display:grid;gap:6px}.pp-kind legend{padding:0;margin-bottom:4px}
+.pp-phb .dz{padding:14px 16px}
 .revs{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
 .revs li{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;padding:8px 10px;border:1px solid var(--line,#dde);border-radius:8px;font-size:.85rem}
 .revs li q{color:var(--muted,#667);flex-basis:100%}
@@ -204,6 +209,24 @@ body.tg-dragging,body.tg-dragging *{cursor:grabbing!important;user-select:none}
     <label class="f" style="flex:1 1 220px">Plan name<input id="pp-name" placeholder="Venue menu grid"></label>
     <button type="button" class="sec" id="pp-save" disabled>Save plan</button>
   </div>
+  <details class="pp-phx" id="pp-phx">
+    <summary><b>Or start from photos of the POS</b> <span class="small muted">to show how a venue’s POS looks now, without typing it in</span></summary>
+    <div class="pp-phb">
+      <fieldset class="pp-kind"><legend class="small">The photos are of</legend>
+        <label class="opt"><input type="radio" name="pp-phk" value="foh" checked><span><b>Front of house</b>: the POS screen staff use. One photo for each page.</span></label>
+        <label class="opt"><input type="radio" name="pp-phk" value="boh"><span><b>Back office</b>: the 5 × 5 pages. All the photos you pick together are one POS page, in order.</span></label>
+      </fieldset>
+      <div class="row">
+        <label class="f">Screen columns<input type="number" id="pp-phc" min="2" max="10" value="5"></label>
+        <label class="f">Screen rows<input type="number" id="pp-phr" min="2" max="10" value="5"></label>
+        <label class="f" style="flex:1 1 220px">Page name<input id="pp-phn" placeholder="Leave blank to read it from the photo"></label>
+      </div>
+      <label class="opt" id="pp-pharw" hidden><input type="checkbox" id="pp-pharrow" checked><span>Slot 25 of each back-office page is the page arrows</span></label>
+      <label class="opt"><input type="checkbox" id="pp-phai"><span>Read with AI (uses your Claude allowance; better on angled phone photos and front-of-house screens)</span></label>
+      <label class="dz sm" for="pp-phf"><input type="file" id="pp-phf" class="dz-in" accept="image/*" multiple><b>Add photos</b><span class="small muted" id="pp-phhint">Each photo becomes a page. Add more photos at any time to add more pages.</span></label>
+      <p class="msg" id="pp-phmsg" role="status" aria-live="polite"></p>
+    </div>
+  </details>
   <p class="msg" id="pp-msg1" role="status" aria-live="polite"></p>
   <details id="pp-saved"><summary class="small">Saved plans <span id="pp-where" class="muted"></span></summary><ul class="plans" id="pp-plans"></ul></details>
 </section>
@@ -487,7 +510,7 @@ function checks(){
   for(let i=0;i<names.length;i++)for(let j=i+1;j<names.length;j++){const a=names[i],b=names[j];if(a.name.toLowerCase()===b.name.toLowerCase())continue;
     const wa=words(a.name).filter(w=>!/^(veg|vegetarian|dum)$/.test(w)),wb=words(b.name).filter(w=>!/^(veg|vegetarian|dum)$/.test(w));
     if(wa.length&&wa.join(' ')===wb.join(' '))out.push(['w','<b>'+esc(a.name)+'</b> and <b>'+esc(b.name)+'</b> look almost the same on a button ('+money(a)+' vs '+money(b)+'). Make the difference obvious in the name or colour.'])}
-  P.order.forEach(id=>{const x=it[id];if(!x.sizes.length&&!x.price)out.push(['i','<b>'+esc(x.name)+'</b> has no price, so it will be an open-price button. Check that’s intended.'])});
+  if(!photoPlan())P.order.forEach(id=>{const x=it[id];if(!x.sizes.length&&!x.price)out.push(['i','<b>'+esc(x.name)+'</b> has no price, so it will be an open-price button. Check that’s intended.'])});
   P.pages.forEach(p=>{const u=used(p);if(u&&u<=Math.floor(N()*.3)&&!kids(p).length)out.push(['i','<b>'+esc(p.name)+'</b> uses only '+u+' of '+N()+' slots. It could share a page with another small one.'])});
   const split={};P.pages.forEach(p=>p.cells.forEach(c=>{if(c&&c.t==='i'&&placed.get(c.id)===1){const cat=it[c.id].cat;(split[cat]=split[cat]||new Set()).add(p.name)}}));
   Object.entries(split).filter(([,v])=>v.size>1).forEach(([k,v])=>out.push(['i','Category <b>'+esc(k)+'</b> is spread over '+v.size+' pages ('+[...v].map(esc).join(', ')+').']));
@@ -559,7 +582,8 @@ const toHex=c=>/^#[0-9a-f]{6}$/i.test(c||'')?c.toLowerCase():VARHEX[c]||'#607d8b
 function colourOf(x){if(S().colour==='veg')return x.grp==='Beverage'?'var(--oth)':x.nv?'var(--nv)':'var(--veg)';return PAL[catIdx(x.cat)]}
 // a page's toolbar colour: the colour of its first product
 function pageColour(p){const c=p.cells.find(c=>c&&c.t==='i'&&P.items[c.id]);return c?colourOf(P.items[c.id]):'#607d8b'}
-const priceLine=x=>x.sizes.length?x.sizes.join(' / '):x.mkt||!x.price?'Market Price':'$'+(+x.price).toFixed(2);
+const photoPlan=()=>!!(P&&P.source&&P.source.photo);
+const priceLine=x=>x.sizes.length?x.sizes.join(' / '):x.mkt?'Market Price':!x.price?(photoPlan()?'':'Market Price'):'$'+(+x.price).toFixed(2);
 function drawLegend(){const veg=S().colour==='veg';$('pp-colour').value=veg?'veg':'cat';$('pp-colhint').hidden=veg;
   const fixed='<span><i style="background:var(--lnk);box-shadow:inset 0 -3px 0 #2196f3"></i>Sub-page link or Back</span><span><i style="background:#607d8b;clip-path:polygon(0 0,100% 0,0 100%)"></i>Copy (also on another page)</span>';
   $('pp-legend').innerHTML=veg?'<span><i style="background:var(--veg)"></i>Veg</span><span><i style="background:var(--nv)"></i>Non-veg</span><span><i style="background:var(--oth)"></i>Drinks and other</span>'+fixed
@@ -667,7 +691,66 @@ function setPlan(x,fresh){
   if(P.pages){const ok=new Set(P.order);P.pages.forEach(p=>p.cells=p.cells.map(c=>c&&c.t==='i'&&!ok.has(c.id)?null:c))}
   undo=[];sel=null;dirty=!!fresh;showSettings();$('pp-set').hidden=false;$('pp-lock').hidden=true;$('pp-save').disabled=false;
   $('pp-cnt').textContent=P.order.length+' buttons, '+r.mods+' modifier rows left out';
-  if(fresh){build();changed()}else draw()}
+  if(fresh){build();changed()}else draw();
+  phUi()}
+
+/* ---------------- starting from photos of the POS ----------------
+   Front of house: one photo = one page at the screen size given. Back office: the photos picked together are one POS
+   page's 5 x 5 pages in order, laid into the screen's slots (screen slot k = back-office run slot k), with any overflow
+   on a second page. Each button becomes a row of a made-up import (Product Name, Category = the page it was first seen
+   on, Sell Price from the photo), so saving, drafts, checks and downloads work as for a real import; every button keeps
+   the colour read from the photo as its own colour. */
+const PH_HEAD=['Product Name','Product Type','Product Group','Category','Sell Price','POS Name'];
+const phKind=()=>(document.querySelector('input[name="pp-phk"]:checked')||{}).value||'foh';
+const phPrice=t=>{const m=String(t||'').replace(/,/g,'.').match(/\d+(\.\d{1,2})?/);return m?+m[0]:''};
+try{$('pp-phai').checked=localStorage.getItem('pp-boai')==='1'}catch(e){}
+$('pp-phai').onchange=()=>{try{localStorage.setItem('pp-boai',$('pp-phai').checked?'1':'0')}catch(e){}};
+function phUi(){const boh=phKind()==='boh',got=photoPlan();$('pp-pharw').hidden=!boh;
+  $('pp-phhint').textContent=boh?'Pick every back-office page of one POS page together. Add more photos at any time for the next page.':'Each photo becomes a page. Add more photos at any time to add more pages.';
+  if(got){$('pp-phc').value=S().cols;$('pp-phr').value=S().rows}$('pp-phc').disabled=$('pp-phr').disabled=got;
+  $('pp-phc').title=$('pp-phr').title=got?'Set by the photos already read. Change it in step 2.':''}
+document.querySelectorAll('input[name="pp-phk"]').forEach(r=>r.onchange=phUi);
+function phMsg(t,err){const m=$('pp-phmsg');m.textContent=t||'';m.className='msg'+(err?' err':t?' ok':'')}
+// read pages ({name, cells, prices, colours}, cells already C x R) -> pages of the plan
+function addPhotoPages(list){
+  const fresh=!photoPlan(),C=fresh?Math.max(2,Math.min(10,Math.round(+$('pp-phc').value)||5)):S().cols,R=fresh?Math.max(2,Math.min(10,Math.round(+$('pp-phr').value)||5)):S().rows,N0=C*R;
+  const src=fresh?{file:'Photos of the POS',sheet:'Photos',head:PH_HEAD,hr:0,rows:[],photo:true}:P.source;
+  const pages=fresh?[]:P.pages.slice(),seen={};
+  src.rows.forEach(r=>{const k=String(r[0]).trim().toLowerCase();if(!seen[k])seen[k]=k+'|'+String(r[3]).trim().toLowerCase()});
+  const names=new Set(pages.map(p=>p.name.toLowerCase()));let added=0,buttons=0;
+  list.forEach(pg=>{let name=(pg.name||'').trim()||'Page '+(pages.length+1),k=name,n=2;while(names.has(k.toLowerCase()))k=name+' '+(n++);name=k;names.add(name.toLowerCase());
+    const cells=pg.cells.slice(0,N0).map((t,i)=>{t=strC(t);if(!t||t==='<>')return null;const key0=t.toLowerCase();
+      if(!seen[key0]){src.rows.push([t,'Product','',name,phPrice(pg.prices&&pg.prices[i]),'']);seen[key0]=key0+'|'+name.toLowerCase()}
+      buttons++;const col=okHex(pg.colours&&pg.colours[i]);return col?{t:'i',id:seen[key0],c:col}:{t:'i',id:seen[key0]}});
+    while(cells.length<N0)cells.push(null);pages.push({id:uid(),name,parent:null,cells});added++});
+  const settings=fresh?Object.assign({},DEF,{cols:C,rows:R,arrow:$('pp-pharrow').checked}):P.settings;
+  setPlan({id:fresh?null:P.id,name:fresh?'':P.name,settings,colours:fresh?{}:P.colours,source:src,pages},false);
+  if(fresh)$('pp-name').value='Venue POS from photos';
+  changed();phUi();return {added,buttons}}
+$('pp-phf').onchange=async()=>{const files=[...$('pp-phf').files];$('pp-phf').value='';if(!files.length)return;
+  if(P&&P.pages&&!photoPlan()&&!confirm('Start a new plan from these photos? The plan you have open is replaced (save it first if you need it).'))return;
+  const boh=phKind()==='boh',ai=$('pp-phai').checked,C=photoPlan()?S().cols:Math.max(2,Math.min(10,Math.round(+$('pp-phc').value)||5)),R=photoPlan()?S().rows:Math.max(2,Math.min(10,Math.round(+$('pp-phr').value)||5));
+  const notes=[],by=new Set(),list=[],typed=$('pp-phn').value.trim();
+  try{
+    if(boh){// one POS page from all the back-office pages picked together
+      const run=[],runP=[],runC=[];let arrow=photoPlan()?arrowOn():$('pp-pharrow').checked,bo=0;
+      for(const f of files){phMsg('Reading '+f.name+'…');const im=await photoImg(f);try{const res=await readBoPhoto(im.img,ai);by.add(res.by);if(res.why)notes.push(f.name+': '+res.why+', so Claude read it.');if(res.warn)notes.push(f.name+': '+res.warn);
+          res.pages.forEach((cells,pi)=>{if(!bo&&!photoPlan()&&cells[BO*BO-1]){arrow=cells[BO*BO-1]==='<>';$('pp-pharrow').checked=arrow}
+            const per=boPer(arrow);cells.forEach((t,j)=>{if(arrow&&j===BO*BO-1)return;const k=bo*per+j;run[k]=t==='<>'?'':t;runC[k]=(res.colours[pi]||[])[j]||'';runP[k]=((res.prices||[])[pi]||[])[j]||''});bo++})}
+        finally{URL.revokeObjectURL(im.url)}}
+      const N0=C*R,last=run.reduce((l,t,i)=>t?i:l,-1);
+      for(let s0=0;s0<=Math.max(0,last);s0+=N0)list.push({name:typed?(s0?typed+' (more)':typed):'',cells:run.slice(s0,s0+N0),colours:runC.slice(s0,s0+N0),prices:runP.slice(s0,s0+N0)});
+      if(list.length>1)notes.push('The back-office pages hold more buttons than one '+C+' × '+R+' screen, so they run onto '+list.length+' pages.')}
+    else for(const f of files){phMsg('Reading '+f.name+'…');const im=await photoImg(f);
+      try{const res=await readFohPhoto(im.img,C,R,ai);by.add(res.by);if(res.why)notes.push(f.name+': '+res.why+', so Claude read it.');if(res.warn)notes.push(f.name+': '+res.warn);
+        if(typed&&files.length===1)res.page.name=typed;list.push(res.page)}
+      catch(e){notes.push(f.name+': '+e.message)}finally{URL.revokeObjectURL(im.url)}}
+    if(!list.length)throw new Error(notes.join(' ')||'Nothing was read from the photos.');
+    const r=addPhotoPages(list);$('pp-phn').value='';
+    phMsg('Added '+r.added+' page'+(r.added>1?'s':'')+' with '+r.buttons+' buttons ('+[...by].join(' and ')+'). Check each page below and fix anything that was misread: click a button to move it, or rename pages in their name box.'+(notes.length?' '+notes.join(' '):''));
+    $('pp-ed').scrollIntoView({behavior:'smooth',block:'start'})}
+  catch(e){phMsg(e.message,true)}};
+phUi();
 
 /* ---------------- saving: the website (everyone signed in), else this browser ---------------- */
 const DRAFT='pp-draft',LOCAL='pp-local';
@@ -886,34 +969,38 @@ function photoBlob(img,max){const s=Math.min(1,max/Math.max(img.naturalWidth,img
 const b64=blob=>new Promise((res,rej)=>{const fr=new FileReader();fr.onload=()=>res(String(fr.result).split(',')[1]);fr.onerror=()=>rej(fr.error);fr.readAsDataURL(blob)});
 const MARK=/^[\s+＋⊕‹›<>«»←→]+$/,ARROW=/[‹<«←]|[›>»→]/,PRICE=/^(\$\s*)?\d{1,4}([.,]\d{1,2})?$|^market\s*price$/i;
 // place labels on a 5x5 grid along one axis: cluster the centres, then number the clusters by the button pitch
-function axis(items,lo,hi,get,anchor){
-  const v=items.map(get).slice().sort((a,b)=>a-b),pitch0=(hi-lo)/BO||1,cl=[];
+function axis(items,lo,hi,get,anchor,n){n=n||BO;
+  const v=items.map(get).slice().sort((a,b)=>a-b),pitch0=(hi-lo)/n||1,cl=[];
   v.forEach(x=>{const c=cl[cl.length-1];if(c&&x-c.max<pitch0*0.4){c.max=x;c.sum+=x;c.n++}else cl.push({min:x,max:x,sum:x,n:1})});
   const m=cl.map(c=>c.sum/c.n),d=m.slice(1).map((x,i)=>x-m[i]);
   const pitch=d.length?med(d.map(x=>x/Math.max(1,Math.round(x/pitch0)))):pitch0;
   // the ‹ › cell is always the last column / row; otherwise count from the nearest edge of the text
-  let first=anchor!=null?BO-1-Math.round((anchor-m[0])/pitch):Math.round((m[0]-lo-pitch/2)/pitch);
-  first=Math.max(0,Math.min(BO-1,first));
+  let first=anchor!=null?n-1-Math.round((anchor-m[0])/pitch):Math.round((m[0]-lo-pitch/2)/pitch);
+  first=Math.max(0,Math.min(n-1,first));
   const at=x=>{let i=0;m.forEach((y,j)=>{if(Math.abs(y-x)<Math.abs(m[i]-x))i=j});return first+Math.round((m[i]-m[0])/pitch)};
-  return {n:cl.length,at,over:first+Math.round((m[m.length-1]-m[0])/pitch)>=BO}}
-function boFromOcr(data){
+  return {n:cl.length,at,over:first+Math.round((m[m.length-1]-m[0])/pitch)>=n}}
+// OCR lines -> a C x R grid of button names (and prices); the back office is 5 x 5 with the ‹ › cell as an anchor
+const boFromOcr=data=>gridFromOcr(data,BO,BO,true);
+function gridFromOcr(data,C,R,bo){
   const L=(data&&data.lines||[]).filter(l=>l&&Array.isArray(l.box)&&String(l.text||'').trim())
     .map(l=>({t:String(l.text).replace(/\s+/g,' ').trim(),x0:+l.box[0],y0:+l.box[1],x1:+l.box[2],y1:+l.box[3]}));
   if(!L.length)return null;
-  const hMed=med(L.map(l=>l.y1-l.y0))||10,marks=L.filter(l=>MARK.test(l.t)),words=L.filter(l=>!MARK.test(l.t)&&!PRICE.test(l.t)).sort((a,b)=>a.y0-b.y0||a.x0-b.x0);
+  const hMed=med(L.map(l=>l.y1-l.y0))||10,marks=L.filter(l=>MARK.test(l.t)),prices=L.filter(l=>!MARK.test(l.t)&&PRICE.test(l.t)),words=L.filter(l=>!MARK.test(l.t)&&!PRICE.test(l.t)).sort((a,b)=>a.y0-b.y0||a.x0-b.x0);
   // the lines of a two-line name: just below the last line and overlapping it sideways
   const btn=[];words.forEach(w=>{const b=btn.find(b=>w.y0-b.y1<hMed*0.75&&w.y0>b.y0&&Math.min(b.x1,w.x1)-Math.max(b.x0,w.x0)>0.3*Math.min(b.x1-b.x0,w.x1-w.x0));
     if(b){b.t+=' '+w.t;b.x0=Math.min(b.x0,w.x0);b.x1=Math.max(b.x1,w.x1);b.y1=Math.max(b.y1,w.y1)}else btn.push(Object.assign({},w))});
   if(!btn.length)return null;
-  const all=btn.concat(marks),cx=l=>(l.x0+l.x1)/2,cy=l=>(l.y0+l.y1)/2,arr=marks.filter(l=>ARROW.test(l.t));
+  const all=btn.concat(marks),cx=l=>(l.x0+l.x1)/2,cy=l=>(l.y0+l.y1)/2,arr=bo?marks.filter(l=>ARROW.test(l.t)):[];
   const lox=Math.min(...all.map(l=>l.x0)),hix=Math.max(...all.map(l=>l.x1)),loy=Math.min(...all.map(l=>l.y0)),hiy=Math.max(...all.map(l=>l.y1));
   const ax=arr.length?arr.reduce((s,l)=>s+cx(l),0)/arr.length:null,ay=arr.length?arr.reduce((s,l)=>s+cy(l),0)/arr.length:null;
   // per-cell spacing comes from the biggest of the boxes and the text spread, so a photo of the 5x5 alone works
-  const X=axis(all,lox,hix+(hix-lox)/(BO*2),cx,ax),Y=axis(all,loy,hiy+(hiy-loy)/(BO*2),cy,ay);
-  const cells=new Array(BO*BO).fill(''),boxes=new Array(BO*BO).fill(null);
-  btn.forEach(b=>{const r=Y.at(cy(b)),c=X.at(cx(b));if(r<BO&&c<BO){const i=r*BO+c;cells[i]=cells[i]?cells[i]+' '+b.t:b.t;boxes[i]=boxes[i]||b}});
-  if(arr.length)cells[BO*BO-1]=cells[BO*BO-1]||'<>';
-  return {cells,boxes,hMed,named:cells.filter(x=>x&&x!=='<>').length,messy:X.n>BO||Y.n>BO||X.over||Y.over}}
+  const X=axis(all,lox,hix+(hix-lox)/(C*2),cx,ax,C),Y=axis(all,loy,hiy+(hiy-loy)/(R*2),cy,ay,R);
+  const cells=new Array(C*R).fill(''),boxes=new Array(C*R).fill(null),pr=new Array(C*R).fill('');
+  btn.forEach(b=>{const r=Y.at(cy(b)),c=X.at(cx(b));if(r<R&&c<C){const i=r*C+c;cells[i]=cells[i]?cells[i]+' '+b.t:b.t;boxes[i]=boxes[i]||b}});
+  // a price line belongs to the button whose name sits just above it
+  prices.forEach(l=>{let best=-1,bd=1e9;boxes.forEach((b,i)=>{if(!b)return;const dy=l.y0-b.y1,dx=Math.abs(cx(l)-cx(b));if(dy>-hMed*0.5&&dy<hMed*3&&dx<(b.x1-b.x0)/2+hMed*3&&dy+dx<bd){bd=dy+dx;best=i}});if(best>=0&&!pr[best])pr[best]=l.t});
+  if(arr.length)cells[C*R-1]=cells[C*R-1]||'<>';
+  return {cells,boxes,hMed,prices:pr,named:cells.filter(x=>x&&x!=='<>').length,messy:X.n>C||Y.n>R||X.over||Y.over}}
 // a button's colour: the photo just around its name (above, below and beside the text), median of each channel
 function boColours(img,scale,boxes,hMed){
   const c=document.createElement('canvas'),W=c.width=Math.round(img.naturalWidth*scale),H=c.height=Math.round(img.naturalHeight*scale),g=c.getContext('2d',{willReadFrequently:true});
@@ -929,26 +1016,51 @@ const BO_PROMPT='This is a photo or screenshot of a POS back office showing butt
   'For each slot give the button name exactly as written: keep its capitals, join a name that wraps onto two lines with one space, and leave out prices. '+
   'Use "" for an empty slot and "<>" for the page arrows. Ignore menus, toolbars and anything outside the 5 × 5 grids. '+
   'Also give each button\'s background colour as a hex code (for example "#2e7d32"), matching the colour on screen as closely as you can; use "" for empty slots and the arrows. '+
-  'Answer with JSON only, no other text: {"pages":[{"cells":["25 strings, row by row from the top-left"],"colours":["25 hex codes in the same order"]}]}';
-async function boFromClaude(img){
+  'If a price is shown on a button, give it too ("" if none). '+
+  'Answer with JSON only, no other text: {"pages":[{"cells":["25 strings, row by row from the top-left"],"colours":["25 hex codes in the same order"],"prices":["25 prices in the same order"]}]}';
+// the front-of-house screen: a toolbar of pages and a C x R grid of buttons
+const FOH_PROMPT=(C,R)=>'This is a photo or screenshot of a POS front-of-house screen (what staff tap). There is a toolbar of page tabs, and the main area is a grid of buttons '+C+' across and '+R+' down. '+
+  'Give the name of the toolbar tab that is selected (highlighted), the toolbar tab names in order, and every slot of the '+C+' × '+R+' button grid row by row from the top-left: '+
+  'the button name exactly as written (keep its capitals, join a name that wraps onto two lines with one space), its price if one is shown ("" if none) and its background colour as a hex code (for example "#2e7d32"). '+
+  'Use "" for empty slots. Ignore the toolbar, order list and anything outside the button grid when filling the cells. '+
+  'Answer with JSON only, no other text: {"page":"selected tab name","toolbar":["tab names"],"cells":["'+C*R+' names, row by row"],"prices":["same order"],"colours":["same order"]}';
+async function askClaude(img,prompt){
   const blob=await photoBlob(img,1568),r=await fetch('/api/claude',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},
-    body:JSON.stringify({prompt:BO_PROMPT,images:[{type:'image/jpeg',data:await b64(blob)}]})});
+    body:JSON.stringify({prompt,images:[{type:'image/jpeg',data:await b64(blob)}]})});
   const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Claude couldn’t read the photo ('+r.status+').');
-  let v;const t=String(j.text||''),a=t.indexOf('{'),z=t.lastIndexOf('}');try{v=JSON.parse(t.slice(a,z+1))}catch(e){}
+  let v;const t=String(j.text||''),a=t.indexOf('{'),z=t.lastIndexOf('}');try{v=JSON.parse(t.slice(a,z+1))}catch(e){}return v}
+const fillN=(n,a,f)=>Array.from({length:n},(_,i)=>f(Array.isArray(a)?a[i]:''));
+const strC=x=>String(x==null?'':x).trim();
+async function boFromClaude(img){const v=await askClaude(img,BO_PROMPT);
   const got=(v&&Array.isArray(v.pages)?v.pages:[]).filter(p=>Array.isArray(p&&p.cells));
   if(!got.length)throw new Error('Claude’s answer couldn’t be read. Try again, or type the names in.');
-  const fill=(a,f)=>Array.from({length:BO*BO},(_,i)=>f(Array.isArray(a)?a[i]:''));
-  return {pages:got.map(p=>fill(p.cells,x=>String(x==null?'':x).trim())),colours:got.map(p=>fill(p.colours,okHex))}}
-async function readBoPhoto(img){
-  const m=await meInfo(),ai=$('tg-ai').checked;let ocr=null,why='';
+  return {pages:got.map(p=>fillN(BO*BO,p.cells,strC)),colours:got.map(p=>fillN(BO*BO,p.colours,okHex)),prices:got.map(p=>fillN(BO*BO,p.prices,strC))}}
+async function fohFromClaude(img,C,R){const v=await askClaude(img,FOH_PROMPT(C,R));
+  if(!v||!Array.isArray(v.cells))throw new Error('Claude’s answer couldn’t be read. Try again.');
+  return {name:strC(v.page),cells:fillN(C*R,v.cells,strC),colours:fillN(C*R,v.colours,okHex),prices:fillN(C*R,v.prices,strC)}}
+// a front-of-house photo: OCR + grid rules first (the toolbar usually makes that messy), else Claude
+async function readFohPhoto(img,C,R,ai){
+  const m=await meInfo();let ocr=null,why='';const scale=Math.min(1,3000/Math.max(img.naturalWidth,img.naturalHeight));
+  const page=o=>{let col=[];try{col=boColours(img,scale,o.boxes,o.hMed)}catch(e){}return {name:'',cells:o.cells,colours:col,prices:o.prices}};
+  if(!ai&&m.ocr){try{const d=await fetch('/api/server/ocr',{method:'POST',credentials:'same-origin',headers:{'content-type':'image/jpeg'},body:await photoBlob(img,3000)});
+      const j=await d.json().catch(()=>({}));if(!d.ok)throw new Error(j.error||'OCR answered '+d.status);ocr=gridFromOcr(j,C,R,false)}
+    catch(e){why='OCR failed ('+e.message+')'}
+    if(ocr&&ocr.named&&!ocr.messy)return {page:page(ocr),by:'OCR'};
+    if(!why)why=ocr&&ocr.named?'the text didn’t line up as a '+C+' × '+R+' grid':'OCR found no button names'}
+  if(m.claude)return {page:await fohFromClaude(img,C,R),by:'Claude',why:ai?'':why};
+  if(ocr&&ocr.named)return {page:page(ocr),by:'OCR',warn:'The text didn’t line up neatly as a '+C+' × '+R+' grid, so check every page.'};
+  if(!m.email&&!m.ocr)throw new Error('Reading photos works on the website (menuhauler.com/planner), where the OCR server and Claude are.');
+  throw new Error(ai?'Claude isn’t switched on for you (the owner turns it on in /admin).':(why||'Nothing could read the photo')+(m.claude?'':'. Claude isn’t switched on for you.'))}
+async function readBoPhoto(img,aiOver){
+  const m=await meInfo(),ai=aiOver!=null?aiOver:$('tg-ai').checked;let ocr=null,why='';
   const scale=Math.min(1,3000/Math.max(img.naturalWidth,img.naturalHeight)),cols=o=>{try{return [boColours(img,scale,o.boxes,o.hMed)]}catch(e){return [[]]}};
   if(!ai&&m.ocr){try{const d=await fetch('/api/server/ocr',{method:'POST',credentials:'same-origin',headers:{'content-type':'image/jpeg'},body:await photoBlob(img,3000)});
       const j=await d.json().catch(()=>({}));if(!d.ok)throw new Error(j.error||'OCR answered '+d.status);ocr=boFromOcr(j)}
     catch(e){why='OCR failed ('+e.message+')'}
-    if(ocr&&ocr.named&&!ocr.messy)return {pages:[ocr.cells],colours:cols(ocr),by:'OCR'};
+    if(ocr&&ocr.named&&!ocr.messy)return {pages:[ocr.cells],colours:cols(ocr),prices:[ocr.prices],by:'OCR'};
     if(!why)why=ocr&&ocr.named?'the text didn’t line up as one 5 × 5 page':'OCR found no button names'}
   if(m.claude)return Object.assign(await boFromClaude(img),{by:'Claude',why:ai?'':why});
-  if(ocr&&ocr.named)return {pages:[ocr.cells],colours:cols(ocr),by:'OCR',warn:'The text didn’t line up neatly as one 5 × 5 page, so check every slot.'};
+  if(ocr&&ocr.named)return {pages:[ocr.cells],colours:cols(ocr),prices:[ocr.prices],by:'OCR',warn:'The text didn’t line up neatly as one 5 × 5 page, so check every slot.'};
   if(!m.email&&!m.ocr)throw new Error('Reading photos works on the website (menuhauler.com/planner), where the OCR server and Claude are.');
   throw new Error(ai?'Claude isn’t switched on for you (the owner turns it on in /admin).':(why||'Nothing could read the photo')+(m.claude?'':'. Claude isn’t switched on for you, so type the names in.'))}
 // put one read page into run slots (the screen gets more pages if it needs them)
