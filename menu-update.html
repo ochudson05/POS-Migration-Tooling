@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menu Update</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+/*BASE: only used when this file is opened on its own; the launcher has the same tokens*/
+:root{box-sizing:border-box;--bg:#f7f6f3;--card:#fff;--text:#1d1d1b;--muted:#6b6b66;--line:#e2e0da;--accent:#c4410c;--accent-text:#fff;--ok:#1a7f4b;--warn:#a15c00}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161614;--card:#222220;--text:#f1f0ec;--muted:#9c9b94;--line:#37362f;--accent:#ff7a3d;--accent-text:#1a1a18;--ok:#4cc38a;--warn:#f0b45a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161614;--card:#222220;--text:#f1f0ec;--muted:#9c9b94;--line:#37362f;--accent:#ff7a3d;--accent-text:#1a1a18;--ok:#4cc38a;--warn:#f0b45a;color-scheme:dark}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+/*END BASE*/
+.mu *,.mu *::before,.mu *::after{box-sizing:border-box}
+.mu [hidden]{display:none!important}
+.mu{max-width:1240px;margin:0 auto;padding-block:24px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mu h1{font-size:1.5rem;margin:0 0 4px;text-wrap:balance}
+.mu h2{font-size:1.05rem;margin:0 0 4px}
+.mu .mu-sub{color:var(--muted);margin:0 0 18px;max-width:80ch}
+.mu .mu-lead{color:var(--muted);font-size:.88rem;margin:0 0 12px;max-width:90ch}
+.mu button{font:inherit;font-weight:600;background:var(--accent);color:var(--accent-text);border:0;border-radius:8px;padding:9px 14px;cursor:pointer;margin:0}
+.mu button.mu-sec{background:transparent;color:var(--text);border:1px solid var(--line)}
+.mu button.mu-sm{font-size:.82rem;padding:4px 9px}
+.mu button:disabled{opacity:.5;cursor:default}
+.mu button:focus-visible,.mu input:focus-visible,.mu select:focus-visible,.mu label.mu-drop:focus-within{outline:2px solid var(--accent);outline-offset:2px}
+.mu input[type=text],.mu input[type=number],.mu select{font:inherit;font-size:.88rem;color:var(--text);background:var(--bg);border:1px solid var(--line);border-radius:7px;padding:5px 7px;min-width:0;max-width:100%}
+.mu input[type=checkbox]{accent-color:var(--accent);width:16px;height:16px;margin:0;vertical-align:middle}
+.mu-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 16px;min-width:0}
+.mu-files{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.mu-drop{position:relative;display:grid;gap:2px;align-content:start;border:2px dashed var(--line);border-radius:12px;padding:14px;cursor:pointer;color:var(--muted);font-size:.85rem}
+.mu-drop strong{color:var(--text);font-size:.95rem}
+.mu-drop.over{border-color:var(--accent);background:var(--bg)}
+.mu-drop.got{border-style:solid;border-color:var(--ok)}
+.mu-drop .mu-fn{color:var(--ok);font-weight:600;word-break:break-all}
+.mu-drop input{position:absolute;width:1px;height:1px;opacity:0}
+.mu-row{display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.mu-f{display:grid;gap:3px;font-size:.8rem;color:var(--muted)}
+.mu-msg{font-size:.88rem;min-height:1.3em;margin:8px 0 0;color:var(--ok)}
+.mu-msg.err{color:var(--warn)}
+.mu-stats{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 12px}
+.mu-stat{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:110px}
+.mu-stat b{display:block;font-size:1.3rem;line-height:1.2;font-variant-numeric:tabular-nums}
+.mu-stat span{font-size:.78rem;color:var(--muted)}
+.mu-cats{display:flex;flex-wrap:wrap;gap:6px}
+.mu-cats label{display:flex;gap:6px;align-items:center;border:1px solid var(--line);border-radius:999px;padding:3px 10px;font-size:.83rem;cursor:pointer;background:var(--bg)}
+.mu-cats label small{color:var(--muted)}
+.mu-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+.mu table{border-collapse:collapse;width:100%;font-size:.85rem}
+.mu th,.mu td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.mu th{font-size:.75rem;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);background:var(--bg);position:sticky;top:0;white-space:nowrap}
+.mu tr:last-child td{border-bottom:0}
+.mu td.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mu td select{width:100%;min-width:140px}
+.mu td select[data-f=pick],.mu td select[data-m]{min-width:300px}
+.mu td input[type=text]{width:100%;min-width:160px}
+.mu-tag{display:inline-block;font-size:.72rem;font-weight:600;border-radius:999px;padding:1px 8px;margin:1px 4px 1px 0;white-space:nowrap;background:var(--bg);border:1px solid var(--line);color:var(--muted)}
+.mu-tag.edit{color:#673ab6;border-color:#673ab680}
+.mu-tag.add{color:var(--ok);border-color:var(--ok)}
+.mu-tag.del{color:#c62828;border-color:#c6282880}
+.mu-tag.warn{color:var(--warn);border-color:var(--warn)}
+.mu-tag.ok{color:var(--ok);border-color:var(--ok)}
+.mu-dim{color:var(--muted)}
+.mu tr.off td{opacity:.55}
+.mu-chk li{margin:0 0 4px}
+.mu-chk{margin:0;padding-left:20px;font-size:.88rem}
+.mu-dl{display:flex;flex-wrap:wrap;gap:8px}
+.mu details summary{cursor:pointer;font-weight:600;font-size:.9rem;margin:10px 0 6px}
+.mu-pdf{font-size:.8rem}
+</style>
+</head>
+<body>
+<main class="mu" id="mu">
+  <h1>Menu Update</h1>
+  <p class="mu-sub">Compares a venue’s current Oolio One products with its new menu. It works out what to edit, finish, add and delete, and builds an update import that keeps every existing Product ID, so sales history, PLUs, printers and photos stay. It also gives you a delete list and a step-by-step checklist.</p>
+
+  <section class="mu-card" aria-labelledby="mu-h1">
+    <h2 id="mu-h1">1. Files</h2>
+    <p class="mu-lead">The Oolio export is the venue’s product export from Oolio One. The new menu is an Oolio import file, usually made by the Menu Converter. The menu PDF is optional and is used to check the new menu’s prices.</p>
+    <div class="mu-files">
+      <label class="mu-drop" id="mu-d-exp"><strong>Oolio export</strong><span>CSV or Excel (Products-app…)</span><span class="mu-fn"></span><input type="file" id="mu-f-exp" accept=".csv,.xlsx,.xls"></label>
+      <label class="mu-drop" id="mu-d-new"><strong>New menu</strong><span>CSV or Excel in Oolio import columns</span><span class="mu-fn"></span><input type="file" id="mu-f-new" accept=".csv,.xlsx,.xls"></label>
+      <label class="mu-drop" id="mu-d-pdf"><strong>Menu PDF <span class="mu-dim">(optional)</span></strong><span>Checks every price against the menu</span><span class="mu-fn"></span><input type="file" id="mu-f-pdf" accept=".pdf"></label>
+    </div>
+    <p class="mu-msg" id="mu-msg1" role="status"></p>
+  </section>
+
+  <div id="mu-work" hidden>
+    <section class="mu-card" aria-labelledby="mu-h2">
+      <h2 id="mu-h2">2. Scope and settings</h2>
+      <p class="mu-lead">Only the ticked Oolio categories are compared. Products in other categories (often drinks, merch, vouchers, specials) are left exactly as they are. Categories with a match are ticked to start with.</p>
+      <div class="mu-cats" id="mu-cats"></div>
+      <div class="mu-row" style="margin-top:14px">
+        <label class="mu-f">Venue name (file names)<input type="text" id="mu-venue" style="width:240px"></label>
+        <label class="mu-f">Printers for products with none<input type="text" id="mu-printers" style="width:280px"></label>
+        <span id="mu-markups" class="mu-row"></span>
+      </div>
+      <div class="mu-row" style="margin-top:10px;font-size:.88rem">
+        <label><input type="checkbox" id="mu-keepold" checked> When a dish is in Oolio twice, keep the original (with printers) and delete the hand-added copy</label>
+      </div>
+    </section>
+
+    <section class="mu-card" aria-labelledby="mu-h3">
+      <h2 id="mu-h3">3. New menu items</h2>
+      <p class="mu-lead">Each new menu item is matched to the Oolio product it replaces. Check every row: pick a different product, or “Add as a new product”, if the match is wrong. A product marked <span class="mu-tag warn">hand-added</span> has no printers or price-list prices. It was probably typed in by hand.</p>
+      <div class="mu-stats" id="mu-stats"></div>
+      <div class="mu-wrap"><table><thead><tr><th>New menu item</th><th>Price</th><th>Update this Oolio product</th><th>Name in Oolio</th><th>Category</th><th>Change</th><th id="mu-pdfh" hidden>Menu PDF</th></tr></thead><tbody id="mu-items"></tbody></table></div>
+    </section>
+
+    <section class="mu-card" aria-labelledby="mu-h4">
+      <h2 id="mu-h4">4. Oolio products not on the new menu</h2>
+      <p class="mu-lead">These are in the ticked categories but no new menu item uses them. Ticked rows go on the delete list. Untick add-ons, desserts and anything staff still sell.</p>
+      <div class="mu-row" style="margin-bottom:8px"><button type="button" class="mu-sec mu-sm" id="mu-delall">Tick all</button><button type="button" class="mu-sec mu-sm" id="mu-delnone">Untick all</button></div>
+      <div class="mu-wrap"><table><thead><tr><th>Delete</th><th>Category</th><th>Product</th><th>Price</th><th>PLU</th><th>Why</th></tr></thead><tbody id="mu-old"></tbody></table></div>
+    </section>
+
+    <section class="mu-card" aria-labelledby="mu-h5">
+      <h2 id="mu-h5">5. Modifiers</h2>
+      <p class="mu-lead">New modifiers are matched to existing ones with the same price, and renamed. The rest are added. Old modifiers that aren’t matched are kept.</p>
+      <div class="mu-wrap"><table><thead><tr><th>New menu modifier</th><th>Price</th><th>Rename this Oolio modifier</th><th>Change</th></tr></thead><tbody id="mu-mods"></tbody></table></div>
+      <details><summary>Modifier groups to build by hand</summary>
+        <p class="mu-lead">The import file can’t link modifiers to products. List the groups here and they go on the checklist. One per line, like: <code>Garlic Bread: Add Piece, Add Cheese (optional)</code> or <code>Rump Steak; Scotch Fillet: Garlic, Mushroom, Pepper Sauce (pick one)</code></p>
+        <textarea id="mu-groups" rows="5" style="width:100%;font:inherit;font-size:.88rem;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px"></textarea>
+      </details>
+    </section>
+
+    <section class="mu-card" aria-labelledby="mu-h6">
+      <h2 id="mu-h6">6. Checks and downloads</h2>
+      <ul class="mu-chk" id="mu-checks"></ul>
+      <div class="mu-stats" id="mu-sum" style="margin-top:12px"></div>
+      <div class="mu-dl">
+        <button type="button" id="mu-dl-up">Update import (CSV)</button>
+        <button type="button" id="mu-dl-del">Delete list (CSV)</button>
+        <button type="button" id="mu-dl-ck">Checklist (Excel)</button>
+        <button type="button" class="mu-sec" id="mu-dl-ckc">Checklist (CSV)</button>
+      </div>
+      <p class="mu-lead" style="margin-top:10px">Order of work: import the update file first (try one row before the whole file and check Oolio updates it rather than making a copy), then delete the listed products by hand, then build the modifier groups.</p>
+      <p class="mu-msg" id="mu-msg2" role="status"></p>
+    </section>
+  </div>
+</main>
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const CORE=new Set(['Product ID','Product Name*','Product Type*','Product Group*','Reporting Group*','Category*','Variant Group','Variant Name','Measured By','Measured By*','Default Value','Unit','POS Name','Kitchen Name','Printer Profiles','Description','Is Selling?','Print On Receipt?','Dietary Tags','Allergens','Available Location','Barcode','SKU','PLU','GTIN','Sell Price*','Sell Tax*','Recipe','Variable Pricing?','Min Pricing','Max Pricing','Image URL']);
+const STOP=new Set(['the','with','and','of','a','kids','kid','pcs','pc','piece','pieces','for','on','in']);
+const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js',PDFW='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const F={exp:null,new:null,pdf:null},S={};
+
+/* ---------- reading files ---------- */
+function parseCSV(t){t=t.replace(/^﻿/,'');const rows=[];let r=[],f='',q=false;
+  for(let i=0;i<t.length;i++){const c=t[i];
+    if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}
+    else if(c==='"')q=true;else if(c===','){r.push(f);f=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;r.push(f);rows.push(r);r=[];f=''}else f+=c}
+  if(f!==''||r.length){r.push(f);rows.push(r)}return rows.filter(x=>x.some(v=>v!==''))}
+async function readTable(file){let aoa;
+  if(/\.csv$/i.test(file.name))aoa=parseCSV(await file.text());
+  else{if(!window.XLSX)throw new Error('The Excel reader didn’t load. Save the file as CSV and try again.');
+    const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});aoa=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,raw:false,defval:''})}
+  if(!aoa.length)throw new Error(file.name+' is empty.');
+  const head=aoa[0].map(h=>String(h).trim());
+  if(!head.includes('Product Name*')||!head.includes('Sell Price*'))throw new Error(file.name+' doesn’t have Oolio import columns (Product Name*, Sell Price*).');
+  const rows=aoa.slice(1).map(a=>{const o={};head.forEach((h,i)=>o[h]=a[i]==null?'':String(a[i]));return o}).filter(o=>o['Product Name*']);
+  return{head,rows,name:file.name}}
+function loadScript(src){return new Promise((ok,no)=>{if(document.querySelector('script[src="'+src+'"]'))return ok();const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>no(new Error('Couldn’t load '+src));document.head.appendChild(s)})}
+async function readPdf(file){await loadScript(PDFJS);pdfjsLib.GlobalWorkerOptions.workerSrc=PDFW;
+  const doc=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise,lines=[];
+  for(let p=1;p<=doc.numPages;p++){const tc=await(await doc.getPage(p)).getTextContent(),by=new Map();
+    tc.items.forEach(it=>{if(!it.str||!it.str.trim())return;const x=it.transform[4],y=Math.round(it.transform[5]/3);let k=[...by.keys()].find(k=>Math.abs(k-y)<=1);if(k==null){k=y;by.set(k,[])}by.get(k).push({x,s:it.str})});
+    // pdf text runs are grouped into lines by height; a two-column menu gives two items on one line, which is fine for this check
+    [...by.entries()].sort((a,b)=>b[0]-a[0]).forEach(([,a])=>lines.push(a.sort((m,n)=>m.x-n.x).map(z=>z.s).join(' ').replace(/\s+/g,' ').trim()))}
+  return lines}
+
+/* ---------- matching ---------- */
+const kind=r=>(r['Product Type*']||'').trim().toLowerCase();
+const num=v=>{const n=parseFloat(String(v||'').replace(/[$,]/g,''));return isFinite(n)?n:0};
+const norm=s=>String(s).toLowerCase().replace(/&/g,' and ').replace(/\(.*?\)/g,' ').normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim().replace(/\s+/g,' ');
+const stem=t=>t.length>4&&/(ch|sh|x)es$/.test(t)?t.slice(0,-2):t.length>3&&/s$/.test(t)&&!/ss$/.test(t)?t.slice(0,-1):t;
+const toks=s=>new Set(norm(s).split(' ').filter(t=>t&&!STOP.has(t)).map(stem));
+function sim(a,b){const A=toks(a),B=toks(b);if(!A.size||!B.size)return 0;let i=0;A.forEach(t=>{if(B.has(t))i++});return norm(a)===norm(b)?1:i/(A.size+B.size-i)}
+const catKey=c=>[...toks(c)].sort().join(' ');
+function score(n,o){let s=sim(n['Product Name*'],o['Product Name*']);const pn=num(n['Sell Price*']),po=num(o['Sell Price*']);
+  if(pn&&po){const d=Math.abs(pn-po)/Math.max(pn,po);s+=d===0?.25:d<=.1?.1:d>.5?-.4:0}
+  if(catKey(n['Category*']||'')&&catKey(n['Category*']||'')===catKey(o['Category*']||''))s+=.1;return Math.round(s*1000)/1000}
+
+function analyse(){const E=F.exp,N=F.new;
+  S.pl=E.head.filter(h=>!CORE.has(h));
+  S.handAdded=o=>kind(o)==='product'&&!o['Printer Profiles']&&!S.pl.some(p=>o[p]);
+  S.olds=E.rows.filter(o=>kind(o)==='product'||kind(o)==='variant');
+  S.oldMods=E.rows.filter(o=>kind(o)==='modifier');
+  S.byId=new Map(E.rows.filter(o=>o['Product ID']).map(o=>[o['Product ID'],o]));
+  // new menu: products (sizes noted, not imported) and modifiers; variant parents are skipped
+  S.items=N.rows.filter(r=>kind(r)==='product').map((r,i)=>({i,r,size:r['Variant Name']||''}));
+  S.mods=N.rows.filter(r=>kind(r)==='modifier').map((r,i)=>({i,r}));
+  // Oolio's own category for each new-menu category
+  const ocats=[...new Set(S.olds.map(o=>o['Category*']).filter(Boolean))];
+  S.ocats=ocats;S.catMap={};
+  new Set(S.items.map(x=>x.r['Category*'])).forEach(c=>{const k=catKey(c||'');S.catMap[c]=ocats.find(o=>catKey(o)===k)||ocats.find(o=>k&&(catKey(o).includes(k)||k.includes(catKey(o))))||c||''});
+  // markups for price-list columns (e.g. UberEats = sell x 1.15), from rows that have both
+  S.markup={};S.pl.forEach(p=>{const r=E.rows.filter(o=>/^[0-9.]+$/.test(o[p]||'')&&num(o['Sell Price*'])).map(o=>num(o[p])/num(o['Sell Price*'])).sort((a,b)=>a-b);
+    S.markup[p]={ratio:r.length?Math.round(r[r.length>>1]*1000)/1000:null,n:r.length}});
+  const pc={};S.olds.forEach(o=>{if(o['Printer Profiles']&&(o['Reporting Group*']||'').toLowerCase()==='food')pc[o['Printer Profiles']]=(pc[o['Printer Profiles']]||0)+1});
+  S.printers=Object.entries(pc).sort((a,b)=>b[1]-a[1]).map(x=>x[0])[0]||'';
+  const loc={};E.rows.forEach(o=>{const l=o['Available Location'];if(l)loc[l]=(loc[l]||0)+1});
+  S.venue=Object.entries(loc).sort((a,b)=>b[1]-a[1]).map(x=>x[0])[0]||'Venue';
+  matchAll();
+  S.scope=new Set(S.items.map(x=>x.pick&&S.byId.get(x.pick)).filter(o=>o&&kind(o)==='product').map(o=>o['Category*']));
+  S.items.forEach(x=>{if(!x.pick&&!x.size)S.scope.add(S.catMap[x.r['Category*']])});
+  defaultDeletes();}
+
+function matchAll(){const keep=$('mu-keepold')?$('mu-keepold').checked:true,taken=new Set(),pairs=[];
+  const prods=S.olds.filter(o=>kind(o)==='product');
+  S.items.forEach(x=>{x.cands=(x.size?S.olds.filter(o=>kind(o)==='variant'):prods).map(o=>({o,s:score(x.r,o)})).filter(c=>c.s>=.3).sort((a,b)=>b.s-a.s).slice(0,8);
+    x.pick='';x.name=x.r['Product Name*'];x.cat=S.catMap[x.r['Category*']]||'';
+    if(!x.size)x.cands.forEach(c=>pairs.push({x,c,e:c.s-(keep&&S.handAdded(c.o)?.6:0)}))});
+  pairs.sort((a,b)=>b.e-a.e).forEach(({x,c,e})=>{if(x.pick||taken.has(c.o['Product ID'])||e<.45)return;x.pick=c.o['Product ID'];taken.add(x.pick)});
+  S.items.forEach(x=>{if(x.size){const v=x.cands[0];x.variant=v&&v.s>=.9?v.o:null}else if(x.pick)x.cat=chooseCat(x)});
+  // modifiers: rename only to an existing modifier with the same price that shares a real word
+  // ("Add Cheese" -> "Cheese", "Pepper Sauce" -> "Peppercorn Sauce"; never "Hot Sauce" -> "No sauce")
+  const mt=new Set(),mp=[];
+  S.mods.forEach(m=>{m.pick='';m.cands=S.oldMods.map(o=>({o,s:sim(m.r['Product Name*'],o['Product Name*'])+(num(o['Sell Price*'])===num(m.r['Sell Price*'])?.25:0)})).filter(c=>c.s>=.3).sort((a,b)=>b.s-a.s).slice(0,6);
+    m.cands.filter(c=>num(c.o['Sell Price*'])===num(m.r['Sell Price*'])&&realWord(m.r['Product Name*'],c.o['Product Name*'])).forEach(c=>mp.push({m,c}))});
+  mp.sort((a,b)=>b.c.s-a.c.s).forEach(({m,c})=>{if(m.pick||mt.has(c.o['Product ID'])||c.s<.55)return;m.pick=c.o['Product ID'];mt.add(m.pick)})}
+const GENERIC=new Set(['add','extra','sauce','option','side','no','x2','x3','x4']);
+function realWord(a,b){const A=[...toks(a)].filter(t=>!GENERIC.has(t)),B=[...toks(b)].filter(t=>!GENERIC.has(t));
+  return A.some(t=>B.some(u=>t===u||(Math.min(t.length,u.length)>=4&&(t.startsWith(u)||u.startsWith(t)))))}
+// a kept product moves only when the new menu puts it in a different Oolio category
+function chooseCat(x){const o=S.byId.get(x.pick),want=S.catMap[x.r['Category*']];return want&&S.ocats.includes(want)?want:o['Category*']}
+
+function defaultDeletes(){S.del=new Map();const used=new Set(S.items.map(x=>x.pick).filter(Boolean));
+  S.olds.forEach(o=>{if(kind(o)!=='product'||used.has(o['Product ID'])||!S.scope.has(o['Category*']))return;
+    const copyOf=S.items.find(x=>x.pick&&x.cands.some(c=>c.o===o&&c.s>=.9));
+    S.del.set(o['Product ID'],{on:true,copy:!!copyOf&&S.handAdded(o),note:copyOf?(S.handAdded(o)?S.byId.get(copyOf.pick)['Product Name*']+' kept instead':'Close match to '+copyOf.r['Product Name*']+' — check'):''})})}
+
+/* ---------- drawing ---------- */
+const money=v=>v===''||v==null?'':'$'+num(v).toFixed(2);
+function tag(t,c){return'<span class="mu-tag '+(c||'')+'">'+esc(t)+'</span>'}
+function changes(x){const o=x.pick&&S.byId.get(x.pick),t=[];if(x.size)return[];
+  if(!o)return['New product'];
+  if(o['Product Name*']!==x.name)t.push('Rename');if(num(o['Sell Price*'])!==num(x.r['Sell Price*']))t.push('New price');
+  if((o['Category*']||'')!==x.cat)t.push('Move to '+x.cat);if(!o['Printer Profiles']&&$('mu-printers').value.trim())t.push('Add printers');return t}
+function drawScope(){$('mu-cats').innerHTML=S.ocats.slice().sort().map(c=>{const n=S.olds.filter(o=>o['Category*']===c).length;
+  return'<label><input type="checkbox" data-cat="'+esc(c)+'"'+(S.scope.has(c)?' checked':'')+'> '+esc(c)+' <small>'+n+'</small></label>'}).join('');
+  $('mu-markups').innerHTML=S.pl.map(p=>{const m=S.markup[p];return'<label class="mu-f">'+esc(p)+' = sell price ×<input type="number" step="0.001" min="0" data-pl="'+esc(p)+'" value="'+(m.ratio&&m.n>=5?m.ratio:'')+'" placeholder="leave as is" style="width:110px"></label>'}).join('')}
+function drawItems(){let ed=0,fi=0,ad=0,sz=0;
+  $('mu-items').innerHTML=S.items.map((x,k)=>{const r=x.r;
+    if(x.size){sz++;return'<tr class="off"><td>'+esc(r['Product Name*'])+' <span class="mu-dim">/ '+esc(x.size)+'</span></td><td class="num">'+money(r['Sell Price*'])+'</td><td colspan="4">'+(x.variant?'Size of <b>'+esc(x.variant['Product Name*'])+'</b>. ':'No size product found. ')+'<span class="mu-dim">Size prices aren’t in the export, so this goes on the checklist.</span></td>'+pdfCell(x)+'</tr>'}
+    const o=x.pick&&S.byId.get(x.pick),ch=changes(x),big=!o||ch.some(t=>t==='Rename'||t==='New price'||t.startsWith('Move'));
+    if(!o)ad++;else if(big)ed++;else fi++;
+    const opts='<option value="">Add as a new product</option>'+x.cands.map(c=>'<option value="'+esc(c.o['Product ID'])+'"'+(c.o['Product ID']===x.pick?' selected':'')+'>'+esc(c.o['Product Name*'])+' · '+esc(c.o['Category*'])+' · '+money(c.o['Sell Price*'])+(S.handAdded(c.o)?' · hand-added':'')+'</option>').join('');
+    const cats=[...new Set([x.cat,...S.ocats])].filter(Boolean).map(c=>'<option'+(c===x.cat?' selected':'')+'>'+esc(c)+'</option>').join('');
+    const twice=o&&S.items.filter(y=>y.pick===x.pick).length>1;
+    return'<tr><td>'+esc(r['Product Name*'])+'<br><span class="mu-dim">'+esc(r['Category*'])+'</span></td><td class="num">'+money(r['Sell Price*'])+(o&&num(o['Sell Price*'])!==num(r['Sell Price*'])?'<br><span class="mu-dim">was '+money(o['Sell Price*'])+'</span>':'')+'</td>'+
+      '<td><select data-k="'+k+'" data-f="pick" aria-label="Oolio product for '+esc(r['Product Name*'])+'">'+opts+'</select>'+(o&&S.handAdded(o)?'<br>'+tag('hand-added','warn'):'')+(twice?'<br>'+tag('two menu items use this product','warn'):'')+'</td>'+
+      '<td><input type="text" data-k="'+k+'" data-f="name" value="'+esc(x.name)+'" aria-label="Name in Oolio"></td><td><select data-k="'+k+'" data-f="cat" aria-label="Category">'+cats+'</select></td>'+
+      '<td>'+(!o?tag('Add','add'):big?tag('Edit','edit'):tag('Finish'))+'<br><span class="mu-dim">'+esc(ch.join(', ')||'Description, tags')+'</span></td>'+pdfCell(x)+'</tr>'}).join('');
+  $('mu-pdfh').hidden=!S.pdf;
+  const dl=[...S.del.values()].filter(d=>d.on).length;
+  $('mu-stats').innerHTML=[[ed,'to edit'],[fi,'to finish'],[ad,'new products'],[dl,'to delete'],[sz,'size rows to check']].map(([n,l])=>'<div class="mu-stat"><b>'+n+'</b><span>'+l+'</span></div>').join('')}
+function drawOld(){const rows=[...S.del.entries()].map(([id,d])=>({o:S.byId.get(id),d})).sort((a,b)=>(a.o['Category*']+a.o['Product Name*']).localeCompare(b.o['Category*']+b.o['Product Name*']));
+  $('mu-old').innerHTML=rows.length?rows.map(({o,d})=>'<tr'+(d.on?'':' class="off"')+'><td><input type="checkbox" data-del="'+esc(o['Product ID'])+'"'+(d.on?' checked':'')+' aria-label="Delete '+esc(o['Product Name*'])+'"></td><td>'+esc(o['Category*'])+'</td><td>'+esc(o['Product Name*'])+(S.handAdded(o)?' '+tag('hand-added','warn'):'')+'</td><td class="num">'+money(o['Sell Price*'])+'</td><td>'+esc(o['PLU'])+'</td><td>'+(d.copy?tag('Hand-added copy','del'):tag('Not on new menu'))+(d.note?'<br><span class="mu-dim">'+esc(d.note)+'</span>':'')+'</td></tr>').join('')
+    :'<tr><td colspan="6" class="mu-dim">Every product in the ticked categories is used by the new menu.</td></tr>'}
+function drawMods(){$('mu-mods').innerHTML=S.mods.length?S.mods.map((m,k)=>{const r=m.r,same=m.cands.filter(c=>num(c.o['Sell Price*'])===num(r['Sell Price*']));
+  const opts='<option value="">Add as a new modifier</option>'+same.map(c=>'<option value="'+esc(c.o['Product ID'])+'"'+(c.o['Product ID']===m.pick?' selected':'')+'>'+esc(c.o['Product Name*'])+' · '+money(c.o['Sell Price*'])+'</option>').join('');
+  const o=m.pick&&S.byId.get(m.pick);
+  return'<tr><td>'+esc(r['Product Name*'])+'</td><td class="num">'+money(r['Sell Price*'])+'</td><td><select data-m="'+k+'" aria-label="Oolio modifier for '+esc(r['Product Name*'])+'">'+opts+'</select></td><td>'+(o?(o['Product Name*']===r['Product Name*']?tag('No change'):tag('Rename','edit')):tag('Add','add'))+(!o&&num(r['Sell Price*'])===0&&/^add\b/i.test(r['Product Name*'])?' '+tag('$0: price missing?','warn'):'')+'</td></tr>'}).join('')
+  :'<tr><td colspan="4" class="mu-dim">The new menu file has no modifiers.</td></tr>'}
+
+/* ---------- PDF price check ---------- */
+function pdfFind(x){if(!S.pdf)return null;const name=x.r['Product Name*'].replace(/^kids\s+/i,''),want=toks(name),price=num(x.r['Sell Price*']);if(!want.size)return null;
+  // every line that names the item (a kids "Fish & Chips" or a platter description can mention it too);
+  // the price passes if it sits on any of them or just below (sizes are often listed a few lines down)
+  const hits=[];S.pdf.forEach((l,i)=>{const lt=toks(l);let hit=0;want.forEach(t=>{if(lt.has(t))hit++});const f=hit/want.size;if(f>=.75)hits.push({f,i})});
+  if(!hits.length)return{st:'missing'};
+  const prices=s=>(s.match(/\$?\d{1,3}(?:\.\d{1,2})?(?!\s*(?:pcs|pc|ml|g|kg|x)\b)/gi)||[]).map(num).filter(n=>n>0&&n<1000);
+  const sz=x.size?toks(x.size):null;
+  for(const h of hits){const span=S.pdf.slice(h.i,h.i+(x.size?8:3));
+    if(x.size){if(span.some(l=>{const lt=toks(l);return[...sz].every(t=>lt.has(t))&&prices(l.replace(/^\D*\d+\s*(pcs|pc)\b/i,'')).includes(price)}))return{st:'ok'}}
+    else if(prices(span.join(' ')).includes(price))return{st:'ok'}}
+  hits.sort((a,b)=>b.f-a.f);
+  return{st:'diff',seen:prices(S.pdf.slice(hits[0].i,hits[0].i+3).join(' ')).slice(0,3)}}
+function pdfCell(x){if(!S.pdf)return'';const f=x.pdf;
+  return'<td class="mu-pdf">'+(!f?'':f.st==='ok'?tag('price matches','ok'):f.st==='missing'?tag('not found','warn'):tag('check price','warn')+(f.seen&&f.seen.length?'<br><span class="mu-dim">menu shows '+f.seen.map(n=>'$'+n.toFixed(2)).join(', ')+'</span>':''))+'</td>'}
+
+/* ---------- checks ---------- */
+function plRatios(){const m={};document.querySelectorAll('#mu-markups [data-pl]').forEach(i=>{const v=parseFloat(i.value);if(v>0)m[i.dataset.pl]=v});return m}
+function checks(){const c=[['Test the update import','Import one row first (for example the first Edit row) and check Oolio updates the product instead of making a copy']];
+  const sz={};S.items.filter(x=>x.size).forEach(x=>{const k=x.r['Product Name*'];(sz[k]=sz[k]||[]).push(x.size+' '+money(x.r['Sell Price*']))});
+  Object.entries(sz).forEach(([k,v])=>c.push([k+' sizes','Check in Oolio: '+v.join(', ')+' (size prices aren’t in the export)']));
+  const mk=plRatios();
+  S.pl.filter(p=>!mk[p]).forEach(p=>{const hit=S.items.filter(x=>x.pick&&S.byId.get(x.pick)[p]&&num(S.byId.get(x.pick)['Sell Price*'])!==num(x.r['Sell Price*']));
+    hit.forEach(x=>c.push([x.name+' – '+p+' price','Still '+money(S.byId.get(x.pick)[p])+'; decide if it moves with the new '+money(x.r['Sell Price*'])+' price']))});
+  if(Object.keys(mk).length)c.push(['Price-list rounding',Object.keys(mk).join(', ')+' set at sell price × ratio; a few may be a cent off Oolio’s own rounding']);
+  S.items.forEach(x=>{if(!x.pick||x.size)return;const o=S.byId.get(x.pick),s=sim(x.r['Product Name*'],o['Product Name*']);
+    if(o['Product Name*']!==x.name&&s<.5)c.push([o['Product Name*']+' = '+x.name+'?','Matched on price and category; confirm with the venue it’s the same dish'])});
+  const twice={};S.items.forEach(x=>{if(x.pick&&!x.size)(twice[x.pick]=twice[x.pick]||[]).push(x.name)});
+  Object.entries(twice).forEach(([id,n])=>{if(n.length>1)c.push(['Two menu items, one product',n.join(' and ')+' both update '+S.byId.get(id)['Product Name*']+'. Pick a different product for one of them, or check the menu: it may be one item with a choice'])});
+  S.mods.forEach(m=>{if(!m.pick&&num(m.r['Sell Price*'])===0&&/^add\b/i.test(m.r['Product Name*']))c.push([m.r['Product Name*']+' price','$0 in the new menu file; confirm the price with the venue'])});
+  if(S.pdf)S.items.forEach(x=>{if(x.pdf&&x.pdf.st==='diff')c.push([x.name+' price',money(x.r['Sell Price*'])+' in the new menu file, the PDF shows '+(x.pdf.seen.length?x.pdf.seen.map(n=>'$'+n.toFixed(2)).join(', '):'no price near it')]);else if(x.pdf&&x.pdf.st==='missing')c.push([x.name,'Not found in the menu PDF; check the name']);});
+  return c}
+function drawChecks(){const c=checks();$('mu-checks').innerHTML=c.map(([a,b])=>'<li><b>'+esc(a)+'</b>: '+esc(b)+'</li>').join('');
+  const b=build();$('mu-sum').innerHTML=[[b.up.length,'rows to import'],[b.del.length,'to delete'],[b.ck.length,'checklist rows']].map(([n,l])=>'<div class="mu-stat"><b>'+n+'</b><span>'+l+'</span></div>').join('')}
+function drawAll(){drawItems();drawOld();drawMods();drawChecks()}
+
+/* ---------- building the files ---------- */
+const fmt=v=>{const s=(Math.round(num(v)*100)/100).toFixed(2);return s.replace(/\.?0+$/,'')||'0'};
+const mul=(p,m)=>num(p)?fmt(Math.round(num(p)*m*100+1e-6)/100):'';
+function groups(){return $('mu-groups').value.split('\n').map(l=>l.trim()).filter(Boolean).map(l=>{const i=l.indexOf(':');let p=i>0?l.slice(0,i).trim():l,mods=i>0?l.slice(i+1).trim():'',ch='Optional';
+  const m=mods.match(/\((optional|pick one|pick 1|required)\)\s*$/i);if(m){ch=/optional/i.test(m[1])?'Optional':'Pick one';mods=mods.slice(0,m.index).trim()}return[p,mods,ch]})}
+function build(){const head=F.exp.head,mk=plRatios(),pr=$('mu-printers').value.trim(),up=[],ck=[],del=[];
+  const STEP1='1 - Import update file',up1=[];
+  S.items.forEach(x=>{if(x.size)return;const r0=x.r,o=x.pick&&S.byId.get(x.pick);let r;
+    if(o)r={...o};else{r={};head.forEach(h=>{r[h]=h in r0&&h!=='Product ID'?r0[h]:''});r['Product Type*']=(S.olds.find(z=>kind(z)==='product')||{})['Product Type*']||'product';if(!r['Available Location'])r['Available Location']=S.venue}
+    r['Product Name*']=x.name;r['Sell Price*']=fmt(r0['Sell Price*']);if(r0['Description'])r['Description']=r0['Description'];if(r0['Dietary Tags'])r['Dietary Tags']=r0['Dietary Tags'];
+    r['Category*']=x.cat||r['Category*'];if(!r['Printer Profiles']&&pr)r['Printer Profiles']=pr;if(!r['Reporting Group*']&&r0['Reporting Group*'])r['Reporting Group*']=r0['Reporting Group*'];
+    Object.entries(mk).forEach(([p,m])=>{if(head.includes(p))r[p]=mul(r0['Sell Price*'],m)});up.push(r);
+    const what=changes(x),rest=[];if(o){if((r['Description']||'')!==(o['Description']||''))rest.push('description');if((r['Dietary Tags']||'')!==(o['Dietary Tags']||''))rest.push((r['Dietary Tags']||'clear')+' tags');
+      Object.keys(mk).forEach(p=>{if((r[p]||'')!==(o[p]||''))rest.push(p+' '+money(r[p]))})}
+    if(rest.length)what.push('Update '+rest.join(', '));
+    const big=!o||what.some(t=>t==='Rename'||t==='New price'||t.startsWith('Move'));
+    up1.push([!o?0:big?1:2,[STEP1,!o?'Add':big?'Edit':'Finish',(o||r)['Category*'],o?o['Product Name*']:'(new)',o&&o['Product Name*']===x.name?'(same)':x.name,o?money(o['Sell Price*']):'',money(r0['Sell Price*']),what.join('; ')||'No change','',o?o['PLU']:'',o?o['Product ID']:'','']])});
+  up1.sort((a,b)=>a[0]-b[0]).forEach(a=>ck.push(a[1]));
+  const tmpl=S.oldMods[0];
+  S.mods.forEach(m=>{const r0=m.r,o=m.pick&&S.byId.get(m.pick);let r;
+    if(o){if(o['Product Name*']===r0['Product Name*'])return;r={...o,'Product Name*':r0['Product Name*']};ck.push([STEP1,'Rename modifier','Modifier',o['Product Name*'],r0['Product Name*'],money(o['Sell Price*']),money(o['Sell Price*']),'Rename','',o['PLU'],o['Product ID'],''])}
+    else{r={};head.forEach(h=>r[h]='');['Product Type*','Is Selling?','Print On Receipt?','Available Location','Sell Tax*','Variable Pricing?'].forEach(h=>{if(tmpl&&h in tmpl)r[h]=tmpl[h]});
+      if(!r['Product Type*'])r['Product Type*']='modifier';if(!r['Sell Tax*'])r['Sell Tax*']=r0['Sell Tax*']||'GST';if(!r['Is Selling?'])r['Is Selling?']='TRUE';if(!r['Available Location'])r['Available Location']=S.venue;
+      r['Product Name*']=r0['Product Name*'];r['Sell Price*']=fmt(r0['Sell Price*']);Object.entries(mk).forEach(([p,v])=>{if(head.includes(p))r[p]=mul(r0['Sell Price*'],v)});
+      ck.push([STEP1,'Add modifier','Modifier','(new)',r0['Product Name*'],'',money(r0['Sell Price*']),'New',num(r0['Sell Price*'])===0&&/^add\b/i.test(r0['Product Name*'])?'No price - confirm with venue':'','','',''])}
+    up.push(r)});
+  up.forEach(r=>['Is Selling?','Print On Receipt?','Variable Pricing?'].forEach(h=>{if(r[h])r[h]=String(r[h]).toUpperCase()}));
+  [...S.del.entries()].filter(([,d])=>d.on).forEach(([id,d])=>{const o=S.byId.get(id),why=d.copy?'Delete (hand-added copy)':'Delete (not on new menu)';
+    del.push([id,o['Product Name*'],o['Category*'],o['Sell Price*'],o['PLU'],why+(d.note?' - '+d.note:'')]);
+    ck.push(['2 - Delete by hand','Delete',o['Category*'],o['Product Name*'],'',money(o['Sell Price*']),'',why,d.note,o['PLU'],id,''])});
+  groups().forEach(([p,m,c])=>ck.push(['3 - Build modifier groups','Modifier group','Modifier group',p,m,'','',c,'','','','']));
+  checks().forEach(([a,b])=>ck.push(['4 - Checks','Check','',a,'','','',b,'','','','']));
+  return{head,up,del,ck}}
+const CKH=['Step','Action','Category','Item in Oolio now','Change to','Price now','New price','What to change','Note','PLU','Product ID','Done?'];
+const DELH=['Product ID','Product Name','Category','Sell Price','PLU','Reason'];
+const csvCell=v=>{v=v==null?'':String(v);return/[",\n\r]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v};
+const toCSV=rows=>'﻿'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')+'\r\n';
+async function save(blob,name){let dl=null;try{dl=window.claude&&window.claude.use?await window.claude.use('downloads'):null}catch(e){}
+  if(dl){try{await dl.save({filename:name,data:blob});return true}catch(e){if(e&&e.code!=='declined')msg2('The file couldn’t be saved here ('+(e.message||e.code||'unavailable')+').',true);return false}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),30000);return true}
+const msg2=(t,e)=>{const m=$('mu-msg2');m.textContent=t;m.classList.toggle('err',!!e)};
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const fname=t=>(($('mu-venue').value.trim()||'Venue').replace(/[\\/:*?"<>|]/g,'').trim()||'Venue')+' - '+t+' '+today();
+async function dl(which){const b=build();let blob,name;
+  if(which==='up'){blob=new Blob([toCSV([b.head,...b.up.map(r=>b.head.map(h=>r[h]==null?'':r[h]))])],{type:'text/csv'});name=fname('Oolio update')+'.csv'}
+  else if(which==='del'){blob=new Blob([toCSV([DELH,...b.del])],{type:'text/csv'});name=fname('products to delete')+'.csv'}
+  else if(which==='ckc'){blob=new Blob([toCSV([CKH,...b.ck])],{type:'text/csv'});name=fname('menu changes checklist')+'.csv'}
+  else{if(!window.XLSX){msg2('The Excel writer didn’t load. Use the CSV checklist.',true);return}
+    const ws=XLSX.utils.aoa_to_sheet([CKH,...b.ck]);ws['!cols']=[24,16,18,34,34,11,11,52,40,12,38,8].map(w=>({wch:w}));ws['!autofilter']={ref:'A1:L'+(b.ck.length+1)};
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Checklist');blob=new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});name=fname('menu changes checklist')+'.xlsx'}
+  if(await save(blob,name))msg2('Saved “'+name+'”.')}
+
+/* ---------- events ---------- */
+function drop(id,key,input){const d=$(id),inp=$(input);
+  inp.addEventListener('change',()=>{if(inp.files[0])take(key,inp.files[0]);inp.value=''});
+  d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('over')});d.addEventListener('dragleave',()=>d.classList.remove('over'));
+  d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('over');const f=e.dataTransfer.files[0];if(f)take(key,f)})}
+const msg1=(t,e)=>{const m=$('mu-msg1');m.textContent=t;m.classList.toggle('err',!!e)};
+async function take(key,file){const d=$('mu-d-'+key);try{msg1('Reading '+file.name+'…');
+    if(key==='pdf'){S.pdfLines=await readPdf(file);F.pdf=file}else F[key]=await readTable(file);
+    d.classList.add('got');d.querySelector('.mu-fn').textContent=file.name;msg1('');start()}
+  catch(e){msg1(e.message||String(e),true)}}
+function start(){if(!F.exp||!F.new){if(F.exp||F.new)msg1('Now add the '+(F.exp?'new menu':'Oolio export')+'.');return}
+  analyse();S.pdf=F.pdf?S.pdfLines:null;S.items.forEach(x=>x.pdf=pdfFind(x));
+  $('mu-venue').value=S.venue;$('mu-printers').value=S.printers;drawScope();drawAll();$('mu-work').hidden=false;
+  const nb=S.items.filter(x=>!x.size).length;msg1('Compared '+nb+' menu items and '+S.mods.length+' modifiers with '+F.exp.rows.length+' Oolio rows.')}
+drop('mu-d-exp','exp','mu-f-exp');drop('mu-d-new','new','mu-f-new');drop('mu-d-pdf','pdf','mu-f-pdf');
+$('mu').addEventListener('change',e=>{const t=e.target;
+  if(t.dataset.cat!==undefined){if(t.checked)S.scope.add(t.dataset.cat);else S.scope.delete(t.dataset.cat);defaultDeletes();drawAll()}
+  else if(t.dataset.f){const x=S.items[+t.dataset.k];if(t.dataset.f==='pick'){x.pick=t.value;x.cat=x.pick?chooseCat(x):S.catMap[x.r['Category*']]||'';defaultDeletes()}else x[t.dataset.f]=t.value;drawAll()}
+  else if(t.dataset.del){S.del.get(t.dataset.del).on=t.checked;drawAll()}
+  else if(t.dataset.m!==undefined){S.mods[+t.dataset.m].pick=t.value;drawAll()}
+  else if(t.id==='mu-keepold'){matchAll();defaultDeletes();drawAll()}
+  else if(t.dataset.pl||t.id==='mu-printers'||t.id==='mu-groups')drawAll()});
+$('mu-groups').addEventListener('input',()=>drawChecks());
+$('mu-delall').addEventListener('click',()=>{S.del.forEach(d=>d.on=true);drawAll()});
+$('mu-delnone').addEventListener('click',()=>{S.del.forEach(d=>d.on=false);drawAll()});
+$('mu-dl-up').addEventListener('click',()=>dl('up'));$('mu-dl-del').addEventListener('click',()=>dl('del'));
+$('mu-dl-ck').addEventListener('click',()=>dl('ck'));$('mu-dl-ckc').addEventListener('click',()=>dl('ckc'));
+window.muTest={F,S,build,take,start,checks};
+})();
+</script>
+</body>
+</html>

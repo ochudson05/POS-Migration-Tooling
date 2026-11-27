@@ -125,7 +125,7 @@ window.claude={use:async n=>{
 let ME_NOW=null;
 const TOOLKEYS=['venues','converter','photos','venue','setup','training','hypercare','team','word'];
 // views that share another tool's access (the Photo Editor sits under Photo Tools with the Photo Finder)
-const VIEWKEY={photoedit:'photos',routing:'setup'},keyOf=v=>VIEWKEY[v]||v;
+const VIEWKEY={photoedit:'photos',menuupdate:'converter',routing:'setup'},keyOf=v=>VIEWKEY[v]||v;
 function applyAccess(m){ME_NOW=m;window.MH_ME=m;const ok=t=>!m.tools||m.tools.includes(t);
   // pages show their "read by Claude" notes instead of the OCR ones
   document.documentElement.classList.toggle('oolio-claude',!!m.claude);

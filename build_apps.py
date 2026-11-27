@@ -80,6 +80,15 @@ pe_script = pep.index("<script>", pe_body_start)
 pe_body = pep[pe_body_start:pe_script].strip()
 pe_js = pep[pe_script + len("<script>"):pep.rindex("</script>")]
 
+# Menu Update (under the Menu Converter tab) runs in the top page too; ids and classes start mu-
+mup = (HERE / "menu-update.html").read_text(encoding="utf-8")
+mu_css, _ = between(mup, "<style>", "</style>")
+mu_css = re.sub(r"/\*BASE.*?/\*END BASE\*/", "", mu_css, flags=re.S)
+mu_body_start = mup.index("<body>") + len("<body>")
+mu_script = mup.index("<script>", mu_body_start)
+mu_body = mup[mu_body_start:mu_script].strip()
+mu_js = mup[mu_script + len("<script>"):mup.rindex("</script>")]
+
 # the Photo Finder's page as a JS string; "</" is written "<\/" so it can't close this page's <script>
 # the Oolio One look (oolio-theme.css) goes after every tool's own CSS, and into the Photo Finder frame too
 THEME = (HERE / "oolio-theme.css").read_text(encoding="utf-8")
@@ -293,6 +302,7 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .lx-menu button[aria-current="page"]{background:var(--bg);box-shadow:inset 3px 0 0 var(--accent)}
 .lx-menu .ic{margin-top:3px;color:var(--t-photos)}
 #lx-plmenu .ic{color:var(--accent)}
+#lx-cmenu .ic{color:var(--t-converter)}
 .lx-menu span{display:grid}.lx-menu b{font-size:.92rem}.lx-menu small{font-size:.8rem;color:var(--muted);font-weight:400}
 """
 
@@ -303,7 +313,7 @@ LAUNCHER_HTML = SPRITE + """
   <button type="button" class="lx-brand" data-go=""><span class="lx-logo">""" + ic("utensils") + """</span>Menu Hauler</button>
   <nav class="lx-tabs" aria-label="Tools">
     <button type="button" class="lx-tab" data-go="venues">""" + ic("search") + """<span>Venues</span></button>
-    <button type="button" class="lx-tab" data-go="converter">""" + ic("file-spreadsheet") + """<span>Menu Converter</span></button>
+    <button type="button" class="lx-tab lx-tmenu" id="lx-ctools" data-tool="converter" data-views="converter menuupdate" aria-haspopup="menu" aria-expanded="false" aria-controls="lx-cmenu">""" + ic("file-spreadsheet") + """<span>Menu Converter</span>""" + ic("chevron-down", "lx-chev") + """</button>
     <button type="button" class="lx-tab lx-tmenu" id="lx-ptools" data-tool="photos" data-views="photos photoedit" aria-haspopup="menu" aria-expanded="false" aria-controls="lx-pmenu">""" + ic("images") + """<span>Photo Tools</span>""" + ic("chevron-down", "lx-chev") + """</button>
     <button type="button" class="lx-tab" data-go="venue">""" + ic("store") + """<span>Restaurant Lookup</span></button>
     <button type="button" class="lx-tab" data-go="setup">""" + ic("list-checks") + """<span>Setup Tracker</span></button>
@@ -314,6 +324,10 @@ LAUNCHER_HTML = SPRITE + """
     <button type="button" class="lx-tab lx-tmenu" id="lx-pltools" hidden aria-haspopup="menu" aria-expanded="false" aria-controls="lx-plmenu">""" + ic("layout-grid") + """<span>Page Planner</span>""" + ic("chevron-down", "lx-chev") + """</button>
   </nav>
   <label class="lx-venue"><span>Venue</span><select id="lx-venue" aria-label="Venue you are working on"><option value="">Loading venues…</option></select></label>
+  <div class="lx-menu" id="lx-cmenu" role="menu" aria-label="Menu Converter" hidden>
+    <button type="button" role="menuitem" data-go="converter">""" + ic("file-spreadsheet") + """<span><b>Menu Converter</b><small>Turn a menu into an Oolio One import</small></span></button>
+    <button type="button" role="menuitem" data-go="menuupdate">""" + ic("file-check") + """<span><b>Menu Update</b><small>Compare a venue’s Oolio products with its new menu</small></span></button>
+  </div>
   <div class="lx-menu" id="lx-pmenu" role="menu" aria-label="Photo Tools" hidden>
     <button type="button" role="menuitem" data-go="photos">""" + ic("images") + """<span><b>Photo Finder</b><small>Free photos for every product on a menu</small></span></button>
     <button type="button" role="menuitem" data-go="photoedit">""" + ic("crop") + """<span><b>Photo Editor</b><small>Resize and crop one photo to the right size</small></span></button>
@@ -343,6 +357,13 @@ LAUNCHER_HTML = SPRITE + """
       <p>Turns a customer’s menu into a file the Oolio One setup wizard accepts, with categories, size variants and modifier groups worked out.</p>
       <dl class="lx-flow"><dt>Takes</dt><dd>Square or Lightspeed exports, spreadsheets, menu PDFs, web pages, menu photos</dd><dt>Gives</dt><dd>Oolio One product import (.csv or .xlsx) and modifier groups</dd></dl>
       <button type="button" class="lx-open" data-go="converter">Open Menu Converter""" + ic("arrow-right") + """</button>
+    </article>
+    <article class="lx-card t-converter">
+      <div class="lx-cico">""" + ic("file-check") + """</div>
+      <h2>Menu Update</h2>
+      <p>Compares a venue’s current Oolio One products with its new menu and works out what to edit, add and delete, keeping every Product ID so sales history, PLUs and printers stay.</p>
+      <dl class="lx-flow"><dt>Takes</dt><dd>The Oolio product export, the new menu (a Menu Converter file) and optionally the menu PDF</dd><dt>Gives</dt><dd>An update import, a delete list and a step-by-step checklist</dd></dl>
+      <button type="button" class="lx-open" data-go="menuupdate">Open Menu Update""" + ic("arrow-right") + """</button>
     </article>
     <article class="lx-card t-photos">
       <div class="lx-cico">""" + ic("images") + """</div>
@@ -426,6 +447,9 @@ LAUNCHER_HTML = SPRITE + """
 <div id="lx-pe" hidden>
 """ + pe_body + """
 </div>
+<div id="lx-mu" hidden>
+""" + mu_body + """
+</div>
 <div id="lx-pf" class="lx-pfwrap" hidden>
   <div class="lx-note" id="lx-pfnote" hidden>
     <span>Photo search and saving are blocked on claude.ai, because claude.ai pages can’t download pictures from other websites. Save the Photo Finder to your computer and open the file in Edge or Chrome. It works there with nothing to install.</span>
@@ -443,7 +467,7 @@ LAUNCHER_HTML = SPRITE + """
 
 LAUNCHER_JS = r"""
 (()=>{
-  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),training:g('lx-ts'),word:g('lx-iw'),photoedit:g('lx-pe'),map:g('lx-map'),hypercare:g('lx-hc'),team:g('lx-team'),routing:g('lx-routing')};
+  const g=id=>document.getElementById(id),views={'':g('lx-home'),venues:g('lx-vs'),converter:g('lx-conv'),photos:g('lx-pf'),venue:g('lx-rf'),setup:g('lx-st'),training:g('lx-ts'),word:g('lx-iw'),photoedit:g('lx-pe'),menuupdate:g('lx-mu'),map:g('lx-map'),hypercare:g('lx-hc'),team:g('lx-team'),routing:g('lx-routing')};
   const LEGAL=[...document.querySelectorAll('#lx-legal .lg-doc')].map(a=>a.id.slice(3));LEGAL.forEach(k=>{views[k]=g('lx-legal')});
   const onClaude=!!(window.claude&&window.claude.use)||/(^|\.)claude(usercontent)?\.(ai|com)$/.test(location.hostname);
   let pfReady=false,checked=false,mapReady=false;
@@ -467,7 +491,7 @@ LAUNCHER_JS = r"""
   window.addEventListener('hashchange',show);window.addEventListener('popstate',show);
   // Photo Tools and Page Planner: tabs that open a small menu. Each menu sits outside the scrolling tab row
   // so it isn't clipped, and is placed under its tab each time it opens.
-  const MENUS=[['lx-ptools','lx-pmenu'],['lx-pltools','lx-plmenu']],items=m=>[...m.querySelectorAll('[role="menuitem"]')].filter(x=>!x.hidden);
+  const MENUS=[['lx-ctools','lx-cmenu'],['lx-ptools','lx-pmenu'],['lx-pltools','lx-plmenu']],items=m=>[...m.querySelectorAll('[role="menuitem"]')].filter(x=>!x.hidden);
   function closeMenu(){MENUS.forEach(([bi,mi])=>{const m=g(mi),b=g(bi);if(m&&!m.hidden){m.hidden=true;b.setAttribute('aria-expanded','false')}})}
   function openMenu(bi,mi,focus){closeMenu();const m=g(mi),b=g(bi),r=b.getBoundingClientRect(),z=+getComputedStyle(document.body).zoom||1;
     m.hidden=false;b.setAttribute('aria-expanded','true');const w=m.offsetWidth;
@@ -496,7 +520,7 @@ page = (
     '<meta name="claude:viewport-fit-sides" content="cover">\n'
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>\n'
     + FONT + "\n"
-    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + ts_css + iw_css + pe_css + THEME + SHELL_CSS + OPS_CSS + "</style>\n"
+    "<style>" + conv_css + LAUNCHER_CSS + LEGAL_CSS + rl_css + st_css + ts_css + iw_css + pe_css + mu_css + THEME + SHELL_CSS + OPS_CSS + "</style>\n"
     + LAUNCHER_HTML
     + "<script>" + SHELL_JS + "</script>\n"
     + "<script>" + (HERE / "menu-knowledge.js").read_text(encoding="utf-8") + "</script>\n"
@@ -506,6 +530,7 @@ page = (
     + "<script>" + ts_js + "</script>\n"
     + "<script>" + iw_js + "</script>\n"
     + "<script>" + pe_js + "</script>\n"
+    + "<script>" + mu_js + "</script>\n"
     + "<script>\nconst PF_HTML=" + pf_js + ";\nconst MAP_HTML=" + map_js + ";\n" + LAUNCHER_JS + "</script>\n"
     + "<script>" + (HERE / "venue-link.js").read_text(encoding="utf-8") + "</script>\n"
     + "<script>" + (HERE / "venue-search.js").read_text(encoding="utf-8") + "</script>\n"
