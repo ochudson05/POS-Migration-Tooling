@@ -109,6 +109,14 @@ body.picking .cell.empty{background:color-mix(in srgb,var(--accent,#2554c7) 16%,
 .tray{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px}
 .tray .cell{min-height:40px;padding:5px 10px;font-size:.72rem;max-width:180px}
 /* one button's own colour, in the selection bar */
+/* dragging in the page editor */
+#pp-pages .cell.it,#pp-pages .cell.lnk,#pp-pages .cell.back,#pp-tray .cell,#pp-tb .tt{cursor:grab}
+body.pp-dragging,body.pp-dragging *{cursor:grabbing!important;user-select:none}
+.pp-lift{opacity:.35}
+.cell.pp-drop,.tt.pp-drop{outline:3px dashed var(--accent,#2554c7);outline-offset:1px}
+#pp-trayw.pp-drop{outline:3px dashed var(--accent,#2554c7);outline-offset:4px;border-radius:8px}
+.pp-ghost{position:fixed;left:0;top:0;z-index:60;pointer-events:none;max-width:170px;padding:10px 12px;border-radius:5px;background:var(--c,#455a64);color:#fff;font-weight:700;font-size:.72rem;text-transform:uppercase;box-shadow:0 8px 20px rgb(0 0 0/.3)}
+.pp-ghost.lt{color:#111}
 .tcol{display:inline-flex;flex-wrap:wrap;gap:4px;align-items:center}
 .tcol .sw{width:22px;height:22px;padding:0;border-radius:50%;border:2px solid var(--card,#fff);background:var(--c);box-shadow:0 0 0 1px var(--line,#dde);cursor:pointer}
 .tcol .sw[aria-pressed="true"]{box-shadow:0 0 0 2px var(--accent,#2554c7)}
@@ -613,7 +621,7 @@ function drawBar(){
   const c=cellAt(sel);$('pp-bar').hidden=false;
   const nm=c.t==='i'?P.items[c.id].name:c.t==='b'?'Back button':'Link to '+(byId(c.to)||{}).name;
   const copyOpts=c.t==='i'?'<label class="small">Copy to <select id="pp-copyto"><option value="">choose a page…</option>'+P.pages.filter(p=>p.id!==sel.p).map(p=>'<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')+'</select></label>':'';
-  $('pp-bar').innerHTML='<b>'+esc(nm)+'</b><span class="small muted">'+(c.t==='i'?'Click an empty slot to move it, or a button to swap.':'Links and Back buttons move within their own page.')+'</span>'+copyOpts+
+  $('pp-bar').innerHTML='<b>'+esc(nm)+'</b><span class="small muted">'+(c.t==='i'?'Click an empty slot to move it, or a button to swap. You can also drag buttons.':'Links and Back buttons move within their own page.')+'</span>'+copyOpts+
     (c.t!=='b'&&sel.p!=='tray'?'<span class="tcol" role="group" aria-label="This button’s colour"><span class="small">Colour</span>'+POSPAL.map(([h,nm])=>'<button type="button" class="sw" data-tc="'+h+'" style="--c:'+h+'" title="'+nm+'" aria-label="'+nm+'"'+(c.c===h?' aria-pressed="true"':'')+'></button>').join('')+
       (CUSTOM_COLOURS?'<input type="color" id="pp-tcol" value="'+toHex(c.c||(c.t==='i'?colourOf(P.items[c.id]):pageColour(byId(c.to)||{cells:[]})))+'" aria-label="Any colour" title="Any colour">':'')+(c.c?'<button type="button" class="sec sm" id="pp-tcat">'+(c.t==='i'?'Category colour':'Page colour')+'</button>':'')+'</span>':'')+
     (c.t==='i'&&sel.p!=='tray'?'<button type="button" class="bad sm" id="pp-rm">Take off this page</button>':'')+'<button type="button" class="sec sm" id="pp-cancel">Cancel</button>';
@@ -660,6 +668,41 @@ $('pp-pages').addEventListener('keydown',e=>{const c=e.target.closest('.cell');i
     if(on)document.querySelectorAll('#pp-pages .cell[data-p="'+c.dataset.p+'"][data-i="'+c.dataset.i+'"]').forEach(x=>{if(x!==c)x.classList.add('hl')})};
   $('pp-pages').addEventListener('mouseover',hl(true));$('pp-pages').addEventListener('mouseout',hl(false));
   $('pp-pages').addEventListener('focusin',hl(true));$('pp-pages').addEventListener('focusout',hl(false))}
+
+/* ---------------- dragging in the page editor ----------------
+   A button onto another slot on any page (the same rules as click-then-click: move, swap, no pointless copies), from
+   "Not on any page" onto an empty slot, onto a toolbar page (its first empty slot), or onto "Not on any page" (takes it
+   off its page). Toolbar pages dragged onto each other change the toolbar order. A short click still selects. */
+let pd=null,pdJust=false;
+const pdTarget=e=>{const t=document.elementFromPoint(e.clientX,e.clientY);if(!t||!t.closest)return null;
+  if(pd.kind==='page')return t.closest('#pp-tb .tt[data-go]');
+  return t.closest('#pp-pages .cell[data-p]')||t.closest('#pp-tb .tt[data-go]')||(pd.p!=='tray'?t.closest('#pp-trayw'):null)};
+function pdClear(){if(!pd)return;if(pd.g)pd.g.remove();document.body.classList.remove('pp-dragging');document.querySelectorAll('.pp-drop,.pp-lift').forEach(x=>x.classList.remove('pp-drop','pp-lift'))}
+document.addEventListener('pointerdown',e=>{if(e.button!==0||!P||!P.pages)return;
+  const c=e.target.closest('#pp-pages .cell[data-p],#pp-tray .cell[data-p]'),tt=e.target.closest('#pp-tb .tt[data-go]');
+  if(c&&!c.classList.contains('empty')&&!c.classList.contains('arrow')&&!c.classList.contains('off'))pd={kind:'cell',p:c.dataset.p,i:c.dataset.i,el:c,x:e.clientX,y:e.clientY};
+  else if(tt)pd={kind:'page',id:tt.dataset.go,el:tt,x:e.clientX,y:e.clientY}});
+document.addEventListener('pointermove',e=>{if(!pd)return;
+  if(!pd.on){if(Math.hypot(e.clientX-pd.x,e.clientY-pd.y)<8)return;pd.on=true;document.body.classList.add('pp-dragging');
+    const same=pd.kind==='page'?[pd.el]:document.querySelectorAll('#pp-pages .cell[data-p="'+CSS.escape(pd.p)+'"][data-i="'+CSS.escape(pd.i)+'"],#pp-tray .cell[data-i="'+CSS.escape(pd.i)+'"]');same.forEach(x=>x.classList.add('pp-lift'));
+    const g=pd.g=document.createElement('div');g.className='pp-ghost';g.textContent=(pd.el.childNodes[0]&&pd.el.childNodes[0].textContent||pd.el.textContent).trim();
+    const col=pd.el.style.getPropertyValue('--c');if(col)g.style.setProperty('--c',col);if(pd.el.classList.contains('lt'))g.classList.add('lt');document.body.appendChild(g)}
+  e.preventDefault();pd.g.style.transform='translate('+(e.clientX+12)+'px,'+(e.clientY+12)+'px)';
+  if(e.clientY<70)scrollBy(0,-18);else if(e.clientY>innerHeight-70)scrollBy(0,18);
+  const t=pdTarget(e);if(t===pd.over)return;pd.over=t;document.querySelectorAll('.pp-drop').forEach(x=>x.classList.remove('pp-drop'));if(t&&t!==pd.el)t.classList.add('pp-drop')});
+document.addEventListener('pointerup',e=>{if(!pd)return;const d=pd,t=d.on?pdTarget(e):null;pdClear();pd=null;if(!d.on)return;
+  pdJust=true;setTimeout(()=>{pdJust=false},0);if(!t||t===d.el)return;
+  if(d.kind==='page'){// toolbar order: put the dragged page where the one it was dropped on is
+    const a=byId(d.id),b=byId(t.dataset.go);if(!a||!b||a===b)return;snap();const tops=P.pages.filter(p=>!p.parent),fwd=tops.indexOf(a)<tops.indexOf(b);
+    P.pages.splice(P.pages.indexOf(a),1);P.pages.splice(P.pages.indexOf(b)+(fwd?1:0),0,a);changed();return}
+  const src={p:d.p,i:d.p==='tray'?d.i:+d.i};
+  if(t.id==='pp-trayw'){const c=byId(src.p).cells[src.i];if(!c||c.t!=='i')return msg1('Only products go in “Not on any page”. Links and Back buttons stay on their page.',1);
+    snap();byId(src.p).cells[src.i]=null;sel=null;changed();return}
+  if(t.dataset.go){const pg=byId(t.dataset.go);if(!pg||pg.id===src.p)return;const j=pg.cells.indexOf(null);if(j<0)return msg1(pg.name+' has no empty slot.',1);sel=src;clickCell(pg.id,j);return}
+  sel=src;clickCell(t.dataset.p,t.dataset.i)});
+document.addEventListener('pointercancel',()=>{pdClear();pd=null});
+// the click that ends a drag mustn't also select something
+document.addEventListener('click',e=>{if(pdJust){e.stopPropagation();e.preventDefault();pdJust=false}},true);
 $('pp-bo').checked=showBo;
 // colours: switch scheme, or click a category to step it to the next POS colour
 $('pp-colour').onchange=()=>{if(!P)return;P.settings.colour=$('pp-colour').value;dirty=true;draw();keepDraft()};
@@ -838,6 +881,9 @@ function applyLayout(L){const s=S(),n=N();let pages=0,miss=0,ren=0,cols=0;snap()
       if(c.n&&c.n!==(x.label||x.name)){x.label=c.n;ren++}
       cells[i]={t:'i',id:c.id};if(c.c&&c.c!==toHex(colourOf(x))){cells[i].c=c.c;cols++}});
     p.cells=cells;pages++});
+  // their toolbar order
+  const ord=(L.pages||[]).filter(rp=>!rp.parent).map(rp=>byId(rp.id)).filter(p=>p&&!p.parent);
+  if(ord.length){const rest=P.pages.filter(p=>!ord.includes(p));P.pages=ord.concat(rest)}
   sel=null;changed();
   return 'Loaded the venue’s version: '+pages+' page'+(pages===1?'':'s')+(ren?', '+ren+' renamed button'+(ren>1?'s':''):'')+(cols?', '+cols+' button'+(cols>1?'s':'')+' with their own colour':'')+'.'+
     (miss?' '+miss+' button'+(miss>1?'s or pages':' or page')+' weren’t in this plan, so they were left out.':'')+(L.cols!==s.cols||L.rows!==s.rows?' Their screen was '+L.cols+' × '+L.rows+', not '+s.cols+' × '+s.rows+', so check where things landed.':'')+' Undo puts the pages back (renamed buttons keep their new names).'}

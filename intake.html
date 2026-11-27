@@ -106,6 +106,7 @@ body.pos-dragging,body.pos-dragging *{cursor:grabbing!important;user-select:none
 #posed .pos-c:hover,#posed .pos-tb button:hover,#posed .pos-sw button:hover{background:var(--c,#009688);filter:brightness(1.1)}
 #posed .pos-c.empty:hover{background:#4a5057;filter:none}#posed .pos-c.back:hover{background:#111}
 #posed .pos-path button:hover{background:none;color:#fff}
+#posed .pos-tb button{cursor:grab}
 .prow{display:flex;flex-wrap:wrap;gap:8px}.prow .go{width:auto;padding:10px 18px;font-size:1rem}.muted{color:var(--muted)}#portal{display:grid;gap:16px}#portal[hidden]{display:none}.pst{margin:0;display:flex;gap:6px;align-items:center;font-weight:600}.pst.ok{color:var(--ok)}.pst.warn{color:var(--warn)}
 </style>
 </head>
@@ -311,7 +312,7 @@ function posDraw(){const el=$('posed');if(!el||!PL)return;const pg=pgOf(PPAGE)||
   const path=[];for(let p=pg;p;p=p.parent?pgOf(p.parent):null)path.unshift(p);
   const c=PSEL?(PSEL.w==='g'?pg.cells[PSEL.i]:PTRAY[PSEL.i]):null;
   el.classList.toggle('picking',!!PSEL);
-  el.innerHTML='<p class="pos-help">Drag a button to move it, or drop it on a toolbar page to move it there. Or tap a button, then tap another slot. Tapping a button also lets you rename it or change its colour.</p>'+
+  el.innerHTML='<p class="pos-help">Drag a button to move it, or drop it on a toolbar page to move it there. Or tap a button, then tap another slot. Tapping a button also lets you rename it or change its colour. Drag the toolbar pages to change their order.</p>'+
     '<div class="pos-scr" style="--cols:'+PL.cols+'"><div class="pos-tb" role="tablist" aria-label="Toolbar pages">'+tops().map(p=>'<button type="button" role="tab" data-pg="'+esc(p.id)+'"'+(lightC(pcol(p))?' class="lt"':'')+' style="--c:'+pcol(p)+'" aria-selected="'+(p.id===top.id)+'"'+(p.id===top.id?' aria-current="page"':'')+'>'+esc(p.name)+'</button>').join('')+'</div>'+
     (path.length>1?'<div class="pos-path">'+path.map((p,i)=>i<path.length-1?'<button type="button" data-pg="'+esc(p.id)+'">'+esc(p.name)+'</button> ›':'<b>'+esc(p.name)+'</b>').join(' ')+'</div>':'')+
     '<div class="pos-g">'+pg.cells.map((x,i)=>tileHtml(x,i,'g')).join('')+'</div></div>'+
@@ -358,9 +359,11 @@ document.addEventListener('change',e=>{if(!PSEL||PSEL.w!=='g'||!$('posed'))retur
   if(e.target.id==='pos-any'){posSnap();c.c=e.target.value.toLowerCase();posChanged()}
   else if(e.target.id==='pos-to'&&e.target.value)posToPage(PSEL.i,e.target.value)});
 // dragging: a button onto another slot (move or swap) or onto a toolbar page (moves it to that page's first empty slot)
-document.addEventListener('pointerdown',e=>{const t=e.target.closest('#posed .pos-c[data-w]');if(!t||e.button!==0||t.classList.contains('empty'))return;
+document.addEventListener('pointerdown',e=>{if(e.button!==0)return;const tab=e.target.closest('#posed .pos-tb [data-pg]');
+  if(tab){pdrag={pg:tab.dataset.pg,x:e.clientX,y:e.clientY,el:tab,moved:false};return}
+  const t=e.target.closest('#posed .pos-c[data-w]');if(!t||t.classList.contains('empty'))return;
   pdrag={w:t.dataset.w,i:+t.dataset.i,x:e.clientX,y:e.clientY,el:t,moved:false}});
-const posAt=e=>{const t=document.elementFromPoint(e.clientX,e.clientY);return t&&t.closest?t.closest('#posed .pos-c[data-w="g"],#posed .pos-tb [data-pg]'):null};
+const posAt=e=>{const t=document.elementFromPoint(e.clientX,e.clientY);if(!t||!t.closest)return null;return pdrag&&pdrag.pg?t.closest('#posed .pos-tb [data-pg]'):t.closest('#posed .pos-c[data-w="g"],#posed .pos-tb [data-pg]')};
 document.addEventListener('pointermove',e=>{if(!pdrag)return;
   if(!pdrag.moved){if(Math.hypot(e.clientX-pdrag.x,e.clientY-pdrag.y)<8)return;pdrag.moved=true;document.body.classList.add('pos-dragging');pdrag.el.classList.add('lift');
     const g=pdrag.g=document.createElement('div');g.className='pos-ghost'+(pdrag.el.classList.contains('lt')?' lt':'');const col=pdrag.el.style.getPropertyValue('--c');if(col)g.style.setProperty('--c',col);
@@ -370,7 +373,9 @@ document.addEventListener('pointermove',e=>{if(!pdrag)return;
   document.querySelectorAll('#posed .drop').forEach(x=>x.classList.remove('drop'));const t=posAt(e);if(t&&t!==pdrag.el)t.classList.add('drop')});
 function pdEnd(){if(!pdrag)return;if(pdrag.g)pdrag.g.remove();document.body.classList.remove('pos-dragging');document.querySelectorAll('#posed .drop,#posed .lift').forEach(x=>x.classList.remove('drop','lift'))}
 document.addEventListener('pointerup',e=>{if(!pdrag)return;const d=pdrag,t=d.moved?posAt(e):null;pdEnd();
-  if(t){if(t.dataset.pg){if(d.w==='g'&&t.dataset.pg!==PPAGE)posToPage(d.i,t.dataset.pg)}else posMove({w:d.w,i:d.i},{w:'g',i:+t.dataset.i})}
+  if(t&&d.pg){// toolbar order: the dragged page goes where the one it was dropped on is
+    const a=pgOf(d.pg),b=pgOf(t.dataset.pg);if(a&&b&&a!==b){posSnap();const T0=tops(),fwd=T0.indexOf(a)<T0.indexOf(b);PL.pages.splice(PL.pages.indexOf(a),1);PL.pages.splice(PL.pages.indexOf(b)+(fwd?1:0),0,a);posChanged()}}
+  else if(t){if(t.dataset.pg){if(d.w==='g'&&t.dataset.pg!==PPAGE)posToPage(d.i,t.dataset.pg)}else posMove({w:d.w,i:d.i},{w:'g',i:+t.dataset.i})}
   setTimeout(()=>{pdrag=null},0)});
 document.addEventListener('pointercancel',()=>{pdEnd();pdrag=null});
 
