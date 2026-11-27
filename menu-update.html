@@ -100,7 +100,11 @@ body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-ap
       <div class="mu-row" style="margin-top:14px">
         <label class="mu-f">Venue name (file names)<input type="text" id="mu-venue" style="width:240px"></label>
         <label class="mu-f">Printers for products with none<input type="text" id="mu-printers" style="width:280px"></label>
-        <span id="mu-markups" class="mu-row"></span>
+      </div>
+      <div id="mu-plbox" hidden style="margin-top:14px">
+        <h3 style="font-size:.92rem;margin:0 0 4px">Price lists</h3>
+        <p class="mu-lead" style="margin-bottom:8px">These are the venue’s extra price lists, read from the export, so any names work. For each one, choose how its prices are set on the changed products. A list with the same or a similar name in the new menu file is matched to it automatically. Your choices are remembered by list name for the next venue.</p>
+        <div class="mu-wrap"><table><thead><tr><th>Price list in Oolio</th><th>How to set it</th><th>Value</th><th>Seen in export</th></tr></thead><tbody id="mu-pl"></tbody></table></div>
       </div>
       <div class="mu-row" style="margin-top:10px;font-size:.88rem">
         <label><input type="checkbox" id="mu-keepold" checked> When a dish is in Oolio twice, keep the original (with printers) and delete the hand-added copy</label>
@@ -191,8 +195,16 @@ function score(n,o){let s=sim(n['Product Name*'],o['Product Name*']);const pn=nu
   if(pn&&po){const d=Math.abs(pn-po)/Math.max(pn,po);s+=d===0?.25:d<=.1?.1:d>.5?-.4:0}
   if(catKey(n['Category*']||'')&&catKey(n['Category*']||'')===catKey(o['Category*']||''))s+=.1;return Math.round(s*1000)/1000}
 
+// price lists = the extra columns Oolio puts between GTIN and Sell Price* (any names); fall back to every non-standard column
+function priceLists(head){const g=head.indexOf('GTIN'),s=head.indexOf('Sell Price*');
+  const mid=g>=0&&s>g?head.slice(g+1,s):[];return(mid.length?mid:head).filter(h=>h&&!CORE.has(h))}
+// "UberEats Prices", "Uber Eats", "uber_eats price list" all compare equal
+const plKey=s=>String(s).toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\b(prices?|price ?lists?|list|pricing|level)\b/g,' ').replace(/\s+/g,'');
+function matchPl(p,cols){const k=plKey(p);return cols.find(c=>plKey(c)===k)||cols.find(c=>{const ck=plKey(c);return k&&ck&&(ck.includes(k)||k.includes(ck))})||cols.find(c=>sim(c,p)>=.5)||''}
+const PLSAVE='mh.mu.pl',plSaved=()=>{try{return JSON.parse(localStorage.getItem(PLSAVE)||'{}')}catch(e){return{}}};
+function plRemember(){try{const s=plSaved();S.pl.forEach(p=>{const c=S.plCfg[p];s[plKey(p)]={mode:c.mode,ratio:c.ratio}});localStorage.setItem(PLSAVE,JSON.stringify(s))}catch(e){}}
 function analyse(){const E=F.exp,N=F.new;
-  S.pl=E.head.filter(h=>!CORE.has(h));
+  S.pl=priceLists(E.head);S.newPl=priceLists(N.head);
   S.handAdded=o=>kind(o)==='product'&&!o['Printer Profiles']&&!S.pl.some(p=>o[p]);
   S.olds=E.rows.filter(o=>kind(o)==='product'||kind(o)==='variant');
   S.oldMods=E.rows.filter(o=>kind(o)==='modifier');
@@ -205,8 +217,15 @@ function analyse(){const E=F.exp,N=F.new;
   S.ocats=ocats;S.catMap={};
   new Set(S.items.map(x=>x.r['Category*'])).forEach(c=>{const k=catKey(c||'');S.catMap[c]=ocats.find(o=>catKey(o)===k)||ocats.find(o=>k&&(catKey(o).includes(k)||k.includes(catKey(o))))||c||''});
   // markups for price-list columns (e.g. UberEats = sell x 1.15), from rows that have both
-  S.markup={};S.pl.forEach(p=>{const r=E.rows.filter(o=>/^[0-9.]+$/.test(o[p]||'')&&num(o['Sell Price*'])).map(o=>num(o[p])/num(o['Sell Price*'])).sort((a,b)=>a-b);
-    S.markup[p]={ratio:r.length?Math.round(r[r.length>>1]*1000)/1000:null,n:r.length}});
+  // how each price list relates to the sell price in the export (median ratio), then the starting choice for each list:
+  // a matching list in the new menu file > the choice saved for this list name > the export's own ratio > leave as is
+  S.markup={};S.plCfg={};const saved=plSaved();
+  S.pl.forEach(p=>{const r=E.rows.filter(o=>num(o[p])>0&&num(o['Sell Price*'])>0).map(o=>num(o[p])/num(o['Sell Price*'])).sort((a,b)=>a-b);
+    const ratio=r.length?Math.round(r[r.length>>1]*1000)/1000:null,col=matchPl(p,S.newPl),sv=saved[plKey(p)];
+    S.markup[p]={ratio,n:r.length};
+    S.plCfg[p]=col&&N.rows.some(x=>num(x[col])>0)?{mode:'menu',col,ratio:sv&&sv.ratio||ratio}
+      :sv&&sv.mode!=='menu'?{mode:sv.mode,ratio:sv.ratio||ratio,col}
+      :ratio&&r.length>=3?{mode:Math.abs(ratio-1)<.001?'same':'ratio',ratio,col}:{mode:'keep',ratio,col}});
   const pc={};S.olds.forEach(o=>{if(o['Printer Profiles']&&(o['Reporting Group*']||'').toLowerCase()==='food')pc[o['Printer Profiles']]=(pc[o['Printer Profiles']]||0)+1});
   S.printers=Object.entries(pc).sort((a,b)=>b[1]-a[1]).map(x=>x[0])[0]||'';
   const loc={};E.rows.forEach(o=>{const l=o['Available Location'];if(l)loc[l]=(loc[l]||0)+1});
@@ -264,7 +283,21 @@ function actionOf(x,ch){const o=x.pick&&S.byId.get(x.pick);if(!o)return'Add';con
 function fixText(o,name,price){const f=[];if(o['Product Name*']!==name)f.push('Name: '+o['Product Name*']+' → '+name);if(num(o['Sell Price*'])!==num(price))f.push('Price: '+money(o['Sell Price*'])+' → '+money(price));return f.join('; ')}
 function drawScope(){$('mu-cats').innerHTML=S.ocats.slice().sort().map(c=>{const n=S.olds.filter(o=>o['Category*']===c).length;
   return'<label><input type="checkbox" data-cat="'+esc(c)+'"'+(S.scope.has(c)?' checked':'')+'> '+esc(c)+' <small>'+n+'</small></label>'}).join('');
-  $('mu-markups').innerHTML=S.pl.map(p=>{const m=S.markup[p];return'<label class="mu-f">'+esc(p)+' = sell price ×<input type="number" step="0.001" min="0" data-pl="'+esc(p)+'" value="'+(m.ratio&&m.n>=5?m.ratio:'')+'" placeholder="leave as is" style="width:110px"></label>'}).join('')}
+  drawPl()}
+function drawPl(){$('mu-plbox').hidden=!S.pl.length;
+  $('mu-pl').innerHTML=S.pl.map((p,k)=>{const c=S.plCfg[p],m=S.markup[p];
+    const opt=(v,t)=>'<option value="'+v+'"'+(c.mode===v?' selected':'')+'>'+esc(t)+'</option>';
+    const how='<select data-plk="'+k+'" data-plf="mode" aria-label="How to set '+esc(p)+'">'+opt('ratio','Sell price × a number')+opt('same','Same as the sell price')+(S.newPl.length?opt('menu','Take it from the new menu file'):'')+opt('keep','Leave as it is in Oolio')+'</select>';
+    const val=c.mode==='ratio'?'× <input type="number" step="0.001" min="0" data-plk="'+k+'" data-plf="ratio" value="'+(c.ratio||'')+'" style="width:100px" aria-label="Ratio for '+esc(p)+'">'
+      :c.mode==='menu'?'<select data-plk="'+k+'" data-plf="col" aria-label="New menu column for '+esc(p)+'">'+['',...S.newPl].map(n=>'<option value="'+esc(n)+'"'+(n===c.col?' selected':'')+'>'+esc(n||'(pick a column)')+'</option>').join('')+'</select>'
+      :c.mode==='same'?'<span class="mu-dim">= sell price</span>':'<span class="mu-dim">no change</span>';
+    return'<tr><td><b>'+esc(p)+'</b></td><td>'+how+'</td><td>'+val+'</td><td class="mu-dim">'+(m.n?m.n+' prices, usually × '+m.ratio:'no prices')+'</td></tr>'}).join('')}
+// the price a list gets for a row of the new menu (r0), or null to leave the column alone
+function plPrice(p,r0){const c=S.plCfg[p];if(!c)return null;
+  if(c.mode==='same')return fmt(r0['Sell Price*']);
+  if(c.mode==='ratio')return c.ratio>0?mul(r0['Sell Price*'],c.ratio):null;
+  if(c.mode==='menu')return c.col&&num(r0[c.col])>0?fmt(r0[c.col]):null;
+  return null}
 function drawItems(){let ed=0,fi=0,ad=0,sz=0,qf=0;
   $('mu-items').innerHTML=S.items.map((x,k)=>{const r=x.r;
     if(x.size){sz++;return'<tr class="off"><td>'+esc(r['Product Name*'])+' <span class="mu-dim">/ '+esc(x.size)+'</span></td><td class="num">'+money(r['Sell Price*'])+'</td><td colspan="4">'+(x.variant?'Size of <b>'+esc(x.variant['Product Name*'])+'</b>. ':'No size product found. ')+'<span class="mu-dim">Size prices aren’t in the export, so this goes on the checklist.</span></td>'+pdfCell(x)+'</tr>'}
@@ -308,14 +341,20 @@ function pdfCell(x){if(!S.pdf)return'';const f=x.pdf;
   return'<td class="mu-pdf">'+(!f?'':f.st==='ok'?tag('price matches','ok'):f.st==='missing'?tag('not found','warn'):tag('check price','warn')+(f.seen&&f.seen.length?'<br><span class="mu-dim">menu shows '+f.seen.map(n=>'$'+n.toFixed(2)).join(', ')+'</span>':''))+'</td>'}
 
 /* ---------- checks ---------- */
-function plRatios(){const m={};document.querySelectorAll('#mu-markups [data-pl]').forEach(i=>{const v=parseFloat(i.value);if(v>0)m[i.dataset.pl]=v});return m}
+// price lists whose prices get set (anything but "leave as it is")
+function plRatios(){const m={};S.pl.forEach(p=>{const c=S.plCfg[p];if(c&&c.mode!=='keep'&&(c.mode!=='ratio'||c.ratio>0)&&(c.mode!=='menu'||c.col))m[p]=c});return m}
 function checks(){const c=[['Test the update import','Import one row first (for example the first quick fix) and check Oolio updates the product instead of making a copy']];
   const sz={};S.items.filter(x=>x.size).forEach(x=>{const k=x.r['Product Name*'];(sz[k]=sz[k]||[]).push(x.size+' '+money(x.r['Sell Price*']))});
   Object.entries(sz).forEach(([k,v])=>c.push([k+' sizes','Check in Oolio: '+v.join(', ')+' (size prices aren’t in the export)']));
   const mk=plRatios();
   S.pl.filter(p=>!mk[p]).forEach(p=>{const hit=S.items.filter(x=>x.pick&&S.byId.get(x.pick)[p]&&num(S.byId.get(x.pick)['Sell Price*'])!==num(x.r['Sell Price*']));
     hit.forEach(x=>c.push([x.name+' – '+p+' price','Still '+money(S.byId.get(x.pick)[p])+'; decide if it moves with the new '+money(x.r['Sell Price*'])+' price']))});
-  if(Object.keys(mk).length)c.push(['Price-list rounding',Object.keys(mk).join(', ')+' set at sell price × ratio; a few may be a cent off Oolio’s own rounding']);
+  const byRatio=S.pl.filter(p=>mk[p]&&mk[p].mode==='ratio');
+  if(byRatio.length)c.push(['Price-list rounding',byRatio.join(', ')+' set at sell price × a number; a few may be a cent off Oolio’s own rounding']);
+  S.pl.filter(p=>mk[p]&&mk[p].mode==='menu').forEach(p=>{const col=mk[p].col,miss=S.items.filter(x=>!x.size&&!(num(x.r[col])>0)).map(x=>x.name);
+    if(miss.length)c.push([p+' prices missing',miss.length+' item(s) have no “'+col+'” price in the new menu file, so their '+p+' price is left as it is: '+miss.slice(0,6).join(', ')+(miss.length>6?'…':'')])});
+  const used=new Set(S.pl.map(p=>mk[p]&&mk[p].mode==='menu'?mk[p].col:'').filter(Boolean));
+  S.newPl.filter(n=>!used.has(n)&&S.items.some(x=>num(x.r[n])>0)).forEach(n=>c.push(['Price list “'+n+'”','The new menu file has this price list but it isn’t used. Match it to an Oolio list in step 2, or create the list in Oolio first if the venue doesn’t have it']));
   S.items.forEach(x=>{if(!x.pick||x.size)return;const o=S.byId.get(x.pick),s=sim(x.r['Product Name*'],o['Product Name*']);
     if(o['Product Name*']!==x.name&&s<.5)c.push([o['Product Name*']+' = '+x.name+'?','Matched on price and category; confirm with the venue it’s the same dish'])});
   const twice={};S.items.forEach(x=>{if(x.pick&&!x.size)(twice[x.pick]=twice[x.pick]||[]).push(x.name)});
@@ -338,7 +377,7 @@ function build(){const head=F.exp.head,mk=plRatios(),pr=$('mu-printers').value.t
     if(o)r={...o};else{r={};head.forEach(h=>{r[h]=h in r0&&h!=='Product ID'?r0[h]:''});r['Product Type*']=(S.olds.find(z=>kind(z)==='product')||{})['Product Type*']||'product';if(!r['Available Location'])r['Available Location']=S.venue}
     r['Product Name*']=x.name;r['Sell Price*']=fmt(r0['Sell Price*']);if(r0['Description'])r['Description']=r0['Description'];if(r0['Dietary Tags'])r['Dietary Tags']=r0['Dietary Tags'];
     r['Category*']=x.cat||r['Category*'];if(!r['Printer Profiles']&&pr)r['Printer Profiles']=pr;if(!r['Reporting Group*']&&r0['Reporting Group*'])r['Reporting Group*']=r0['Reporting Group*'];
-    Object.entries(mk).forEach(([p,m])=>{if(head.includes(p))r[p]=mul(r0['Sell Price*'],m)});up.push(r);
+    Object.keys(mk).forEach(p=>{const v=plPrice(p,r0);if(v!=null&&head.includes(p))r[p]=v});up.push(r);
     const what=changes(x),rest=[];if(o){if((r['Description']||'')!==(o['Description']||''))rest.push('description');if((r['Dietary Tags']||'')!==(o['Dietary Tags']||''))rest.push((r['Dietary Tags']||'clear')+' tags');
       Object.keys(mk).forEach(p=>{if((r[p]||'')!==(o[p]||''))rest.push(p+' '+money(r[p]))})}
     const act=actionOf(x,what),isQ=act.startsWith('QUICK');
@@ -354,7 +393,7 @@ function build(){const head=F.exp.head,mk=plRatios(),pr=$('mu-printers').value.t
     if(o){if(o['Product Name*']===r0['Product Name*'])return;r={...o,'Product Name*':r0['Product Name*']};mq.push([STEP1,QF.rename,'Modifier',o['Product Name*'],r0['Product Name*'],money(o['Sell Price*']),money(o['Sell Price*']),'Name: '+o['Product Name*']+' -> '+r0['Product Name*']+' (nothing else to set up)','',o['PLU'],o['Product ID'],''])}
     else{r={};head.forEach(h=>r[h]='');['Product Type*','Is Selling?','Print On Receipt?','Available Location','Sell Tax*','Variable Pricing?'].forEach(h=>{if(tmpl&&h in tmpl)r[h]=tmpl[h]});
       if(!r['Product Type*'])r['Product Type*']='modifier';if(!r['Sell Tax*'])r['Sell Tax*']=r0['Sell Tax*']||'GST';if(!r['Is Selling?'])r['Is Selling?']='TRUE';if(!r['Available Location'])r['Available Location']=S.venue;
-      r['Product Name*']=r0['Product Name*'];r['Sell Price*']=fmt(r0['Sell Price*']);Object.entries(mk).forEach(([p,v])=>{if(head.includes(p))r[p]=mul(r0['Sell Price*'],v)});
+      r['Product Name*']=r0['Product Name*'];r['Sell Price*']=fmt(r0['Sell Price*']);Object.keys(mk).forEach(p=>{const v=plPrice(p,r0);if(v!=null&&head.includes(p))r[p]=v});
       ma.push([STEP1,'Add modifier','Modifier','(new)',r0['Product Name*'],'',money(r0['Sell Price*']),'New',num(r0['Sell Price*'])===0&&/^add\b/i.test(r0['Product Name*'])?'No price - confirm with venue':'','','',''])}
     up.push(r)});
   const bucket=n=>up1.filter(a=>a[0]===n).map(a=>a[1]);
@@ -421,7 +460,10 @@ $('mu').addEventListener('change',e=>{const t=e.target;
   else if(t.dataset.del){S.del.get(t.dataset.del).on=t.checked;drawAll()}
   else if(t.dataset.m!==undefined){S.mods[+t.dataset.m].pick=t.value;drawAll()}
   else if(t.id==='mu-keepold'){matchAll();defaultDeletes();drawAll()}
-  else if(t.dataset.pl||t.id==='mu-printers'||t.id==='mu-groups')drawAll()});
+  else if(t.dataset.plk!==undefined){const c=S.plCfg[S.pl[+t.dataset.plk]],f=t.dataset.plf;
+    if(f==='ratio')c.ratio=parseFloat(t.value)||null;else c[f]=t.value;
+    if(f==='mode'&&t.value==='menu'&&!c.col)c.col=S.newPl[0]||'';plRemember();drawPl();drawAll()}
+  else if(t.id==='mu-printers'||t.id==='mu-groups')drawAll()});
 $('mu-groups').addEventListener('input',()=>drawChecks());
 $('mu-delall').addEventListener('click',()=>{S.del.forEach(d=>d.on=true);drawAll()});
 $('mu-delnone').addEventListener('click',()=>{S.del.forEach(d=>d.on=false);drawAll()});
