@@ -5,6 +5,7 @@ Menu Hauler loads the libraries below from public CDNs at run time. Each one is 
 | Component | Version | Loaded from | Licence | Copyright |
 |---|---|---|---|---|
 | SheetJS Community Edition (xlsx) | 0.18.5 | cdnjs.cloudflare.com | Apache License 2.0 | © SheetJS LLC |
+| xlsx-js-style (SheetJS with cell styles, Menu Update checklist) | 1.2.0 | cdn.jsdelivr.net | Apache License 2.0 | © SheetJS LLC, gitbrent and contributors |
 | PDF.js | 3.11.174 | cdnjs.cloudflare.com | Apache License 2.0 | © Mozilla Foundation |
 | Tesseract.js | 5.1.1 | cdn.jsdelivr.net | Apache License 2.0 | © Tesseract.js contributors |
 | JSZip | 3.10.1 | cdnjs.cloudflare.com | MIT or GPL 3.0 (used under MIT) | © Stuart Knightley and contributors |

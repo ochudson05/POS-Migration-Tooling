@@ -941,6 +941,12 @@ html.oolio-hosted:not(.oolio-claude) .site-claude,html.oolio-hosted.oolio-claude
 .mu-tag.ok{color:var(--ok);border-color:var(--ok)}
 .mu-dim{color:var(--muted)}
 .mu tr.off td{opacity:.55}
+.mu-tag.qf{color:#fff;background:var(--ok);border-color:var(--ok)}
+.mu tr.qf td{background:color-mix(in srgb,var(--ok) 8%,transparent)}
+.mu tr.qf td:first-child{box-shadow:inset 3px 0 0 var(--ok)}
+.mu-fix{font-size:.84rem}
+.mu-stat.qf{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 10%,var(--bg))}
+.mu-stat.qf b{color:var(--ok)}
 .mu-chk li{margin:0 0 4px}
 .mu-chk{margin:0;padding-left:20px;font-size:.88rem}
 .mu-dl{display:flex;flex-wrap:wrap;gap:8px}
@@ -2001,14 +2007,14 @@ Double Shot=60</textarea></div>
 
     <section class="mu-card" aria-labelledby="mu-h3">
       <h2 id="mu-h3">3. New menu items</h2>
-      <p class="mu-lead">Each new menu item is matched to the Oolio product it replaces. Check every row: pick a different product, or “Add as a new product”, if the match is wrong. A product marked <span class="mu-tag warn">hand-added</span> has no printers or price-list prices. It was probably typed in by hand.</p>
+      <p class="mu-lead">Each new menu item is matched to the Oolio product it replaces. A <span class="mu-tag qf">Quick fix</span> only needs its name and/or price changed in Oolio, and the row shows exactly what changes. Check every row: pick a different product if the match is wrong. Only choose “Add as a new product” when nothing in Oolio could be renamed or repriced into it. A product marked <span class="mu-tag warn">hand-added</span> has no printers or price-list prices. It was probably typed in by hand.</p>
       <div class="mu-stats" id="mu-stats"></div>
       <div class="mu-wrap"><table><thead><tr><th>New menu item</th><th>Price</th><th>Update this Oolio product</th><th>Name in Oolio</th><th>Category</th><th>Change</th><th id="mu-pdfh" hidden>Menu PDF</th></tr></thead><tbody id="mu-items"></tbody></table></div>
     </section>
 
     <section class="mu-card" aria-labelledby="mu-h4">
       <h2 id="mu-h4">4. Oolio products not on the new menu</h2>
-      <p class="mu-lead">These are in the ticked categories but no new menu item uses them. Ticked rows go on the delete list. Untick add-ons, desserts and anything staff still sell.</p>
+      <p class="mu-lead">These are in the ticked categories but no new menu item uses them. Ticked rows go on the delete list. Only delete something that no longer exists in any form on the new menu: not renamed, a size, part of a combined item, or a modifier. Anything that still looks like a new-menu item starts unticked, with the reason. Untick add-ons, desserts and anything staff still sell.</p>
       <div class="mu-row" style="margin-bottom:8px"><button type="button" class="mu-sec mu-sm" id="mu-delall">Tick all</button><button type="button" class="mu-sec mu-sm" id="mu-delnone">Untick all</button></div>
       <div class="mu-wrap"><table><thead><tr><th>Delete</th><th>Category</th><th>Product</th><th>Price</th><th>PLU</th><th>Why</th></tr></thead><tbody id="mu-old"></tbody></table></div>
     </section>
@@ -2281,6 +2287,7 @@ Double Shot=60</textarea></div>
 <thead><tr><th scope="col">Component</th><th scope="col">Used for</th><th scope="col">Licence</th></tr></thead>
 <tbody>
 <tr><td>SheetJS Community Edition 0.18.5</td><td>Reading and writing spreadsheets</td><td>Apache 2.0</td></tr>
+<tr><td>xlsx-js-style 1.2.0</td><td>Coloured Excel checklists in Menu Update</td><td>Apache 2.0</td></tr>
 <tr><td>PDF.js 3.11.174 (Mozilla)</td><td>Reading menu PDFs</td><td>Apache 2.0</td></tr>
 <tr><td>Tesseract.js 5.1.1</td><td>Text recognition on the website</td><td>Apache 2.0</td></tr>
 <tr><td>JSZip 3.10.1</td><td>Saving photo folders</td><td>MIT (or GPL 3.0)</td></tr>
@@ -7988,7 +7995,16 @@ function chooseCat(x){const o=S.byId.get(x.pick),want=S.catMap[x.r['Category*']]
 function defaultDeletes(){S.del=new Map();const used=new Set(S.items.map(x=>x.pick).filter(Boolean));
   S.olds.forEach(o=>{if(kind(o)!=='product'||used.has(o['Product ID'])||!S.scope.has(o['Category*']))return;
     const copyOf=S.items.find(x=>x.pick&&x.cands.some(c=>c.o===o&&c.s>=.9));
-    S.del.set(o['Product ID'],{on:true,copy:!!copyOf&&S.handAdded(o),note:copyOf?(S.handAdded(o)?S.byId.get(copyOf.pick)['Product Name*']+' kept instead':'Close match to '+copyOf.r['Product Name*']+' — check'):''})})}
+    if(copyOf&&S.handAdded(o)){S.del.set(o['Product ID'],{on:true,copy:true,note:S.byId.get(copyOf.pick)['Product Name*']+' kept instead'});return}
+    // a delete is the last resort: anything that still looks like a new-menu item, or that a brand-new item could be renamed from, starts unticked
+    const like=[...S.items.map(x=>x.r['Product Name*']),...S.mods.map(m=>m.r['Product Name*'])].find(n=>sim(n,o['Product Name*'])>=.5);
+    const addFor=S.items.find(x=>!x.pick&&!x.size&&lookalikeOf(x,o));
+    if(addFor)S.del.set(o['Product ID'],{on:false,copy:false,note:'Could become “'+addFor.name+'” (added as new) by renaming or repricing — pick it in step 3 instead'});
+    else if(like||copyOf)S.del.set(o['Product ID'],{on:false,copy:false,note:'Still on the menu as “'+(like||copyOf.r['Product Name*'])+'”? It may be a rename, size or modifier — check before deleting'});
+    else S.del.set(o['Product ID'],{on:true,copy:false,note:'No equivalent on the new menu'})})}
+function lookalikeOf(x,o){if((o['Category*']||'')!==x.cat)return false;const pn=num(x.r['Sell Price*']),po=num(o['Sell Price*']);
+  return sim(x.r['Product Name*'],o['Product Name*'])>=.3||(pn&&po&&Math.abs(pn-po)<=.1*Math.max(pn,po))}
+function deleteLookalike(x){for(const [id,d] of S.del){if(d.copy)continue;const o=S.byId.get(id);if(lookalikeOf(x,o))return o}return null}
 
 /* ---------- drawing ---------- */
 const money=v=>v===''||v==null?'':'$'+num(v).toFixed(2);
@@ -7997,31 +8013,39 @@ function changes(x){const o=x.pick&&S.byId.get(x.pick),t=[];if(x.size)return[];
   if(!o)return['New product'];
   if(o['Product Name*']!==x.name)t.push('Rename');if(num(o['Sell Price*'])!==num(x.r['Sell Price*']))t.push('New price');
   if((o['Category*']||'')!==x.cat)t.push('Move to '+x.cat);if(!o['Printer Profiles']&&$('mu-printers').value.trim())t.push('Add printers');return t}
+// a quick fix: the Oolio product only needs its name and/or price changed (description, tags and price lists ride along)
+const QF={rename:'QUICK FIX - rename only',price:'QUICK FIX - price only',both:'QUICK FIX - rename + price'};
+function quick(ch){if(!ch.length||!ch.every(t=>t==='Rename'||t==='New price'))return'';return ch.length===2?'both':ch[0]==='Rename'?'rename':'price'}
+function actionOf(x,ch){const o=x.pick&&S.byId.get(x.pick);if(!o)return'Add';const q=quick(ch);if(q)return QF[q];
+  return ch.some(t=>t==='Rename'||t==='New price'||t.startsWith('Move'))?'Edit':'Finish'}
+function fixText(o,name,price){const f=[];if(o['Product Name*']!==name)f.push('Name: '+o['Product Name*']+' → '+name);if(num(o['Sell Price*'])!==num(price))f.push('Price: '+money(o['Sell Price*'])+' → '+money(price));return f.join('; ')}
 function drawScope(){$('mu-cats').innerHTML=S.ocats.slice().sort().map(c=>{const n=S.olds.filter(o=>o['Category*']===c).length;
   return'<label><input type="checkbox" data-cat="'+esc(c)+'"'+(S.scope.has(c)?' checked':'')+'> '+esc(c)+' <small>'+n+'</small></label>'}).join('');
   $('mu-markups').innerHTML=S.pl.map(p=>{const m=S.markup[p];return'<label class="mu-f">'+esc(p)+' = sell price ×<input type="number" step="0.001" min="0" data-pl="'+esc(p)+'" value="'+(m.ratio&&m.n>=5?m.ratio:'')+'" placeholder="leave as is" style="width:110px"></label>'}).join('')}
-function drawItems(){let ed=0,fi=0,ad=0,sz=0;
+function drawItems(){let ed=0,fi=0,ad=0,sz=0,qf=0;
   $('mu-items').innerHTML=S.items.map((x,k)=>{const r=x.r;
     if(x.size){sz++;return'<tr class="off"><td>'+esc(r['Product Name*'])+' <span class="mu-dim">/ '+esc(x.size)+'</span></td><td class="num">'+money(r['Sell Price*'])+'</td><td colspan="4">'+(x.variant?'Size of <b>'+esc(x.variant['Product Name*'])+'</b>. ':'No size product found. ')+'<span class="mu-dim">Size prices aren’t in the export, so this goes on the checklist.</span></td>'+pdfCell(x)+'</tr>'}
-    const o=x.pick&&S.byId.get(x.pick),ch=changes(x),big=!o||ch.some(t=>t==='Rename'||t==='New price'||t.startsWith('Move'));
-    if(!o)ad++;else if(big)ed++;else fi++;
+    const o=x.pick&&S.byId.get(x.pick),ch=changes(x),act=actionOf(x,ch),isQ=act.startsWith('QUICK');
+    if(!o)ad++;else if(isQ)qf++;else if(act==='Edit')ed++;else fi++;
+    const lookalike=!o&&deleteLookalike(x);
     const opts='<option value="">Add as a new product</option>'+x.cands.map(c=>'<option value="'+esc(c.o['Product ID'])+'"'+(c.o['Product ID']===x.pick?' selected':'')+'>'+esc(c.o['Product Name*'])+' · '+esc(c.o['Category*'])+' · '+money(c.o['Sell Price*'])+(S.handAdded(c.o)?' · hand-added':'')+'</option>').join('');
     const cats=[...new Set([x.cat,...S.ocats])].filter(Boolean).map(c=>'<option'+(c===x.cat?' selected':'')+'>'+esc(c)+'</option>').join('');
     const twice=o&&S.items.filter(y=>y.pick===x.pick).length>1;
-    return'<tr><td>'+esc(r['Product Name*'])+'<br><span class="mu-dim">'+esc(r['Category*'])+'</span></td><td class="num">'+money(r['Sell Price*'])+(o&&num(o['Sell Price*'])!==num(r['Sell Price*'])?'<br><span class="mu-dim">was '+money(o['Sell Price*'])+'</span>':'')+'</td>'+
+    return'<tr'+(isQ?' class="qf"':'')+'><td>'+esc(r['Product Name*'])+'<br><span class="mu-dim">'+esc(r['Category*'])+'</span></td><td class="num">'+money(r['Sell Price*'])+(o&&num(o['Sell Price*'])!==num(r['Sell Price*'])?'<br><span class="mu-dim">was '+money(o['Sell Price*'])+'</span>':'')+'</td>'+
       '<td><select data-k="'+k+'" data-f="pick" aria-label="Oolio product for '+esc(r['Product Name*'])+'">'+opts+'</select>'+(o&&S.handAdded(o)?'<br>'+tag('hand-added','warn'):'')+(twice?'<br>'+tag('two menu items use this product','warn'):'')+'</td>'+
       '<td><input type="text" data-k="'+k+'" data-f="name" value="'+esc(x.name)+'" aria-label="Name in Oolio"></td><td><select data-k="'+k+'" data-f="cat" aria-label="Category">'+cats+'</select></td>'+
-      '<td>'+(!o?tag('Add','add'):big?tag('Edit','edit'):tag('Finish'))+'<br><span class="mu-dim">'+esc(ch.join(', ')||'Description, tags')+'</span></td>'+pdfCell(x)+'</tr>'}).join('');
+      '<td>'+(isQ?tag(act.replace('QUICK FIX - ','Quick fix: '),'qf')+'<br><b class="mu-fix">'+esc(fixText(o,x.name,r['Sell Price*']))+'</b><br><span class="mu-dim">Nothing else to set up</span>'
+        :(!o?tag('Add','add')+(lookalike?'<br>'+tag('could be a rename of '+lookalike['Product Name*']+'?','warn'):''):act==='Edit'?tag('Edit','edit'):tag('Finish'))+'<br><span class="mu-dim">'+esc(ch.join(', ')||'Description, tags')+'</span>')+'</td>'+pdfCell(x)+'</tr>'}).join('');
   $('mu-pdfh').hidden=!S.pdf;
   const dl=[...S.del.values()].filter(d=>d.on).length;
-  $('mu-stats').innerHTML=[[ed,'to edit'],[fi,'to finish'],[ad,'new products'],[dl,'to delete'],[sz,'size rows to check']].map(([n,l])=>'<div class="mu-stat"><b>'+n+'</b><span>'+l+'</span></div>').join('')}
+  $('mu-stats').innerHTML=[[qf,'quick fixes (name or price only)','qf'],[ed,'other edits'],[fi,'to finish'],[ad,'new products'],[dl,'to delete'],[sz,'size rows to check']].map(([n,l,c])=>'<div class="mu-stat'+(c?' '+c:'')+'"><b>'+n+'</b><span>'+l+'</span></div>').join('')}
 function drawOld(){const rows=[...S.del.entries()].map(([id,d])=>({o:S.byId.get(id),d})).sort((a,b)=>(a.o['Category*']+a.o['Product Name*']).localeCompare(b.o['Category*']+b.o['Product Name*']));
-  $('mu-old').innerHTML=rows.length?rows.map(({o,d})=>'<tr'+(d.on?'':' class="off"')+'><td><input type="checkbox" data-del="'+esc(o['Product ID'])+'"'+(d.on?' checked':'')+' aria-label="Delete '+esc(o['Product Name*'])+'"></td><td>'+esc(o['Category*'])+'</td><td>'+esc(o['Product Name*'])+(S.handAdded(o)?' '+tag('hand-added','warn'):'')+'</td><td class="num">'+money(o['Sell Price*'])+'</td><td>'+esc(o['PLU'])+'</td><td>'+(d.copy?tag('Hand-added copy','del'):tag('Not on new menu'))+(d.note?'<br><span class="mu-dim">'+esc(d.note)+'</span>':'')+'</td></tr>').join('')
+  $('mu-old').innerHTML=rows.length?rows.map(({o,d})=>'<tr'+(d.on?'':' class="off"')+'><td><input type="checkbox" data-del="'+esc(o['Product ID'])+'"'+(d.on?' checked':'')+' aria-label="Delete '+esc(o['Product Name*'])+'"></td><td>'+esc(o['Category*'])+'</td><td>'+esc(o['Product Name*'])+(S.handAdded(o)?' '+tag('hand-added','warn'):'')+'</td><td class="num">'+money(o['Sell Price*'])+'</td><td>'+esc(o['PLU'])+'</td><td>'+(d.copy?tag('Hand-added copy','del'):d.on?tag('Not on new menu','del'):tag('Check first','warn'))+(d.note?'<br><span class="mu-dim">'+esc(d.note)+'</span>':'')+'</td></tr>').join('')
     :'<tr><td colspan="6" class="mu-dim">Every product in the ticked categories is used by the new menu.</td></tr>'}
 function drawMods(){$('mu-mods').innerHTML=S.mods.length?S.mods.map((m,k)=>{const r=m.r,same=m.cands.filter(c=>num(c.o['Sell Price*'])===num(r['Sell Price*']));
   const opts='<option value="">Add as a new modifier</option>'+same.map(c=>'<option value="'+esc(c.o['Product ID'])+'"'+(c.o['Product ID']===m.pick?' selected':'')+'>'+esc(c.o['Product Name*'])+' · '+money(c.o['Sell Price*'])+'</option>').join('');
   const o=m.pick&&S.byId.get(m.pick);
-  return'<tr><td>'+esc(r['Product Name*'])+'</td><td class="num">'+money(r['Sell Price*'])+'</td><td><select data-m="'+k+'" aria-label="Oolio modifier for '+esc(r['Product Name*'])+'">'+opts+'</select></td><td>'+(o?(o['Product Name*']===r['Product Name*']?tag('No change'):tag('Rename','edit')):tag('Add','add'))+(!o&&num(r['Sell Price*'])===0&&/^add\b/i.test(r['Product Name*'])?' '+tag('$0: price missing?','warn'):'')+'</td></tr>'}).join('')
+  return'<tr><td>'+esc(r['Product Name*'])+'</td><td class="num">'+money(r['Sell Price*'])+'</td><td><select data-m="'+k+'" aria-label="Oolio modifier for '+esc(r['Product Name*'])+'">'+opts+'</select></td><td>'+(o?(o['Product Name*']===r['Product Name*']?tag('No change'):tag('Quick fix: rename only','qf')):tag('Add','add'))+(!o&&num(r['Sell Price*'])===0&&/^add\b/i.test(r['Product Name*'])?' '+tag('$0: price missing?','warn'):'')+'</td></tr>'}).join('')
   :'<tr><td colspan="4" class="mu-dim">The new menu file has no modifiers.</td></tr>'}
 
 /* ---------- PDF price check ---------- */
@@ -8042,7 +8066,7 @@ function pdfCell(x){if(!S.pdf)return'';const f=x.pdf;
 
 /* ---------- checks ---------- */
 function plRatios(){const m={};document.querySelectorAll('#mu-markups [data-pl]').forEach(i=>{const v=parseFloat(i.value);if(v>0)m[i.dataset.pl]=v});return m}
-function checks(){const c=[['Test the update import','Import one row first (for example the first Edit row) and check Oolio updates the product instead of making a copy']];
+function checks(){const c=[['Test the update import','Import one row first (for example the first quick fix) and check Oolio updates the product instead of making a copy']];
   const sz={};S.items.filter(x=>x.size).forEach(x=>{const k=x.r['Product Name*'];(sz[k]=sz[k]||[]).push(x.size+' '+money(x.r['Sell Price*']))});
   Object.entries(sz).forEach(([k,v])=>c.push([k+' sizes','Check in Oolio: '+v.join(', ')+' (size prices aren’t in the export)']));
   const mk=plRatios();
@@ -8074,18 +8098,24 @@ function build(){const head=F.exp.head,mk=plRatios(),pr=$('mu-printers').value.t
     Object.entries(mk).forEach(([p,m])=>{if(head.includes(p))r[p]=mul(r0['Sell Price*'],m)});up.push(r);
     const what=changes(x),rest=[];if(o){if((r['Description']||'')!==(o['Description']||''))rest.push('description');if((r['Dietary Tags']||'')!==(o['Dietary Tags']||''))rest.push((r['Dietary Tags']||'clear')+' tags');
       Object.keys(mk).forEach(p=>{if((r[p]||'')!==(o[p]||''))rest.push(p+' '+money(r[p]))})}
-    if(rest.length)what.push('Update '+rest.join(', '));
-    const big=!o||what.some(t=>t==='Rename'||t==='New price'||t.startsWith('Move'));
-    up1.push([!o?0:big?1:2,[STEP1,!o?'Add':big?'Edit':'Finish',(o||r)['Category*'],o?o['Product Name*']:'(new)',o&&o['Product Name*']===x.name?'(same)':x.name,o?money(o['Sell Price*']):'',money(r0['Sell Price*']),what.join('; ')||'No change','',o?o['PLU']:'',o?o['Product ID']:'','']])});
-  up1.sort((a,b)=>a[0]-b[0]).forEach(a=>ck.push(a[1]));
+    const act=actionOf(x,what),isQ=act.startsWith('QUICK');
+    let desc;
+    if(isQ)desc=fixText(o,x.name,r0['Sell Price*']).replace(/→/g,'->')+' (nothing else to set up)'+(rest.length?'; the import also updates '+rest.join(', '):'');
+    else{if(rest.length)what.push('Update '+rest.join(', '));desc=what.join('; ')||'No change'}
+    const la=!o&&deleteLookalike(x);
+    up1.push([isQ?0:act==='Edit'?1:act==='Finish'?2:3,[STEP1,act,(o||r)['Category*'],o?o['Product Name*']:'(new)',o&&o['Product Name*']===x.name?'(same)':x.name,o?money(o['Sell Price*']):'',money(r0['Sell Price*']),desc,la?'Could be a rename of '+la['Product Name*']+' instead':'',o?o['PLU']:'',o?o['Product ID']:'','']])});
+  // quick fixes first (products, then modifier renames), then other edits, finishes and additions
+  const mq=[],ma=[];
   const tmpl=S.oldMods[0];
   S.mods.forEach(m=>{const r0=m.r,o=m.pick&&S.byId.get(m.pick);let r;
-    if(o){if(o['Product Name*']===r0['Product Name*'])return;r={...o,'Product Name*':r0['Product Name*']};ck.push([STEP1,'Rename modifier','Modifier',o['Product Name*'],r0['Product Name*'],money(o['Sell Price*']),money(o['Sell Price*']),'Rename','',o['PLU'],o['Product ID'],''])}
+    if(o){if(o['Product Name*']===r0['Product Name*'])return;r={...o,'Product Name*':r0['Product Name*']};mq.push([STEP1,QF.rename,'Modifier',o['Product Name*'],r0['Product Name*'],money(o['Sell Price*']),money(o['Sell Price*']),'Name: '+o['Product Name*']+' -> '+r0['Product Name*']+' (nothing else to set up)','',o['PLU'],o['Product ID'],''])}
     else{r={};head.forEach(h=>r[h]='');['Product Type*','Is Selling?','Print On Receipt?','Available Location','Sell Tax*','Variable Pricing?'].forEach(h=>{if(tmpl&&h in tmpl)r[h]=tmpl[h]});
       if(!r['Product Type*'])r['Product Type*']='modifier';if(!r['Sell Tax*'])r['Sell Tax*']=r0['Sell Tax*']||'GST';if(!r['Is Selling?'])r['Is Selling?']='TRUE';if(!r['Available Location'])r['Available Location']=S.venue;
       r['Product Name*']=r0['Product Name*'];r['Sell Price*']=fmt(r0['Sell Price*']);Object.entries(mk).forEach(([p,v])=>{if(head.includes(p))r[p]=mul(r0['Sell Price*'],v)});
-      ck.push([STEP1,'Add modifier','Modifier','(new)',r0['Product Name*'],'',money(r0['Sell Price*']),'New',num(r0['Sell Price*'])===0&&/^add\b/i.test(r0['Product Name*'])?'No price - confirm with venue':'','','',''])}
+      ma.push([STEP1,'Add modifier','Modifier','(new)',r0['Product Name*'],'',money(r0['Sell Price*']),'New',num(r0['Sell Price*'])===0&&/^add\b/i.test(r0['Product Name*'])?'No price - confirm with venue':'','','',''])}
     up.push(r)});
+  const bucket=n=>up1.filter(a=>a[0]===n).map(a=>a[1]);
+  ck.push(...bucket(0),...mq,...bucket(1),...bucket(2),...bucket(3),...ma);
   up.forEach(r=>['Is Selling?','Print On Receipt?','Variable Pricing?'].forEach(h=>{if(r[h])r[h]=String(r[h]).toUpperCase()}));
   [...S.del.entries()].filter(([,d])=>d.on).forEach(([id,d])=>{const o=S.byId.get(id),why=d.copy?'Delete (hand-added copy)':'Delete (not on new menu)';
     del.push([id,o['Product Name*'],o['Category*'],o['Sell Price*'],o['PLU'],why+(d.note?' - '+d.note:'')]);
@@ -8103,13 +8133,28 @@ async function save(blob,name){let dl=null;try{dl=window.claude&&window.claude.u
 const msg2=(t,e)=>{const m=$('mu-msg2');m.textContent=t;m.classList.toggle('err',!!e)};
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const fname=t=>(($('mu-venue').value.trim()||'Venue').replace(/[\\/:*?"<>|]/g,'').trim()||'Venue')+' - '+t+' '+today();
+// the coloured checklist uses xlsx-js-style (SheetJS with cell styles), loaded only when asked for. It replaces the
+// global XLSX when it loads, so the page's own SheetJS is put back straight away. If it can't load, the checklist is plain.
+const XS='https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';let xsLib=null;
+async function styledXLSX(){if(xsLib)return xsLib;const keep=window.XLSX;
+  try{await loadScript(XS);if(window.XLSX&&window.XLSX!==keep)xsLib=window.XLSX}catch(e){}finally{if(keep)window.XLSX=keep}return xsLib}
+function paint(X,ws,rows){const fill=c=>({patternType:'solid',fgColor:{rgb:c}});
+  const COL={QUICK:['C8E6C9','1B5E20'],Delete:['FFCDD2','B71C1C'],Add:['BBDEFB','0D47A1'],Edit:['E1BEE7','4A148C']};
+  for(let c=0;c<12;c++){const a=X.utils.encode_cell({r:0,c});if(ws[a])ws[a].s={font:{bold:true,color:{rgb:'FFFFFF'}},fill:fill('37474F')}}
+  rows.forEach((row,i)=>{const act=String(row[1]),k=act.startsWith('QUICK')?'QUICK':act.startsWith('Add')?'Add':act;const st=COL[k];
+    for(let c=0;c<12;c++){const a=X.utils.encode_cell({r:i+1,c});if(!ws[a])ws[a]={t:'s',v:''};
+      const s={alignment:{vertical:'top',wrapText:c===3||c===4||c===7||c===8}};
+      if(st){s.fill=fill(st[0]);if(c===1)s.font={bold:true,color:{rgb:st[1]}};if(k==='QUICK'&&(c===4||c===6||c===7))s.font={bold:true}}
+      ws[a].s=s}});
+  ws['!freeze']={xSplit:0,ySplit:1};ws['!views']=[{state:'frozen',ySplit:1}]}
 async function dl(which){const b=build();let blob,name;
   if(which==='up'){blob=new Blob([toCSV([b.head,...b.up.map(r=>b.head.map(h=>r[h]==null?'':r[h]))])],{type:'text/csv'});name=fname('Oolio update')+'.csv'}
   else if(which==='del'){blob=new Blob([toCSV([DELH,...b.del])],{type:'text/csv'});name=fname('products to delete')+'.csv'}
   else if(which==='ckc'){blob=new Blob([toCSV([CKH,...b.ck])],{type:'text/csv'});name=fname('menu changes checklist')+'.csv'}
-  else{if(!window.XLSX){msg2('The Excel writer didn’t load. Use the CSV checklist.',true);return}
-    const ws=XLSX.utils.aoa_to_sheet([CKH,...b.ck]);ws['!cols']=[24,16,18,34,34,11,11,52,40,12,38,8].map(w=>({wch:w}));ws['!autofilter']={ref:'A1:L'+(b.ck.length+1)};
-    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Checklist');blob=new Blob([XLSX.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});name=fname('menu changes checklist')+'.xlsx'}
+  else{const X=await styledXLSX()||window.XLSX;if(!X){msg2('The Excel writer didn’t load. Use the CSV checklist.',true);return}
+    const ws=X.utils.aoa_to_sheet([CKH,...b.ck]);ws['!cols']=[24,26,18,34,34,11,11,56,40,12,38,8].map(w=>({wch:w}));ws['!autofilter']={ref:'A1:L'+(b.ck.length+1)};
+    if(X!==window.XLSX)paint(X,ws,b.ck);
+    const wb=X.utils.book_new();X.utils.book_append_sheet(wb,ws,'Checklist');blob=new Blob([X.write(wb,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});name=fname('menu changes checklist')+'.xlsx'}
   if(await save(blob,name))msg2('Saved “'+name+'”.')}
 
 /* ---------- events ---------- */
@@ -8139,7 +8184,7 @@ $('mu-delall').addEventListener('click',()=>{S.del.forEach(d=>d.on=true);drawAll
 $('mu-delnone').addEventListener('click',()=>{S.del.forEach(d=>d.on=false);drawAll()});
 $('mu-dl-up').addEventListener('click',()=>dl('up'));$('mu-dl-del').addEventListener('click',()=>dl('del'));
 $('mu-dl-ck').addEventListener('click',()=>dl('ck'));$('mu-dl-ckc').addEventListener('click',()=>dl('ckc'));
-window.muTest={F,S,build,take,start,checks};
+window.muTest={F,S,build,take,start,checks,styledXLSX,paint,CKH};
 })();
 </script>
 <script>
